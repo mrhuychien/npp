@@ -1,6 +1,6 @@
-# Chuyển npp.sale → app `npp` trên ERPNext v16 — bản bàn bạc để chốt
+# Chuyển npp.sale → app `nppsale` trên ERPNext v16 — bản bàn bạc để chốt
 
-Phiên bản 3.1 · 05/11/2026 · em soạn, anh chốt. Chưa có dòng code nào được viết; tệp này chỉ để **bàn và chốt** trước khi tiến hành.
+Phiên bản 3.2 · 05/11/2026 · em soạn, **anh đã chốt** (mục 0a). Bản này giữ nguyên nội dung bàn bạc làm hồ sơ "vì sao"; phần thực thi theo mục 0a.
 
 Lịch sử bản: v1 (04/11) đề xuất ban đầu → v2 sửa theo vòng kiểm chứng lõi ERPNext (22 khẳng định) → **v3** sửa thêm theo vòng kiểm chứng nền Frappe (12 khẳng định) và bốn agent soát thiếu (bảng / RPC, màn hình, luật `CLAUDE.md`, góc nhìn chuyên gia ERPNext) — 61 chỗ thiếu, 14 câu em viết sai về chính nppsale hoặc về Frappe đã được sửa. Bằng chứng từng dòng ở `khao-sat/04_kiem_chung_erpnext.md`.
 
@@ -12,6 +12,33 @@ Tài liệu đi kèm (khảo sát tự động từ mã nguồn nppsale, nhánh 
 
 ---
 
+## 0a. Quyết định đã chốt (chủ nhà trả lời 18 câu, 05/11/2026)
+
+| # | Câu | Chốt | Hệ quả trong tài liệu |
+|---|---|---|---|
+| 1 | Repo và tên app | **App độc lập tên `nppsale`**, không phải app `npp` đang chạy; portal ở **`/nppsale`** | Mọi chỗ ghi `/ban-hang`, `npp.sale.api`, "module NPP Sale trong app npp" đọc thành `/nppsale`, `nppsale.api`, app `nppsale`. Mã nguồn nằm ở repo `mrhuychien/npp` (tên repo khác tên app — bench đọc tên app từ `pyproject.toml`; kiểm ở P0 rằng `bench get-app` đặt đúng thư mục `apps/nppsale`) |
+| 2 | Mỗi NPP một site | **Đồng ý** | 2.1 A |
+| 3 | Độ sâu lõi | **Lai (H)** | 2.2 |
+| 4 | Giao diện | **Dùng lại mã React** | 2.3 R |
+| 5 | CFD-01 … 13 | **Duyệt tất cả**; riêng CFD-05 chọn **B** | xem 14, 15 |
+| 6 | Mảng di sản | **Bê hết**: 23 màn báo cáo cũ + phân tích, khuyến mãi, hoa hồng giữ nguyên dạng danh mục (chuyến giao vẫn bỏ theo quyết định 24/09/2026 — nếu anh muốn khác thì nói) | mục 1 |
+| 7 | Lương | Port riêng; doanh số lương theo HĐ − hàng trả (giữ); **thưởng số đơn đếm hoá đơn ghi sổ**; cấu hình "Thưởng tháng" giữ (theo tinh thần "bê hết") | 4.5 |
+| 8 | Dữ liệu | **H3** (danh mục + số dư đầu kỳ + lịch sử vào bảng lưu trữ chỉ đọc) | mục 8 |
+| 9 | Kế toán | Hệ thống tài khoản VN (TT200) | 3.11 |
+| 10 | Hạ tầng | **VPS Google Cloud** (bench tự dựng; cấu hình máy, nginx, Cloudflare chốt ở P0) | 3.7, 3.10 |
+| 11 | Nhịp duyệt | Duyệt **từng tệp** blueprint | mục 9 P1 |
+| 12 | Đặt tên DocType | `NPP …` không dấu, fieldname ASCII | 3.3 |
+| 13 | Số phiếu thu | `PTH-.YY.MM.DD.-.####`; phiếu trả giữ `PT-####` | 6.6 |
+| 14 | Bán vượt tồn theo lô | **B**: mặt hàng cần bán vượt tồn thì **không theo dõi lô** (`has_batch_no = 0`, bật tồn âm cho riêng mặt hàng ấy) — không hạn dùng, không FIFO theo lô, không kho cận date cho các mặt hàng đó; mặt hàng còn lại theo lô và **chặn** xuất khi lô không đủ. Cờ này **không đổi được** sau khi có sổ kho → danh sách mặt hàng theo lô / không lô là một bước của chuyển dữ liệu (anh duyệt danh sách) | CFD-05, CFD-06 |
+| 15 | Sửa / huỷ phiếu nhập đã bán | Giữ luật cũ cho mặt hàng **không lô** (cancel + amend được khi tồn âm cho phép); mặt hàng theo lô: chỉ sửa giá (LCV), không huỷ khi lô đã xuất | CFD-06 |
+| 16 | Kiểm kê + giảm đầu phiếu nhập | Đồng ý cách đề xuất và dự phòng | CFD-09, CFD-11 |
+| 17 | Nhập kho kèm công nợ NCC | **Purchase Invoice có nhập kho** (màn Nhập kho của thủ kho lưu thành phiếu nhập PN khi có NCC) | CFD-13 |
+| 18 | Số PN và SKU | Số `PN-` cấp ngay lúc lập nháp; SKU bất biến sau khi có chứng từ | CFD-01, CFD-10 |
+
+Bước kế tiếp đã được phép: **P0 (PoC đo mười điểm)** và **P1 (blueprint, duyệt từng tệp, bắt đầu từ `01_business_model.md`)**.
+
+---
+
 ## 0. Đọc trong ba phút
 
 **nppsale hôm nay.** 177.000 dòng TypeScript, 180 trang (≈160 màn thật, 12 màn luồng cũ đã chặn), 228 component, 82 bảng Postgres, 74 RPC công khai + ~160 hàm phụ / trigger, 260 migration. Luật nghiệp vụ đã chốt nằm ở `CLAUDE.md` của nppsale và ~140 khối "VÌ SAO" trong migration. Hệ thống đang chạy thật cho một NPP.
@@ -19,7 +46,7 @@ Tài liệu đi kèm (khảo sát tự động từ mã nguồn nppsale, nhánh 
 **Em đề xuất.**
 1. **ERPNext giữ sổ**: Item / Customer / Supplier / Warehouse / Batch / Sales Order / Sales Invoice (có trừ kho) / Payment Entry / Purchase Invoice (có nhập kho) / Stock Entry / Journal Entry. Đây là phần nppsale tự viết bằng 234 hàm SQL; ERPNext đã có sẵn, có sổ cái, có kiểm toán.
 2. **App `npp` bọc luật nppsale**: ~25 DocType riêng (phiếu trả, tuyến, phân công khách, ảnh điểm bán, bàn giao, soạn hàng, kiểm kê, lương, HĐĐT MISA, ma trận quyền…), Custom Field trên DocType lõi, và **mọi thao tác tiền / kho / trạng thái đi qua whitelisted method Python** (đúng luật "không ghi thẳng từ trình duyệt" của nppsale, đúng kiểu NPP của bộ skill nextcode). App **tự chọn lô**, **tự lập tờ ghi có độc lập**, **tự tính nợ theo hoá đơn**, **tự lọc dữ liệu theo đúng vế RLS cũ** — không giao bốn việc đó cho máy tự động của lõi, vì lõi làm khác luật nppsale (mục 5).
-3. **Giao diện bê nguyên mã React/Tailwind/shadcn** của nppsale thành một SPA chạy ngoài Desk tại `/ban-hang/…`, giữ nguyên từng đường dẫn, phím tắt POS, máy quét, in A5, Excel, offline. Chỉ thay tầng dữ liệu (Supabase → `frappe.call`). **Không** viết lại tay 160 màn bằng vanilla JS.
+3. **Giao diện bê nguyên mã React/Tailwind/shadcn** của nppsale thành một SPA chạy ngoài Desk tại `/nppsale/…`, giữ nguyên từng đường dẫn, phím tắt POS, máy quét, in A5, Excel, offline. Chỉ thay tầng dữ liệu (Supabase → `frappe.call`). **Không** viết lại tay 160 màn bằng vanilla JS.
 
 **Hai điều lõi ERPNext v16 không làm được mà nppsale đang làm** (đã kiểm bằng mã nguồn, không phải phỏng đoán):
 - **Bán / xuất vượt tồn với hàng theo lô**: lõi chặn lô âm vô điều kiện, kể cả khi bật mọi cài đặt tồn âm. Luật `allow_oversell` (mig 086 / 222 / 238) phải đổi — CFD-05, câu 14.
@@ -87,7 +114,7 @@ Con số đáng nhớ: trình duyệt nppsale gọi Supabase ở **938 chỗ** (
 
 | | **R. Dùng lại mã React (đề xuất)** | V. Viết lại vanilla JS no-build theo `frappe-portal-spa` |
 |---|---|---|
-| Cách làm | Tách `src/` của nppsale thành một ứng dụng Vite + React Router (`basename="/ban-hang"`); thay `createClient()` Supabase bằng một lớp `goi()` → `frappe.call`; bỏ phần riêng của Next (middleware, route handler, `next/*`); build ra `public/ban-hang/` với tên tệp băm; một www page phục vụ `index.html` + bơm `NPP_CONTEXT` | Dựng lại 160 màn + 228 component bằng template literal, CSS prefix, hash router |
+| Cách làm | Tách `src/` của nppsale thành một ứng dụng Vite + React Router (`basename="/nppsale"`); thay `createClient()` Supabase bằng một lớp `goi()` → `frappe.call`; bỏ phần riêng của Next (middleware, route handler, `next/*`); build ra `public/nppsale/` với tên tệp băm; một www page phục vụ `index.html` + bơm `NPP_CONTEXT` | Dựng lại 160 màn + 228 component bằng template literal, CSS prefix, hash router |
 | Giống nppsale | Pixel-giống; giữ `design-ux-ui`, phím tắt, máy quét, in A5, Excel, offline, 387 tệp unit test, 151 tệp e2e (đổi sổ giả) | "Gần giống" — mỗi màn là một lần dịch lại, lệch dần |
 | Khối lượng | ~1 phần: viết lớp dữ liệu + sửa 306 tệp có truy vấn, bỏ `next/*` ở 171 tệp, 12 tệp dựng URL tuyệt đối | ~3–4 phần |
 | Rủi ro | Build step (Vite) trong vòng đời app Frappe — em xử lý bằng cách **commit sản phẩm build** vào repo, `bench build` không phải biết tới Vite | Rất nhiều chi tiết nhỏ (camera, bảng dòng POS, tab POS) phải làm lại, khó kiểm hết |
@@ -104,7 +131,7 @@ Con số đáng nhớ: trình duyệt nppsale gọi Supabase ở **938 chỗ** (
 
 ```
 Trình duyệt (điện thoại / máy tính)
-  SPA React (mã nppsale)  ──  /api/method/npp.sale.api.*  ──►  app npp (Python)
+  SPA React (mã nppsale)  ──  /api/method/nppsale.api.*  ──►  app npp (Python)
      │ socket.io (chuông, khoá chứng từ)                     │  guard quyền (ma trận NPP + vai) + lọc theo vế RLS cũ
                                                              │  luật nppsale (giá, giảm giá, hệ số, chọn lô, phiếu trả, nợ theo HĐ…)
                                                              ▼
@@ -118,7 +145,7 @@ Trình duyệt (điện thoại / máy tính)
 ### 3.2 Backend — tám nguyên tắc (theo `frappe-app-build-profile`)
 1. **Một màn một lượt gọi**: mỗi màn / khối có một method trả đủ dữ liệu (như `bao_cao_so_ban`, `goiMotLuot` hôm nay). Hết cảnh 10–90 câu PostgREST một màn.
 2. **Ghi chỉ qua method, và method ghi phải là POST**: trình duyệt không bao giờ `frappe.client.save` lên chứng từ; vai NPP **không có quyền ghi / ghi sổ** trên SI / PI / PE / SE / JE ở lớp Frappe, method tự kiểm rồi `ignore_permissions` (gotcha #9). Frappe **rollback mọi request GET** dù không lỗi → method ghi khai `methods=["POST"]`; việc nền (HĐĐT, thông báo) xếp hàng với `enqueue_after_commit=True`.
-3. **Luật ở máy chủ, trình duyệt chỉ tính để hiện**: giá bảng theo đơn vị, trần / sàn giá, trần giảm giá theo người (chỉ kiểm khi **tăng** khoản giảm so với bản đang có — luật mig 226), hệ số quy đổi tờ cũ, thuế theo dòng, làm tròn — chép từ các RPC / trigger sang Python (`npp/sale/luat/*.py`, thuần, có unit test, không import frappe).
+3. **Luật ở máy chủ, trình duyệt chỉ tính để hiện**: giá bảng theo đơn vị, trần / sàn giá, trần giảm giá theo người (chỉ kiểm khi **tăng** khoản giảm so với bản đang có — luật mig 226), hệ số quy đổi tờ cũ, thuế theo dòng, làm tròn — chép từ các RPC / trigger sang Python (`nppsale/luat/*.py`, thuần, có unit test, không import frappe).
 4. **App tự quyết bốn việc lõi làm khác luật nppsale**: (a) **chọn lô** cho mọi dòng xuất (FIFO theo ngày nhập, chỉ kho bán; trả NCC và hụt kiểm kê theo hạn cũ trước) — không dùng máy tự chọn của lõi (nó xếp theo ngày tạo lô và lấy từ mọi kho); (b) **tờ ghi có độc lập** cho hàng trả (CFD-03); (c) **nợ theo hoá đơn** = số còn nợ của HĐ − Σ tờ ghi có gắn HĐ (âm được) và **nợ của khách** = số dư phải thu theo sổ cái (HĐ + tờ ghi có + tiền chưa phân bổ + bút toán) — một method `no_khach` cho POS, hạn mức, danh sách; (d) **lọc dữ liệu cho NVBH đúng vế RLS cũ** ngay trong method (xem 3.5).
 5. **Một hợp đồng mã lỗi**: method ném `NppLoi(ma, cau)` và trả `error_code` → `goi()` ánh xạ về đúng chuỗi mã nppsale (`INSUFFICIENT_STOCK`, `LOCKED_HAS_PAYMENT`, `BAD_RECEIVABLE_LINE`, `REASON_REQUIRED`…) để `explainInvoiceError`, `errorMessage`, `kiemLaiSauLoiXuat` chạy nguyên; lỗi tiếng Anh của lõi lọt ra là lỗi của app, không được hiện ở POS.
 6. **Idempotent**: `client_request_id` (đơn offline), `client_key` (phiếu thu) là Custom Field duy nhất; gửi lại trả bản đã có (giữ `kiemLaiSauLoiXuat`).
@@ -154,22 +181,22 @@ Tên DocType: tiếng Việt không dấu, tiền tố `NPP ` (câu 12). Fieldna
 - **Batch**: không cần thêm (hạn dùng, ngày sản xuất, NCC có sẵn; vùng = kho).
 
 ### 3.5 Vai và quyền
-- Role Frappe: `NPP Chu`, `NPP Quan Ly`, `NPP Ke Toan`, `NPP NVBH`, `NPP Thu Kho` (desk_access = 0 → người dùng kiểu Website User, không vào `/desk`); `Role.home_page` của từng vai trỏ `/ban-hang/...`; `/login` của Frappe chuyển về trang đăng nhập của app.
+- Role Frappe: `NPP Chu`, `NPP Quan Ly`, `NPP Ke Toan`, `NPP NVBH`, `NPP Thu Kho` (desk_access = 0 → người dùng kiểu Website User, không vào `/desk`); `Role.home_page` của từng vai trỏ `/nppsale/...`; `/login` của Frappe chuyển về trang đăng nhập của app.
 - **Luật chính là ma trận NPP + vế lọc trong method.** Vòng soát thiếu chỉ ra User Permission của Frappe **không** tái hiện được RLS của nppsale: nó không lọc Payment Entry (trường khách là Dynamic Link), không biết "khách có đơn / HĐ đứng tên mình" (mig 154 / 260), và sau bàn giao "chuyển hẳn" NV cũ sẽ mất quyền xem chính HĐ của mình. Vì vậy mỗi method danh sách chép **đúng vế RLS của bảng ấy**: khách = phân công ∪ người tạo ∪ khách có đơn / HĐ đứng tên mình ∪ `customer.view_all`; HĐ / nợ / phiếu trả theo `sales_user_id`; hàng theo công ty được làm; nháp đơn theo **người đứng tên** (mig 161). Một bộ test so **tập dòng từng người** như `scripts/sql/thu-260-rls-khach-tinh-mot-lan.sql`.
 - Lớp Frappe (DocPerm) = **sàn an toàn**: vai NPP được cấp **đọc** danh mục ở lớp Frappe (lõi tự kiểm quyền đọc Item khi lập chứng từ, cờ bỏ qua quyền của tờ không lan sang), nhưng các cửa đọc chung của lõi (`frappe.client.*`, `frappe.desk.reportview.get`, `frappe.desk.search.*`) bị **chặn cho vai NPP** (`override_whitelisted_methods` / kiểm trong `before_request`) để không lộ hàng của công ty khác hay HĐ của NV khác; mọi đọc đi qua method của app đã lọc. **Không** dùng User Permission theo Item / Brand (sẽ chặn chính HĐ có mặt hàng ngoài công ty của NV). Ghi chứng từ tiền / kho **không cấp** cho ai (chỉ method).
 - Giữ nguyên `permissions.ts` + `permissions-features.ts` (chạy cùng mã ở hai nơi: TS cho menu, Python cho guard, một bộ test so khớp).
 
 ### 3.6 Đăng nhập và phiên
 - Frappe User, đăng nhập bằng **SĐT + mật khẩu** (`System Settings.allow_login_using_mobile_number`; lõi so `mobile_no` **nguyên văn** → lưu đúng dạng `0xxxxxxxxx` như `chuanHoaSdt`), email kỹ thuật `<sđt>@<site>` như hôm nay. Phản hồi đăng nhập của Website User là `"No App"` + `home_page` → trang đăng nhập của app xử lý như thành công và đi theo `trangSauDangNhap` của nppsale.
-- **QR đăng nhập**: method `allow_guest` có `rate_limit` (như 10 lượt / phút / IP hôm nay) kiểm token (băm, không hết hạn, xoay / thu hồi) **và** `User.enabled` + `left_at` (lõi `login_as` không tự kiểm) → `login_manager.login_as(user)` → về `/ban-hang/orders` (không phải `/orders` — ERPNext đã chiếm đường ấy cho portal của nó). Quản lý QR chỉ chủ NPP.
+- **QR đăng nhập**: method `allow_guest` có `rate_limit` (như 10 lượt / phút / IP hôm nay) kiểm token (băm, không hết hạn, xoay / thu hồi) **và** `User.enabled` + `left_at` (lõi `login_as` không tự kiểm) → `login_manager.login_as(user)` → về `/nppsale/orders` (không phải `/orders` — ERPNext đã chiếm đường ấy cho portal của nó). Quản lý QR chỉ chủ NPP.
 - **"Đăng nhập thay"** giữ đúng cách nppsale: method chỉ **trả URL QR** của nhân viên cho chủ NPP, giao diện mở bằng trình duyệt khác (`linkTrinhDuyetRieng`) để phiên của chủ không bị thay; không `login_as` trong phiên của chủ.
 - Phiên: cookie `sid` + CSRF bơm vào trang; sau `login_as` là phiên mới → `goi()` lấy lại CSRF; `goi()` dịch `SessionExpired` / 401 / `CSRFTokenError` về trang đăng nhập app kèm `next`, phát sự kiện `storage` để các tab POS khác khoá ngay (thay `onAuthStateChange` của Supabase). Cài đặt: `session_expiry` dài cho NVBH chỉ có QR (mặc định ~7 ngày không dùng là văng ra — hàng đợi đơn offline chỉ gửi khi còn đăng nhập), `deny_multiple_sessions = 0` (chủ dùng điện thoại + máy POS), nới `allow_consecutive_login_attempts` vì cả văn phòng chung một IP (10 lần sai là khoá cả văn phòng 60 giây). "Quên mật khẩu" qua email không bao giờ tới (email kỹ thuật) → đặt lại mật khẩu do chủ NPP hoặc phát QR mới; tạo User với `send_welcome_email = 0` và tắt email thông báo.
 - Tài khoản khoá: `User.enabled = 0` + `left_at` trên `NPP Nhan Vien`.
 
 ### 3.7 Portal được phục vụ thế nào (các điểm dưới đã qua kiểm chứng nền Frappe)
-- `www/ban-hang/index.html` + `index.py`: **`no_cache = 1` bắt buộc** (Frappe cache HTML trang www 30 phút theo đường dẫn, không theo người — quên là hồ sơ + quyền + CSRF của người A trả cho người B), header `Cache-Control: no-store`, Guest → chuyển về trang đăng nhập app kèm `next`; `index.html` là tài liệu trọn vẹn (có `</body>`) để lõi không bọc vào khung web Bootstrap. `website_route_rules` `/ban-hang/<path:app_path>` → một trang (lõi dùng y hệt cho `/desk`), phủ cả `/ban-hang/in/*`; đổi rule phải `bench clear-cache`.
-- Tệp JS/CSS do Vite build, tên băm, nằm `public/ban-hang/`; `bench build` chỉ sao chép. Không cần import map vì không có tệp trùng tên khác nội dung. Trang in `/in/*` là **entry Vite riêng, nhẹ** (không nạp provider POS / danh mục) để nút In trong khung ẩn không tải lại cả SPA.
-- **`sw.js` và `manifest.webmanifest` không phục vụ được từ `www/`** (lõi chỉ phục vụ tĩnh tệp nhị phân; tệp `.js` rơi vào trang Jinja có cache 30 phút). Cách làm: hook `page_renderer` của app trả `sw.js` từ `public/` với `Content-Type: application/javascript`, `Cache-Control: no-cache` và `Service-Worker-Allowed: /ban-hang/`; manifest cũng vậy (`start_url`, `scope`, `id` dưới `/ban-hang/`). Luật cache của SW như hôm nay; **không cache phản hồi chuyển hướng**.
+- `www/nppsale/index.html` + `index.py`: **`no_cache = 1` bắt buộc** (Frappe cache HTML trang www 30 phút theo đường dẫn, không theo người — quên là hồ sơ + quyền + CSRF của người A trả cho người B), header `Cache-Control: no-store`, Guest → chuyển về trang đăng nhập app kèm `next`; `index.html` là tài liệu trọn vẹn (có `</body>`) để lõi không bọc vào khung web Bootstrap. `website_route_rules` `/nppsale/<path:app_path>` → một trang (lõi dùng y hệt cho `/desk`), phủ cả `/nppsale/in/*`; đổi rule phải `bench clear-cache`.
+- Tệp JS/CSS do Vite build, tên băm, nằm `public/nppsale/`; `bench build` chỉ sao chép. Không cần import map vì không có tệp trùng tên khác nội dung. Trang in `/in/*` là **entry Vite riêng, nhẹ** (không nạp provider POS / danh mục) để nút In trong khung ẩn không tải lại cả SPA.
+- **`sw.js` và `manifest.webmanifest` không phục vụ được từ `www/`** (lõi chỉ phục vụ tĩnh tệp nhị phân; tệp `.js` rơi vào trang Jinja có cache 30 phút). Cách làm: hook `page_renderer` của app trả `sw.js` từ `public/` với `Content-Type: application/javascript`, `Cache-Control: no-cache` và `Service-Worker-Allowed: /nppsale/`; manifest cũng vậy (`start_url`, `scope`, `id` dưới `/nppsale/`). Luật cache của SW như hôm nay; **không cache phản hồi chuyển hướng**.
 - **Chuyển thẳng máy tính vào POS**: `index.py` chép luật `dichPosMayChu` (cookie `npp_kho`, lượt mở trang theo `Sec-Fetch-*`) có unit test Python so với bản TS, trả **307 + `Cache-Control: no-store`** (chuyển hướng mặc định của Frappe là 301 — trình duyệt nhớ vĩnh viễn, máy từng rộng sau thu nhỏ vẫn bị đẩy vào POS), tách `app_path` khỏi tiền tố trước khi so; `PosDesktopRedirect` giữ làm đường lùi.
 - `X-Frame-Options: SAMEORIGIN` **không phải của Frappe** mà do nginx của bench đặt; frappe_docker / Cloudflare có thể khác → câu 10 ghi rõ: hạ tầng phải không `DENY`, không CSP `frame-ancestors 'none'`; em kiểm bằng `curl -I` trên máy chủ thật ở P0.
 - Thời gian thực: chuông thông báo và khoá chứng từ (hôm nay là Supabase realtime) → `frappe.publish_realtime` + `socket.io` của Frappe (xác thực bằng cookie `sid`, không cần Desk); nếu hạ tầng không mở socket thì hạ cấp: chuông hỏi định kỳ, khoá dựa nhịp 60 giây.
@@ -214,7 +241,7 @@ POS nhiều tab, phím tắt F2–F9, dòng mới lên đầu, khối hàng đ�
 | Hạn mức tín dụng của lõi | **trống** ở cả Customer, Customer Group và Company | lõi tra tầng; có là chặn ghi sổ SO / SI, kể cả lúc mở lại SO đã đóng |
 | Sales Invoice: `is_cash_or_non_trade_discount` + `additional_discount_account` | mẫu HĐ bật sẵn | giảm giá cả đơn **không** hạ thuế (đúng mig 183) — xem CFD-11 |
 | Mode of Payment Tiền mặt / Chuyển khoản / Ví gắn tài khoản 111 / 112 / 113 | method tự điền `reference_no` = mã phiếu thu, `reference_date` = ngày thu cho tài khoản Bank | lõi bắt số / ngày tham chiếu khi thu vào tài khoản ngân hàng |
-| Role `home_page` 5 vai NPP; `website_redirects` `/login` → `/ban-hang/login`, chặn `/me`, `/update-profile` | theo `trangGoc` / `trangSauDangNhap` | mục 3.6 |
+| Role `home_page` 5 vai NPP; `website_redirects` `/login` → `/nppsale/login`, chặn `/me`, `/update-profile` | theo `trangGoc` / `trangSauDangNhap` | mục 3.6 |
 | Item: `has_expiry_date` chỉ bật cho hàng có hạn; `create_new_batch` = 0 | app tự tạo Batch theo phiếu nhập | lõi đòi `shelf_life_in_days` > 0 khi bật đủ ba cờ; không có kiểu hạn "2099-12-31" |
 | Sao lưu | `bench backup --with-files` theo lịch + script đẩy lên Drive (rclone / age như GitHub Actions hôm nay) kèm `site_config.json` | v16 **không còn** tích hợp Google Drive / Dropbox / S3 trong lõi; mất `encryption_key` trong `site_config.json` là mất mật khẩu MISA |
 
@@ -431,8 +458,8 @@ Mỗi mục ghi: nppsale đang làm gì → lõi làm gì (đã kiểm bằng m�
 **Thay**:
 | Next.js / Supabase | Portal trên Frappe |
 |---|---|
-| App Router (`src/app/**/page.tsx`) | React Router `basename="/ban-hang"`, một bảng route chép đúng đường dẫn cũ; mọi bảng đường dẫn (`NAV_PERMISSION`, `CUA_VAO`, `PAGE_TITLES`, `posHref`…) giữ **không tiền tố**; một hàm `duongDanApp()` cho 12 tệp dựng URL ngoài router (`window.open`, `iframe.src`, `sendBeacon`, `sw.js`) + test cấm chuỗi `"/pos/` thô |
-| `createClient()` + `.from()/.rpc()` (938 + 100 chỗ) | một lớp `goi("npp.sale.api.<mô-đun>.<hàm>", tham_so)` bọc `frappe.call` (hẹn giờ, thử lại, dịch lỗi tiếng Việt — chép luật `fetchCoHetGio`; ánh xạ `error_code` về mã nppsale; `SessionExpired` / CSRF → đăng nhập lại kèm `next`, báo các tab khác); mỗi màn một method |
+| App Router (`src/app/**/page.tsx`) | React Router `basename="/nppsale"`, một bảng route chép đúng đường dẫn cũ; mọi bảng đường dẫn (`NAV_PERMISSION`, `CUA_VAO`, `PAGE_TITLES`, `posHref`…) giữ **không tiền tố**; một hàm `duongDanApp()` cho 12 tệp dựng URL ngoài router (`window.open`, `iframe.src`, `sendBeacon`, `sw.js`) + test cấm chuỗi `"/pos/` thô |
+| `createClient()` + `.from()/.rpc()` (938 + 100 chỗ) | một lớp `goi("nppsale.api.<mô-đun>.<hàm>", tham_so)` bọc `frappe.call` (hẹn giờ, thử lại, dịch lỗi tiếng Việt — chép luật `fetchCoHetGio`; ánh xạ `error_code` về mã nppsale; `SessionExpired` / CSRF → đăng nhập lại kèm `next`, báo các tab khác); mỗi màn một method |
 | Middleware (POS theo cookie khổ màn, bảo trì, phiên) | `index.py` chép `dichPosMayChu` (307 + no-store), Guest → đăng nhập; bảo trì = `maintenance_mode` |
 | 17 route handler `/api/*` | whitelisted method (admin users, QR, MISA, cron, đo nạp, dọn ảnh, lỗi trình duyệt) |
 | `layHoSoMayChu` + `NapHoSo` | `NPP_CONTEXT` bơm sẵn trong HTML (hồ sơ + quyền + cài đặt, không gọi thêm) |
@@ -444,7 +471,7 @@ Mỗi mục ghi: nppsale đang làm gì → lõi làm gì (đã kiểm bằng m�
 
 **Cách làm theo lớp để kiểm được từng bước**: (1) dựng khung Vite + router + `goi()` + trang đăng nhập, mở được `/home`; (2) chuyển từng mô-đun theo thứ tự của mục 9, mỗi mô-đun = thay các `.from()` bằng method + viết method; (3) e2e chạy với **sổ giả Frappe** (`e2e/fake-frappe.mjs` thay `fake-supabase.mjs`), cùng kịch bản.
 
-**Điều sẽ khác với người dùng**: địa chỉ có tiền tố (`/ban-hang/orders`), trang đăng nhập là của app (không phải trang Frappe), còn lại giống.
+**Điều sẽ khác với người dùng**: địa chỉ có tiền tố (`/nppsale/orders`), trang đăng nhập là của app (không phải trang Frappe), còn lại giống.
 
 ---
 
@@ -458,7 +485,7 @@ Ba phương án lịch sử:
 | Rủi ro | Cao: giá vốn / FIFO khó khớp từng đồng; mất nhiều tuần | Báo cáo so kỳ trước mất mốc trong vài tháng đầu; phải giữ Supabase thêm | Vừa: bảng lưu trữ không đụng sổ kho / sổ cái; báo cáo nối hai nguồn ở một chỗ (hàm dòng thô) |
 | Đề xuất | Không | Tối thiểu | **Chọn** |
 
-Các bước cắt chuyển (chung cho H2 / H3): (1) chạy song song trên site thử với bản sao dữ liệu, so số từng màn (nợ theo khách, tồn theo lô, doanh thu tháng); (2) rà **mã vạch trùng** và **lô đang âm** trong nppsale (lõi không nhận) — báo anh xử lý trước; (3) ngày D: khoá tạo đơn offline, chờ mọi hàng đợi offline trên điện thoại NV đồng bộ về 0 (đơn offline nằm ở trình duyệt cũ, khoá Supabase là mất), rồi khoá nppsale, xuất lần cuối, nhập, kiểm chữ ký số liệu; (4) người dùng đặt lại mật khẩu (mật khẩu Supabase không chuyển được) hoặc dùng QR mới, cài lại PWA (giỏ / tab POS / danh mục nhớ không chuyển được giữa hai địa chỉ); nppsale chỉ đọc 3–6 tháng và chuyển hướng `/<đường dẫn>` → `https://<site>/ban-hang/<đường dẫn>` cho link Zalo cũ.
+Các bước cắt chuyển (chung cho H2 / H3): (1) chạy song song trên site thử với bản sao dữ liệu, so số từng màn (nợ theo khách, tồn theo lô, doanh thu tháng); (2) rà **mã vạch trùng** và **lô đang âm** trong nppsale (lõi không nhận) — báo anh xử lý trước; (3) ngày D: khoá tạo đơn offline, chờ mọi hàng đợi offline trên điện thoại NV đồng bộ về 0 (đơn offline nằm ở trình duyệt cũ, khoá Supabase là mất), rồi khoá nppsale, xuất lần cuối, nhập, kiểm chữ ký số liệu; (4) người dùng đặt lại mật khẩu (mật khẩu Supabase không chuyển được) hoặc dùng QR mới, cài lại PWA (giỏ / tab POS / danh mục nhớ không chuyển được giữa hai địa chỉ); nppsale chỉ đọc 3–6 tháng và chuyển hướng `/<đường dẫn>` → `https://<site>/nppsale/<đường dẫn>` cho link Zalo cũ.
 
 ---
 
@@ -482,7 +509,7 @@ Khối lượng tương đối (P2 = 1): P3 ≈ 2,5 · P4 ≈ 1,5 · P5 ≈ 1 ·
 
 ## 10. Câu hỏi cần anh trả lời (mỗi câu đã có đề xuất)
 
-1. **Repo và tên app.** Repo `mrhuychien/npp` hiện chỉ có tệp `hello`. App `npp` đang chạy thật (module "NPP Portal", `/npp`, cổng tự phục vụ cho NPP khách hàng của công ty anh) có phải là cùng một app không? → *Đề xuất*: anh đẩy mã app `npp` đang chạy lên repo này (nhánh `main`); em thêm **module mới `NPP Sale`** trong cùng app, portal bán hàng ở tiền tố **`/ban-hang`** (vì `/npp` đã dùng). Nếu anh muốn app riêng, đặt tên khác (`npp_sale`) để không đụng app `npp` trên cùng bench.
+1. **Repo và tên app.** Repo `mrhuychien/npp` hiện chỉ có tệp `hello`. App `npp` đang chạy thật (module "NPP Portal", `/npp`, cổng tự phục vụ cho NPP khách hàng của công ty anh) có phải là cùng một app không? → *Đề xuất*: anh đẩy mã app `npp` đang chạy lên repo này (nhánh `main`); em thêm **module mới `NPP Sale`** trong cùng app, portal bán hàng ở tiền tố **`/nppsale`** (vì `/npp` đã dùng). Nếu anh muốn app riêng, đặt tên khác (`npp_sale`) để không đụng app `npp` trên cùng bench.
 2. **Mỗi NPP một site** (mục 2.1 A) — đồng ý?
 3. **Độ sâu lõi: phương án H** (mục 2.2) — đồng ý?
 4. **Giao diện: dùng lại mã React** (mục 2.3 R) — đồng ý? Hay anh vẫn muốn vanilla theo house style (em sẽ ước lại khối lượng ×3–4)?
@@ -501,7 +528,7 @@ Khối lượng tương đối (P2 = 1): P3 ≈ 2,5 · P4 ≈ 1,5 · P5 ≈ 1 ·
 17. **Nhập kho kèm công nợ NCC (CFD-13)**: màn Nhập kho có NCC + tiền lưu thành phiếu nhập PN (đề xuất), hay bỏ ô công nợ ở màn ấy?
 18. **Số phiếu nhập và SKU**: (a) số `PN-` cấp ngay lúc lập nháp (đề xuất; nháp xoá đi là lỗ số) hay nháp mang số tạm rồi đổi tên lúc hoàn thành? (b) SKU bất biến sau khi có chứng từ (đề xuất) — đồng ý?
 
-Anh trả lời ngắn theo số (ví dụ: "1 đẩy mã lên, tiền tố /ban-hang · 2 ok · 3 ok · 4 ok · 5 ok · 6a chỉ giữ … · 6b bỏ · 7 ok, thưởng đếm HĐ, bỏ thưởng tháng · 8 H3, cắt 01/01 · 9 ok · 10 … · 11 từng tệp · 12 ok · 13 ok · 14 A · 15 ok · 16 ok · 17 PN · 18a cấp ngay, 18b ok").
+Anh trả lời ngắn theo số (ví dụ: "1 đẩy mã lên, tiền tố /nppsale · 2 ok · 3 ok · 4 ok · 5 ok · 6a chỉ giữ … · 6b bỏ · 7 ok, thưởng đếm HĐ, bỏ thưởng tháng · 8 H3, cắt 01/01 · 9 ok · 10 … · 11 từng tệp · 12 ok · 13 ok · 14 A · 15 ok · 16 ok · 17 PN · 18a cấp ngay, 18b ok").
 
 ---
 
