@@ -1,0 +1,10 @@
+{
+  "name": "npp.sale",
+  "short_name": "npp.sale",
+  "start_url": "/nppsale/",
+  "scope": "/nppsale/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "icons": []
+}

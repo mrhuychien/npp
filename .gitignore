@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.egg-info/
+node_modules/
+nppsale/public/dist/
+nppsale/public/node_modules/
+.env
+*.log

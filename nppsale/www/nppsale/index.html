@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>npp.sale</title>
+<link rel="manifest" href="/nppsale/manifest.webmanifest">
+<meta name="csrf_token" content="{{ csrf_token }}">
+<meta name="npp-nguoi-dung" content="{{ nguoi_dung }}">
+<meta name="npp-phien-ban" content="{{ phien_ban }}">
+</head>
+<body>
+<div id="goc" data-duong-dan="{{ duong_dan_app }}">Đang tải npp.sale…</div>
+<!-- Bản thật: Vite build nhúng <script type="module" src="/assets/nppsale/portal/..."> tại đây -->
+<script>
+if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/nppsale/sw.js", { scope: "/nppsale/" }).catch(function () {}); }
+</script>
+</body>
+</html>
