@@ -122,18 +122,24 @@ def _tai_khoan_vat():
 
 def _thue():
 	tk = _tai_khoan_vat()
+	# Template thuế của mặt hàng phải có CẢ tài khoản đầu ra lẫn đầu vào: thiếu đầu vào thì phiếu nhập NCC tính VAT = 0
+	# mà không báo gì (PoC 05/11/2026, điểm 3).
+	tkv = frappe.db.get_value("Account", {"company": CTY, "account_name": "Thue GTGT dau vao"}) or _tai_khoan_vat_vao()
 	for r in (0, 5, 8, 10):
 		ten = f"VAT {r}% - {ABBR}"
 		if not frappe.db.exists("Item Tax Template", ten):
 			frappe.get_doc({"doctype": "Item Tax Template", "title": f"VAT {r}%", "company": CTY,
-				"taxes": [{"tax_type": tk, "tax_rate": r}]}).insert()
+				"taxes": [{"tax_type": tk, "tax_rate": r}, {"tax_type": tkv, "tax_rate": r}]}).insert()
+		else:
+			t = frappe.get_doc("Item Tax Template", ten)
+			if not any(x.tax_type == tkv for x in t.taxes):
+				t.append("taxes", {"tax_type": tkv, "tax_rate": r}); t.save()
 	ten = f"VAT theo mat hang - {ABBR}"
 	if not frappe.db.exists("Sales Taxes and Charges Template", ten):
 		frappe.get_doc({"doctype": "Sales Taxes and Charges Template", "title": "VAT theo mat hang", "company": CTY, "is_default": 1,
 			"taxes": [{"charge_type": "On Net Total", "account_head": tk, "description": "VAT", "rate": 0}]}).insert()
 	ten = f"VAT mua theo mat hang - {ABBR}"
 	if not frappe.db.exists("Purchase Taxes and Charges Template", ten):
-		tkv = frappe.db.get_value("Account", {"company": CTY, "account_name": "Thue GTGT dau vao"}) or _tai_khoan_vat_vao()
 		frappe.get_doc({"doctype": "Purchase Taxes and Charges Template", "title": "VAT mua theo mat hang", "company": CTY, "is_default": 1,
 			"taxes": [{"charge_type": "On Net Total", "account_head": tkv, "description": "VAT", "rate": 0, "category": "Total", "add_deduct_tax": "Add"}]}).insert()
 

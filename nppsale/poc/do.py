@@ -3,6 +3,7 @@
 bench --site poc.local execute nppsale.poc.do.<ham> [--kwargs '{...}']
 """
 import json, time, random
+from decimal import Decimal, ROUND_HALF_UP
 import frappe
 from frappe.utils import flt, nowdate, add_days, now_datetime, getdate, get_datetime
 from erpnext.stock.doctype.batch.batch import get_batch_qty
@@ -186,43 +187,102 @@ def xuat_hang_nhieu(lan=10, so_dong=15):
 
 # ─────────────────────────── (2) thuế + làm tròn ───────────────────────────
 
-def thue_lam_tron(n=50, giam_don_pct=0):
-	"""So VAT và tổng với công thức nppsale: vat = round(Σ net_dòng × suất); total = round(Σnet − giảm + vat_raw)."""
-	lech_vat = lech_tong = 0; mau = []
-	items = _items(True)[:8]
+def _tron(x):
+	"""Làm tròn nửa XA 0 về đồng — như round(numeric) của Postgres trong post_invoice và Math.round (số dương) ở POS nppsale.
+	(Bản đo 05/11 dùng round() của Python — làm tròn nửa về số CHẴN — nên mọi ca ",5" bị đếm nhầm là lệch.)"""
+	return Decimal(x).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+
+def dat_precision(p="0"):
+	"""Đổi System Settings.currency_precision (dùng cho bài so precision 0 / 2), xoá cache."""
+	ss = frappe.get_doc("System Settings")
+	ss.currency_precision = str(p)
+	ss.flags.ignore_mandatory = True
+	ss.save()
+	frappe.db.commit()
+	frappe.clear_cache()
+	return _out({"currency_precision": frappe.db.get_single_value("System Settings", "currency_precision")})
+
+
+def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1):
+	"""So tiền hàng / VAT / tổng của lõi với công thức nppsale (post_invoice sau mig 183), ĐÚNG từng đồng (không ngưỡng):
+	  đơn giá dòng = round(giá bảng × (1 − %giảm dòng))     (POS làm tròn đơn giá sau giảm về đồng)
+	  tiền dòng    = SL × đơn giá
+	  VAT          = round(Σ tiền dòng × thuế suất dòng)
+	  tổng         = round(Σ tiền dòng − giảm đơn + Σ tiền dòng × thuế suất)
+	round = làm tròn nửa xa 0. Mỗi HĐ dong_min..dong_max dòng chọn trong 40 mặt hàng, đơn vị Lon / Loc / Thung, SL 1–20,
+	thuế 0 / 5 / 8 / 10 %, ty_le_giam_dong số dòng có giảm %. cach_giam_dong:
+	  "app" — app gửi sẵn đơn giá sau giảm (rate) kèm price_list_rate + discount_percentage;
+	  "loi" — chỉ gửi price_list_rate + discount_percentage, để lõi tự tính rate.
+	HĐ lập rồi rollback, không để lại sổ."""
+	rnd = random.Random(int(seed))
+	items = _items(True) + _items(False)
+	don_vi = (("Lon", 1), ("Loc", 6), ("Thung", 24))
+	tk_giam = frappe.db.get_value("Account", {"company": CTY, "account_name": "Miscellaneous Expenses", "is_group": 0})
+	dem = {"hd": 0, "dong": 0, "dong_giam": 0, "lech_don_gia": 0, "mat_pct": 0, "lech_tien_hang": 0, "lech_vat": 0,
+		"vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0}
+	mau = []
 	for i in range(int(n)):
 		si = frappe.new_doc("Sales Invoice")
-		si.update({"customer": _khach(1 + i % 10), "company": CTY, "update_stock": 0, "taxes_and_charges": VAT_TPL, "ignore_pricing_rule": 1,
-			"is_cash_or_non_trade_discount": 1 if giam_don_pct else 0})
-		tong_net_raw = 0; vat_raw = 0
-		for it in random.sample(items, 5):
-			qty = random.randint(1, 7); rate = 10_000 + random.randint(0, 9_999) + random.choice([0, 0.5, 0.25]) * 0  # đồng nguyên
-			r = random.choice([0, 5, 8, 10])
-			si.append("items", {"item_code": it, "qty": qty, "uom": "Lon", "conversion_factor": 1, "rate": rate, "price_list_rate": rate, "item_tax_template": ITEM_TPL(r)})
-			net = qty * rate; tong_net_raw += net; vat_raw += net * r / 100.0
+		si.update({"customer": _khach(1 + i % 10), "company": CTY, "update_stock": 0, "taxes_and_charges": VAT_TPL,
+			"ignore_pricing_rule": 1, "is_cash_or_non_trade_discount": 1 if giam_don_pct else 0})
+		dong_npp = []
+		for it in rnd.sample(items, min(rnd.randint(int(dong_min), int(dong_max)), len(items))):
+			uom, cf = rnd.choice(don_vi)
+			plr = Decimal(str(_gia(it, uom)))
+			qty = rnd.randint(1, 20)
+			r = rnd.choice([0, 5, 8, 10])
+			pct = Decimal(str(rnd.choice([2, 2.5, 3, 5, 7.5, 10, 12.5, 15]))) if rnd.random() < float(ty_le_giam_dong) else Decimal(0)
+			don_gia = _tron(plr * (Decimal(100) - pct) / Decimal(100))
+			row = {"item_code": it, "qty": qty, "uom": uom, "conversion_factor": cf, "price_list_rate": float(plr), "item_tax_template": ITEM_TPL(r)}
+			if pct:
+				row["discount_percentage"] = float(pct)
+				if cach_giam_dong == "app":
+					row["rate"] = float(don_gia)
+			else:
+				row["rate"] = float(plr)
+			si.append("items", row)
+			dong_npp.append((it, qty, don_gia, Decimal(r), pct))
 		_set_taxes(si, "Sales Taxes and Charges Template", VAT_TPL)
+		tien_hang = sum(Decimal(q) * g for _, q, g, _, _ in dong_npp)
 		if giam_don_pct:
-			si.apply_discount_on = "Grand Total"; si.additional_discount_account = frappe.db.get_value("Account", {"company": CTY, "account_name": "Miscellaneous Expenses", "is_group": 0})
-			si.discount_amount = round(tong_net_raw * giam_don_pct / 100.0)
+			si.apply_discount_on = "Grand Total"; si.additional_discount_account = tk_giam
+			si.discount_amount = float(_tron(tien_hang * Decimal(str(giam_don_pct)) / 100))
 		si.insert()
-		giam = flt(si.discount_amount)
-		vat_npp = round(vat_raw); tong_npp = round(tong_net_raw - giam + vat_raw)
-		d_vat = flt(si.total_taxes_and_charges) - vat_npp; d_tong = flt(si.rounded_total or si.grand_total) - tong_npp
-		if abs(d_vat) >= 1: lech_vat += 1
-		if abs(d_tong) >= 1: lech_tong += 1
-		if (abs(d_vat) >= 1 or abs(d_tong) >= 1) and len(mau) < 5:
-			mau.append({"si": si.name, "vat_lõi": si.total_taxes_and_charges, "vat_npp": vat_npp, "tong_lõi": si.rounded_total or si.grand_total, "tong_npp": tong_npp,
-				"net_lõi": si.net_total, "net_npp": tong_net_raw, "rounding_adj": si.rounding_adjustment})
-		# kiểm thuế suất dòng có bị đè không
-		for d in si.items:
-			tpl = d.item_tax_template or ""
-			rate_in_map = json.loads(d.item_tax_rate or "{}")
-			muon = int(tpl.split("VAT ")[1].split("%")[0]) if "VAT " in tpl else None
-			if muon is not None and rate_in_map and abs(list(rate_in_map.values())[0] - muon) > 0.001:
-				mau.append({"si": si.name, "dong": d.item_code, "template": tpl, "item_tax_rate": rate_in_map, "LOI": "thuế suất dòng bị đè"})
+		dem["hd"] += 1
+		vat_tho = sum(Decimal(q) * g * r / 100 for _, q, g, r, _ in dong_npp)
+		giam = Decimal(str(flt(si.discount_amount)))
+		vat_npp = _tron(vat_tho)
+		tong_npp = max(Decimal(0), _tron(tien_hang - giam + vat_tho))
+		for d, (it, q, g, r, pct) in zip(si.items, dong_npp):
+			dem["dong"] += 1
+			if pct:
+				dem["dong_giam"] += 1
+				if not flt(d.discount_percentage):
+					dem["mat_pct"] += 1
+			if Decimal(str(flt(d.rate))) != g:
+				dem["lech_don_gia"] += 1
+				if len(mau) < 8:
+					mau.append({"loai": "don_gia", "item": it, "uom": d.uom, "gia_bang": flt(d.price_list_rate), "pct": float(pct),
+						"rate_loi": flt(d.rate), "giam_loi": flt(d.discount_amount), "don_gia_npp": float(g)})
+		th = Decimal(str(flt(si.net_total))); vat = Decimal(str(flt(si.total_taxes_and_charges)))
+		grand = Decimal(str(flt(si.grand_total))); rounded = Decimal(str(flt(si.rounded_total)))
+		if th != tien_hang: dem["lech_tien_hang"] += 1
+		if vat != vat_npp: dem["lech_vat"] += 1
+		if vat != vat.to_integral_value(): dem["vat_co_le"] += 1
+		if grand != tong_npp: dem["lech_grand"] += 1
+		if rounded != tong_npp: dem["lech_rounded"] += 1
+		if (th != tien_hang or vat != vat_npp or rounded != tong_npp or grand != tong_npp) and len(mau) < 14:
+			mau.append({"loai": "hd", "si": si.name, "so_dong": len(si.items), "tien_hang_loi": float(th), "tien_hang_npp": float(tien_hang),
+				"vat_loi": float(vat), "vat_tho": float(vat_tho), "vat_npp": float(vat_npp), "grand_loi": float(grand), "rounded_loi": float(rounded),
+				"tong_npp": float(tong_npp), "giam_don": float(giam)})
 	frappe.db.rollback()
-	return _out({"n": n, "precision": frappe.db.get_single_value("System Settings", "currency_precision"), "rounding": frappe.db.get_single_value("System Settings", "rounding_method"),
-		"lech_vat": lech_vat, "lech_tong": lech_tong, "mau": mau})
+	return _out({"tham_so": {"n": int(n), "dong": [int(dong_min), int(dong_max)], "giam_don_pct": giam_don_pct, "ty_le_giam_dong": ty_le_giam_dong,
+			"cach_giam_dong": cach_giam_dong, "seed": int(seed)},
+		"precision": frappe.db.get_single_value("System Settings", "currency_precision"),
+		"rounding": frappe.db.get_single_value("System Settings", "rounding_method"),
+		"round_row_wise_tax": frappe.db.get_single_value("Accounts Settings", "round_row_wise_tax"),
+		**dem, "mau": mau})
 
 
 # ─────────────────────────── (3) giảm đầu phiếu nhập ───────────────────────────
@@ -273,10 +333,12 @@ def lcv_sua_gia(pi_name=None, so_tien=-30_000):
 	lcv.append("taxes", {"expense_account": tk, "description": "Sua gia nhap", "amount": so_tien})
 	lcv.distribute_charges_based_on = "Amount"
 	try:
+		moc = now_datetime()
 		lcv.insert(); lcv.submit()
-		riv = frappe.get_all("Repost Item Valuation", filters={"voucher_no": pi.name}, fields=["name", "status"], order_by="creation desc", limit=1)
+		# Việc tính lại sinh theo MẶT HÀNG + KHO (voucher_no trống) — đếm theo giờ tạo, không theo số chứng từ
+		riv = frappe.get_all("Repost Item Valuation", filters={"creation": [">=", moc]}, fields=["status", "count(name) as n"], group_by="status")
 		frappe.db.commit()
-		return _out({"lcv": lcv.name, "pi_van_la": pi.name, "repost": riv})
+		return _out({"lcv": lcv.name, "pi_van_la": pi.name, "viec_tinh_lai": riv})
 	except Exception as e:
 		frappe.db.rollback(); return _out({"LOI": str(e)[:400]})
 
@@ -318,17 +380,20 @@ def repost_khi_huy(si_name=None):
 	from erpnext.stock.doctype.repost_item_valuation.repost_item_valuation import repost_entries
 	if not si_name:
 		si_name = frappe.get_all("Sales Invoice", filters={"docstatus": 1, "update_stock": 1, "is_return": 0, "company": CTY}, order_by="creation asc", pluck="name")[0]
+	moc = now_datetime()
 	t0 = time.perf_counter()
 	si = frappe.get_doc("Sales Invoice", si_name); si.cancel()
 	t_cancel = _ms(t0)
-	riv = frappe.get_all("Repost Item Valuation", filters={"voucher_no": si_name}, fields=["name", "status", "based_on"])
+	# Việc tính lại sinh theo MẶT HÀNG + KHO, voucher_no TRỐNG (lọc theo số HĐ sẽ ra rỗng) — đếm theo giờ tạo
+	loc = {"creation": [">=", moc]}
+	riv = frappe.get_all("Repost Item Valuation", filters=loc, fields=["based_on", "status", "count(name) as n"], group_by="based_on, status")
 	frappe.db.commit()
 	t1 = time.perf_counter()
 	repost_entries()
 	t_repost = _ms(t1)
-	riv2 = frappe.get_all("Repost Item Valuation", filters={"voucher_no": si_name}, fields=["name", "status"])
+	riv2 = frappe.get_all("Repost Item Valuation", filters=loc, fields=["status", "count(name) as n"], group_by="status")
 	frappe.db.commit()
-	return _out({"si": si_name, "cancel_ms": t_cancel, "riv_sau_huy": riv, "repost_ms": t_repost, "riv_sau_repost": riv2})
+	return _out({"si": si_name, "cancel_ms": t_cancel, "viec_sau_huy": riv, "repost_ms": t_repost, "viec_sau_repost": riv2})
 
 
 # ─────────────────────── (8) hai dòng cùng mặt hàng cùng lô; đổi mã lô ───────────────────────
@@ -502,9 +567,10 @@ def nhap_lai_lo_het_han2():
 
 def lcv_kiem_lai(pi_name="ACC-PINV-2026-00001"):
 	from erpnext.stock.doctype.repost_item_valuation.repost_item_valuation import repost_entries
-	riv = frappe.get_all("Repost Item Valuation", fields=["name", "voucher_type", "voucher_no", "status", "based_on"], order_by="creation desc", limit=5)
+	# Đếm ĐỦ (bản 05/11 in `limit=5` nên báo cáo ghi nhầm 5 việc — sổ có 30)
+	riv = frappe.get_all("Repost Item Valuation", fields=["status", "count(name) as n"], group_by="status")
 	t0 = time.perf_counter(); repost_entries(); ms = _ms(t0)
-	riv2 = frappe.get_all("Repost Item Valuation", fields=["name", "status"], order_by="creation desc", limit=5)
+	riv2 = frappe.get_all("Repost Item Valuation", fields=["status", "count(name) as n"], group_by="status")
 	lo = f"{_items(True)[0]}-L1"
 	sle = frappe.db.sql("""select sle.voucher_type, sle.voucher_no, sle.actual_qty, sle.incoming_rate, sle.valuation_rate, sle.stock_value_difference from `tabStock Ledger Entry` sle
 		join `tabSerial and Batch Bundle` b on b.name=sle.serial_and_batch_bundle join `tabSerial and Batch Entry` e on e.parent=b.name
@@ -525,8 +591,200 @@ def xuat_hang_dong_thoi(cho_den=0, khach=1, so_dong=15, tag="", khoa=False, lam_
 		nong = n0.get("tong") or n0.get("LOI")
 	while time.time() < cho_den:
 		time.sleep(0.01)
+	bd = time.time()
 	kq = xuat_hang_mot(so_dong=int(so_dong), khach=int(khach), in_kq=False, dong_thoi_tag=tag, khoa=khoa)
 	kq["nong"] = nong; kq["khoa"] = khoa
-	kq["bat_dau"] = round(time.time(), 3)
+	# (bản 05/11 ghi giờ KẾT THÚC vào khoá "bat_dau")
+	kq["bat_dau"] = round(bd, 3); kq["ket_thuc"] = round(time.time(), 3)
 	kq.pop("dong", None); kq.pop("dong_sau_insert", None)
 	return _out(kq)
+
+
+# ─────────────────────── (1c) dòng cần HAI lô thật — bundle so với tách dòng (đo lại 06/11/2026) ───────────────────────
+
+def _lo_con(item, kho=KHO_BAN):
+	return [b for b in (get_batch_qty(item_code=item, warehouse=kho) or []) if flt(b.get("qty")) > 0]
+
+
+def _chuan_bi_lo_le(item, con_lai=20, kho=KHO_BAN):
+	"""Bán bớt lô FIFO đầu của `item` (tờ bán riêng, đã commit, không tính giờ) cho tới khi lô ấy còn `con_lai` lon."""
+	lo = _lo_con(item, kho)
+	if not lo:
+		return None
+	dau = lo[0]; ban = flt(dau["qty"]) - con_lai
+	if ban > 0:
+		si0 = frappe.new_doc("Sales Invoice")
+		si0.update({"customer": _khach(9), "company": CTY, "update_stock": 1, "set_warehouse": kho, "taxes_and_charges": VAT_TPL, "ignore_pricing_rule": 1})
+		si0.append("items", {"item_code": item, "qty": ban, "uom": "Lon", "conversion_factor": 1, "rate": _gia(item), "warehouse": kho,
+			"use_serial_batch_fields": 1, "batch_no": dau["batch_no"], "item_tax_template": ITEM_TPL(0)})
+		_set_taxes(si0, "Sales Taxes and Charges Template", VAT_TPL); si0.insert(); si0.submit(); frappe.db.commit()
+	return dau["batch_no"]
+
+
+def hai_lo_do(lan=5):
+	"""Dòng 2 thùng (48 lon) khi lô FIFO đầu chỉ còn ≤ 20 lon → phải lấy từ hai lô. `lan` lượt mỗi cách, xen kẽ, mỗi lượt
+	một mặt hàng riêng đã bán bớt trước. Kiểm sổ số lô thật sự trên tờ (bundle) và số dòng (tách dòng)."""
+	ket = {"bundle": [], "tach_dong": []}
+	hang = _items(True); k = 0
+	for _ in range(int(lan)):
+		for cach in ("bundle", "tach_dong"):
+			it = None
+			while k < len(hang):
+				x = hang[k]; k += 1
+				lo = _lo_con(x)
+				if len(lo) >= 2 and sum(flt(b["qty"]) for b in lo[1:]) >= 48:
+					it = x; break
+			if not it:
+				ket["LOI"] = "hết mặt hàng đủ hai lô"; return _out(ket)
+			_chuan_bi_lo_le(it, 20)
+			r = xuat_hang_mot(so_dong=1, khach=5, in_kq=False, cach=cach, dong_co_dinh=[(it, "Thung", 2)])
+			if "LOI" in r:
+				ket[cach].append({"item": it, "LOI": r["LOI"]}); continue
+			lo_sbe = frappe.db.sql("""select e.batch_no, e.qty from `tabSerial and Batch Entry` e join `tabSerial and Batch Bundle` b on b.name=e.parent
+				where b.voucher_no=%s and b.is_cancelled=0 order by e.idx""", r["si"], as_dict=True)
+			dong = frappe.db.sql("""select qty, uom, stock_qty, batch_no from `tabSales Invoice Item` where parent=%s order by idx""", r["si"], as_dict=True)
+			ket[cach].append({"item": it, "si": r["si"], "tong": r["tong"], "si_insert": r["si_insert"], "si_submit": r["si_submit"],
+				"lo": [[x.batch_no, flt(x.qty)] for x in lo_sbe], "dong": [[flt(x.qty), x.uom, flt(x.stock_qty), x.batch_no] for x in dong]})
+	for c in ("bundle", "tach_dong"):
+		ok = [x["tong"] for x in ket[c] if "tong" in x]
+		ket[c + "_tb_ms"] = round(sum(ok) / len(ok)) if ok else None
+		ket[c + "_min_max"] = [min(ok), max(ok)] if ok else None
+	return _out(ket)
+
+
+# ─────────────────────── (1d) đồng thời, chỉ đo phần XUẤT HĐ của đơn đã chốt (đo lại 06/11/2026) ───────────────────────
+
+def _nhom_hang(k, chung=False):
+	"""Nhóm k (1..5): 6 mặt hàng theo lô + 2 không lô, năm nhóm RỜI nhau; chung=True: mọi tiến trình dùng nhóm 1."""
+	lo = _items(True); kl = _items(False)
+	k = 1 if chung else int(k)
+	return lo[6 * (k - 1): 6 * k] + kl[2 * (k - 1): 2 * k]
+
+
+def _tao_don(items, khach):
+	so = frappe.new_doc("Sales Order")
+	so.update({"customer": _khach(khach), "company": CTY, "transaction_date": nowdate(), "delivery_date": nowdate(),
+		"set_warehouse": KHO_BAN, "taxes_and_charges": VAT_TPL, "ignore_pricing_rule": 1})
+	for it in items:
+		so.append("items", {"item_code": it, "qty": 2, "uom": "Lon", "conversion_factor": 1, "rate": _gia(it), "price_list_rate": _gia(it),
+			"item_tax_template": ITEM_TPL(8), "warehouse": KHO_BAN})
+	_set_taxes(so, "Sales Taxes and Charges Template", VAT_TPL)
+	so.insert(); so.submit(); frappe.db.commit()
+	return so.name
+
+
+def _xuat_hd(so_name, hang_lo, khoa=False):
+	"""Phần Xuất hàng của một đơn đã chốt: commit → (khoá Bin, câu ĐẦU của giao dịch) → SI từ SO → app gán lô → insert → submit → commit.
+	hang_lo do nơi gọi truyền vào để không phải đọc sổ trước khi khoá (câu đọc thường đầu tiên lập ảnh chụp REPEATABLE READ)."""
+	from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+	t = {}
+	frappe.db.commit()
+	t0 = time.perf_counter()
+	if khoa:
+		_khoa_bin(sorted(hang_lo)); t["khoa_ms"] = _ms(t0)
+	si = make_sales_invoice(so_name)
+	si.update({"update_stock": 1, "set_warehouse": KHO_BAN, "posting_date": nowdate(), "set_posting_time": 1, "taxes_and_charges": VAT_TPL, "ignore_pricing_rule": 1})
+	gan_lo_cho_tung_dong(si, "bundle")
+	_set_taxes(si, "Sales Taxes and Charges Template", VAT_TPL)
+	try:
+		t1 = time.perf_counter(); si.insert(); t["si_insert"] = _ms(t1)
+		t2 = time.perf_counter(); si.submit(); t["si_submit"] = _ms(t2)
+		frappe.db.commit()
+	except Exception as e:
+		frappe.db.rollback()
+		t["LOI"] = type(e).__name__ + ": " + str(e)[:160]
+		return t
+	t["tong"] = _ms(t0); t["si"] = si.name
+	return t
+
+
+def xuat_hd_dong_thoi(cho_den=0, k=1, chung=False, khoa=False, tag=""):
+	"""Một tiến trình của bài đồng thời: làm nóng (đơn + xuất, không tính) → chốt đơn cho lượt đo TRƯỚC mốc → chờ mốc →
+	đo riêng phần Xuất HĐ. Ghi giờ bắt đầu (sau mốc) và giờ kết thúc để thấy nối đuôi hay song song."""
+	hang = _nhom_hang(k, chung)
+	hang_lo = [i for i in hang if frappe.db.get_value("Item", i, "has_batch_no")]
+	n0 = _xuat_hd(_tao_don(hang, int(k)), hang_lo, khoa)
+	so1 = _tao_don(hang, int(k))
+	while time.time() < float(cho_den):
+		time.sleep(0.005)
+	bd = time.time()
+	kq = _xuat_hd(so1, hang_lo, khoa)
+	kq.update({"bat_dau": round(bd, 3), "ket_thuc": round(time.time(), 3), "nong": n0.get("tong") or n0.get("LOI"),
+		"k": int(k), "chung": bool(chung), "khoa": bool(khoa), "tag": tag, "so": so1, "hang": hang})
+	return _out(kq)
+
+
+
+# ─────────────────────── (11) CFD-01: Sửa HĐ đã ghi sổ = huỷ + amend → tên "-1", "-2" (đo 06/11/2026) ───────────────────────
+
+def sua_hd_amend(si_name=None, lan=2):
+	"""Huỷ HĐ ghi sổ rồi amend (copy_doc + amended_from) `lan` lần liền; ghi tên từng tờ, docstatus tờ cũ, thời gian.
+	Dòng tờ mới không mang bundle cũ (no_copy) → lõi tự lập bundle lúc ghi sổ (auto_create_serial_and_batch_bundle_for_outward)."""
+	if not si_name:
+		si_name = frappe.get_all("Sales Invoice", filters={"docstatus": 1, "update_stock": 1, "is_return": 0, "company": CTY,
+			"amended_from": ["is", "not set"]}, order_by="creation desc", pluck="name")[0]
+	ket = {"goc": si_name, "lan": []}
+	ten = si_name
+	for _ in range(int(lan)):
+		t0 = time.perf_counter()
+		cu = frappe.get_doc("Sales Invoice", ten)
+		try:
+			cu.cancel()
+			moi = frappe.copy_doc(cu)
+			moi.amended_from = cu.name
+			moi.insert(); moi.submit()
+			frappe.db.commit()
+		except Exception as e:
+			frappe.db.rollback()
+			ket["lan"].append({"tu": ten, "LOI": type(e).__name__ + ": " + str(e)[:200]}); break
+		ket["lan"].append({"tu": ten, "ra": moi.name, "ms": _ms(t0), "cu_docstatus": frappe.db.get_value("Sales Invoice", ten, "docstatus"),
+			"bundle_moi": [d.serial_and_batch_bundle for d in moi.items if d.serial_and_batch_bundle][:2]})
+		ten = moi.name
+	return _out(ket)
+
+
+def doi_ma_lo_ep(force=True):
+	"""Bản 06/11: `rename_doc` chỉ chặn khi KHÔNG force / ignore_permissions (frappe/model/rename_doc.py:385).
+	Thử ép đổi tên một lô đã có sổ rồi ROLLBACK (không để lại gì): đếm chỗ còn trỏ mã cũ / mã mới."""
+	it = _items(True)[2]
+	lo = _lo_con(it)[0]["batch_no"]
+	moi = lo + "-DOI"
+	def dem(ma):
+		return {"sbe": frappe.db.count("Serial and Batch Entry", {"batch_no": ma}),
+			"sii": frappe.db.count("Sales Invoice Item", {"batch_no": ma}),
+			"pii": frappe.db.count("Purchase Invoice Item", {"batch_no": ma}),
+			"batch": frappe.db.count("Batch", {"name": ma})}
+	truoc = dem(lo)
+	try:
+		t0 = time.perf_counter()
+		ra = frappe.rename_doc("Batch", lo, moi, force=bool(force))
+		ms = _ms(t0)
+		kq = {"doi_duoc": True, "lo": lo, "ra": ra, "ms": ms, "truoc_ma_cu": truoc, "sau_ma_cu": dem(lo), "sau_ma_moi": dem(moi),
+			"batch_id_moi": frappe.db.get_value("Batch", moi, "batch_id")}
+	except Exception as e:
+		kq = {"doi_duoc": False, "lo": lo, "LOI": type(e).__name__ + ": " + str(e)[:300]}
+	frappe.db.rollback()
+	kq["sau_rollback_con_ma_cu"] = frappe.db.exists("Batch", lo) is not None
+	return _out(kq)
+
+
+def doi_ma_lo_ep_do_sot(force=True):
+	"""Ép đổi tên lô rồi dò MỌI cột chữ của mọi bảng xem còn chỗ nào giữ mã cũ (khớp đúng, hoặc nằm trong chuỗi JSON / văn bản);
+	ROLLBACK cuối hàm."""
+	it = _items(True)[2]
+	lo = _lo_con(it)[0]["batch_no"]
+	moi = lo + "-DOI"
+	frappe.rename_doc("Batch", lo, moi, force=bool(force))
+	cot = frappe.db.sql("""select table_name, column_name, data_type from information_schema.columns
+		where table_schema = database() and data_type in ('varchar','text','mediumtext','longtext','json')""", as_dict=True)
+	con = []
+	for c in cot:
+		t, k = c.table_name, c.column_name
+		n_dung = frappe.db.sql(f"select count(*) from `{t}` where `{k}` = %s", lo)[0][0]
+		n_trong = frappe.db.sql(f"select count(*) from `{t}` where `{k}` like %s and `{k}` <> %s and `{k}` not like %s",
+			(f"%{lo}%", lo, f"%{moi}%"))[0][0]
+		if n_dung or n_trong:
+			mau = frappe.db.sql(f"select left(`{k}`, 160) from `{t}` where `{k}` like %s and `{k}` not like %s limit 2", (f"%{lo}%", f"%{moi}%"))
+			con.append({"bang": t, "cot": k, "khop_dung": n_dung, "nam_trong_chuoi": n_trong, "mau": [m[0] for m in mau]})
+	frappe.db.rollback()
+	return _out({"lo": lo, "so_cot_da_do": len(cot), "con_giu_ma_cu": con})
