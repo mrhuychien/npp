@@ -204,11 +204,13 @@ def dat_precision(p="0"):
 	return _out({"currency_precision": frappe.db.get_single_value("System Settings", "currency_precision")})
 
 
-def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1, ty_le_sl_le=0):
+def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1, ty_le_sl_le=0, luat_dong="pos"):
 	"""So tiền hàng / VAT / tổng của lõi với công thức nppsale (post_invoice sau mig 183), ĐÚNG từng đồng (không ngưỡng):
 	  g            = round(SL × giá bảng)                    (lineGross, src/lib/pos/discount.ts)
 	  tiền giảm    = min(g, round(g × % / 100))              (discountAmount — % tính trên TIỀN DÒNG)
-	  đơn giá dòng = round((g − tiền giảm) / SL)             (posLinesToCart / netPriceOf / toDraftCoGiam — đơn giá ghi sổ)
+	  đơn giá dòng = round((g − tiền giảm) / SL)             (đơn giá ghi sổ). luat_dong="pos": quy cho MỌI dòng như POS lúc lập đơn
+	                 (posLinesToCart); luat_dong="hoa_don": chỉ quy ở dòng có giảm, dòng không giảm giữ giá như /sell (netPriceOf)
+	                 và màn hoá đơn (toDraftCoGiam / toDraft). SL nguyên thì hai luật như nhau.
 	  tiền dòng    = SL × đơn giá                            (post_invoice: line_total numeric, KHÔNG làm tròn từng dòng)
 	  VAT          = round(Σ tiền dòng × thuế suất dòng)
 	  tổng         = round(Σ tiền dòng − giảm đơn + Σ tiền dòng × thuế suất)
@@ -242,7 +244,7 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 			sl = Decimal(str(qty))
 			g = _tron(sl * plr)
 			tien_giam = min(g, _tron(g * pct / Decimal(100))) if pct else Decimal(0)
-			don_gia = _tron((g - tien_giam) / sl)
+			don_gia = _tron((g - tien_giam) / sl) if (pct or luat_dong == "pos") else plr
 			row = {"item_code": it, "qty": qty, "uom": uom, "conversion_factor": cf, "price_list_rate": float(plr), "item_tax_template": ITEM_TPL(r)}
 			if pct:
 				row["discount_percentage"] = float(pct)
@@ -295,7 +297,7 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 				"tong_npp": float(tong_npp), "giam_don": float(giam)})
 	frappe.db.rollback()
 	return _out({"tham_so": {"n": int(n), "dong": [int(dong_min), int(dong_max)], "giam_don_pct": giam_don_pct, "ty_le_giam_dong": ty_le_giam_dong,
-			"cach_giam_dong": cach_giam_dong, "seed": int(seed), "ty_le_sl_le": float(ty_le_sl_le), "luat_don_gia": "nppsale that (10/11)"},
+			"cach_giam_dong": cach_giam_dong, "seed": int(seed), "ty_le_sl_le": float(ty_le_sl_le), "luat_dong": luat_dong, "luat_don_gia": "nppsale that (10/11)"},
 		"precision": frappe.db.get_single_value("System Settings", "currency_precision"),
 		"rounding": frappe.db.get_single_value("System Settings", "rounding_method"),
 		"round_row_wise_tax": frappe.db.get_single_value("Accounts Settings", "round_row_wise_tax"),

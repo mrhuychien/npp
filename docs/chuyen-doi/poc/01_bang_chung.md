@@ -270,6 +270,20 @@ Chạy lại sau khi sửa mã đo (khối thứ hai):
 {"currency_precision": "0"}
 ```
 
+
+Ca SL lẻ chạy thêm theo **luật màn hoá đơn** (`luat_dong = "hoa_don"`: dòng không giảm giữ giá, như `/sell` và `toDraftCoGiam`):
+
+```text
+## p0 app SL le 20% seed3 luat hoa_don
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 3, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 716, "dong_giam": 183, "dong_sl_le": 133, "hd_co_sl_le": 50, "lech_don_gia": 0, "mat_pct": 27, "lech_tien_hang": 3, "lech_vat": 1, "vat_co_le": 0, "lech_grand": 18, "lech_rounded": 18, "lech_tong_max": 2.0}
+   mẫu (tối đa 3): [{"loai": "hd", "si": "ACC-SINV-2026-00102", "so_dong": 13, "co_sl_le": true, "tien_hang_loi": 15574914.0, "tien_hang_npp": 15574913.5, "vat_loi": 1048402.0, "vat_tho": 1048402.43, "vat_npp": 1048402.0, "grand_loi": 16623316.0, "rounded_loi": 16623316.0, "tong_npp": 16623316.0, "giam_don": 0.0}, {"loai": "hd", "si": "ACC-SINV-2026-00103", "so_dong": 10, "co_sl_le": true, "tien_hang_loi": 11758038.0, "tien_hang_npp": 11758037.5, "vat_loi": 584541.0, "vat_tho": 584540.475, "vat_npp": 584540.0, "grand_loi": 12342579.0, "rounded_loi": 12342579.0, "tong_npp": 12342578.0, "giam_don": 0.0}, {"loai": "hd", "si": "ACC-SINV-2026-00105", "so_dong": 16, "co_sl_le": true, "tien_hang_loi": 8037711.0, "tien_hang_npp": 8037710.5, "vat_loi": 326206.0, "vat_tho": 326205.58, "vat_npp": 326206.0, "grand_loi": 8363917.0, "rounded_loi": 8363917.0, "tong_npp": 8363916.0, "giam_don": 0.0}]
+## p0 app giam don 5% SL le 20% seed4 luat hoa_don
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 5, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 4, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 757, "dong_giam": 238, "dong_sl_le": 147, "hd_co_sl_le": 49, "lech_don_gia": 0, "mat_pct": 23, "lech_tien_hang": 10, "lech_vat": 2, "vat_co_le": 0, "lech_grand": 20, "lech_rounded": 20, "lech_tong_max": 2.0}
+   mẫu (tối đa 3): [{"loai": "hd", "si": "ACC-SINV-2026-00102", "so_dong": 13, "co_sl_le": true, "tien_hang_loi": 9296522.0, "tien_hang_npp": 9296521.5, "vat_loi": 758002.0, "vat_tho": 758002.01, "vat_npp": 758002.0, "grand_loi": 9589698.0, "rounded_loi": 9589698.0, "tong_npp": 9589698.0, "giam_don": 464826.0}, {"loai": "hd", "si": "ACC-SINV-2026-00103", "so_dong": 10, "co_sl_le": true, "tien_hang_loi": 8112383.0, "tien_hang_npp": 8112382.5, "vat_loi": 321032.0, "vat_tho": 321031.96, "vat_npp": 321032.0, "grand_loi": 8027796.0, "rounded_loi": 8027796.0, "tong_npp": 8027795.0, "giam_don": 405619.0}, {"loai": "hd", "si": "ACC-SINV-2026-00105", "so_dong": 14, "co_sl_le": true, "tien_hang_loi": 10025861.0, "tien_hang_npp": 10025860.0, "vat_loi": 562481.0, "vat_tho": 562480.75, "vat_npp": 562481.0, "grand_loi": 10087049.0, "rounded_loi": 10087049.0, "tong_npp": 10087048.0, "giam_don": 501293.0}]
+## p0 app seed1 luat hoa_don (SL nguyen: phai y het luat pos)
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 1, "ty_le_sl_le": 0.0, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 738, "dong_giam": 220, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 15, "lech_tien_hang": 0, "lech_vat": 0, "vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0, "lech_tong_max": 0}
+```
+
 ### C1c. Dòng 0 đ và dòng bán trên giá bảng (`dong_dac_biet`, 10/11 — insert rồi rollback)
 
 ```json
