@@ -206,7 +206,7 @@ def dat_precision(p="0"):
 
 def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1):
 	"""So tiền hàng / VAT / tổng của lõi với công thức nppsale (post_invoice sau mig 183), ĐÚNG từng đồng (không ngưỡng):
-	  đơn giá dòng = round(giá bảng × (1 − %giảm dòng))     (POS làm tròn đơn giá sau giảm về đồng)
+	  đơn giá dòng = round(giá bảng × (1 − %giảm dòng))     (BẢN RÚT GỌN — KHÔNG phải luật nppsale: nppsale tính % trên TIỀN DÒNG, đơn giá = round((g − round(g × %)) / SL), g = round(SL × giá bảng) — posLinesToCart / netPriceOf; số của báo cáo 06/11 đo bằng bản rút gọn này)
 	  tiền dòng    = SL × đơn giá
 	  VAT          = round(Σ tiền dòng × thuế suất dòng)
 	  tổng         = round(Σ tiền dòng − giảm đơn + Σ tiền dòng × thuế suất)
@@ -233,7 +233,7 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 			qty = rnd.randint(1, 20)
 			r = rnd.choice([0, 5, 8, 10])
 			pct = Decimal(str(rnd.choice([2, 2.5, 3, 5, 7.5, 10, 12.5, 15]))) if rnd.random() < float(ty_le_giam_dong) else Decimal(0)
-			don_gia = _tron(plr * (Decimal(100) - pct) / Decimal(100))
+			don_gia = _tron(plr * (Decimal(100) - pct) / Decimal(100))  # bản rút gọn, KHÔNG phải luật nppsale (% trên tiền dòng — netPriceOf src/lib/sell/cart.ts:64–67); số báo cáo 06/11 đo bằng dòng này — đo lại theo luật thật thì đổi ở đây và cập nhật báo cáo cùng lúc
 			row = {"item_code": it, "qty": qty, "uom": uom, "conversion_factor": cf, "price_list_rate": float(plr), "item_tax_template": ITEM_TPL(r)}
 			if pct:
 				row["discount_percentage"] = float(pct)
@@ -386,6 +386,13 @@ def repost_khi_huy(si_name=None):
 	t_cancel = _ms(t0)
 	# Việc tính lại sinh theo MẶT HÀNG + KHO, voucher_no TRỐNG (lọc theo số HĐ sẽ ra rỗng) — đếm theo giờ tạo
 	loc = {"creation": [">=", moc]}
+	# repost_entries() chạy MỌI việc đang chờ của cả site (repost_item_valuation.py:840–843) và thoát ngay khi bật tính lại song song
+	# (:834–835): còn việc cũ đang chờ (sổ PoC đang giữ 40 việc Queued từ 06/11) hay đang bật song song thì giờ đo không còn là của
+	# riêng lần huỷ này — dừng, trả sổ như cũ. lcv_kiem_lai cần cùng chốt (nó còn đếm mọi việc của site, không lọc giờ tạo).
+	viec_cu = frappe.db.count("Repost Item Valuation", {"status": ["in", ["Queued", "In Progress"]], "creation": ["<", moc]})
+	if viec_cu or frappe.db.get_single_value("Stock Reposting Settings", "enable_parallel_reposting"):
+		frappe.db.rollback()
+		return _out({"si": si_name, "LOI": f"còn {viec_cu} việc tính lại cũ đang chờ hoặc đang bật tính lại song song — xử lý xong rồi mới đo"})
 	riv = frappe.get_all("Repost Item Valuation", filters=loc, fields=["based_on", "status", "count(name) as n"], group_by="based_on, status")
 	frappe.db.commit()
 	t1 = time.perf_counter()
@@ -719,7 +726,7 @@ def xuat_hd_dong_thoi(cho_den=0, k=1, chung=False, khoa=False, tag=""):
 
 def sua_hd_amend(si_name=None, lan=2):
 	"""Huỷ HĐ ghi sổ rồi amend (copy_doc + amended_from) `lan` lần liền; ghi tên từng tờ, docstatus tờ cũ, thời gian.
-	Dòng tờ mới không mang bundle cũ (no_copy) → lõi tự lập bundle lúc ghi sổ (auto_create_serial_and_batch_bundle_for_outward)."""
+	Dòng tờ mới không mang bundle cũ (huỷ đã xoá serial_and_batch_bundle + batch_no trên dòng tờ cũ — copy_doc vẫn chép trường no_copy) → lõi tự lập bundle lúc ghi sổ (auto_create_serial_and_batch_bundle_for_outward)."""
 	if not si_name:
 		si_name = frappe.get_all("Sales Invoice", filters={"docstatus": 1, "update_stock": 1, "is_return": 0, "company": CTY,
 			"amended_from": ["is", "not set"]}, order_by="creation desc", pluck="name")[0]
@@ -738,7 +745,13 @@ def sua_hd_amend(si_name=None, lan=2):
 			frappe.db.rollback()
 			ket["lan"].append({"tu": ten, "LOI": type(e).__name__ + ": " + str(e)[:200]}); break
 		ket["lan"].append({"tu": ten, "ra": moi.name, "ms": _ms(t0), "cu_docstatus": frappe.db.get_value("Sales Invoice", ten, "docstatus"),
-			"bundle_moi": [d.serial_and_batch_bundle for d in moi.items if d.serial_and_batch_bundle][:2]})
+			"bundle_moi": frappe.get_all("Sales Invoice Item", filters={"parent": moi.name, "serial_and_batch_bundle": ["is", "set"]},
+				pluck="serial_and_batch_bundle")[:2],
+			# lõi gắn gói lô tự lập bằng frappe.db.set_value (erpnext/stock/serial_batch_bundle.py:325) nên `moi.items` trong bộ nhớ
+			# không thấy — phải đọc sổ; kèm lô của tờ cũ và tờ mới để biết lõi có chọn khác lô app đã gán hay không
+			"lo_cu_moi": frappe.db.sql("""select b.voucher_no, b.item_code, e.batch_no, e.qty from `tabSerial and Batch Bundle` b
+				join `tabSerial and Batch Entry` e on e.parent = b.name where b.voucher_no in (%s, %s)
+				order by b.item_code, b.voucher_no""", (ten, moi.name), as_dict=True)})
 		ten = moi.name
 	return _out(ket)
 

@@ -138,7 +138,7 @@ Các kết quả đã **rút lại** vẫn để nguyên văn ở đây và ghi 
 {"si": "ACC-SINV-2026-00001", "cancel_ms": 1248, "riv_sau_huy": [], "repost_ms": 4192, "riv_sau_repost": []}
 ```
 
-**14:41:29 UTC · nhap_ton — tồn đầu (3 phiếu nhập + Material Receipt), sau là lô -L4**
+**14:38:47 UTC (giờ tạo `ACC-PINV-2026-00008` trong sổ; dòng kết quả chép lúc 14:41:29) · nhap_ton — lô -L4: 1 phiếu nhập 30 dòng × 600 lon + Material Receipt hàng không lô, chạy giữa lượt 1 và lượt 2 của bài đồng thời 1b**
 
 ```json
 {"pi": ["ACC-PINV-2026-00008"], "se": "MAT-STE-2026-00003"}
@@ -146,7 +146,7 @@ Các kết quả đã **rút lại** vẫn để nguyên văn ở đây và ghi 
 
 **lcv_kiem_lai** (05/11 14:30 UTC) — dòng kết quả bị cắt khi in (lệnh in giới hạn 1.500 ký tự) và hàm chỉ liệt kê `limit=5` việc nên bản báo cáo 05/11 ghi nhầm "5 việc": phần còn đọc được là `repost_ms: 16820`, 5 việc Queued → Completed, sổ lô SP001-L1 (PI 00001 +240 @ 8.105,52; HĐ 00003 −18). Số việc thật (30) và giá vốn lô đọc qua bundle ở mục D (Q1, Q2).
 
-## B. Ngày 05/11 — bài đồng thời cũ (5 tiến trình, mỗi tiến trình lập ĐƠN + HĐ trong một giao dịch, 15 dòng SL 1–3 Lon/Lốc/Thùng)
+## B. Ngày 05/11 — bài đồng thời cũ (5 tiến trình, 15 dòng SL 1–3 Lon/Lốc/Thùng; lượt 1–2 mỗi tiến trình lập ĐƠN + HĐ trong một giao dịch, lượt 3 commit đơn trước rồi mới khoá Bin và lập HĐ — `xuat_hang_mot`)
 
 Khoá `bat_dau` của bản 05/11 thực ra ghi giờ **kết thúc** lượt đo (đã sửa trong mã ngày 06/11, thêm `ket_thuc`).
 
@@ -184,6 +184,8 @@ p5: {"so_insert": 199, "so_submit": 176, "khoa_ms": 1, "si_insert": 474, "si_sub
 
 ### C1. Thuế + làm tròn (`thue_lam_tron` bản mới, `dat_precision`)
 
+Tên HĐ trong các dòng "mẫu" (`ACC-SINV-2026-00043`…) là tờ đã ROLLBACK; dãy số lùi lại nên cùng tên ấy nay là tờ khác trong sổ (ví dụ `00045` trong sổ là tờ bán bớt 1 dòng của bài 1c, lập 06/11 19:39:15, không phải HĐ 14 dòng ở mẫu) — đừng tra sổ theo các tên này. Các số `don_gia_npp` / `tien_hang_npp` / `vat_npp` / `tong_npp` tính đơn giá sau giảm bằng bản rút gọn round(giá × (1 − %)) (`thue_lam_tron` trong `do.py`), chưa theo đúng luật nppsale (% trên tiền dòng) — xem báo cáo mục 2.(2).
+
 ```text
 ## setup._thue (site cu: khong doi gi)
 ## p0 app khong giam don
@@ -215,6 +217,8 @@ p5: {"so_insert": 199, "so_submit": 176, "khoa_ms": 1, "si_insert": 474, "si_sub
 ```
 
 ### C3. Đồng thời, chỉ đo phần Xuất HĐ của đơn đã chốt (`xuat_hd_dong_thoi`, 8 dòng: 6 theo lô + 2 không lô, 2 lon / dòng)
+
+Dòng `KQ` gốc còn khoá `hang` (mặt hàng của từng tiến trình); khi chép xuống đây em đã bỏ khoá này. Hàng rời nhau: p1 SP001–SP006 + SP031–SP032, p2 SP007–SP012 + SP033–SP034, p3 SP013–SP018 + SP035–SP036, p4 SP019–SP024 + SP037–SP038, p5 SP025–SP030 + SP039–SP040 (nhật ký `dt2-rieng-*.log`). Hàng trùng: cả năm tiến trình dùng SP001–SP006 + SP031–SP032 (nhật ký `dt2-chung-*.log`; riêng p5 của bài trùng không khoá chết vì bế tắc trước khi in `KQ`, nhóm hàng của nó lấy theo `_nhom_hang` trong `do.py`). Số dòng `do.py` trong vết lỗi ở dưới là của bản mã lúc chạy (06/11) — mã đổi sau đó thì tra theo tên hàm.
 
 **hàng RỜI nhau, không khoá**
 
@@ -263,10 +267,60 @@ p5: {"khoa_ms": 1, "si_insert": 195, "si_submit": 522, "tong": 873, "si": "ACC-S
 ### C4. Sửa HĐ = huỷ + amend (`sua_hd_amend`, hai lần liền)
 
 ```json
-{"goc": "ACC-SINV-2026-00101", "lan": [{"tu": "ACC-SINV-2026-00101", "ra": "ACC-SINV-2026-00101-1", "ms": 2602, "cu_docstatus": 2}, {"tu": "ACC-SINV-2026-00101-1", "ra": "ACC-SINV-2026-00101-2", "ms": 1091, "cu_docstatus": 2}]}
+{"goc": "ACC-SINV-2026-00101", "lan": [{"tu": "ACC-SINV-2026-00101", "ra": "ACC-SINV-2026-00101-1", "ms": 2602, "cu_docstatus": 2, "bundle_moi": []}, {"tu": "ACC-SINV-2026-00101-1", "ra": "ACC-SINV-2026-00101-2", "ms": 1091, "cu_docstatus": 2, "bundle_moi": []}]}
 ```
 
-Sổ của tờ `ACC-SINV-2026-00101-2`: 6 dòng theo lô đều có bundle do **lõi tự lập** lúc ghi sổ (SP001-L3, SP002-L3, SP003-L3, SP004-L4, SP005-L3, SP006-L3 — mỗi dòng −2), 2 dòng không lô trừ thẳng; tờ `-1` và tờ gốc docstatus 2.
+Sổ của tờ `ACC-SINV-2026-00101-2`: 6 dòng theo lô đều có bundle do **lõi tự lập** lúc ghi sổ (SP001-L3, SP002-L3, SP003-L3, SP004-L4, SP005-L3, SP006-L3 — mỗi dòng −2; `Stock Ledger Entry.auto_created_serial_and_batch_bundle = 1`), 2 dòng không lô trừ thẳng; tờ `-1` và tờ gốc docstatus 2. Lô ấy **trùng đúng** lô app đã gán cho tờ gốc: gói lô (đã huỷ) của `ACC-SINV-2026-00101` (app lập lúc 19:44:48) và của `ACC-SINV-2026-00101-1` (lõi lập lúc 19:47:25) cũng là SP001-L3, SP002-L3, SP003-L3, SP004-L4, SP005-L3, SP006-L3, −2 mỗi dòng — phải tra `tabSerial and Batch Bundle` theo `voucher_no`, vì dòng của tờ đã huỷ không còn trỏ tới gói lô (huỷ đã xoá `serial_and_batch_bundle` và `batch_no` trên dòng). `bundle_moi` rỗng ở dòng `KQ` trên là do hàm đọc dòng của tờ mới trong bộ nhớ, còn lõi gắn gói lô tự lập thẳng vào sổ (`frappe.db.set_value`, `erpnext/stock/serial_batch_bundle.py:325`) — không phải tờ mới thiếu gói lô. Hai lần huỷ sinh 16 việc tính lại giá vốn (8 mặt hàng × 2, tạo lúc 19:47:24,98–25,02 và 19:47:26,25–26,29), vẫn `Queued`; lần huỷ thứ hai không bị chặn.
+
+### C5. Đổi mã lô ép `force=True` (`doi_ma_lo_ep`, `doi_ma_lo_ep_do_sot` — 06/11 12:51 UTC; mỗi hàm đổi trong một giao dịch rồi ROLLBACK cuối hàm, sổ không còn dấu)
+
+```json
+{"doi_duoc": true, "lo": "SP003-L3", "ra": "SP003-L3-DOI", "ms": 429, "truoc_ma_cu": {"sbe": 27, "sii": 0, "pii": 1, "batch": 1}, "sau_ma_cu": {"sbe": 0, "sii": 0, "pii": 0, "batch": 0}, "sau_ma_moi": {"sbe": 27, "sii": 0, "pii": 1, "batch": 1}, "batch_id_moi": "SP003-L3-DOI", "sau_rollback_con_ma_cu": true}
+{"lo": "SP003-L3", "so_cot_da_do": 10371, "con_giu_ma_cu": []}
+```
+
+### C6. Vỏ SPA, `sw.js`, manifest (05/11, `bench --site poc.local serve --port 8000` + `curl -D -`; lượt 14:45 UTC trước khi renderer nhìn `request.path`, lượt 14:46 UTC sau khi sửa; chỉ chép dòng trạng thái và các header đáng chú ý, bỏ `Set-Cookie` và thân trang)
+
+```text
+(14:45) === GET /nppsale/khong-co-that/abc
+HTTP/1.0 200 OK
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-store,no-cache,must-revalidate,max-age=0
+(14:45: /nppsale/, /nppsale/pos/orders, /nppsale/sell/new ra y hệt; /nppsale/sw.js và /nppsale/manifest.webmanifest lúc ấy cũng ra vỏ HTML — route rule đổi endpoint trước renderer)
+(14:45) === GET /assets/nppsale/portal/sw.js
+HTTP/1.0 200 OK
+Cache-Control: max-age=43200, public
+Content-Type: text/javascript; charset=utf-8
+(14:46) === GET /nppsale/sw.js
+HTTP/1.0 200 OK
+Content-Type: application/javascript; charset=utf-8
+Cache-Control: no-cache, must-revalidate
+X-Content-Type-Options: nosniff
+Service-Worker-Allowed: /nppsale/
+(14:46) === GET /nppsale/manifest.webmanifest
+HTTP/1.0 200 OK
+Content-Type: application/manifest+json; charset=utf-8
+Cache-Control: no-cache, must-revalidate
+X-Content-Type-Options: nosniff
+(14:46) === GET /nppsale/pos/orders
+HTTP/1.0 200 OK
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-store,no-cache,must-revalidate,max-age=0
+(14:46) === dang nhap Administrator roi mo vo SPA (csrf trong meta?)
+login 200
+name="csrf_token" content="870c…
+npp-nguoi-dung" content="Admi…
+```
+
+### C7. Việc tính lại giá vốn gom theo phút tạo (SELECT, 06/11; `creation` là giờ VN = UTC + 7, nên 19:43 ở đây là 12:43 UTC) — 40 việc của ngày 06/11 còn Queued
+
+```text
+| phut             | status    | so_viec | so_mat_hang | tu_ngay    | tu_gio          |
+| 2026-11-05 21:28 | Completed |      30 |          30 | 2026-10-06 | 21:23:26.300168 |
+| 2026-11-05 21:33 | Completed |      15 |          15 | 2026-11-05 | 21:23:44.842112 |
+| 2026-11-06 19:43 | Queued    |      24 |           8 | 2026-11-06 | 19:43:27.003240 |
+| 2026-11-06 19:47 | Queued    |      16 |           8 | 2026-11-06 | 19:44:48.470700 |
+```
 
 ## D. Đối chiếu sổ (chỉ SELECT, chạy 06/11)
 
