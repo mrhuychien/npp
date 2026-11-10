@@ -1,4 +1,4 @@
-# Bằng chứng thô của PoC P0 (05–06/11/2026)
+# Bằng chứng thô của PoC P0 (05–06/11 và 10/11/2026)
 
 Trích **nguyên văn** kết quả máy in ra (dòng `KQ {…}` của `bench --site poc.local execute nppsale.poc.do.<hàm>`), đọc bằng bộ giải JSON từ nhật ký phiên — không chép tay. Giờ ở phần A là **UTC** (giờ VN = UTC + 7); giờ trong sổ (`creation`) là giờ VN. Báo cáo đọc từ đây: `00_ket_qua_poc.md`.
 
@@ -214,7 +214,7 @@ Tên HĐ trong các dòng "mẫu" (`ACC-SINV-2026-00043`…) là tờ đã ROLLB
 
 Đơn giá sau giảm theo luật thật: g = round(SL × giá bảng), tiền giảm = round(g × %), đơn giá = round((g − tiền giảm) / SL) (`thue_lam_tron`, ghi `"luat_don_gia": "nppsale that (10/11)"`). Tên HĐ trong các dòng mẫu là tờ đã ROLLBACK, đừng tra sổ theo các tên ấy.
 
-Hai lượt SL lẻ đầu tiên (seed 3 và 4, nhãn "p0 app SL le 20%") có **lỗi mã đo**: ở chế độ app, dòng không giảm vẫn gửi giá bảng thay vì đơn giá theo luật nppsale, nên ra 3 dòng "lệch đơn giá" giả. Đã sửa mã (mọi dòng gửi đơn giá theo luật) và chạy lại ở khối thứ hai; báo cáo dùng khối thứ hai.
+Ba lượt SL lẻ ở khối đầu (nhãn "p0 app SL le 20% seed3", "p0 app giam don 5% SL le 20% seed4" và "p2 app SL le 20% seed3") có **lỗi mã đo**: ở chế độ app, dòng không giảm vẫn gửi giá bảng thay vì đơn giá theo luật nppsale, nên mỗi lượt ra 3 dòng "lệch đơn giá" giả; ở lượt precision 2 lỗi này còn đổi cả số HĐ lệch tiền hàng / tổng (28 / 2, sau khi sửa 25 / 0 — 2 HĐ lệch tổng 1 đ là giả). Đã sửa mã (mọi dòng gửi đơn giá theo luật) và chạy lại cả ba ở khối thứ hai; báo cáo lấy các hàng SL lẻ từ khối thứ hai (phần "luật màn hoá đơn" từ khối chạy thêm ngay dưới), các hàng SL nguyên từ khối đầu (lỗi không chạm SL nguyên — lượt seed 1 chạy lại sau khi sửa ra y hệt). Ở các lượt SL lẻ, "mẫu" còn gồm HĐ chỉ khác tiền hàng **chưa làm tròn** (,5): điều kiện chọn mẫu (`do.py:294`) so `tien_hang` chưa làm tròn, còn bộ đếm `lech_tien_hang` (`do.py:289`) so số đã làm tròn — nên `…00102`, `…00106` của khối thứ hai có mặt dù tiền hàng, VAT và tổng đều khớp.
 
 ```text
 ## p0 app (luat that) seed1
@@ -271,7 +271,7 @@ Chạy lại sau khi sửa mã đo (khối thứ hai):
 ```
 
 
-Ca SL lẻ chạy thêm theo **luật màn hoá đơn** (`luat_dong = "hoa_don"`: dòng không giảm giữ giá, như `/sell` và `toDraftCoGiam`):
+Ca SL lẻ chạy thêm theo **luật màn hoá đơn** (`luat_dong = "hoa_don"`: dòng không giảm giữ giá bảng — như `/sell` (`netPriceOf`) và dòng thêm tay trên màn hoá đơn; dòng HĐ lập từ đơn thì giữ đơn giá của dòng đơn, `toDraft`):
 
 ```text
 ## p0 app SL le 20% seed3 luat hoa_don
@@ -284,13 +284,77 @@ Ca SL lẻ chạy thêm theo **luật màn hoá đơn** (`luat_dong = "hoa_don"`
 {"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 1, "ty_le_sl_le": 0.0, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 738, "dong_giam": 220, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 15, "lech_tien_hang": 0, "lech_vat": 0, "vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0, "lech_tong_max": 0}
 ```
 
+### C1d. VAT kiểu HĐĐT, `round_row_wise_tax`, SL lẻ quy về lon (10/11)
+
+`vat_hddt_khac_so` = số HĐ có VAT kiểu HĐĐT (làm tròn tiền rồi VAT từng dòng, như `src/lib/misa/mapper.ts:108–110`) khác VAT sổ của `post_invoice`; `vat_loi_khac_hddt` = VAT của lõi khác VAT kiểu HĐĐT; `hd_bi_tu_choi` = HĐ lõi không cho lập; `lech_tong_du_th_vat_khop` = HĐ lệch tổng dù tiền hàng và VAT đều khớp; `sl_le_ve_lon` = cách (b) của câu 19. Lượt đầu bật `round_row_wise_tax` (khối thứ nhất) dừng ngay ở HĐ đầu bị từ chối vì mã đo chưa bắt lỗi; khối thứ hai đã bắt lỗi và đếm.
+
+```text
+## rrwt=0 p0 app seed1
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 1, "ty_le_sl_le": 0.0, "luat_dong": "pos", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 738, "dong_giam": 220, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 15, "lech_tien_hang": 0, "lech_vat": 0, "vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0, "lech_tong_max": 0, "vat_hddt_khac_so": 31, "vat_loi_khac_hddt": 31, "lech_vat_hddt_max": 2.0}
+## rrwt=0 p0 app SL le seed3 hoa_don
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 3, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 716, "dong_giam": 183, "dong_sl_le": 133, "hd_co_sl_le": 50, "lech_don_gia": 0, "mat_pct": 27, "lech_tien_hang": 3, "lech_vat": 1, "vat_co_le": 0, "lech_grand": 18, "lech_rounded": 18, "lech_tong_max": 2.0, "vat_hddt_khac_so": 28, "vat_loi_khac_hddt": 27, "lech_vat_hddt_max": 2.0}
+## bat round_row_wise_tax
+{"round_row_wise_tax": 1}
+## rrwt=1 p0 app seed1
+   LỖI: frappe.exceptions.ValidationError: Item Wise Tax Details do not match with Taxes and Charges at the following rows:<br>Row 1 (Difference: 2.0)
+## rrwt=1 p0 app SL le seed3 hoa_don
+   LỖI: frappe.exceptions.ValidationError: Item Wise Tax Details do not match with Taxes and Charges at the following rows:<br>Row 1 (Difference: 2.0)
+## tat round_row_wise_tax
+{"round_row_wise_tax": 0}
+```
+
+```text
+## bat round_row_wise_tax
+{"round_row_wise_tax": 1}
+## rrwt=1 p0 app seed1
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 1, "ty_le_sl_le": 0.0, "luat_dong": "pos", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 1, "hd": 44, "dong": 639, "dong_giam": 186, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 13, "lech_tien_hang": 0, "lech_vat": 25, "vat_co_le": 0, "lech_grand": 25, "lech_rounded": 25, "lech_tong_max": 1.0, "vat_hddt_khac_so": 25, "vat_loi_khac_hddt": 0, "lech_vat_hddt_max": 1.0, "hd_bi_tu_choi": 6}
+   mẫu từ chối: [{"loai": "tu_choi", "so_dong": 15, "LOI": "Item Wise Tax Details do not match with Taxes and Charges at the following rows:<br>Row 1 (Difference: 2.0)"}]
+## rrwt=1 p0 app SL le seed3 hoa_don
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 3, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 1, "hd": 47, "dong": 665, "dong_giam": 174, "dong_sl_le": 127, "hd_co_sl_le": 47, "lech_don_gia": 0, "mat_pct": 26, "lech_tien_hang": 3, "lech_vat": 25, "vat_co_le": 0, "lech_grand": 33, "lech_rounded": 33, "lech_tong_max": 2.0, "vat_hddt_khac_so": 25, "vat_loi_khac_hddt": 0, "lech_vat_hddt_max": 1.0, "hd_bi_tu_choi": 3}
+   mẫu từ chối: [{"loai": "tu_choi", "so_dong": 13, "LOI": "Item Wise Tax Details do not match with Taxes and Charges at the following rows:<br>Row 1 (Difference: 2.0)"}]
+## rrwt=1 p0 app 5 dong / HD seed5
+{"tham_so": {"n": 50, "dong": [3, 6], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 5, "ty_le_sl_le": 0.0, "luat_dong": "pos", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 1, "hd": 50, "dong": 226, "dong_giam": 69, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 6, "lech_tien_hang": 0, "lech_vat": 13, "vat_co_le": 0, "lech_grand": 13, "lech_rounded": 13, "lech_tong_max": 1.0, "vat_hddt_khac_so": 13, "vat_loi_khac_hddt": 0, "lech_vat_hddt_max": 1.0, "hd_bi_tu_choi": 0}
+## tat round_row_wise_tax
+{"round_row_wise_tax": 0}
+## rrwt=0 p0 app 5 dong / HD seed5 (so)
+{"tham_so": {"n": 50, "dong": [3, 6], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 5, "ty_le_sl_le": 0.0, "luat_dong": "pos", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 226, "dong_giam": 69, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 6, "lech_tien_hang": 0, "lech_vat": 0, "vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0, "lech_tong_max": 0, "vat_hddt_khac_so": 13, "vat_loi_khac_hddt": 13, "lech_vat_hddt_max": 1.0, "hd_bi_tu_choi": 0}
+```
+
+```text
+## seed3 pos
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 3, "ty_le_sl_le": 0.2, "luat_dong": "pos", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 716, "dong_giam": 183, "dong_sl_le": 133, "hd_co_sl_le": 50, "lech_don_gia": 0, "mat_pct": 27, "lech_tien_hang": 3, "lech_vat": 0, "vat_co_le": 0, "lech_grand": 16, "lech_rounded": 16, "lech_tong_max": 2.0, "vat_hddt_khac_so": 27, "vat_loi_khac_hddt": 27, "lech_vat_hddt_max": 2.0, "hd_bi_tu_choi": 0, "lech_tong_du_th_vat_khop": 13, "dong_quy_ve_lon": 0}
+## seed3 hoa_don
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 3, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 716, "dong_giam": 183, "dong_sl_le": 133, "hd_co_sl_le": 50, "lech_don_gia": 0, "mat_pct": 27, "lech_tien_hang": 3, "lech_vat": 1, "vat_co_le": 0, "lech_grand": 18, "lech_rounded": 18, "lech_tong_max": 2.0, "vat_hddt_khac_so": 28, "vat_loi_khac_hddt": 27, "lech_vat_hddt_max": 2.0, "hd_bi_tu_choi": 0, "lech_tong_du_th_vat_khop": 14, "dong_quy_ve_lon": 0}
+## seed4 pos giam don 5
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 5, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 4, "ty_le_sl_le": 0.2, "luat_dong": "pos", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 757, "dong_giam": 238, "dong_sl_le": 147, "hd_co_sl_le": 49, "lech_don_gia": 0, "mat_pct": 23, "lech_tien_hang": 9, "lech_vat": 2, "vat_co_le": 0, "lech_grand": 18, "lech_rounded": 18, "lech_tong_max": 2.0, "vat_hddt_khac_so": 27, "vat_loi_khac_hddt": 28, "lech_vat_hddt_max": 2.0, "hd_bi_tu_choi": 0, "lech_tong_du_th_vat_khop": 8, "dong_quy_ve_lon": 0}
+## seed4 hoa_don giam don 5
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 5, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 4, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 757, "dong_giam": 238, "dong_sl_le": 147, "hd_co_sl_le": 49, "lech_don_gia": 0, "mat_pct": 23, "lech_tien_hang": 10, "lech_vat": 2, "vat_co_le": 0, "lech_grand": 20, "lech_rounded": 20, "lech_tong_max": 2.0, "vat_hddt_khac_so": 27, "vat_loi_khac_hddt": 28, "lech_vat_hddt_max": 2.0, "hd_bi_tu_choi": 0, "lech_tong_du_th_vat_khop": 9, "dong_quy_ve_lon": 0}
+## seed3 hoa_don QUY VE LON
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 0, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 3, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 716, "dong_giam": 183, "dong_sl_le": 133, "hd_co_sl_le": 50, "lech_don_gia": 89, "mat_pct": 46, "lech_tien_hang": 42, "lech_vat": 16, "vat_co_le": 0, "lech_grand": 45, "lech_rounded": 45, "lech_tong_max": 40.0, "vat_hddt_khac_so": 28, "vat_loi_khac_hddt": 31, "lech_vat_hddt_max": 2.0, "hd_bi_tu_choi": 0, "lech_tong_du_th_vat_khop": 3, "dong_quy_ve_lon": 89}
+## seed4 hoa_don giam don 5 QUY VE LON
+{"tham_so": {"n": 50, "dong": [10, 20], "giam_don_pct": 5, "ty_le_giam_dong": 0.3, "cach_giam_dong": "app", "seed": 4, "ty_le_sl_le": 0.2, "luat_dong": "hoa_don", "luat_don_gia": "nppsale that (10/11)"}, "precision": "0", "rounding": "Commercial Rounding", "round_row_wise_tax": 0, "hd": 50, "dong": 757, "dong_giam": 238, "dong_sl_le": 147, "hd_co_sl_le": 49, "lech_don_gia": 89, "mat_pct": 45, "lech_tien_hang": 42, "lech_vat": 23, "vat_co_le": 0, "lech_grand": 43, "lech_rounded": 43, "lech_tong_max": 56.0, "vat_hddt_khac_so": 27, "vat_loi_khac_hddt": 35, "lech_vat_hddt_max": 2.0, "hd_bi_tu_choi": 0, "lech_tong_du_th_vat_khop": 0, "dong_quy_ve_lon": 89}
+```
+
 ### C1c. Dòng 0 đ và dòng bán trên giá bảng (`dong_dac_biet`, 10/11 — insert rồi rollback)
 
 ```json
 {"item": "SP001", "gia_bang": 10137.0, "a1": {"gui": {"rate": 0, "price_list_rate": 10137.0}, "rate": 10137.0, "price_list_rate": 10137.0, "discount_percentage": 0.0, "discount_amount": 0.0, "margin_type": "", "margin_rate_or_amount": 0.0, "amount": 20274.0}, "a2": {"gui": {"rate": 0, "price_list_rate": 10137.0, "discount_percentage": 100}, "rate": 0.0, "price_list_rate": 10137.0, "discount_percentage": 100.0, "discount_amount": 10137.0, "margin_type": "", "margin_rate_or_amount": 0.0, "amount": 0.0}, "a3": {"gui": {"rate": 0}, "rate": 10054.0, "price_list_rate": 10054.0, "discount_percentage": 0.0, "discount_amount": 0.0, "margin_type": "", "margin_rate_or_amount": 0.0, "amount": 20108.0}, "b": {"gui": {"rate": 11137.0, "price_list_rate": 10137.0}, "rate": 11137.0, "price_list_rate": 10137.0, "discount_percentage": 0.0, "discount_amount": 0.0, "margin_type": "Amount", "margin_rate_or_amount": 1000.0, "amount": 22274.0}, "c": {"gui": {"rate": 9360.0, "price_list_rate": 10137.0, "discount_percentage": 5}, "rate": 9360.0, "price_list_rate": 10137.0, "discount_percentage": 0.0, "discount_amount": 777.0, "margin_type": "", "margin_rate_or_amount": 0.0, "amount": 18720.0}, "a4": {"gui": {"rate": 0, "price_list_rate": 0}, "rate": 0.0, "price_list_rate": 0.0, "discount_percentage": 0.0, "discount_amount": 0.0, "margin_type": "", "margin_rate_or_amount": 0.0, "amount": 0.0}, "a5": {"gui": {"rate": 0, "price_list_rate": 10137.0, "discount_amount": 10137.0}, "rate": 0.0, "price_list_rate": 10137.0, "discount_percentage": 0.0, "discount_amount": 10137.0, "margin_type": "", "margin_rate_or_amount": 0.0, "amount": 0.0}}
 ```
 
-Bảng giá do lõi tự sinh (đọc sổ 10/11): `Stock Settings.auto_insert_price_list_rate_if_missing = 1`, `update_existing_price_list_rate = 0`; `tabItem Price` có "Standard Selling" 40 giá (lập 05/11 21:23:44–51, Administrator, ví dụ SP023 Lon 13.067,67) và "Standard Buying" 30 giá (05/11 21:23:26–27) — không do `setup.py` lập. Selling Settings `selling_price_list = Standard Selling`.
+Bảng giá do lõi tự sinh (đọc sổ 10/11): `Stock Settings.auto_insert_price_list_rate_if_missing = 1`, `update_existing_price_list_rate = 0`, `update_price_list_based_on = Rate`; `tabItem Price` có "Standard Selling" 40 giá (lập 05/11 21:23:44–51, Administrator, ví dụ SP023 Lon 13.067,67) và "Standard Buying" 30 giá (05/11 21:23:26–27) — không do `setup.py` lập. Selling Settings `selling_price_list = Standard Selling`.
+
+Giá tự sinh là **đơn giá dòng ÷ hệ số** của chứng từ đầu tiên có mặt hàng ấy, dù dòng đã gửi `price_list_rate`; chứng từ mang bảng giá mặc định chung, không theo bảng giá mặc định của nhóm khách (đọc sổ 10/11, chỉ SELECT):
+
+```text
+-- dòng đơn đầu tiên của SP023 / SP001 và giá lõi ghi ngay sau đó
+SAL-ORD-2026-00001  SP023 Loc  rate 78406  price_list_rate 78406  21:23:44.278831  → Standard Selling SP023 Lon 13067.666666667  21:23:44.353747
+SAL-ORD-2026-00003  SP001 Loc  rate 60322  price_list_rate 60322  21:23:47.017836  → Standard Selling SP001 Lon 10053.666666667  21:23:47.078886
+-- Gia chuan: SP001 Lon 10137 / Loc 60322 / Thung 242788; SP023 Lon 13151 / Loc 78406 / Thung 315124
+-- tabDefaultValue (__default): selling_price_list = Standard Selling, buying_price_list = Standard Buying
+-- HĐ / đơn theo nhóm khách (bảng giá mặc định của nhóm → bảng giá trên chứng từ)
+Thuong  Gia chuan     → Standard Selling  90 HĐ  72 đơn
+VIP     Gia nhom VIP  → Standard Selling  14 HĐ  13 đơn
+```
 
 ### C2. Dòng cần hai lô thật (`hai_lo_do`, 5 lượt mỗi cách)
 

@@ -204,13 +204,13 @@ def dat_precision(p="0"):
 	return _out({"currency_precision": frappe.db.get_single_value("System Settings", "currency_precision")})
 
 
-def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1, ty_le_sl_le=0, luat_dong="pos"):
+def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1, ty_le_sl_le=0, luat_dong="pos", sl_le_ve_lon=False):
 	"""So tiền hàng / VAT / tổng của lõi với công thức nppsale (post_invoice sau mig 183), ĐÚNG từng đồng (không ngưỡng):
 	  g            = round(SL × giá bảng)                    (lineGross, src/lib/pos/discount.ts)
 	  tiền giảm    = min(g, round(g × % / 100))              (discountAmount — % tính trên TIỀN DÒNG)
 	  đơn giá dòng = round((g − tiền giảm) / SL)             (đơn giá ghi sổ). luat_dong="pos": quy cho MỌI dòng như POS lúc lập đơn
 	                 (posLinesToCart); luat_dong="hoa_don": chỉ quy ở dòng có giảm, dòng không giảm giữ giá như /sell (netPriceOf)
-	                 và màn hoá đơn (toDraftCoGiam / toDraft). SL nguyên thì hai luật như nhau.
+	                 và dòng thêm tay trên màn hoá đơn (makeAddedRow → toDraft); HĐ lập từ đơn giữ đơn giá dòng đơn (toDraft). SL nguyên thì hai luật như nhau.
 	  tiền dòng    = SL × đơn giá                            (post_invoice: line_total numeric, KHÔNG làm tròn từng dòng)
 	  VAT          = round(Σ tiền dòng × thuế suất dòng)
 	  tổng         = round(Σ tiền dòng − giảm đơn + Σ tiền dòng × thuế suất)
@@ -225,7 +225,9 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 	don_vi = (("Lon", 1), ("Loc", 6), ("Thung", 24))
 	tk_giam = frappe.db.get_value("Account", {"company": CTY, "account_name": "Miscellaneous Expenses", "is_group": 0})
 	dem = {"hd": 0, "dong": 0, "dong_giam": 0, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 0, "lech_tien_hang": 0,
-		"lech_vat": 0, "vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0, "lech_tong_max": 0}
+		"lech_vat": 0, "vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0, "lech_tong_max": 0,
+		"vat_hddt_khac_so": 0, "vat_loi_khac_hddt": 0, "lech_vat_hddt_max": 0, "hd_bi_tu_choi": 0,
+		"lech_tong_du_th_vat_khop": 0, "dong_quy_ve_lon": 0}
 	mau = []
 	for i in range(int(n)):
 		si = frappe.new_doc("Sales Invoice")
@@ -246,10 +248,17 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 			tien_giam = min(g, _tron(g * pct / Decimal(100))) if pct else Decimal(0)
 			don_gia = _tron((g - tien_giam) / sl) if (pct or luat_dong == "pos") else plr
 			row = {"item_code": it, "qty": qty, "uom": uom, "conversion_factor": cf, "price_list_rate": float(plr), "item_tax_template": ITEM_TPL(r)}
+			# cách (b) của câu 19: dòng SL lẻ ở Lốc / Thùng quy về lon (SL nguyên), đơn giá lon = đơn giá ÷ hệ số — lõi tự làm tròn đơn giá
+			quy_lon = bool(sl_le_ve_lon) and sl != sl.to_integral_value() and cf > 1
 			if pct:
 				row["discount_percentage"] = float(pct)
-			if cach_giam_dong == "app":
-				# app gửi đơn giá theo luật nppsale cho MỌI dòng: SL lẻ thì kể cả dòng không giảm, đơn giá cũng có thể khác giá bảng
+			if quy_lon:
+				row.update({"qty": float(sl * cf), "uom": "Lon", "conversion_factor": 1, "price_list_rate": _gia(it, "Lon"),
+					"rate": float(don_gia / Decimal(cf))})
+				row.pop("discount_percentage", None)
+				dem["dong_quy_ve_lon"] += 1
+			elif cach_giam_dong == "app":
+				# app gửi đơn giá theo luật nppsale cho MỌI dòng: SL lẻ thì với luat_dong="pos" kể cả dòng không giảm, đơn giá cũng có thể khác giá bảng (luat_dong="hoa_don" giữ giá bảng ở dòng không giảm)
 				# (0,5 × 15.343 = 7.671,5 → 7.672 → đơn giá 15.344) — bản trước gửi giá bảng ở dòng không giảm (lỗi mã đo, sửa 10/11)
 				row["rate"] = float(don_gia)
 			elif not pct:
@@ -261,11 +270,21 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 		if giam_don_pct:
 			si.apply_discount_on = "Grand Total"; si.additional_discount_account = tk_giam
 			si.discount_amount = float(_tron(tien_hang * Decimal(str(giam_don_pct)) / 100))
-		si.insert()
+		try:
+			si.insert()
+		except frappe.ValidationError as e:
+			# vd round_row_wise_tax = 1: "Item Wise Tax Details do not match…" (taxes_and_totals.py:650–700) — đếm rồi bỏ HĐ này
+			dem["hd_bi_tu_choi"] += 1
+			if len(mau) < 14:
+				mau.append({"loai": "tu_choi", "so_dong": len(si.items), "LOI": str(e)[:160]})
+			continue
 		dem["hd"] += 1
 		vat_tho = sum(Decimal(q) * g * r / 100 for _, q, g, r, _ in dong_npp)
 		giam = Decimal(str(flt(si.discount_amount)))
 		vat_npp = _tron(vat_tho)
+		# VAT kiểu HĐĐT của nppsale (src/lib/misa/mapper.ts:108–110 + api/einvoice/publish/route.ts cộng ngược khoản giảm):
+		# tiền dòng làm tròn rồi VAT làm tròn TỪNG DÒNG, rồi cộng — khác post_invoice (làm tròn một lần ở tổng)
+		vat_hddt = sum(_tron(_tron(q * g) * r / 100) for _, q, g, r, _ in dong_npp)
 		tong_npp = max(Decimal(0), _tron(tien_hang - giam + vat_tho))
 		co_le = False
 		for d, (it, q, g, r, pct) in zip(si.items, dong_npp):
@@ -288,9 +307,13 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 		# nppsale không làm tròn từng dòng (SL lẻ → tiền dòng có thể lẻ ,5) nên so tiền hàng với Σ đã làm tròn một lần
 		if th != _tron(tien_hang): dem["lech_tien_hang"] += 1
 		if vat != vat_npp: dem["lech_vat"] += 1
+		if vat_hddt != vat_npp: dem["vat_hddt_khac_so"] += 1
+		if vat != vat_hddt: dem["vat_loi_khac_hddt"] += 1
+		dem["lech_vat_hddt_max"] = max(dem["lech_vat_hddt_max"], float(abs(vat_hddt - vat_npp)))
 		if vat != vat.to_integral_value(): dem["vat_co_le"] += 1
 		if grand != tong_npp: dem["lech_grand"] += 1
 		if rounded != tong_npp: dem["lech_rounded"] += 1
+		if rounded != tong_npp and th == _tron(tien_hang) and vat == vat_npp: dem["lech_tong_du_th_vat_khop"] += 1
 		if (th != tien_hang or vat != vat_npp or rounded != tong_npp or grand != tong_npp) and len(mau) < 14:
 			mau.append({"loai": "hd", "si": si.name, "so_dong": len(si.items), "co_sl_le": co_le, "tien_hang_loi": float(th), "tien_hang_npp": float(tien_hang),
 				"vat_loi": float(vat), "vat_tho": float(vat_tho), "vat_npp": float(vat_npp), "grand_loi": float(grand), "rounded_loi": float(rounded),
@@ -301,6 +324,7 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 		"precision": frappe.db.get_single_value("System Settings", "currency_precision"),
 		"rounding": frappe.db.get_single_value("System Settings", "rounding_method"),
 		"round_row_wise_tax": frappe.db.get_single_value("Accounts Settings", "round_row_wise_tax"),
+		"_ghi_chu_vat_hddt": "vat_hddt_khac_so: VAT kiểu HĐĐT (làm tròn từng dòng) ≠ VAT sổ post_invoice; vat_loi_khac_hddt: VAT lõi ≠ VAT kiểu HĐĐT",
 		**dem, "mau": mau})
 
 
@@ -857,4 +881,12 @@ def dong_dac_biet():
 		kq["LOI"] = type(e).__name__ + ": " + str(e)[:300]
 	frappe.db.rollback()
 	return _out(kq)
+
+
+def dat_round_row_wise_tax(v=0):
+	"""Bật / tắt Accounts Settings.round_row_wise_tax (lõi làm tròn VAT từng dòng) cho bài so VAT HĐĐT (10/11/2026)."""
+	frappe.db.set_single_value("Accounts Settings", "round_row_wise_tax", int(v))
+	frappe.db.commit()
+	frappe.clear_cache()
+	return _out({"round_row_wise_tax": frappe.db.get_single_value("Accounts Settings", "round_row_wise_tax")})
 
