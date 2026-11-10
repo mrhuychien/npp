@@ -4,7 +4,7 @@ App Frappe độc lập, cài lên bench ERPNext `version-16`, mỗi nhà phân 
 tiền tố `/nppsale/`; mọi thao tác tiền / kho / trạng thái đi qua whitelisted method Python.
 
 - Bản bàn bạc và quyết định đã chốt: `docs/chuyen-doi/00_ban_bac_chot.md`
-- Kết quả PoC P0 (đo thật trên bench v16 ngày 05/11, soát và đo lại 06/11/2026): `docs/chuyen-doi/poc/00_ket_qua_poc.md`; nguyên văn máy in ra: `docs/chuyen-doi/poc/01_bang_chung.md`
+- Kết quả PoC P0 (đo thật trên bench v16 ngày 05/11, soát và đo lại 06/11 và 10/11/2026): `docs/chuyen-doi/poc/00_ket_qua_poc.md`; nguyên văn máy in ra: `docs/chuyen-doi/poc/01_bang_chung.md`
 - Blueprint (duyệt từng tệp): `docs/chuyen-doi/blueprint/`
 - Khảo sát nppsale (màn hình, dữ liệu, nghiệp vụ, kiểm chứng ERPNext): `docs/chuyen-doi/khao-sat/`
 

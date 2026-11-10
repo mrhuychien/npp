@@ -1,14 +1,20 @@
-# Kết quả PoC P0 — ERPNext v16 chạy luật nppsale (đo 05/11/2026, soát và đo lại 06/11/2026)
+# Kết quả PoC P0 — ERPNext v16 chạy luật nppsale (đo 05/11/2026, soát và đo lại 06/11 và 10/11/2026)
 
 Mục đích: trước khi viết blueprint và hứa lộ trình, **đo thật** các điểm ở mục 9 của bản bàn bạc trên một bench
 ERPNext v16 dựng từ đầu, bằng mã Python đi đúng đường app sẽ đi (method gọi API lõi), không bấm tay trên Desk. Mọi con số
 do mã đo in ra (thời gian; phép so thuế — HĐ lập rồi rollback nên không còn trong sổ) hoặc đọc từ sổ (`tabStock Ledger Entry`, `tabSerial and Batch Entry`, `tabRepost Item Valuation`, `tabGL Entry`…), không từ màn hình.
 
-**Bản 06/11.** Một vòng soát tự động (năm agent soát từ năm góc — số liệu, sổ sách, nhất quán, chuyên gia ERPNext, người đọc — đối chiếu con số với sổ PoC bằng câu chỉ đọc, mỗi phát hiện có ba agent phản biện kiểm lại; không phải người thật soát) tìm ra
-bốn chỗ bản 05/11 **ghi sai hoặc đo sai** — LCV (phiếu chỉnh giá nhập của lô) sinh 30 việc tính lại giá vốn chứ không phải 5; giá vốn sau LCV ghi ngược chiều; phép so thuế
-dùng sai kiểu làm tròn; lời giải thích bài đồng thời nói ngược cơ chế — và ba chỗ khẳng định khi **chưa đo** (dòng hai lô
-thật, hàng không trùng thì chạy song song, đổi mã lô). Em đã đo lại / đo thêm tất cả; chỗ nào đổi so với bản 05/11 có dấu
-*(đính chính 06/11)*. Bằng chứng thô — nguyên văn máy in ra và các câu đối chiếu sổ — ở `01_bang_chung.md`.
+**Bản 06/11.** Một vòng soát tự động bằng agent (không phải người thật) đối chiếu con số với sổ PoC bằng câu chỉ đọc. Lượt ấy chỉ hai
+trong năm góc soát chạy xong — số liệu và sổ sách —, phần phản biện không chạy được vì hết lượt dùng; em tự kiểm lại từng phát hiện
+trên sổ trước khi sửa. Hai góc ấy tìm ra bốn chỗ bản 05/11 **ghi sai hoặc đo sai** — LCV (phiếu chỉnh giá nhập của lô) sinh 30 việc
+tính lại giá vốn chứ không phải 5; giá vốn sau LCV ghi ngược chiều; phép so thuế dùng sai kiểu làm tròn; lời giải thích bài đồng thời
+nói ngược cơ chế — và ba chỗ khẳng định khi **chưa đo** (dòng hai lô thật, hàng không trùng thì chạy song song, đổi mã lô). Em đã đo
+lại / đo thêm tất cả; chỗ đổi so với bản 05/11 có dấu *(đính chính 06/11)*.
+
+**Bản 10/11.** Vòng soát lại đầy đủ trên bản 06/11: năm góc soát (số liệu, sổ sách, chuyên gia ERPNext, nhất quán + người đọc, mã đo)
+ra 162 phát hiện, gộp thành 53 vấn đề; mỗi vấn đề hai agent phản biện khác góc nhìn, bất đồng thì agent thứ ba phân xử — giữ 51, bác 2.
+Em áp toàn bộ, và vì vấn đề nặng nhất là phép so thuế dùng sai luật giảm dòng của nppsale, em **đo lại phần thuế theo đúng luật**
+(mục 2.(2)), đo thêm SL lẻ và dòng 0 đ. Bằng chứng thô — nguyên văn máy in ra và các câu đối chiếu sổ — ở `01_bang_chung.md`.
 
 ## 0. Kết luận một trang
 
@@ -18,7 +24,7 @@ thật, hàng không trùng thì chạy song song, đổi mã lô). Em đã đo 
 | 1b | 5 phiên cùng bấm, bài cũ (đơn + HĐ một giao dịch, hàng trùng nhiều, lô gần hết) | không khoá: **1/5** thành công, 4 lỗi lô âm; khoá Bin: 5/5 nối đuôi | method `xuat_hang` **phải** khoá Bin (dòng ghi tồn của một mặt hàng tại một kho — khoá nó là bắt các lượt Xuất cùng mặt hàng xếp hàng) — CFD-05 |
 | 1c | Dòng cần **hai lô thật** (2 thùng, lô đầu còn 20 lon) *(đo 06/11)* | bundle: một dòng "2 thùng", sổ ghi đúng 20 + 28 lon; tách dòng: 0,833 + 1,167 thùng, sổ ghi **19,992 + 28,008 lon** | luôn dùng bundle, không bao giờ tách dòng |
 | 1d | 5 phiên cùng Xuất HĐ của đơn đã chốt *(đo 06/11)* | hàng **rời nhau**: 5/5 nhưng **nối đuôi** ~0,7 s / HĐ (khoá dãy số HĐ); hàng trùng không khoá: 4/5, 1 **bế tắc** (deadlock); hàng trùng có khoá Bin: 5/5 nối đuôi | khoá Bin (dòng tồn của một mặt hàng tại một kho) **trước khi dựng HĐ** — hàng trùng mà không khoá thì 3 HĐ lọt qua mang giờ ghi sổ sớm hơn HĐ đã ghi, sinh 24 việc tính lại giá vốn — + thử lại khi bế tắc (deadlock — hai phiên chờ khoá của nhau, MariaDB huỷ một); nối đuôi do dãy số HĐ (hàng `tabSeries` giữ số cuối của dãy, bị khoá tới khi ghi xong) là giới hạn của lõi — với anh: 5 người bấm Xuất hàng cùng giây thì người cuối chờ ~3,4–4,4 s; cách cấp số anh chọn ở blueprint 05 |
-| 2 | Thuế 0/5/8/10 % theo dòng + làm tròn, 100 HĐ 10–20 dòng có giảm dòng % *(đo lại 06/11)* | precision **0** (tiền làm tròn tới đồng) + app gửi sẵn đơn giá sau giảm: lõi giữ nguyên đơn giá ấy, tiền hàng / VAT / tổng **khớp từng đồng 100/100 HĐ (1.458 dòng, SL nguyên — SL lẻ chưa đo)** với cách cộng của `post_invoice` — nhưng đơn giá sau giảm của phép đo là bản rút gọn round(giá × (1 − %)), **lệch luật nppsale thật** (% tính trên tiền dòng) ở 14 / 220 + 13 / 232 dòng có giảm, phải đo lại; để lõi tự tính giảm % → so với luật thật 15 dòng thấp hơn 1 đ, 11 / 50 HĐ lệch tổng 3–25 đ (bảng ở 2.(2) ghi 13 dòng là so với bản rút gọn); precision 2 → VAT có số lẻ ở 99/100 HĐ | `currency_precision = 0`; app tự tính đơn giá sau giảm theo **đúng** luật nppsale — % trên tiền dòng (`posLinesToCart` / `toDraftCoGiam` / `netPriceOf`), không phải round(giá × (1 − %)); % giảm giữ ở trường riêng |
+| 2 | Thuế 0/5/8/10 % theo dòng + làm tròn, giảm dòng %, so đúng luật nppsale *(đo lại 10/11)* | precision **0** (tiền làm tròn tới đồng) + app gửi đơn giá tính theo luật nppsale (% trên tiền dòng): tiền hàng / VAT / tổng **khớp từng đồng 100/100 HĐ SL nguyên (1.458 dòng)**; để lõi tự tính giảm % → 15 dòng thấp hơn 1 đ, 11 / 50 HĐ lệch tổng tới 25 đ; **SL lẻ** → 16–18 / 50 HĐ lệch tổng 1–2 đ vì lõi làm tròn tiền từng dòng; dòng hàng đổi gửi đơn giá 0 kèm giá bảng → lõi tự đặt lại thành giá bảng; precision 2 → VAT có số lẻ | `currency_precision = 0`; app tự tính đơn giá theo luật nppsale, gửi kèm giá bảng; % giảm giữ ở trường riêng; dòng 0 đ gửi giảm 100 %; tắt `auto_insert_price_list_rate_if_missing`; SL lẻ: anh chọn (câu 19) |
 | 3 | Giảm đầu phiếu nhập NCC | dòng thuế **Actual + Deduct** giữ nguyên tiền hàng dòng, VAT và giá vốn lô; khoản giảm ghi Có vào một tài khoản lãi lỗ | chốt cách dòng trừ (CFD-11); anh chọn tài khoản |
 | 4 | Landed Cost Voucher (LCV — phiếu chỉnh giá nhập của lô sau khi đã nhập; tờ phiếu nhập giữ nguyên số) âm trên lô đã bán | nhận −30.000 đ, phiếu nhập giữ số; **30 việc** tính lại giá vốn (mỗi mặt hàng một việc) chạy 16,8 s; giá nhập lô SP001-L1 **8.109 → 8.105,52 đ** và HĐ đã xuất lô ấy tính lại theo đúng giá mới | sửa giá phiếu nhập đã bán = LCV **+ debit note / bút toán giảm nợ NCC** (LCV không đụng công nợ NCC: Có NCC giữ 69.828.480, khoản −30.000 ghi Nợ vào tài khoản của LCV) — CFD-06 đúng; LCV dương chưa chạy |
 | 5 | Tờ ghi có độc lập có kho, giá vốn hàng nhập lại | app đặt `incoming_rate` → sổ đúng; không đặt hoặc gửi 0 → lõi lấy bình quân lô ở kho nhận nếu lô còn ở đó; lô chưa có / đã hết ở kho nhận thì lõi gán thẳng `incoming_rate` = `rate` của dòng trả (`selling_controller.py:674–680`) — **giá bán theo đơn vị của dòng**, trong khi `incoming_rate` là giá mỗi đơn vị kho (`:696` phải nhân `conversion_factor` mới so được với `rate`): PoC chỉ thử dòng Lon nên thấy đúng "giá bán", dòng trả 1 thùng sẽ ghi giá vốn mỗi lon bằng giá cả thùng (theo mã, chưa đo); giá vốn sai **lan sang HĐ bán sau** lô ấy | app **luôn** tự điền `incoming_rate` theo đơn vị kho và không gửi 0; lưu lại tờ nháp mà đổi mặt hàng / kho / SL / lô thì lõi xoá giá app gửi ngay trong lượt lưu ấy rồi tự tính lại (`:630–631`) — method đặt giá lúc lập tờ và ghi sổ ngay, không sửa-lưu tờ nháp; giữ Selling Settings `set_zero_rate_for_expired_batch` = 0 (bật thì lõi ép giá vốn 0 cho dòng ghi lô hết hạn, `:610–619`) — CFD-03 |
@@ -29,10 +35,10 @@ thật, hàng không trùng thì chạy song song, đổi mã lô). Em đã đo 
 | 10 | Tờ đầu kỳ giữ mã HĐ cũ | `insert(set_name="HD-0042")` → tên `HD-0042`, `is_opening = Yes`, nợ 1.250.000 | H3 giữ mã HĐ lịch sử được |
 | 11 | Sửa HĐ = huỷ + tờ mới đuôi `-n` *(thêm 06/11)* | `…00101` → `…00101-1` → `…00101-2`, tờ cũ Đã huỷ; tờ mới **không mang gói lô cũ** (huỷ đã xoá), lõi tự lập gói lô theo FIFO của lõi vì cờ `auto_create_serial_and_batch_bundle_for_outward` bật — ở bài đo ra **trùng đúng** lô app đã gán cho tờ gốc; tờ mới giữ giờ ghi sổ tờ cũ; mỗi lần huỷ sinh 8 việc tính lại giá vốn (sổ còn Queued) | CFD-01 đúng; method Sửa HĐ phải tự gán lô lại theo luật app (FIFO theo ngày nhập như `reissue_invoice` của nppsale — lõi xếp theo ngày tạo bản ghi lô), không để lõi tự chọn |
 
-**Năm điều lộ ra ngoài kế hoạch đáng chú ý nhất** (mục 3 ghi đủ mười một điều, kể cả sổ kho không ghi lô ở dòng có gói lô và v16 không có hệ thống tài khoản Việt Nam): (a) **đồng thời là việc của app** — app chọn lô bằng câu đọc thường
+**Sáu điều lộ ra ngoài kế hoạch đáng chú ý nhất** (mục 3 ghi đủ mười ba điều, kể cả sổ kho không ghi lô ở dòng có gói lô và v16 không có hệ thống tài khoản Việt Nam): (a) **đồng thời là việc của app** — app chọn lô bằng câu đọc thường
 (đọc theo ảnh chụp của giao dịch), lõi kiểm bằng câu đọc có khoá, nên không khoá thì lô âm hoặc bế tắc; (b) **số HĐ cấp trong
 giao dịch và giữ khoá tới khi ghi xong**, nên mọi lượt Xuất hàng xếp hàng một, kể cả khi hàng khác nhau; (c) **tách dòng
-làm lẻ số lon**; (d) **lõi tính giảm % trên đơn giá, nppsale tính trên tiền dòng** (SL × giá bảng) rồi chia lại SL — lệch 1 đ / đơn vị ở vài dòng, tuỳ SL; (e) Item Tax Template (mẫu thuế suất gắn cho từng dòng hàng) phải có **cả** tài khoản thuế đầu ra
+làm lẻ số lon**; (d) **lõi tính giảm % trên đơn giá, nppsale tính trên tiền dòng** (SL × giá bảng) rồi chia lại SL — lệch 1 đ / đơn vị ở vài dòng, tuỳ SL, nên app phải tự tính đơn giá; (f) **dòng hàng đổi 0 đ bị lõi định giá lại thành giá bảng** nếu gửi sai cách; (e) Item Tax Template (mẫu thuế suất gắn cho từng dòng hàng) phải có **cả** tài khoản thuế đầu ra
 và đầu vào — thiếu đầu vào thì phiếu nhập tính VAT sai mà không báo gì.
 
 ## 1. Môi trường
@@ -137,37 +143,75 @@ Ba kết luận:
 - Muốn bớt nối đuôi do dãy số: cấp số HĐ bằng SEQUENCE của MariaDB (bộ đếm số riêng của CSDL — cấp số không phải chờ ai; không khoá nhưng **lỗ số** khi ghi hỏng) hoặc tách bước cấp số
   ra một giao dịch ngắn riêng — cách này **cũng lỗ số** khi phần ghi HĐ sau đó hỏng, vì số đã cấp và đã commit thì không lấy lại được. SEQUENCE phải đi qua hook `autoname` của app (`frappe.db.get_next_sequence_val`) hoặc `insert(set_name=…)` — đặt tên trong `before_naming` không được vì lõi xoá tên ngay sau hook ấy (`frappe/model/naming.py:153`, `:158–159`); `autoname = autoincrement` cũng không dùng được vì khi ấy tên chứng từ thành số nguyên (`naming.py:161–163`). Khoá hiện dài vì tên được đặt ngay đầu `insert`, trước cả validate (`frappe/model/document.py:719` → `naming.py:412`), nên khoá giữ suốt insert + submit. Còn một cách **không lỗ số** mà khoá ngắn hơn: tên chứng từ là mã tạm, số HĐ thật là một trường riêng, cấp bằng `getseries` ở cuối bước ghi sổ (hook `on_submit` của app). Khi ấy khoá chỉ giữ tới lần commit ngay sau đó, đổi lại tên chứng từ khác số HĐ. Đổi chác "bớt chờ ↔ lỗ số HĐ ↔ tên khác số" này anh quyết ở blueprint 05 (tích hợp lõi); em chưa đo các cách ấy.
 
-### (2) Thuế theo dòng + làm tròn *(đo lại 06/11)*
+### (2) Thuế theo dòng + làm tròn *(đo lại 06/11, đo lại theo đúng luật nppsale 10/11)*
 
-*Đính chính:* bản 05/11 so bằng `round()` của Python — làm tròn nửa về số **chẵn** — trong khi nppsale làm tròn nửa **xa 0**
-(`round(numeric)` của Postgres trong `post_invoice`; lõi đặt Commercial Rounding cũng thế), mỗi HĐ chỉ 5 dòng và chỉ đếm lệch ≥ 1 đ.
-Bốn ca "lệch 1 đ" của bản ấy đều là số tận cùng ,5 bị **phép so** làm tròn sai, không phải lõi. Kết quả bản ấy bỏ; đo lại như dưới.
+*Hai lần đính chính.* Bản 05/11 so bằng `round()` của Python (làm tròn nửa về số **chẵn**), mỗi HĐ 5 dòng, chỉ đếm lệch ≥ 1 đ — bốn
+ca "lệch 1 đ" khi ấy đều do phép so, đã bỏ. Bản 06/11 sửa cách làm tròn nhưng lấy đơn giá sau giảm theo một bản rút gọn
+round(giá bảng × (1 − %)), **không phải luật nppsale** (vòng soát lại tìm ra); ngày 10/11 em đo lại toàn bộ theo đúng luật dưới đây.
+Số trong mục này là của lượt 10/11.
 
-*Đính chính (soát lại 06/11):* đơn giá sau giảm mà phép so dưới đây dùng làm "nppsale" là bản rút gọn round(giá bảng × (1 − % giảm dòng)) (`do.py:236`) — **không phải luật nppsale**. Màn bán của nppsale (POS `posLinesToCart`, màn hoá đơn `toDraftCoGiam`, `/sell` `netPriceOf`) tính % trên **tiền dòng** rồi mới quy về đơn giá: g = round(SL × giá bảng), tiền giảm = round(g × % giảm), đơn giá dòng = round((g − tiền giảm) / SL), nên đơn giá còn tuỳ SL. Em tính lại ngoài bench trên đúng các dòng của phép đo: bản rút gọn lệch luật thật ở **14 / 220** dòng có giảm (seed 1; 12 / 50 HĐ lệch tổng −14…+9 đ) và **13 / 232** (seed 2), nên phần đơn giá phải đo lại theo luật thật. Phần cộng tiền hàng / VAT / tổng vẫn đúng nghĩa vì lõi giữ nguyên đơn giá app gửi. Cách cộng của nppsale (`post_invoice` sau mig 183), với đơn giá dòng do màn bán gửi sẵn (phép so dùng bản rút gọn, làm tròn
-về đồng); tiền dòng = SL × đơn giá; **VAT = round(Σ tiền dòng × thuế suất)**; **tổng = round(Σ tiền dòng − giảm đơn + Σ tiền dòng ×
-thuế suất)**. So **đúng từng đồng**, không ngưỡng. Mỗi lượt 50 HĐ, 10–20 dòng / HĐ chọn trong 40 mặt hàng, Lon / Loc / Thung, SL 1–20,
-thuế 0 / 5 / 8 / 10 %, ~30 % số dòng có giảm 2–15 %; HĐ lập rồi rollback (`thue_lam_tron`). **Mọi SL là số nguyên** nên phép đo chưa thử SL lẻ — mà nppsale cho gõ SL lẻ (1,5 thùng; `lineGross`, `src/lib/pos/discount.ts`) và `post_invoice` ghi `line_total = SL × đơn giá` **không làm tròn**, còn lõi ở precision 0 làm tròn tiền **từng dòng** (`taxes_and_totals.py:280`): 1,5 thùng × 241.209 đ → nppsale 361.813,5, lõi 361.814; hai dòng như thế là tiền hàng 723.627 so với 723.628. "Khớp từng đồng" dưới đây chỉ đúng khi SL nguyên; ca SL lẻ phải đo thêm trước khi chốt.
+Luật nppsale đem so — màn bán (`lineGross` / `discountAmount` trong `src/lib/pos/discount.ts`, `posLinesToCart` trong `save.ts`,
+`toDraftCoGiam`, `netPriceOf`) và `post_invoice` (sau mig 183), làm tròn nửa **xa 0**:
+- tiền dòng trước giảm g = round(SL × giá bảng); tiền giảm = round(g × % giảm) — **% tính trên tiền dòng**;
+- **đơn giá ghi sổ = round((g − tiền giảm) / SL)** — cho mọi dòng, kể cả dòng không giảm (SL lẻ thì đơn giá có thể khác giá bảng);
+- tiền dòng = SL × đơn giá, **không** làm tròn từng dòng; VAT = round(Σ tiền dòng × thuế suất);
+  tổng = round(Σ tiền dòng − giảm đơn + Σ tiền dòng × thuế suất).
 
-| precision | Giảm dòng đưa vào lõi thế nào | Giảm đơn | HĐ / dòng (có giảm) | Lệch đơn giá dòng | Lệch tiền hàng | Lệch VAT | Lệch tổng (làm tròn / chưa làm tròn) |
-|---|---|---|---|---|---|---|---|
-| **0** | **app gửi sẵn đơn giá sau giảm** | — | 50 / 738 (220) | 0 | 0 | 0 | 0 / 0 |
-| **0** | **app gửi sẵn** | 5 % | 50 / 720 (232) | 0 | 0 | 0 | 0 / 0 |
-| 0 | lõi tự tính từ % | — | 50 / 738 (220) | 13 dòng (thấp hơn 1 đ) so với bản rút gọn; so với luật nppsale thật **15 dòng**, đều thấp hơn 1 đ | 12 HĐ (luật thật: 11) | 8 HĐ (luật thật: 7) | 12 / 12 HĐ (luật thật: 11 / 11) |
-| 2 | app gửi sẵn | — | 50 / 738 | 0 | 0 | 50 HĐ — VAT có số lẻ | 0 / 50 |
-| 2 | app gửi sẵn | 5 % | 50 / 720 | 0 | 0 | 49 HĐ — VAT có số lẻ | 0 / 49 |
-| 2 | lõi tự tính từ % | — | 50 / 738 | 203 dòng (đơn giá lẻ) | 48 HĐ | 50 HĐ | 43 / 50 HĐ |
+Mỗi lượt 50 HĐ, 10–20 dòng / HĐ chọn trong 40 mặt hàng, Lon / Loc / Thung, SL 1–20, thuế 0 / 5 / 8 / 10 %, ~30 % số dòng giảm 2–15 %;
+lượt "SL lẻ" có thêm ~20 % số dòng SL 0,5 / 1,5 / 2,5 / 3,5. So **đúng từng đồng**, không ngưỡng; HĐ lập rồi rollback (`thue_lam_tron`).
+Cùng `seed` thì cùng 50 HĐ, nên hàng "app gửi" và "lõi tự tính" dưới đây là cùng một bộ HĐ.
 
-- **Giảm % dòng — lõi làm tròn khác nppsale.** Lõi tính tiền giảm = giá × %, làm tròn **tiền giảm** rồi lấy giá trừ đi
-  (`erpnext/controllers/taxes_and_totals.py:228–233`) — tức % tính trên **đơn giá**. nppsale cũng làm tròn tiền giảm, nhưng tính % trên **tiền dòng** (SL × giá bảng), làm tròn tiền giảm của cả dòng rồi chia lại SL và làm tròn **đơn giá** (`src/lib/pos/discount.ts`, `src/lib/pos/save.ts:73`), nên lệch hay không còn tuỳ SL: cùng SP011 thùng 275.668 đ giảm 12,5 %, SL 1 hoặc 3 nppsale ra 241.209 (**trùng lõi**), SL 2 hoặc 14 ra 241.210; SP024 lốc 79.228 đ giảm 12,5 % SL 11 thì nppsale 69.324 **bằng** lõi — chính bản rút gọn của phép so (69.325) mới sai, mà dòng này nằm trong 13 dòng bảng trên đếm là lõi lệch. So với luật thật, lõi tự tính lệch **15 / 220** dòng có giảm ở seed 1 (11 / 50 HĐ, tổng lệch 3–25 đ). Dòng mẫu của phép đo có SL 14, nên lệch 1 đ mỗi
-  đơn vị: SP011 thùng 275.668 đ giảm 12,5 % → tiền giảm 34.458,5 → lõi 34.459, đơn giá 241.209; nppsale 241.209,5 → **241.210**. Vì
-  vậy app tự tính đơn giá theo luật nppsale và gửi `rate`. Lõi giữ đơn giá app gửi nhưng ở đúng những dòng lệch ấy **xoá
-  `discount_percentage` về 0** và ghi `discount_amount` = giá bảng − đơn giá (`taxes_and_totals.py:254–256`; 13 / 220 dòng ở precision 0 khi app gửi đơn giá theo bản rút gọn — gửi đơn giá theo luật thật thì là 15 / 220 dòng)
-  → % giảm để in và báo cáo app giữ ở trường riêng. Dòng app gửi đơn giá **cao hơn** giá bảng (NV bán trên bảng giá — chênh dương) đi nhánh khác của cùng hàm: lõi giữ đơn giá, ghi `margin_type = Amount`, `margin_rate_or_amount` = đơn giá − giá bảng, `rate_with_margin` = đơn giá và xoá cả `discount_percentage` lẫn `discount_amount` về 0 (`taxes_and_totals.py:245–252`). Vì vậy không báo cáo nào được lấy `discount_amount` / `margin_*` của lõi làm số giảm hay số chênh; chênh lệch giá của nhân viên vẫn so đơn giá trên HĐ với giá bảng hiện hành của đúng đơn vị dòng, như đã chốt ở bản bàn bạc (dòng "Chênh lệch giá nhân viên" của bảng ánh xạ).
-- **precision 2**: VAT ghi số lẻ (821.591,24 thay vì 821.591), tổng chưa làm tròn cũng lẻ, chỉ tổng đã làm tròn về đồng — không khớp
-  nppsale và MISA (VAT nguyên đồng).
+| precision | Đơn giá dòng đưa vào lõi | Giảm đơn | SL | HĐ / dòng (giảm % · SL lẻ) | Lệch đơn giá | Lệch tiền hàng | Lệch VAT | Lệch tổng đã làm tròn (lớn nhất) |
+|---|---|---|---|---|---|---|---|---|
+| **0** | **app gửi, theo luật nppsale** | — | nguyên | 50 / 738 (220 · 0) | 0 | 0 | 0 | **0** |
+| **0** | **app gửi** | 5 % | nguyên | 50 / 720 (232 · 0) | 0 | 0 | 0 | **0** |
+| 0 | lõi tự tính từ % | — | nguyên | 50 / 738 (220 · 0) | 15 dòng, đều thấp hơn 1 đ | 11 HĐ | 7 HĐ | 11 HĐ (25 đ) |
+| 0 | app gửi | — | ~20 % lẻ | 50 / 716 (183 · 133) | 0 | 3 HĐ | 0 | 16 HĐ (2 đ) |
+| 0 | app gửi | 5 % | ~20 % lẻ | 50 / 757 (238 · 147) | 0 | 9 HĐ | 2 HĐ | 18 HĐ (2 đ) |
+| 2 | app gửi | — | nguyên | 50 / 738 | 0 | 0 | 50 HĐ — VAT có số lẻ | 0 |
+| 2 | app gửi | 5 % | nguyên | 50 / 720 | 0 | 0 | 49 HĐ — VAT có số lẻ | 0 |
+| 2 | lõi tự tính từ % | — | nguyên | 50 / 738 | 203 dòng (đơn giá có số lẻ) | 48 HĐ | 50 HĐ | 44 HĐ (23 đ) |
+| 2 | app gửi | — | ~20 % lẻ | 50 / 716 | 0 | — (lõi giữ phần ,5 như nppsale) | 49 HĐ — VAT có số lẻ | 0 |
+
+- **App phải tự tính đơn giá theo luật nppsale và gửi `rate` cho mọi dòng.** Lõi tự tính từ % theo cách khác: % trên **đơn giá**,
+  làm tròn tiền giảm rồi lấy giá trừ đi (`erpnext/controllers/taxes_and_totals.py:228–233`). Ví dụ SP011 thùng 275.668 đ giảm 12,5 %,
+  SL 14: nppsale g = 3.859.352 đ, tiền giảm 482.419 đ, đơn giá = round(3.376.933 / 14 = 241.209,5) = **241.210**; lõi làm tròn tiền giảm
+  mỗi thùng 34.458,5 → 34.459, đơn giá **241.209**. Lệch hay không còn tuỳ SL (cùng dòng ấy SL 1 hoặc 3 thì hai bên trùng nhau).
+- **Lõi giữ đơn giá app gửi nhưng xoá `discount_percentage` về 0** ở dòng nào đơn giá app gửi khác cách lõi tự tính (15 / 220 dòng
+  có giảm ở seed 1, 20 / 232 ở seed 2, 27 / 183 ở lượt SL lẻ — precision 0) và ghi `discount_amount` = giá bảng − đơn giá
+  (`taxes_and_totals.py:254–256`) → % giảm để in và báo cáo app giữ ở trường riêng. Dòng đơn giá **cao hơn** giá bảng (NV bán trên bảng
+  giá — chênh dương) đi nhánh khác: đo thật (`dong_dac_biet`) SP001 giá bảng 10.137 đ, gửi 11.137 → lõi giữ 11.137, ghi
+  `margin_type = Amount`, margin 1.000, `discount_amount` 0 (`taxes_and_totals.py:245–252`). Vì vậy không báo cáo nào được lấy
+  `discount_amount` / `margin_*` của lõi làm số giảm hay số chênh; chênh lệch giá của nhân viên vẫn so đơn giá trên HĐ với giá bảng hiện
+  hành của đúng đơn vị dòng, như đã chốt ở bản bàn bạc.
+- **Dòng 0 đ (hàng đổi xuất đi) — đo 10/11** (`dong_dac_biet`, SP001 giá bảng 10.137 đ, SL 2):
+
+  | Gửi cho lõi | Lõi để lại | Thành tiền |
+  |---|---|---|
+  | `rate` 0 + `price_list_rate` 10.137 | `rate` = **10.137** (lõi coi là chưa có đơn giá) | **20.274 đ** ✘ |
+  | `rate` 0, không gửi `price_list_rate` | lõi tự lấy giá từ bảng "Standard Selling": **10.054** | **20.108 đ** ✘ |
+  | `rate` 0 + `price_list_rate` 10.137 + `discount_percentage` 100 | `rate` 0 | 0 ✔ |
+  | `rate` 0 + `price_list_rate` 10.137 + `discount_amount` 10.137 | `rate` 0 | 0 ✔ |
+  | `rate` 0 + `price_list_rate` 0 gửi rõ | `rate` 0 | 0 ✔ |
+
+  Hai cách đầu biến dòng hàng đổi thành dòng bán đủ giá mà không báo gì — sai doanh thu, VAT và công nợ. Luật: dòng 0 đ gửi giá bảng kèm
+  giảm 100 % (giữ được giá bảng để in "trị giá hàng đổi").
+- **Lõi tự ghi giá vào bảng giá.** `Stock Settings.auto_insert_price_list_rate_if_missing` đang **bật** (trình cài đặt ban đầu bật nó, dù
+  mặc định của DocType là tắt — `erpnext/stock/get_item_details.py:1249–1258`): các chứng từ PoC không đặt bảng giá nên lõi tự thêm 40 giá vào
+  "Standard Selling" và 30 giá vào "Standard Buying" (giá quy về lon, ví dụ 13.067,67 đ), rồi lấy chính bảng ấy khi dòng thiếu giá (ca thứ
+  hai ở bảng trên). Luật: tắt cài đặt này (3.11); method luôn đặt `selling_price_list` / `buying_price_list` đúng bảng giá của app và gửi
+  `price_list_rate` cho mọi dòng.
+- **SL lẻ (1,5 thùng)**: ở precision 0 lõi làm tròn **tiền từng dòng** về đồng (`taxes_and_totals.py:280`), còn nppsale giữ phần ,5 tới
+  tổng (1,5 × 241.209 = 361.813,5) → **16–18 / 50 HĐ có dòng SL lẻ lệch tổng 1–2 đ** (VAT gần như khớp). Precision 2 thì tổng khớp
+  nhưng VAT và tổng chưa làm tròn có số lẻ. Em đề xuất giữ precision 0 và **chấp nhận tiền từng dòng làm tròn về đồng** — hoá đơn VND
+  không có lẻ đồng, số đẩy MISA cũng phải nguyên đồng; lệch chỉ ở HĐ có SL lẻ và chỉ thấy khi chạy song song so số với nppsale. Cách khác:
+  app quy dòng SL lẻ về đơn vị cơ sở (1,5 thùng → 36 lon) để SL luôn nguyên, nhưng dòng in ra đổi đơn vị. **Anh chọn** (mục 10 bản
+  bàn bạc, câu 19).
+- **precision 2**: VAT ghi số lẻ (821.591,24 thay vì 821.591), tổng chưa làm tròn cũng lẻ — không khớp nppsale và MISA (VAT nguyên đồng).
 - **Chốt**: `currency_precision = 0` + Commercial Rounding + `round_row_wise_tax = 0` (mặc định — làm tròn VAT một lần ở tổng như
-  nppsale) + app gửi đơn giá sau giảm. `Item.taxes` để trống thì lõi tôn trọng template thuế của từng dòng (VAT khớp từng đồng ở cả 100
-  HĐ trộn bốn mức thuế). Ngoại lệ phải ghi vào luật: dòng **0 đ** (hàng đổi xuất đi). Nếu gửi `rate = 0` mà vẫn kèm `price_list_rate` thì lõi coi là chưa có đơn giá và tự đặt `rate` = giá bảng − tiền giảm (`taxes_and_totals.py:236–237`). Dòng không có giảm thì thành dòng bán đủ giá, sai doanh thu, VAT và công nợ mà không báo gì (theo mã, chưa đo). Vì vậy dòng 0 đ phải gửi `price_list_rate = 0` (lõi bỏ qua bước tính giá, `:211–215`) hoặc gửi `discount_amount` = giá bảng. Bài thuế chưa có dòng 0 đ nào.
+  nppsale) + app gửi đơn giá theo luật nppsale và giá bảng cho mọi dòng + % giảm ở trường riêng + dòng 0 đ gửi giảm 100 % + tắt
+  `auto_insert_price_list_rate_if_missing`. `Item.taxes` để trống thì lõi tôn trọng template thuế của từng dòng (VAT khớp từng đồng ở mọi
+  HĐ SL nguyên trộn bốn mức thuế).
 
 ### (3) Giảm đầu phiếu nhập NCC — CFD-11
 
@@ -283,8 +327,7 @@ gói lô cũ** — không phải vì `no_copy` (`frappe.copy_doc` mặc định 
 2. **Số HĐ khoá suốt giao dịch** (1d): `getseries` giữ khoá hàng `tabSeries` của dãy tới khi commit, nên mọi lượt Xuất hàng xếp hàng một,
    kể cả hàng khác nhau. Đo lại với gunicorn nhiều worker trên VPS; cách cấp số chọn ở blueprint 05.
 3. **Tách dòng làm lẻ số lon** (1c): 0,833 thùng = 19,992 lon. Luôn dùng gói lô một dòng.
-4. **Giảm % dòng: lõi làm tròn tiền giảm của một đơn vị, nppsale làm tròn tiền giảm của cả dòng rồi chia lại SL** (2) → app gửi đơn giá tính đúng luật nppsale (`posLinesToCart` / `toDraftCoGiam` / `netPriceOf` — phụ thuộc SL; bản rút gọn round(giá × (1 − %)) mà phép đo dùng lệch luật thật 14 / 220 dòng); lõi xoá `discount_percentage` ở dòng lệch →
-   app giữ % ở trường riêng.
+4. **Giảm % dòng: lõi tính % trên đơn giá, nppsale tính trên tiền dòng rồi chia lại SL** (2) → app tự tính đơn giá theo luật nppsale (`posLinesToCart` / `toDraftCoGiam` / `netPriceOf`) và gửi `rate` + giá bảng cho mọi dòng; lõi xoá `discount_percentage` ở dòng lệch → app giữ % ở trường riêng. SL lẻ: lõi làm tròn tiền từng dòng, nppsale không — lệch tổng 1–2 đ ở HĐ có SL lẻ (anh chọn, câu 19).
 5. **Item Tax Template phải có cả tài khoản thuế đầu vào**: template chỉ có "Thuế GTGT đầu ra" thì phiếu nhập NCC tính VAT sai mà không báo
    gì (lượt đầu của điểm 3; cả ba phiếu nhập tồn đầu `ACC-PINV-2026-00001…00003` — 90 dòng mang template VAT 8 % — cũng ghi VAT = 0, nên đọc sổ PoC sẽ thấy tồn đầu không có thuế đầu vào; phiếu nhập lô L4 `00008` lập sau khi vá thì đúng 8 %). `setup.py` đã sửa ngày 06/11 để tạo đủ hai tài khoản. Vào 3.11.
 6. **Sổ kho của dòng có gói lô không ghi `batch_no`** (null — trừ một số dòng đảo đã huỷ `is_cancelled = 1`: sổ PoC có 43 dòng mang mã lô, và `rename_doc` không sửa cột Data này) — mọi câu "giá vốn theo lô", "tồn theo lô" phải nối qua `Serial and Batch
@@ -299,6 +342,9 @@ gói lô cũ** — không phải vì `no_copy` (`frappe.copy_doc` mặc định 
 11. Nhỏ: `session_expiry` nhận dạng `hh:mm` (`720:00` = 30 ngày); `Item Barcode.barcode_type` đặt EAN là lõi kiểm số kiểm tra — mã nội bộ
     để trống loại mã; `bench execute --kwargs` nhận literal Python (`True` / `False`), không nhận JSON `true` / `false`; khi cài app từ repo
     gọi `bench get-app https://github.com/mrhuychien/npp`: bench 5.31 bỏ qua tham số tên đặt trước URL ("Dummy argument for backward compatibility") và tự đổi thư mục theo `name = "nppsale"` trong `pyproject.toml`; PoC chép thẳng app vào `apps/nppsale`, chưa chạy `get-app` từ GitHub — kiểm ở P2.
+
+12. **Dòng 0 đ bị lõi định giá lại** (2): gửi đơn giá 0 kèm giá bảng, hoặc thiếu giá bảng, thì lõi tự đặt đơn giá = giá bảng — dòng hàng đổi thành dòng bán đủ giá, không báo gì. Dòng 0 đ gửi giá bảng kèm giảm 100 %.
+13. **Lõi tự ghi giá vào bảng giá** (2): `auto_insert_price_list_rate_if_missing` do trình cài đặt bật — chứng từ không đặt bảng giá thì lõi tự thêm giá vào "Standard Selling" / "Standard Buying" (sổ PoC: 40 + 30 giá) rồi dùng lại khi dòng thiếu giá. Tắt ở 3.11; method luôn đặt bảng giá của app.
 
 ## 4. Những gì chưa đo (dời P2)
 
@@ -322,6 +368,9 @@ bench --site <site> execute nppsale.poc.do.hai_lo_do --kwargs "{'lan': 5}"
 bench --site <site> execute nppsale.poc.do.thue_lam_tron --kwargs "{'n': 50, 'giam_don_pct': 0, 'cach_giam_dong': 'app', 'seed': 1}"
 bench --site <site> execute nppsale.poc.do.thue_lam_tron --kwargs "{'n': 50, 'giam_don_pct': 0, 'cach_giam_dong': 'loi', 'seed': 1}"
 bench --site <site> execute nppsale.poc.do.thue_lam_tron --kwargs "{'n': 50, 'giam_don_pct': 5, 'cach_giam_dong': 'app', 'seed': 2}"
+bench --site <site> execute nppsale.poc.do.thue_lam_tron --kwargs "{'n': 50, 'giam_don_pct': 0, 'cach_giam_dong': 'app', 'seed': 3, 'ty_le_sl_le': 0.2}"
+bench --site <site> execute nppsale.poc.do.thue_lam_tron --kwargs "{'n': 50, 'giam_don_pct': 5, 'cach_giam_dong': 'app', 'seed': 4, 'ty_le_sl_le': 0.2}"
+bench --site <site> execute nppsale.poc.do.dong_dac_biet
 bench --site <site> execute nppsale.poc.do.dat_precision --kwargs "{'p': '2'}"
 bench --site <site> execute nppsale.poc.do.dat_precision --kwargs "{'p': '0'}"
 bench --site <site> execute nppsale.poc.do.giam_dau_phieu_nhap
@@ -340,7 +389,7 @@ bench --site <site> execute nppsale.poc.do.dau_ky_giu_ma
 bench --site <site> execute nppsale.poc.do.sua_hd_amend
 ```
 
-Lượt precision 2: chạy `dat_precision` với `'2'`, gọi lại ba lượt `thue_lam_tron` (cùng `seed`), rồi trả về `'0'`.
+Lượt precision 2: chạy `dat_precision` với `'2'`, gọi lại các lượt `thue_lam_tron` (cùng `seed`; bảng 2.(2) có bốn lượt precision 2), rồi trả về `'0'`.
 Bài đồng thời 1d: năm cửa sổ cùng gọi `nppsale.poc.do.xuat_hd_dong_thoi --kwargs "{'cho_den': <epoch + 75>, 'k': k, 'chung': False, 'khoa': True}"`
 với k = 1…5 (đổi `chung` / `khoa` cho bốn kịch bản); bài cũ 1b: `xuat_hang_dong_thoi`. Điểm 7: `bench --site <site> serve --port 8000` rồi
 `curl -D - http://127.0.0.1:8000/nppsale/sw.js`.

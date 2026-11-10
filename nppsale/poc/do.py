@@ -204,14 +204,17 @@ def dat_precision(p="0"):
 	return _out({"currency_precision": frappe.db.get_single_value("System Settings", "currency_precision")})
 
 
-def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1):
+def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_dong=0.3, cach_giam_dong="app", seed=1, ty_le_sl_le=0):
 	"""So tiền hàng / VAT / tổng của lõi với công thức nppsale (post_invoice sau mig 183), ĐÚNG từng đồng (không ngưỡng):
-	  đơn giá dòng = round(giá bảng × (1 − %giảm dòng))     (BẢN RÚT GỌN — KHÔNG phải luật nppsale: nppsale tính % trên TIỀN DÒNG, đơn giá = round((g − round(g × %)) / SL), g = round(SL × giá bảng) — posLinesToCart / netPriceOf; số của báo cáo 06/11 đo bằng bản rút gọn này)
-	  tiền dòng    = SL × đơn giá
+	  g            = round(SL × giá bảng)                    (lineGross, src/lib/pos/discount.ts)
+	  tiền giảm    = min(g, round(g × % / 100))              (discountAmount — % tính trên TIỀN DÒNG)
+	  đơn giá dòng = round((g − tiền giảm) / SL)             (posLinesToCart / netPriceOf / toDraftCoGiam — đơn giá ghi sổ)
+	  tiền dòng    = SL × đơn giá                            (post_invoice: line_total numeric, KHÔNG làm tròn từng dòng)
 	  VAT          = round(Σ tiền dòng × thuế suất dòng)
 	  tổng         = round(Σ tiền dòng − giảm đơn + Σ tiền dòng × thuế suất)
 	round = làm tròn nửa xa 0. Mỗi HĐ dong_min..dong_max dòng chọn trong 40 mặt hàng, đơn vị Lon / Loc / Thung, SL 1–20,
-	thuế 0 / 5 / 8 / 10 %, ty_le_giam_dong số dòng có giảm %. cach_giam_dong:
+	thuế 0 / 5 / 8 / 10 %, ty_le_giam_dong số dòng có giảm %; ty_le_sl_le > 0: chừng ấy dòng mang SL lẻ 0,5 / 1,5 / 2,5 / 3,5
+	(mặc định 0 — khi 0 không gọi thêm số ngẫu nhiên nào nên chuỗi HĐ y hệt lượt đo 06/11). cach_giam_dong:
 	  "app" — app gửi sẵn đơn giá sau giảm (rate) kèm price_list_rate + discount_percentage;
 	  "loi" — chỉ gửi price_list_rate + discount_percentage, để lõi tự tính rate.
 	HĐ lập rồi rollback, không để lại sổ."""
@@ -219,8 +222,8 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 	items = _items(True) + _items(False)
 	don_vi = (("Lon", 1), ("Loc", 6), ("Thung", 24))
 	tk_giam = frappe.db.get_value("Account", {"company": CTY, "account_name": "Miscellaneous Expenses", "is_group": 0})
-	dem = {"hd": 0, "dong": 0, "dong_giam": 0, "lech_don_gia": 0, "mat_pct": 0, "lech_tien_hang": 0, "lech_vat": 0,
-		"vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0}
+	dem = {"hd": 0, "dong": 0, "dong_giam": 0, "dong_sl_le": 0, "hd_co_sl_le": 0, "lech_don_gia": 0, "mat_pct": 0, "lech_tien_hang": 0,
+		"lech_vat": 0, "vat_co_le": 0, "lech_grand": 0, "lech_rounded": 0, "lech_tong_max": 0}
 	mau = []
 	for i in range(int(n)):
 		si = frappe.new_doc("Sales Invoice")
@@ -231,18 +234,26 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 			uom, cf = rnd.choice(don_vi)
 			plr = Decimal(str(_gia(it, uom)))
 			qty = rnd.randint(1, 20)
+			if float(ty_le_sl_le) > 0 and rnd.random() < float(ty_le_sl_le):
+				qty = rnd.choice([0.5, 1.5, 2.5, 3.5])
 			r = rnd.choice([0, 5, 8, 10])
 			pct = Decimal(str(rnd.choice([2, 2.5, 3, 5, 7.5, 10, 12.5, 15]))) if rnd.random() < float(ty_le_giam_dong) else Decimal(0)
-			don_gia = _tron(plr * (Decimal(100) - pct) / Decimal(100))  # bản rút gọn, KHÔNG phải luật nppsale (% trên tiền dòng — netPriceOf src/lib/sell/cart.ts:64–67); số báo cáo 06/11 đo bằng dòng này — đo lại theo luật thật thì đổi ở đây và cập nhật báo cáo cùng lúc
+			# Luật thật của nppsale (đo lại 10/11/2026; bản 06/11 dùng bản rút gọn round(giá × (1 − %)) — sai):
+			sl = Decimal(str(qty))
+			g = _tron(sl * plr)
+			tien_giam = min(g, _tron(g * pct / Decimal(100))) if pct else Decimal(0)
+			don_gia = _tron((g - tien_giam) / sl)
 			row = {"item_code": it, "qty": qty, "uom": uom, "conversion_factor": cf, "price_list_rate": float(plr), "item_tax_template": ITEM_TPL(r)}
 			if pct:
 				row["discount_percentage"] = float(pct)
-				if cach_giam_dong == "app":
-					row["rate"] = float(don_gia)
-			else:
+			if cach_giam_dong == "app":
+				# app gửi đơn giá theo luật nppsale cho MỌI dòng: SL lẻ thì kể cả dòng không giảm, đơn giá cũng có thể khác giá bảng
+				# (0,5 × 15.343 = 7.671,5 → 7.672 → đơn giá 15.344) — bản trước gửi giá bảng ở dòng không giảm (lỗi mã đo, sửa 10/11)
+				row["rate"] = float(don_gia)
+			elif not pct:
 				row["rate"] = float(plr)
 			si.append("items", row)
-			dong_npp.append((it, qty, don_gia, Decimal(r), pct))
+			dong_npp.append((it, sl, don_gia, Decimal(r), pct))
 		_set_taxes(si, "Sales Taxes and Charges Template", VAT_TPL)
 		tien_hang = sum(Decimal(q) * g for _, q, g, _, _ in dong_npp)
 		if giam_don_pct:
@@ -254,8 +265,11 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 		giam = Decimal(str(flt(si.discount_amount)))
 		vat_npp = _tron(vat_tho)
 		tong_npp = max(Decimal(0), _tron(tien_hang - giam + vat_tho))
+		co_le = False
 		for d, (it, q, g, r, pct) in zip(si.items, dong_npp):
 			dem["dong"] += 1
+			if q != q.to_integral_value():
+				dem["dong_sl_le"] += 1; co_le = True
 			if pct:
 				dem["dong_giam"] += 1
 				if not flt(d.discount_percentage):
@@ -265,20 +279,23 @@ def thue_lam_tron(n=50, dong_min=10, dong_max=20, giam_don_pct=0, ty_le_giam_don
 				if len(mau) < 8:
 					mau.append({"loai": "don_gia", "item": it, "uom": d.uom, "gia_bang": flt(d.price_list_rate), "pct": float(pct),
 						"rate_loi": flt(d.rate), "giam_loi": flt(d.discount_amount), "don_gia_npp": float(g)})
+		if co_le: dem["hd_co_sl_le"] += 1
 		th = Decimal(str(flt(si.net_total))); vat = Decimal(str(flt(si.total_taxes_and_charges)))
 		grand = Decimal(str(flt(si.grand_total))); rounded = Decimal(str(flt(si.rounded_total)))
-		if th != tien_hang: dem["lech_tien_hang"] += 1
+		dem["lech_tong_max"] = max(dem["lech_tong_max"], float(abs(rounded - tong_npp)))
+		# nppsale không làm tròn từng dòng (SL lẻ → tiền dòng có thể lẻ ,5) nên so tiền hàng với Σ đã làm tròn một lần
+		if th != _tron(tien_hang): dem["lech_tien_hang"] += 1
 		if vat != vat_npp: dem["lech_vat"] += 1
 		if vat != vat.to_integral_value(): dem["vat_co_le"] += 1
 		if grand != tong_npp: dem["lech_grand"] += 1
 		if rounded != tong_npp: dem["lech_rounded"] += 1
 		if (th != tien_hang or vat != vat_npp or rounded != tong_npp or grand != tong_npp) and len(mau) < 14:
-			mau.append({"loai": "hd", "si": si.name, "so_dong": len(si.items), "tien_hang_loi": float(th), "tien_hang_npp": float(tien_hang),
+			mau.append({"loai": "hd", "si": si.name, "so_dong": len(si.items), "co_sl_le": co_le, "tien_hang_loi": float(th), "tien_hang_npp": float(tien_hang),
 				"vat_loi": float(vat), "vat_tho": float(vat_tho), "vat_npp": float(vat_npp), "grand_loi": float(grand), "rounded_loi": float(rounded),
 				"tong_npp": float(tong_npp), "giam_don": float(giam)})
 	frappe.db.rollback()
 	return _out({"tham_so": {"n": int(n), "dong": [int(dong_min), int(dong_max)], "giam_don_pct": giam_don_pct, "ty_le_giam_dong": ty_le_giam_dong,
-			"cach_giam_dong": cach_giam_dong, "seed": int(seed)},
+			"cach_giam_dong": cach_giam_dong, "seed": int(seed), "ty_le_sl_le": float(ty_le_sl_le), "luat_don_gia": "nppsale that (10/11)"},
 		"precision": frappe.db.get_single_value("System Settings", "currency_precision"),
 		"rounding": frappe.db.get_single_value("System Settings", "rounding_method"),
 		"round_row_wise_tax": frappe.db.get_single_value("Accounts Settings", "round_row_wise_tax"),
@@ -801,3 +818,41 @@ def doi_ma_lo_ep_do_sot(force=True):
 			con.append({"bang": t, "cot": k, "khop_dung": n_dung, "nam_trong_chuoi": n_trong, "mau": [m[0] for m in mau]})
 	frappe.db.rollback()
 	return _out({"lo": lo, "so_cot_da_do": len(cot), "con_giu_ma_cu": con})
+
+
+# ─────────────────────── (2b) dòng 0 đ và dòng bán trên giá bảng — lõi làm gì với rate app gửi (đo 10/11/2026) ───────────────────────
+
+def dong_dac_biet():
+	"""Một HĐ (không trừ kho), mỗi dòng một ca; insert rồi đọc lại rate / discount / margin lõi để lại; ROLLBACK cuối hàm.
+	  a1  hàng đổi 0 đ: rate 0 + price_list_rate          a2  rate 0 + price_list_rate + discount_percentage 100
+	  a3  rate 0, không price_list_rate                    b   bán TRÊN giá bảng: rate = giá bảng + 1.000
+	  c   bán dưới giá bảng, rate app tự tính (lệch luật % của lõi)
+	  a4  rate 0 + price_list_rate 0 gửi tường minh          a5  rate 0 + price_list_rate + discount_amount = giá bảng"""
+	it = _items(True)[0]
+	plr = _gia(it)
+	ca = [
+		("a1", {"rate": 0, "price_list_rate": plr}),
+		("a2", {"rate": 0, "price_list_rate": plr, "discount_percentage": 100}),
+		("a3", {"rate": 0}),
+		("b", {"rate": plr + 1000, "price_list_rate": plr}),
+		("c", {"rate": plr - 777, "price_list_rate": plr, "discount_percentage": 5}),
+		("a4", {"rate": 0, "price_list_rate": 0}),
+		("a5", {"rate": 0, "price_list_rate": plr, "discount_amount": plr}),
+	]
+	si = frappe.new_doc("Sales Invoice")
+	si.update({"customer": _khach(3), "company": CTY, "update_stock": 0, "taxes_and_charges": VAT_TPL, "ignore_pricing_rule": 1})
+	for _, row in ca:
+		si.append("items", {"item_code": it, "qty": 2, "uom": "Lon", "conversion_factor": 1, "item_tax_template": ITEM_TPL(8), **row})
+	_set_taxes(si, "Sales Taxes and Charges Template", VAT_TPL)
+	kq = {"item": it, "gia_bang": plr}
+	try:
+		si.insert()
+		for (ten, gui), d in zip(ca, si.items):
+			kq[ten] = {"gui": gui, "rate": flt(d.rate), "price_list_rate": flt(d.price_list_rate), "discount_percentage": flt(d.discount_percentage),
+				"discount_amount": flt(d.discount_amount), "margin_type": d.margin_type or "", "margin_rate_or_amount": flt(d.margin_rate_or_amount),
+				"amount": flt(d.amount)}
+	except Exception as e:
+		kq["LOI"] = type(e).__name__ + ": " + str(e)[:300]
+	frappe.db.rollback()
+	return _out(kq)
+
