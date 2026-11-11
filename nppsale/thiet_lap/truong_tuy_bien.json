@@ -223,6 +223,109 @@
    "search_index": 1
   }
  ],
+ "Sales Order": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_trang_thai",
+   "fieldtype": "Select",
+   "insert_after": "order_type",
+   "label": "Trạng thái NPP",
+   "options": "draft\nsubmitted\ncompleted\ncancelled",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_nhan_vien",
+   "fieldtype": "Link",
+   "insert_after": "customer_name",
+   "label": "Người đứng tên",
+   "options": "User",
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "npp_nhan_vien",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_client_request_id",
+   "fieldtype": "Data",
+   "insert_after": "amended_from",
+   "label": "Mã gửi offline",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "npp_lan_sua",
+   "fieldtype": "Int",
+   "insert_after": "transaction_date",
+   "label": "Lần sửa",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_ly_do_canh_bao",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_lan_sua",
+   "label": "Cảnh báo khi gửi"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "delivery_date",
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "npp_giam_gia_don",
+   "fieldtype": "Currency",
+   "insert_after": "discount_amount",
+   "label": "Giảm giá cả đơn"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ly_do_huy",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_ghi_chu",
+   "label": "Lý do huỷ"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_ly_do_huy",
+   "label": "Huỷ lúc",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_huy_luc",
+   "label": "Người huỷ",
+   "options": "User",
+   "read_only": 1
+  }
+ ],
+ "Sales Order Item": [
+  {
+   "fieldname": "npp_giam_dong",
+   "fieldtype": "Currency",
+   "insert_after": "discount_amount",
+   "label": "Giảm dòng (ghi nhớ)"
+  },
+  {
+   "fieldname": "npp_thue_suat",
+   "fieldtype": "Float",
+   "insert_after": "item_tax_template",
+   "label": "Thuế suất",
+   "precision": "4",
+   "read_only": 1
+  }
+ ],
  "Supplier": [
   {
    "fieldname": "npp_ma",

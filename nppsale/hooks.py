@@ -170,6 +170,9 @@ doc_events = {
 	"Supplier": {
 		"validate": "nppsale.su_kien.nha_cung_cap.validate",
 	},
+	"Sales Order": {
+		"validate": "nppsale.su_kien.don_hang.validate",
+	},
 	"Item": {
 		"validate": "nppsale.su_kien.san_pham.validate_item",
 		"after_insert": "nppsale.su_kien.san_pham.thay_doi_hang",

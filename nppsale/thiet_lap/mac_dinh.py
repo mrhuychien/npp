@@ -23,7 +23,7 @@ def _dat_ten_chung_tu():
 		ss.cust_master_name = "Naming Series"
 		ss.flags.ignore_mandatory = True
 		ss.save(ignore_permissions=True)
-	for dt, mau in (("Customer", "KH-.#####"), ("Supplier", "NCC-.####")):
+	for dt, mau in (("Customer", "KH-.#####"), ("Supplier", "NCC-.####"), ("Sales Order", "DH-.####")):
 		for prop in ("options", "default"):
 			if frappe.db.get_value("Property Setter", {"doc_type": dt, "field_name": "naming_series", "property": prop}, "value") != mau:
 				make_property_setter(dt, "naming_series", prop, mau, "Text", validate_fields_for_doctype=False)
