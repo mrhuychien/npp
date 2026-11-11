@@ -37,8 +37,27 @@ def _dat_ten_chung_tu():
 		bs.save(ignore_permissions=True)
 
 
+def _bang_gia():
+	"""Bảng giá (blueprint 02 §3.1 / 3.5): Gia chuan (bán, nhóm NULL), Gia nhom <tên> mỗi nhóm khách lá, Gia nhap (mua).
+	Selling Settings dùng Gia chuan; tắt tự chèn giá khi thiếu (lõi tự lập Item Price từ đơn giá dòng — PoC 2)."""
+	from nppsale.su_kien.san_pham import GIA_CHUAN, GIA_NHAP, bang_gia_nhom, dam_bao_bang_gia
+
+	dam_bao_bang_gia(GIA_CHUAN, ban=True)
+	dam_bao_bang_gia(GIA_NHAP, ban=False)
+	for g in frappe.get_all("Customer Group", filters={"is_group": 0}, fields=["name", "default_price_list"]):
+		if not g.default_price_list:
+			ten = bang_gia_nhom(g.name)
+			dam_bao_bang_gia(ten, ban=True)
+			frappe.db.set_value("Customer Group", g.name, "default_price_list", ten)
+	if frappe.db.get_single_value("Selling Settings", "selling_price_list") != GIA_CHUAN:
+		frappe.db.set_single_value("Selling Settings", "selling_price_list", GIA_CHUAN)
+	if frappe.db.get_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing"):
+		frappe.db.set_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing", 0)
+
+
 def dam_bao():
 	_dat_ten_chung_tu()
+	_bang_gia()
 	if _co("NPP Cai Dat"):
 		cd = frappe.get_single("NPP Cai Dat")
 		doi = False

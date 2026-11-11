@@ -104,10 +104,10 @@ class TestSql(unittest.TestCase):
 		kh, bang = S.ke_hoach_doc({"bang": "sales_orders", "select": "id, order_code, total",
 			"loc": [{"op": "eq", "cot": "status", "gt": "draft"}, {"op": "in", "cot": "customer_id", "gt": ["KH-1", "KH-2"]}],
 			"thu_tu": [{"cot": "created_at", "tang": False}], "range": [0, 49], "count": "exact"}, nc)
-		self.assertIn("FROM `tabSales Order` b WHERE (b.`npp_nv` = %(p0)s) AND b.`npp_trang_thai` = %(p1)s AND b.`customer` IN (%(p2)s, %(p3)s)", kh.sql)
-		self.assertIn("ORDER BY (b.`creation` IS NULL) DESC, b.`creation` DESC LIMIT 50 OFFSET 0", kh.sql)
+		self.assertIn("FROM `tabSales Order` q_b WHERE (q_b.`npp_nv` = %(p0)s) AND q_b.`npp_trang_thai` = %(p1)s AND q_b.`customer` IN (%(p2)s, %(p3)s)", kh.sql)
+		self.assertIn("ORDER BY (q_b.`creation` IS NULL) DESC, q_b.`creation` DESC LIMIT 50 OFFSET 0", kh.sql)
 		self.assertEqual(kh.tham, {"p0": "nv@x", "p1": "draft", "p2": "KH-1", "p3": "KH-2"})
-		self.assertTrue(kh.sql_dem.startswith("SELECT COUNT(*) AS n FROM `tabSales Order` b WHERE"))
+		self.assertTrue(kh.sql_dem.startswith("SELECT COUNT(*) AS n FROM `tabSales Order` q_b WHERE"))
 		self.assertEqual([c[0] for c in kh.cot_ra], ["id", "order_code", "total"])
 
 	def test_khong_rls_cho_chu(self):
@@ -121,10 +121,10 @@ class TestSql(unittest.TestCase):
 			"loc": [{"op": "eq", "cot": "customer.channel", "gt": "MT"}]}, nc)
 		self.assertEqual(len(kh.long), 3)
 		self.assertEqual(kh.long[1].quan_he.cot_nay, "sales_user_id")
-		self.assertIn("EXISTS (SELECT 1 FROM `tabCustomer` e0 WHERE e0.`name` = b.`customer`", kh.sql)
+		self.assertIn("EXISTS (SELECT 1 FROM `tabCustomer` e0 WHERE e0.`name` = q_b.`customer`", kh.sql)
 		self.assertIn("e0.`npp_kenh` = ", kh.sql)
 		sql, tham, cot = S.cau_long(kh.long[2], ["SO-1", "SO-2"], nc)
-		self.assertIn("FROM `tabSales Order Item` l WHERE 1=1 AND l.`parent` IN (", sql)
+		self.assertIn("FROM `tabSales Order Item` q_l WHERE 1=1 AND q_l.`parent` IN (", sql)
 		self.assertEqual([c[0] for c in cot], ["quantity", "unit_price"])
 
 	def test_quan_he_nhap_nhang_bao_loi(self):
@@ -134,9 +134,9 @@ class TestSql(unittest.TestCase):
 	def test_gop_nhom(self):
 		kh, _ = S.ke_hoach_doc({"bang": "sales_orders", "select": "status, count()"}, D.NguCanh(user="a", vai="owner"))
 		self.assertIn("COUNT(*) AS `g__0`", kh.sql)
-		self.assertIn("GROUP BY b.`npp_trang_thai`", kh.sql)
+		self.assertIn("GROUP BY q_b.`npp_trang_thai`", kh.sql)
 		kh, _ = S.ke_hoach_doc({"bang": "sales_orders", "select": "total.sum()"}, D.NguCanh(user="a", vai="owner"))
-		self.assertIn("SUM(b.`grand_total`) AS `g__0`", kh.sql)
+		self.assertIn("SUM(q_b.`grand_total`) AS `g__0`", kh.sql)
 		self.assertNotIn("GROUP BY", kh.sql)
 
 	def test_cot_la_va_bang_la(self):
@@ -151,7 +151,7 @@ class TestSql(unittest.TestCase):
 		kh, _ = S.ke_hoach_doc({"bang": "users", "select": "id",
 			"loc": [{"op": "or", "bieu_thuc": "full_name.is.null,full_name.ilike.*an*"}, {"op": "eq", "cot": "enabled", "gt": True}]},
 			D.NguCanh(user="a", vai="owner"))
-		self.assertIn("(b.`full_name` IS NULL OR LOWER(b.`full_name`) LIKE LOWER(%(p0)s))", kh.sql)
+		self.assertIn("(q_b.`full_name` IS NULL OR LOWER(q_b.`full_name`) LIKE LOWER(%(p0)s))", kh.sql)
 		self.assertEqual(kh.tham["p0"], "%an%")
 		self.assertEqual(kh.tham["p1"], 1)
 

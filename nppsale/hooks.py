@@ -170,8 +170,24 @@ doc_events = {
 	"Supplier": {
 		"validate": "nppsale.su_kien.nha_cung_cap.validate",
 	},
+	"Item": {
+		"validate": "nppsale.su_kien.san_pham.validate_item",
+		"after_insert": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"on_update": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"on_trash": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"after_rename": "nppsale.su_kien.san_pham.thay_doi_hang",
+	},
+	"Item Price": {
+		"after_insert": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"on_update": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"on_trash": "nppsale.su_kien.san_pham.thay_doi_hang",
+	},
+	"Price List": {
+		"on_update": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"on_trash": "nppsale.su_kien.san_pham.thay_doi_hang",
+	},
 	"Customer Group": {
-		"after_insert": "nppsale.su_kien.khach_hang.thay_doi",
+		"after_insert": ["nppsale.su_kien.khach_hang.thay_doi", "nppsale.su_kien.san_pham.nhom_khach_moi"],
 		"on_update": "nppsale.su_kien.khach_hang.thay_doi",
 		"on_trash": "nppsale.su_kien.khach_hang.thay_doi",
 	},

@@ -168,7 +168,7 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 	except (C.LoiChon, L.LoiLoc) as e:
 		raise LoiCong("PGRST100", str(e))
 	ts = BoThamSo()
-	bd = "b"
+	bd = "q_b"  # bí danh bảng gốc — đặt lạ để không đụng bí danh trong câu con của sổ đăng ký (b, d, l…)
 	cot, nut_long, nut_gop = _cot_chon(bang, nut_chon, bd)
 	where = [vế_rls(bang, nc, bd, ts)] + [dieu_kien(bang, d, bd, ts) for d in dieu_goc]
 
@@ -259,7 +259,7 @@ def _exists_long(kl: KeHoachLong, e_cha: str, nc, ts: BoThamSo, bd: str) -> str:
 def cau_long(kl: KeHoachLong, khoa: list, nc) -> tuple[str, dict, list]:
 	"""Câu lấy dòng bảng lồng cho một lô khoá của bảng cha → (sql, tham số, cột ra)."""
 	ts = BoThamSo()
-	bd = "l"
+	bd = "q_l"  # bí danh bảng lồng — xem trên
 	nut_chon = [x for x in kl.nut.con if not isinstance(x, C.Long)] or ([C.TatCa()] if not kl.con else [])
 	cot, _, gop = _cot_chon(kl.bang, nut_chon, bd)
 	if gop:

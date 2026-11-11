@@ -168,6 +168,61 @@
    "unique": 1
   }
  ],
+ "Item": [
+  {
+   "fieldname": "npp_gia_ban",
+   "fieldtype": "Currency",
+   "insert_after": "standard_rate",
+   "label": "Giá bán (đơn vị cơ sở)"
+  },
+  {
+   "fieldname": "npp_thue_suat",
+   "fieldtype": "Float",
+   "insert_after": "stock_uom",
+   "label": "Thuế suất mặc định",
+   "precision": "4"
+  },
+  {
+   "fieldname": "npp_ngung_ban",
+   "fieldtype": "Check",
+   "insert_after": "disabled",
+   "label": "Ngừng bán",
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_vi_tri_ke",
+   "fieldtype": "Data",
+   "insert_after": "brand",
+   "label": "Vị trí kệ"
+  },
+  {
+   "fieldname": "npp_ton_toi_da",
+   "fieldtype": "Float",
+   "insert_after": "safety_stock",
+   "label": "Tồn tối đa"
+  },
+  {
+   "default": "1",
+   "fieldname": "npp_ban_truc_tiep",
+   "fieldtype": "Check",
+   "insert_after": "is_sales_item",
+   "label": "Bán trực tiếp"
+  },
+  {
+   "fieldname": "npp_theo_doi_serial",
+   "fieldtype": "Check",
+   "insert_after": "has_serial_no",
+   "label": "Theo dõi serial (ghi nhận)"
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "item_name",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
  "Supplier": [
   {
    "fieldname": "npp_ma",
