@@ -1,6 +1,9 @@
 /**
- * `supabase.storage` tối thiểu: ảnh điểm bán / ảnh POD lưu thành File riêng tư của Frappe qua method của app
- * (`nppsale.api.tep.*`, mục 7 bản bàn bạc). Đường xem là method có kiểm quyền, không phải URL công khai.
+ * `supabase.storage` tối thiểu: ảnh điểm bán lưu thành File RIÊNG TƯ của Frappe qua method `nppsale.api.tep.tai_len`.
+ * `getPublicUrl` giữ đúng khuôn đường dẫn Supabase (`/storage/v1/object/public/<bucket>/<path>`, tính tại chỗ không gọi mạng) để
+ * `photoStoragePath` / luật FILE_SAI của nppsale chạy nguyên; máy chủ phục vụ đường ấy SAU khi kiểm đăng nhập + thấy được khách
+ * (nppsale/portal/kho_anh.py) — ảnh không còn mở được bằng link trần như bucket public cũ.
+ * `remove` từ trình duyệt không xoá gì (như nppsale sau mig 207); xoá file đi qua /api/customers/photo-cleanup.
  */
 import { csrfHienTai } from "./phien"
 
@@ -24,19 +27,11 @@ function kho(bucket: string) {
       return { data: { path, id: body?.message?.data?.id ?? path, fullPath: `${bucket}/${path}` }, error: null }
     },
     getPublicUrl(path: string) {
-      const q = new URLSearchParams({ bucket, path })
-      return { data: { publicUrl: `/api/method/nppsale.api.tep.xem?${q.toString()}` } }
+      const duong = path.split("/").map(encodeURIComponent).join("/")
+      return { data: { publicUrl: `/storage/v1/object/public/${bucket}/${duong}` } }
     },
-    async remove(paths: string[]) {
-      const res = await fetch("/api/method/nppsale.api.tep.xoa", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "X-Frappe-CSRF-Token": csrfHienTai(), Accept: "application/json" },
-        body: JSON.stringify({ bucket, paths }),
-      }).catch((e) => e as Error)
-      if (res instanceof Error) return { data: null, error: { message: `${res.name}: ${res.message}` } }
-      const body = await res.json().catch(() => ({}))
-      return body?.message?.error ? { data: null, error: body.message.error } : { data: paths.map((p) => ({ name: p })), error: null }
+    async remove(_paths: string[]) {
+      return { data: [] as Array<{ name: string }>, error: null }
     },
   }
 }

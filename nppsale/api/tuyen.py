@@ -47,7 +47,8 @@ def _nap():
 	_DA_NAP = True
 	import importlib
 
-	for ten in ("nppsale.api.do_nap", "nppsale.api.loi_trinh_duyet", "nppsale.api.nguoi_dung", "nppsale.api.qr"):
+	for ten in ("nppsale.api.do_nap", "nppsale.api.loi_trinh_duyet", "nppsale.api.nguoi_dung", "nppsale.api.qr",
+			"nppsale.api.anh"):
 		try:
 			importlib.import_module(ten)
 		except ModuleNotFoundError:
