@@ -232,3 +232,19 @@ class TestTaoDon(IntegrationTestCase):
 		ket = goi_rpc(self.ma["u:sales_a"], "create_order_with_lines", {"p": p})
 		self.assertTrue(ket["error"]["message"].startswith("RETURNS_CHUA_HO_TRO"))
 		self.assertFalse(frappe.db.exists("Sales Order", {"npp_client_request_id": p["client_request_id"]}))
+
+	def test_dong_xuat_hang(self):
+		"""get_invoiceable_lines: dòng đơn để màn Xuất hàng dựng HĐ — SL đặt / đã xuất / còn lại, giá, giảm, thuế, giá bán cơ sở, tồn kho bán."""
+		t = next(x for x in self.vang["tinh_huong"] if x["ma"] == "giam_co_quyen")
+		don = goi_rpc(self.ma["u:" + t["nguoi"]], "create_order_with_lines", {"p": doi_khoa(t["p"], self.ma)})["data"][0]["order_id"]
+		ket = goi_rpc(self.ma["u:owner"], "get_invoiceable_lines", {"p_order_id": don})
+		self.assertEqual(len(ket["data"]), 1)
+		d = ket["data"][0]
+		self.assertEqual((d["product_id"], d["sku"], d["product_name"], d["unit_name"], d["conversion_factor"]),
+			("VTD-P1", "VTD-P1", "Nuoc ngot VTD", "Lon", 1.0))
+		self.assertEqual((d["ordered_qty"], d["invoiced_qty"], d["remaining_qty"]), (2.0, 0.0, 2.0))
+		self.assertEqual((d["unit_price"], d["list_price"], d["line_discount"], d["vat_rate"]), (9000.0, 10000.0, 1000.0, 0.08))
+		self.assertEqual((d["available_base"], d["is_exchange"], d["return_line_id"]), (0.0, False, None))
+		self.assertTrue(d["order_line_id"])
+		ket = goi_rpc(self.ma["u:owner"], "get_invoiceable_lines", {"p_order_id": "DH-KHONG-CO"})
+		self.assertEqual(ket["error"]["message"], "ORDER_NOT_FOUND")
