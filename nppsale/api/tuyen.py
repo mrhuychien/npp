@@ -36,11 +36,18 @@ def tuyen(phuong_thuc, mau):
 	return boc
 
 
+_DA_NAP = False
+
+
 def _nap():
 	# Các mô-đun khai route bằng @tuyen — nhập ở đây để đăng ký (thêm dần theo giai đoạn).
+	global _DA_NAP
+	if _DA_NAP:
+		return
+	_DA_NAP = True
 	import importlib
 
-	for ten in ("nppsale.api.do_nap", "nppsale.api.loi_trinh_duyet"):
+	for ten in ("nppsale.api.do_nap", "nppsale.api.loi_trinh_duyet", "nppsale.api.nguoi_dung", "nppsale.api.qr"):
 		try:
 			importlib.import_module(ten)
 		except ModuleNotFoundError:
@@ -61,8 +68,7 @@ def goi():
 	duong, _, chuoi_query = duong_day_du.partition("?")
 	if not duong.startswith("/api/"):
 		return _tra(400, {"error": "Thiếu đường dẫn API."})
-	if not BANG:
-		_nap()
+	_nap()
 	for pt, mau, ham in BANG:
 		if pt != phuong_thuc:
 			continue

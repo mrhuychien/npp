@@ -65,15 +65,17 @@ def ho_so_nguoi_dung(user):
 		nap()
 		if not lay("users"):
 			return None
-		kq = truy_van.doc(
-			{
-				"bang": "users",
-				"select": "id, org_id, full_name, role, phone, is_active, created_at, allow_price_edit, "
-				"price_edit_max_increase_pct, allow_discount, discount_max_type, discount_max_value",
-				"loc": [{"op": "eq", "cot": "id", "gt": user}],
-				"mot": "maybe",
-			},
-			hien_tai(),
+		kq = truy_van.ap_mot(
+			truy_van.doc(
+				{
+					"bang": "users",
+					"select": "id, org_id, full_name, role, phone, is_active, created_at, allow_price_edit, "
+					"price_edit_max_increase_pct, allow_discount, discount_max_type, discount_max_value",
+					"loc": [{"op": "eq", "cot": "id", "gt": user}],
+				},
+				hien_tai(),
+			),
+			"maybe",
 		)
 		return kq.get("data")
 	except Exception:
