@@ -50,6 +50,10 @@ def truy_van(yeu_cau=None):
 	_bang.nap()
 	yc = _doc_json(yeu_cau)
 	hd = yc.get("hanh_dong") or "select"
+	# Một lời ghi là một đơn vị: hỏng thì quay lui ĐÚNG phần của nó (savepoint), không cả giao dịch của request.
+	diem = "npp_cong_ghi"
+	if hd != "select":
+		frappe.db.savepoint(diem)
 	try:
 		nc = hien_tai()
 		if hd == "select":
@@ -62,7 +66,7 @@ def truy_van(yeu_cau=None):
 		return ket
 	except Exception as e:  # noqa: BLE001 — dịch sang lỗi kiểu PostgREST, lỗi lạ thì ném tiếp
 		if hd != "select":
-			frappe.db.rollback()
+			frappe.db.rollback(save_point=diem)
 		return _loi(e)
 
 
@@ -96,6 +100,8 @@ def rpc(ten=None, tham_so=None, sau=None):
 	if muc.ghi and _phuong_thuc() != "POST":
 		return {"error": {"message": f"{ten} ghi sổ — phải gọi bằng POST", "code": "PGRST105", "details": None, "hint": None},
 			"status": 405}
+	diem = "npp_cong_rpc"
+	frappe.db.savepoint(diem)
 	try:
 		kq = muc.ham(**_doc_json(tham_so))
 		sau = _doc_json(sau)
@@ -107,6 +113,6 @@ def rpc(ten=None, tham_so=None, sau=None):
 			kq, dem = ap(kq, sau)
 			return {"data": kq, "count": dem, "status": 200}
 		return {"data": kq, "status": 200}
-	except Exception as e:  # noqa: BLE001
-		frappe.db.rollback()
+	except Exception as e:  # noqa: BLE001 — RPC là một đơn vị: hỏng thì quay lui đúng phần của nó (như hàm Postgres)
+		frappe.db.rollback(save_point=diem)
 		return _loi(e)

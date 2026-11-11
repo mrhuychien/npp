@@ -25,6 +25,11 @@ class NPPAnhDiemBan(Document):
 			frappe.throw("Ô ảnh phải là 1, 2 hoặc 3.")
 		_khoa(self.khach)
 
+	def after_insert(self):
+		from nppsale.rpc.anh_diem_ban import bao_anh_dau_cho_duyet
+
+		bao_anh_dau_cho_duyet(self)
+
 	def on_trash(self):
 		_khoa(self.khach)
 		if frappe.db.exists("DocType", "NPP Yeu Cau Anh Diem Ban"):
