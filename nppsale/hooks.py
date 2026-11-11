@@ -211,6 +211,10 @@ scheduler_events = {
 	"cron": {
 		# Dọn khoá chứng từ quá 10 phút không nhịp (nppsale: pg_cron mỗi phút + dọn lười trong acquire / heartbeat)
 		"*/5 * * * *": ["nppsale.rpc.khoa_chung_tu.release_stale_entity_locks"],
+		# cron hằng ngày của nppsale (18:00 UTC = 01:00 giờ VN — giờ hệ thống của site): nhắc khách chưa có tuyến mỗi ngày,
+		# nhắc ảnh điểm bán thứ Hai
+		"0 1 * * *": ["nppsale.lich.nhac_khach.nhac_khach_chua_tuyen"],
+		"0 1 * * 1": ["nppsale.lich.nhac_khach.nhac_anh_diem_ban"],
 	},
 }
 
