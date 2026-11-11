@@ -1,7 +1,6 @@
 """Năm vai của NPP (bản bàn bạc 3.5): Role Frappe không vào Desk (desk_access = 0 → người dùng là Website User), trang đầu /nppsale.
 Mã vai nppsale ↔ Role: owner → NPP Chu, manager → NPP Quan Ly, accountant → NPP Ke Toan, sales → NPP NVBH, warehouse → NPP Thu Kho.
 (`driver` đã ngưng — mig 122 — không có Role.)"""
-import frappe
 
 VAI_ROLE = {
 	"owner": "NPP Chu",
@@ -14,6 +13,8 @@ ROLE_VAI = {r: v for v, r in VAI_ROLE.items()}
 
 
 def dam_bao():
+	import frappe
+
 	for ten in VAI_ROLE.values():
 		if frappe.db.exists("Role", ten):
 			r = frappe.get_doc("Role", ten)

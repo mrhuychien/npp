@@ -270,7 +270,9 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-# before_request = ["nppsale.utils.before_request"]
+# Người chỉ mang vai NPP: chỉ /api/method/nppsale.* (+ đăng nhập / realtime) — chặn /api/resource, frappe.client.*, frappe.desk.*
+# (vai NPP có quyền đọc danh mục ở lớp Frappe chỉ để method lập được chứng từ lõi — bản bàn bạc chốt 3.5)
+before_request = ["nppsale.portal.chan.chan_cua_chung"]
 # after_request = ["nppsale.utils.after_request"]
 
 # Job Events

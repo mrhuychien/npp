@@ -29,7 +29,14 @@
   "ghi_chu_canh_bao",
   "sb_lam_tron",
   "luat_sl_le",
-  "luat_vat_hddt"
+  "luat_vat_hddt",
+  "sb_so_sach",
+  "kho_ban",
+  "kho_can_date",
+  "cb_so_sach",
+  "mau_thue_ban",
+  "mau_thue_mua",
+  "tk_giam_gia_don"
  ],
  "fields": [
   {
@@ -181,12 +188,55 @@
    "fieldtype": "Select",
    "label": "VAT trên HĐĐT",
    "options": "c\ne"
+  },
+  {
+   "fieldname": "sb_so_sach",
+   "fieldtype": "Section Break",
+   "label": "Sổ sách bán hàng (blueprint 02 §3.6)"
+  },
+  {
+   "fieldname": "kho_ban",
+   "fieldtype": "Link",
+   "label": "Kho bán",
+   "options": "Warehouse",
+   "description": "Vùng sale của nppsale — Xuất hàng, đơn, tồn POS"
+  },
+  {
+   "fieldname": "kho_can_date",
+   "fieldtype": "Link",
+   "label": "Kho cận date",
+   "options": "Warehouse",
+   "description": "Vùng date — hàng cận hạn / hàng trả"
+  },
+  {
+   "fieldname": "cb_so_sach",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mau_thue_ban",
+   "fieldtype": "Link",
+   "label": "Mẫu thuế bán",
+   "options": "Sales Taxes and Charges Template",
+   "description": "\"VAT theo mặt hàng\": một dòng On Net Total 0%, thuế thật theo Item Tax Template của từng dòng"
+  },
+  {
+   "fieldname": "mau_thue_mua",
+   "fieldtype": "Link",
+   "label": "Mẫu thuế mua",
+   "options": "Purchase Taxes and Charges Template"
+  },
+  {
+   "fieldname": "tk_giam_gia_don",
+   "fieldtype": "Link",
+   "label": "TK giảm giá cả đơn",
+   "options": "Account",
+   "description": "additional_discount_account của HĐ (giảm sau thuế, không hạ nền thuế)"
   }
  ],
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-11 00:00:00.000000",
+ "modified": "2026-11-11 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "NPP He Thong",
  "name": "NPP Cai Dat",

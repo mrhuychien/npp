@@ -308,6 +308,15 @@
    "label": "Người huỷ",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "description": "Hàng trả kèm đơn đã trừ vào số khách phải trả lúc lên đơn (= subtotal + vat − total của nppsale); không tính lại khi phiếu trả đổi",
+   "fieldname": "npp_tru_hang_tra",
+   "fieldtype": "Currency",
+   "insert_after": "npp_giam_gia_don",
+   "label": "Trừ hàng trả lúc lên đơn",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "Sales Order Item": [

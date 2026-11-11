@@ -31,7 +31,15 @@ def _co_hd() -> bool:
 	return co_cot("Sales Invoice", "npp_don_hang")
 
 
+def _tong_sql() -> str:
+	"""total của nppsale = khách phải trả lúc lên đơn: subtotal + vat − hàng trả kèm đơn (màn chi tiết đơn suy "Trừ hàng trả" bằng
+	subtotal + vat − total, không tính lại khi phiếu trả đổi)."""
+	tru = " - IFNULL({t}.`npp_tru_hang_tra`, 0)" if co_cot("Sales Order", "npp_tru_hang_tra") else ""
+	return "GREATEST(0, {t}.`grand_total` - IFNULL({t}.`npp_giam_gia_don`, 0)" + tru + ")"
+
+
 def _cot_don():
+	_TONG = _tong_sql()
 	ra = {
 		"id": c("{t}.`name`"), "org_id": org(), "order_code": c("{t}.`name`"),
 		"order_seq": c("CAST(SUBSTRING_INDEX({t}.`name`, '-', -1) AS UNSIGNED)", "so"),
@@ -39,7 +47,7 @@ def _cot_don():
 		"expected_delivery": c("delivery_date", "ngay"), "status": c("IFNULL({t}.`npp_trang_thai`, 'draft')"),
 		"current_workflow_stage": CotDef("NULL"), "payment_terms": c("payment_terms_template"),
 		"subtotal": c("({t}.`net_total` - IFNULL({t}.`npp_giam_gia_don`, 0))", "tien"), "discount": CotDef("0", "tien"),
-		"vat": c("total_taxes_and_charges", "tien"), "total": c("({t}.`grand_total` - IFNULL({t}.`npp_giam_gia_don`, 0))", "tien"),
+		"vat": c("total_taxes_and_charges", "tien"), "total": c(_TONG, "tien"),
 		"merged_into": CotDef("NULL"), "notes": c("npp_ghi_chu"), "approved_by": CotDef("NULL"), "approved_at": CotDef("NULL", "gio"),
 		"approval_reason": c("npp_ly_do_canh_bao"),
 		"submitted_at": c("CASE WHEN IFNULL({t}.`npp_trang_thai`, 'draft') != 'draft' THEN {t}.`creation` END", "gio"),

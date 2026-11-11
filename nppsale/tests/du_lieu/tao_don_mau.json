@@ -1,0 +1,5886 @@
+{
+ "ghi_chu": "Sinh bởi tools/vang_tao_don.py từ create_order_with_lines + trigger thật của nppsale (schema_full.sql).",
+ "nen": {
+  "nguoi": {
+   "owner": [
+    "owner",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "accountant": [
+    "accountant",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "manager": [
+    "manager",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "manager_nang10": [
+    "manager",
+    false,
+    10,
+    true,
+    "pct",
+    null,
+    true
+   ],
+   "sales_a": [
+    "sales",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_b": [
+    "sales",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_giam": [
+    "sales",
+    false,
+    0,
+    true,
+    "pct",
+    null,
+    true
+   ],
+   "sales_giam5": [
+    "sales",
+    false,
+    0,
+    true,
+    "pct",
+    5,
+    true
+   ],
+   "sales_giam20k": [
+    "sales",
+    false,
+    0,
+    true,
+    "vnd",
+    20000,
+    true
+   ],
+   "sales_nang10": [
+    "sales",
+    true,
+    10,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_nang_khong_co": [
+    "sales",
+    false,
+    15,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "warehouse": [
+    "warehouse",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_nghi": [
+    "sales",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    false
+   ]
+  },
+  "nhom": {
+   "G1": "VTD Nhom 1"
+  },
+  "khach": {
+   "C1": [
+    "Tap hoa VTD 1",
+    "G1"
+   ],
+   "C2": [
+    "Tap hoa VTD 2",
+    null
+   ]
+  },
+  "hang": {
+   "P1": [
+    "VTD-P1",
+    "Nuoc ngot VTD",
+    "Lon",
+    10000,
+    0.08,
+    {
+     "Thung": 24,
+     "Loc": 6
+    }
+   ],
+   "P2": [
+    "VTD-P2",
+    "Dau an VTD",
+    "Chai",
+    5000,
+    0.1,
+    {
+     "Hop": 10
+    }
+   ],
+   "P3": [
+    "VTD-P3",
+    "Hang chua gia VTD",
+    "Goi",
+    0,
+    0,
+    {}
+   ]
+  },
+  "gia": [
+   [
+    "P1",
+    null,
+    "Lon",
+    10000
+   ],
+   [
+    "P1",
+    null,
+    "Thung",
+    230000
+   ],
+   [
+    "P1",
+    "G1",
+    "Lon",
+    9500
+   ]
+  ]
+ },
+ "tinh_huong": [
+  {
+   "ma": "dung_gia_owner",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "5cd7770e-1759-5f76-bae1-401a4f14188f",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 14500,
+     "vat": 1260,
+     "total": 15760,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     },
+     {
+      "product_id": "@P2",
+      "unit_name": "Chai",
+      "quantity": 1,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 5000,
+      "conversion_factor": 1,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dung_gia_owner",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1260,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 15760,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 14500,
+     "created_by": "owner",
+     "sales_user": "owner",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "dung_gia_accountant",
+   "nguoi": "accountant",
+   "p": {
+    "client_request_id": "90f6fba8-fa67-5e5d-af71-86e19c03156f",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 14500,
+     "vat": 1260,
+     "total": 15760,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     },
+     {
+      "product_id": "@P2",
+      "unit_name": "Chai",
+      "quantity": 1,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 5000,
+      "conversion_factor": 1,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dung_gia_accountant",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "dung_gia_manager",
+   "nguoi": "manager",
+   "p": {
+    "client_request_id": "e7d85949-40d3-5432-9960-02f027a5aed9",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 14500,
+     "vat": 1260,
+     "total": 15760,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     },
+     {
+      "product_id": "@P2",
+      "unit_name": "Chai",
+      "quantity": 1,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 5000,
+      "conversion_factor": 1,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dung_gia_manager",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1260,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 15760,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 14500,
+     "created_by": "manager",
+     "sales_user": "manager",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "dung_gia_sales_a",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "93b85a32-cb8a-50c4-bf20-c7760bc52c1e",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 14500,
+     "vat": 1260,
+     "total": 15760,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     },
+     {
+      "product_id": "@P2",
+      "unit_name": "Chai",
+      "quantity": 1,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 5000,
+      "conversion_factor": 1,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dung_gia_sales_a",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1260,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 15760,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 14500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "dung_gia_sales_giam",
+   "nguoi": "sales_giam",
+   "p": {
+    "client_request_id": "c89f63a8-a59f-5df5-89cd-4ee8bd889158",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 14500,
+     "vat": 1260,
+     "total": 15760,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     },
+     {
+      "product_id": "@P2",
+      "unit_name": "Chai",
+      "quantity": 1,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 5000,
+      "conversion_factor": 1,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dung_gia_sales_giam",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1260,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 15760,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 14500,
+     "created_by": "sales_giam",
+     "sales_user": "sales_giam",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "kho_khong_lap_don",
+   "nguoi": "warehouse",
+   "p": {
+    "client_request_id": "1cc7ab4a-e0c7-5a34-b583-d1c8dea5f07c",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "kho_khong_lap_don",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "nv_nghi_khong_lap_don",
+   "nguoi": "sales_nghi",
+   "p": {
+    "client_request_id": "36141882-1bc6-5e79-8916-d34bdf9e01a2",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nv_nghi_khong_lap_don",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "c2_gia_chuan",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "47d95b6e-6088-54e1-ae29-606240dc3961",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C2",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 10000,
+     "vat": 800,
+     "total": 10800,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 10000,
+      "line_discount": 0,
+      "line_total": 10000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "c2_gia_chuan",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 800,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 10000,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10800,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 10000,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "c2_duoi_gia_chuan",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "4aafb133-9158-5568-a627-5c47f7e72b20",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C2",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "c2_duoi_gia_chuan",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "thung_gia_rieng",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "f329c1f3-8d57-5a90-8d9e-95de84f5d4b3",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C2",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 230000,
+     "vat": 18400,
+     "total": 248400,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Thung",
+      "quantity": 1,
+      "unit_price": 230000,
+      "line_discount": 0,
+      "line_total": 230000,
+      "conversion_factor": 24,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "thung_gia_rieng",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 18400,
+     "dong": [
+      {
+       "dv": "Thung",
+       "hs": 24.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 230000,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 248400,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 230000,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thung_duoi_gia_rieng",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "2a92db57-d9f9-5f46-9922-534b307a37b6",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C2",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 228000,
+     "vat": 18240,
+     "total": 246240,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Thung",
+      "quantity": 1,
+      "unit_price": 228000,
+      "line_discount": 0,
+      "line_total": 228000,
+      "conversion_factor": 24,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "thung_duoi_gia_rieng",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "loc_quy_doi_nhom",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "c2dac83c-9d98-58a3-9a5a-af73c7772c53",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 57000,
+     "vat": 4560,
+     "total": 61560,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Loc",
+      "quantity": 1,
+      "unit_price": 57000,
+      "line_discount": 0,
+      "line_total": 57000,
+      "conversion_factor": 6,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "loc_quy_doi_nhom",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 4560,
+     "dong": [
+      {
+       "dv": "Loc",
+       "hs": 6.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 57000,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 61560,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 57000,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "loc_quy_doi_duoi",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "36583c56-51ed-5b38-8514-4e419920bccc",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 56000,
+     "vat": 4480,
+     "total": 60480,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Loc",
+      "quantity": 1,
+      "unit_price": 56000,
+      "line_discount": 0,
+      "line_total": 56000,
+      "conversion_factor": 6,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "loc_quy_doi_duoi",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "loc_quy_doi_chuan",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "00dd5809-b8f7-51bd-9e8a-69ef2271ca4e",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C2",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 60000,
+     "vat": 4800,
+     "total": 64800,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Loc",
+      "quantity": 1,
+      "unit_price": 60000,
+      "line_discount": 0,
+      "line_total": 60000,
+      "conversion_factor": 6,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "loc_quy_doi_chuan",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 4800,
+     "dong": [
+      {
+       "dv": "Loc",
+       "hs": 6.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 60000,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 64800,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 60000,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "hop_quy_doi_gia_sp",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "5f9ed4e8-d402-5c42-bc25-cdcce9ffec74",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 50000,
+     "vat": 5000,
+     "total": 55000,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P2",
+      "unit_name": "Hop",
+      "quantity": 1,
+      "unit_price": 50000,
+      "line_discount": 0,
+      "line_total": 50000,
+      "conversion_factor": 10,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "hop_quy_doi_gia_sp",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 5000,
+     "dong": [
+      {
+       "dv": "Hop",
+       "hs": 10.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 50000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 55000,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 50000,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "hop_duoi_gia_sp",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "2dba34f5-18b1-5728-b4b1-855d40969e48",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 49000,
+     "vat": 4900,
+     "total": 53900,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P2",
+      "unit_name": "Hop",
+      "quantity": 1,
+      "unit_price": 49000,
+      "line_discount": 0,
+      "line_total": 49000,
+      "conversion_factor": 10,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "hop_duoi_gia_sp",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "chua_co_gia_ban_bat_ky",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "f49c9b6d-601d-50e5-9fae-6ddbcabf7005",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 1234,
+     "vat": 0,
+     "total": 1234,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P3",
+      "unit_name": "Goi",
+      "quantity": 1,
+      "unit_price": 1234,
+      "line_discount": 0,
+      "line_total": 1234,
+      "conversion_factor": 1,
+      "vat_rate": 0
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chua_co_gia_ban_bat_ky",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 0,
+     "dong": [
+      {
+       "dv": "Goi",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P3",
+       "gia": 1234,
+       "giam": 0,
+       "thue": 0.0,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 1234,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 1234,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chua_co_gia_ban_0",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "cbea2404-8bdd-56f3-882e-5f0df1dec6ef",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 0,
+     "vat": 0,
+     "total": 0,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P3",
+      "unit_name": "Goi",
+      "quantity": 1,
+      "unit_price": 0,
+      "line_discount": 0,
+      "line_total": 0,
+      "conversion_factor": 1,
+      "vat_rate": 0
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chua_co_gia_ban_0",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 0,
+     "dong": [
+      {
+       "dv": "Goi",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P3",
+       "gia": 0,
+       "giam": 0,
+       "thue": 0.0,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 0,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 0,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "duoi_gia_trong_sai_so",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "a2850642-746c-59e0-a25e-5c747aa25d6d",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 37988,
+     "vat": 3039,
+     "total": 41027,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 4,
+      "unit_price": 9497,
+      "line_discount": 0,
+      "line_total": 37988,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "duoi_gia_trong_sai_so",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "duoi_gia_1d_sl1",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "2dbe573b-8574-55e2-827b-5cb11e00ebf4",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9499,
+     "vat": 760,
+     "total": 10259,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9499,
+      "line_discount": 0,
+      "line_total": 9499,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "duoi_gia_1d_sl1",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9499,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10259,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9499,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "duoi_gia_2d_sl1",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "0987652f-d952-58a8-a5c8-eda34ad9ba62",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9498,
+     "vat": 760,
+     "total": 10258,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9498,
+      "line_discount": 0,
+      "line_total": 9498,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "duoi_gia_2d_sl1",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "duoi_gia_sl10_6d",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "b33f4532-8e51-5968-8a0b-80d0480eb180",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 94994,
+     "vat": 7600,
+     "total": 102594,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9499.4,
+      "line_discount": 0,
+      "line_total": 94994,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "duoi_gia_sl10_6d",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 7600,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 10,
+       "sp": "VTD-P1",
+       "gia": 9499.4,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 102594,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 94994,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_co_quyen",
+   "nguoi": "sales_giam",
+   "p": {
+    "client_request_id": "e8d99c4a-eb39-52fc-8eec-142ed91251c9",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 18000,
+     "vat": 1440,
+     "total": 19440,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 2,
+      "unit_price": 9000,
+      "line_discount": 1000,
+      "line_total": 18000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_co_quyen",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1440,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9000,
+       "giam": 1000,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 19440,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 18000,
+     "created_by": "sales_giam",
+     "sales_user": "sales_giam",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_tran5_trong",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "74212e42-f4c6-5243-a519-be611421db68",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 90250,
+     "vat": 7220,
+     "total": 97470,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9025,
+      "line_discount": 0,
+      "line_total": 90250,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_tran5_trong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 7220,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 10,
+       "sp": "VTD-P1",
+       "gia": 9025,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 97470,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 90250,
+     "created_by": "sales_giam5",
+     "sales_user": "sales_giam5",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_tran5_vuot",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "35a399c3-b3d7-5dbd-b493-9f8382e7e318",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 90000,
+     "vat": 7200,
+     "total": 97200,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9000,
+      "line_discount": 0,
+      "line_total": 90000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_tran5_vuot",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_OVER_LIMIT: Giảm giá dòng vượt mức cho phép (tối đa 5%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_tran_vnd_trong",
+   "nguoi": "sales_giam20k",
+   "p": {
+    "client_request_id": "8e98b31f-4cbf-5d97-bcf8-0403baba0185",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 75000,
+     "vat": 6000,
+     "total": 81000,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 7500,
+      "line_discount": 0,
+      "line_total": 75000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_tran_vnd_trong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 6000,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 10,
+       "sp": "VTD-P1",
+       "gia": 7500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 81000,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 75000,
+     "created_by": "sales_giam20k",
+     "sales_user": "sales_giam20k",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_tran_vnd_vuot",
+   "nguoi": "sales_giam20k",
+   "p": {
+    "client_request_id": "fa711358-8fd8-553e-a811-8c7555f1d7b6",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 74000,
+     "vat": 5920,
+     "total": 79920,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 7400,
+      "line_discount": 0,
+      "line_total": 74000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_tran_vnd_vuot",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_OVER_LIMIT: Giảm giá dòng vượt mức cho phép (tối đa 20.000đ).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_dong_khai_ro",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "407079fe-57b9-551e-86af-5a4ce161e889",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 600,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_dong_khai_ro",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 10.100 vượt mức tối đa 9.500 (giá bảng 9.500, được nâng 0%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_dong_khai_khong_quyen",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "1cb3cfcf-f15d-54ca-a0ca-b33c14b079ca",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 500,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_dong_khai_khong_quyen",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 10.000 vượt mức tối đa 9.500 (giá bảng 9.500, được nâng 0%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "manager_giam_khong_tran",
+   "nguoi": "manager_nang10",
+   "p": {
+    "client_request_id": "a3c702eb-df4c-5b7b-8611-cb268df7afd4",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 15000,
+     "vat": 1200,
+     "total": 16200,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 3,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 15000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "manager_giam_khong_tran",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1200,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 3,
+       "sp": "VTD-P1",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 16200,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 15000,
+     "created_by": "manager_nang10",
+     "sales_user": "manager_nang10",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "manager_khong_quyen_giam",
+   "nguoi": "manager",
+   "p": {
+    "client_request_id": "dd2d1c9f-40dd-5f7c-a946-e2dfbf4dc15f",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 27000,
+     "vat": 2160,
+     "total": 29160,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 3,
+      "unit_price": 9000,
+      "line_discount": 0,
+      "line_total": 27000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "manager_khong_quyen_giam",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "owner_giam_tuy_y",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "65494d02-e3c7-5c92-9b5f-5c21775a2faf",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 3,
+     "vat": 0,
+     "total": 3,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 3,
+      "unit_price": 1,
+      "line_discount": 0,
+      "line_total": 3,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "owner_giam_tuy_y",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 0,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 3,
+       "sp": "VTD-P1",
+       "gia": 1,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 3,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 3,
+     "created_by": "owner",
+     "sales_user": "owner",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "ke_toan_giam_tuy_y",
+   "nguoi": "accountant",
+   "p": {
+    "client_request_id": "588715c5-2d43-586f-af18-f41abf46e1c5",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 3,
+     "vat": 0,
+     "total": 3,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 3,
+      "unit_price": 1,
+      "line_discount": 0,
+      "line_total": 3,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "ke_toan_giam_tuy_y",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "nang_khong_quyen_1d",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "ff98b65d-6db5-5dae-8ef1-8584db998970",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9501,
+     "vat": 760,
+     "total": 10261,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9501,
+      "line_discount": 0,
+      "line_total": 9501,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nang_khong_quyen_1d",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9501,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10261,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9501,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nang_khong_quyen_2d",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "e60d49b0-fb1d-50aa-b038-fe26f577f42c",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9502,
+     "vat": 760,
+     "total": 10262,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9502,
+      "line_discount": 0,
+      "line_total": 9502,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nang_khong_quyen_2d",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 9.502 vượt mức tối đa 9.500 (giá bảng 9.500, được nâng 0%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "nang10_trong",
+   "nguoi": "sales_nang10",
+   "p": {
+    "client_request_id": "04aff6d0-39bb-5bd9-81f3-1d4be4a29c1d",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 10450,
+     "vat": 836,
+     "total": 11286,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 10450,
+      "line_discount": 0,
+      "line_total": 10450,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nang10_trong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 836,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 10450,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 11286,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 10450,
+     "created_by": "sales_nang10",
+     "sales_user": "sales_nang10",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nang10_vuot",
+   "nguoi": "sales_nang10",
+   "p": {
+    "client_request_id": "fa4faaa1-b50b-578d-9164-50e460946039",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 10452,
+     "vat": 836,
+     "total": 11288,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 10452,
+      "line_discount": 0,
+      "line_total": 10452,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nang10_vuot",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 10.452 vượt mức tối đa 10.450 (giá bảng 9.500, được nâng 10%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "nang_sales_khong_co_quyen_15",
+   "nguoi": "sales_nang_khong_co",
+   "p": {
+    "client_request_id": "7580ae87-9db3-5a19-9b7b-d17822289040",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 10000,
+     "vat": 800,
+     "total": 10800,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 10000,
+      "line_discount": 0,
+      "line_total": 10000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nang_sales_khong_co_quyen_15",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 10.000 vượt mức tối đa 9.500 (giá bảng 9.500, được nâng 0%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "manager_nang10_trong",
+   "nguoi": "manager_nang10",
+   "p": {
+    "client_request_id": "734c5637-1f52-539c-8c30-89fbc843b308",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 10450,
+     "vat": 836,
+     "total": 11286,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 10450,
+      "line_discount": 0,
+      "line_total": 10450,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "manager_nang10_trong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 836,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 10450,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 11286,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 10450,
+     "created_by": "manager_nang10",
+     "sales_user": "manager_nang10",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "manager_nang0_vuot",
+   "nguoi": "manager",
+   "p": {
+    "client_request_id": "64f3c124-68e3-5d32-ab8f-9d29998ac23c",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9600,
+     "vat": 768,
+     "total": 10368,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9600,
+      "line_discount": 0,
+      "line_total": 9600,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "manager_nang0_vuot",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 9.600 vượt mức tối đa 9.500 (giá bảng 9.500, được nâng 0%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "nang_kem_giam_dong",
+   "nguoi": "sales_nang10",
+   "p": {
+    "client_request_id": "ec5b20de-2836-5cfa-9579-60b3bd9a6340",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 20800,
+     "vat": 1664,
+     "total": 22464,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 2,
+      "unit_price": 10400,
+      "line_discount": 200,
+      "line_total": 20800,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nang_kem_giam_dong",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 10.500 vượt mức tối đa 10.450 (giá bảng 9.500, được nâng 10%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "nang_chua_co_gia",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "7f38ef71-597b-5df4-be01-cdc5a3e0aedd",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 99999,
+     "vat": 0,
+     "total": 99999,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P3",
+      "unit_name": "Goi",
+      "quantity": 1,
+      "unit_price": 99999,
+      "line_discount": 0,
+      "line_total": 99999,
+      "conversion_factor": 1,
+      "vat_rate": 0
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "nang_chua_co_gia",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 0,
+     "dong": [
+      {
+       "dv": "Goi",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P3",
+       "gia": 99999,
+       "giam": 0,
+       "thue": 0.0,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 99999,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 99999,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "sl_0",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "ebfb9088-10ad-5978-bfcf-c0b7f831badc",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 0,
+     "vat": 0,
+     "total": 0,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 0,
+      "unit_price": 10000,
+      "line_discount": 0,
+      "line_total": 0,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "sl_0",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "BAD_PAYLOAD: số lượng của dòng hàng phải lớn hơn 0 (bỏ dòng thay vì để 0).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "sl_am",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "14066666-5e00-5074-9d25-a70914272dbc",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": -20000,
+     "vat": -1600,
+     "total": 0,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": -2,
+      "unit_price": 10000,
+      "line_discount": 0,
+      "line_total": -20000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "sl_am",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "BAD_PAYLOAD: số lượng của dòng hàng phải lớn hơn 0 (bỏ dòng thay vì để 0).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "gia_am",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "a571af54-8993-5d6b-8edd-cd66d0b4c43d",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": -1,
+     "vat": 0,
+     "total": 0,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": -1,
+      "line_discount": 0,
+      "line_total": -1,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "gia_am",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "BAD_PAYLOAD: đơn giá của dòng hàng không được âm.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_am",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "9a0bf653-d845-5d2d-b7f4-bd0bbec67873",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 10000,
+     "vat": 800,
+     "total": 10800,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 10000,
+      "line_discount": -5,
+      "line_total": 10000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_am",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "BAD_PAYLOAD: giảm giá dòng không được âm.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "dv_rong_he_so_1",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "85f9f08f-184a-5e7a-a19c-0bfbe5e4c8e0",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dv_rong_he_so_1",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "dv_rong_he_so_6",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "ce90b716-1f1f-5f6e-867b-2474adb5d65d",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 6,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dv_rong_he_so_6",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "UNIT_MISSING: dòng hàng thiếu đơn vị tính mà hệ số quy đổi là 6.000000 — chọn lại đơn vị rồi lưu.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "dv_null",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "dd96b215-0b1a-5eaf-8014-1aabe4c08c46",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": null,
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dv_null",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "owner",
+     "sales_user": "owner",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thue_8_khong_hop_le",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "d56cd653-1acd-5ff8-9185-1d07f8b81d33",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 0,
+     "total": 9500,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 8
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "thue_8_khong_hop_le",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 0,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": null,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 9500,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thue_chuoi",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "ff349e3a-e83b-529b-a4e9-f844d14c189d",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 950,
+     "total": 10450,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": "0.1"
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "thue_chuoi",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 950,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10450,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thue_thieu",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "fe7be03a-0bd8-5fc3-ad86-188e364bbab7",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 0,
+     "total": 9500,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "thue_thieu",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 0,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": null,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 9500,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "ghi_chu_dong",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "ad903751-3bc3-5d43-8afa-ded131baacb3",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 19000,
+     "vat": 1520,
+     "total": 20520,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08,
+      "note": "giao sang"
+     },
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08,
+      "note": ""
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "ghi_chu_dong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1520,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": "giao sang"
+      },
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 20520,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 19000,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "hang_khong_co",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "a47c3579-850b-5a4a-92e4-f60644d21f74",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 1000,
+     "vat": 80,
+     "total": 1080,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P9",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 1000,
+      "line_discount": 0,
+      "line_total": 1000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "hang_khong_co",
+    "ok": false,
+    "ma_loi": "23503",
+    "loi": "insert or update on table \"sales_order_lines\" violates foreign key constraint \"sales_order_lines_product_id_fkey\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_don_khong_quyen",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "4d8a295c-f1f2-5af1-a8fc-be76724d9116",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 18000,
+     "vat": 1520,
+     "total": 19520,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 2,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 19000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_khong_quyen",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá đơn.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_don_trong_sai_so",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "b189ec9c-c4ea-5bf7-81a0-86dd6bf139f9",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 23998,
+     "vat": 2020,
+     "total": 26018,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 2,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 19000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     },
+     {
+      "product_id": "@P2",
+      "unit_name": "Chai",
+      "quantity": 1,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 5000,
+      "conversion_factor": 1,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_trong_sai_so",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 26018,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 23998,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_vuot_sai_so",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "866951af-d4de-5e06-9a65-e7a8e86f2f46",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 23997,
+     "vat": 2020,
+     "total": 26017,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 2,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 19000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     },
+     {
+      "product_id": "@P2",
+      "unit_name": "Chai",
+      "quantity": 1,
+      "unit_price": 5000,
+      "line_discount": 0,
+      "line_total": 5000,
+      "conversion_factor": 1,
+      "vat_rate": 0.1
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_vuot_sai_so",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá đơn.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_don_co_quyen",
+   "nguoi": "sales_giam",
+   "p": {
+    "client_request_id": "35304857-1ca7-5e43-9893-c28debc691e7",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 14000,
+     "vat": 1520,
+     "total": 15520,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 2,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 19000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_co_quyen",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1520,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 15520,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 5000,
+     "subtotal": 14000,
+     "created_by": "sales_giam",
+     "sales_user": "sales_giam",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_tran5_trong",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "2a361ca9-257e-50fb-83a4-f91093c71f62",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 90250,
+     "vat": 7600,
+     "total": 97850,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 95000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_tran5_trong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 7600,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 10,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 97850,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 4750,
+     "subtotal": 90250,
+     "created_by": "sales_giam5",
+     "sales_user": "sales_giam5",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_tran5_vuot",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "74f5b5f0-75e3-5baa-b3e5-094db18140e1",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 90247,
+     "vat": 7600,
+     "total": 97847,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 95000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_tran5_vuot",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_OVER_LIMIT: Giảm giá đơn vượt mức cho phép (tối đa 5%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_don_tran_vnd",
+   "nguoi": "sales_giam20k",
+   "p": {
+    "client_request_id": "8af11d08-696e-5ad3-b625-9c8e1c2fe0d5",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 74998,
+     "vat": 7600,
+     "total": 82598,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 95000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_tran_vnd",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 7600,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 10,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 82598,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 20002,
+     "subtotal": 74998,
+     "created_by": "sales_giam20k",
+     "sales_user": "sales_giam20k",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_tran_vnd_vuot",
+   "nguoi": "sales_giam20k",
+   "p": {
+    "client_request_id": "28220706-743e-51be-966e-7caaacafddb2",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 74997,
+     "vat": 7600,
+     "total": 82597,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 95000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_tran_vnd_vuot",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_OVER_LIMIT: Giảm giá đơn vượt mức cho phép (tối đa 20.000đ).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_don_chu",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "5ca4de65-1de9-5c75-8995-ba107cc20f08",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 45000,
+     "vat": 7600,
+     "total": 52600,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 95000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_chu",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 7600,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 10,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 52600,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 50000,
+     "subtotal": 45000,
+     "created_by": "owner",
+     "sales_user": "owner",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_cong_giam_dong",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "8ab9fa49-61df-54d7-bb19-c0a93eed2a6a",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 90200,
+     "vat": 7600,
+     "total": 97800,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9500,
+      "line_discount": 1000,
+      "line_total": 95000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_cong_giam_dong",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "PRICE_OVER_CEILING: Đơn giá 9.600 vượt mức tối đa 9.500 (giá bảng 9.500, được nâng 0%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "giam_don_nen_gom_giam_dong",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "1aa9cd7b-0610-5f87-a034-42ed44f8f58f",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 89248,
+     "vat": 7520,
+     "total": 96768,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9400,
+      "line_discount": 1000,
+      "line_total": 94000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_nen_gom_giam_dong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 7520,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 10,
+       "sp": "VTD-P1",
+       "gia": 9400,
+       "giam": 1000,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 96768,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 4752,
+     "subtotal": 89248,
+     "created_by": "sales_giam5",
+     "sales_user": "sales_giam5",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_nen_gom_giam_dong_vuot",
+   "nguoi": "sales_giam5",
+   "p": {
+    "client_request_id": "02f9297b-d280-529c-9c2f-ec7d78add35f",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 89247,
+     "vat": 7520,
+     "total": 96767,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 10,
+      "unit_price": 9400,
+      "line_discount": 1000,
+      "line_total": 94000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "giam_don_nen_gom_giam_dong_vuot",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_OVER_LIMIT: Giảm giá đơn vượt mức cho phép (tối đa 5%).",
+    "ct": null
+   }
+  },
+  {
+   "ma": "tru_hang_tra",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "4f9d555a-2540-5493-85f2-a30f58389491",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 19000,
+     "vat": 1520,
+     "total": 15520,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 2,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 19000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "tru_hang_tra",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 1520,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 15520,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 19000,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "gui_luon",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "ee4f98a8-2c25-58e9-bd09-0071e1585a50",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "submitted",
+     "approval_reason": "Vuot han muc",
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "gui_luon",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "submitted",
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": "Vuot han muc",
+     "co_submitted_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "trang_thai_rong",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "440b9193-611f-5c32-a6cd-d753093ec45a",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "trang_thai_rong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "trang_thai_huy",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "8df2a3d3-ccaf-5ccb-95f3-2b2da5e5275f",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "cancelled",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "trang_thai_huy",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "ORDER_CANCELLED: đơn này đã bị huỷ — không sửa dòng hàng được nữa. Tải lại đơn để xem trạng thái mới.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "trang_thai_hoan_thanh",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "0b7b2db1-d71f-558d-8901-d6883beceb48",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "completed",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "trang_thai_hoan_thanh",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "ORDER_LOCKED: đơn đã xuất hàng, không sửa dòng được. Huỷ hóa đơn trước, hoặc lập đơn trả.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "trang_thai_la",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "57627bd1-566d-55dd-94e7-51bd8259bb1b",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "approved",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "trang_thai_la",
+    "ok": false,
+    "ma_loi": "23514",
+    "loi": "new row for relation \"sales_orders\" violates check constraint \"chk_sales_orders_status_v2\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "chu_lap_ho_sales",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "5f80c270-a6ac-592c-b87c-c6e9c1b283fd",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chu_lap_ho_sales",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "quan_ly_lap_ho_sales",
+   "nguoi": "manager",
+   "p": {
+    "client_request_id": "507a67dc-7fdf-5992-b9f7-2ec86d9ce3a6",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "quan_ly_lap_ho_sales",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "sales_lap_ho_sales",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "4c99c562-6333-5a42-b316-4c731fbd4e06",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_b"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "sales_lap_ho_sales",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DON_HO_KHONG_DUOC_PHEP: chỉ chủ nhà phân phối hoặc quản lý mới lập đơn đứng tên nhân viên khác.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "chu_lap_ho_kho",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "77cd87be-49ca-53c4-88f3-79208608b171",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:warehouse"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chu_lap_ho_kho",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "NHAN_VIEN_KHONG_BAN_HANG: warehouse không phải vai trò bán hàng, không đứng tên đơn được.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "chu_lap_ho_nguoi_la",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "6df4674a-5005-52ae-ac1c-ba9586f5e0e7",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:khong_co"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chu_lap_ho_nguoi_la",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "NHAN_VIEN_KHONG_HOP_LE: nhân viên được chọn không thuộc đơn vị này.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "sales_ten_minh",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "3454c89b-0850-5535-b3b5-55009975401a",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "sales_ten_minh",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_lap_ho_nv_nghi",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "523a865e-04d5-556d-85ef-2da83dc32031",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_nghi"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chu_lap_ho_nv_nghi",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "lap_ho_giam_theo_nguoi_goi",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "781fc1a0-98e6-5d88-8448-3ef735761cc9",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 3,
+     "vat": 0,
+     "total": 3,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 3,
+      "unit_price": 1,
+      "line_discount": 0,
+      "line_total": 3,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "lap_ho_giam_theo_nguoi_goi",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "ql_lap_ho_nhap_kin",
+   "nguoi": "manager",
+   "p": {
+    "client_request_id": "4984ca85-bace-5521-a192-070dab037b90",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": true,
+   "mong": {
+    "ma": "ql_lap_ho_nhap_kin",
+    "ok": false,
+    "ma_loi": "42501",
+    "loi": "new row violates row-level security policy for table \"sales_orders\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "chu_lap_ho_sales_gui",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "22f3a107-d32b-5050-bc25-cde1cf395283",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "submitted",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chu_lap_ho_sales_gui",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "submitted",
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "owner",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "ql_lap_ho_sales_gui",
+   "nguoi": "manager",
+   "p": {
+    "client_request_id": "216b604a-f93d-513e-b28a-6dbffab31e0b",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "submitted",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": true,
+   "mong": {
+    "ma": "ql_lap_ho_sales_gui",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      },
+      {
+       "giong_don": true,
+       "already_existed": true
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "submitted",
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "manager",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_lap_ho_nv_nghi_gui",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "a314a2cd-069e-5c1e-b836-fa7d5b3fea0f",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "submitted",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_nghi"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "chu_lap_ho_nv_nghi_gui",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "submitted",
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "owner",
+     "sales_user": "sales_nghi",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "lap_ho_gui_giam_theo_nguoi_goi",
+   "nguoi": "owner",
+   "p": {
+    "client_request_id": "2f0d89fc-a3eb-5e01-bc60-7f56bfe27464",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 3,
+     "vat": 0,
+     "total": 3,
+     "notes": null,
+     "status": "submitted",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_a"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 3,
+      "unit_price": 1,
+      "line_discount": 0,
+      "line_total": 3,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "lap_ho_gui_giam_theo_nguoi_goi",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 0,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 3,
+       "sp": "VTD-P1",
+       "gia": 1,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 3,
+     "status": "submitted",
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 3,
+     "created_by": "owner",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "ql_lap_ho_gui_khong_quyen_giam",
+   "nguoi": "manager",
+   "p": {
+    "client_request_id": "89090e4c-499b-520d-a9d5-8c0457548684",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 27000,
+     "vat": 2160,
+     "total": 29160,
+     "notes": null,
+     "status": "submitted",
+     "approval_reason": null,
+     "sales_user_id": "@u:sales_giam"
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 3,
+      "unit_price": 9000,
+      "line_discount": 0,
+      "line_total": 27000,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "ql_lap_ho_gui_khong_quyen_giam",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "sales_gui_ten_minh_goi_lai",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "b4dae60e-ca96-5277-9f53-fa2d534f9540",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "submitted",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": true,
+   "mong": {
+    "ma": "sales_gui_ten_minh_goi_lai",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      },
+      {
+       "giong_don": true,
+       "already_existed": true
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "submitted",
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thieu_crid",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "thieu_crid",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "BAD_PAYLOAD: thiếu client_request_id.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "crid_hong",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "khong-phai-uuid",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "crid_hong",
+    "ok": false,
+    "ma_loi": "22P02",
+    "loi": "invalid input syntax for type uuid: \"khong-phai-uuid\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "crid_hoa",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "6F1C2A52-6B3E-4D8B-9A55-0E6C1D2F3A99",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "crid_hoa",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "khong_dong",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "c5350e13-fd2a-5ead-8804-0c8b4dfbfda1",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 0,
+     "vat": 0,
+     "total": 0,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "khong_dong",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "BAD_PAYLOAD: đơn cần ít nhất một dòng hàng.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "dong_khong_phai_mang",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "30157d96-195a-5789-81ad-4e994cd54997",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dong_khong_phai_mang",
+    "ok": false,
+    "ma_loi": "P0001",
+    "loi": "BAD_PAYLOAD: đơn cần ít nhất một dòng hàng.",
+    "ct": null
+   }
+  },
+  {
+   "ma": "khach_khong_co",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "966cfc1f-7df6-5dcd-81db-e242db8d5436",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C9",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "khach_khong_co",
+    "ok": false,
+    "ma_loi": "23503",
+    "loi": "insert or update on table \"sales_orders\" violates foreign key constraint \"sales_orders_customer_id_fkey\"",
+    "ct": null
+   }
+  },
+  {
+   "ma": "goi_lai_cung_crid",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "ea3e5aa2-2f38-5fbb-8f0b-ad1bc531652b",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "COD",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": true,
+   "mong": {
+    "ma": "goi_lai_cung_crid",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      },
+      {
+       "giong_don": true,
+       "already_existed": true
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "dieu_khoan_net30",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "36f4f044-4575-53cc-835e-ef9710fc03fa",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "NET30",
+     "expected_delivery": "2026-12-01",
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": "Giao buoi sang",
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dieu_khoan_net30",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": "Giao buoi sang",
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "NET30",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": "2026-12-01"
+    }
+   }
+  },
+  {
+   "ma": "dieu_khoan_rong",
+   "nguoi": "sales_a",
+   "p": {
+    "client_request_id": "01185391-a02b-58c6-a9ee-44a743bcef36",
+    "order": {
+     "order_code": "TAM-1",
+     "customer_id": "@C1",
+     "payment_terms": "",
+     "expected_delivery": null,
+     "subtotal": 9500,
+     "vat": 760,
+     "total": 10260,
+     "notes": null,
+     "status": "draft",
+     "approval_reason": null,
+     "sales_user_id": null
+    },
+    "lines": [
+     {
+      "product_id": "@P1",
+      "unit_name": "Lon",
+      "quantity": 1,
+      "unit_price": 9500,
+      "line_discount": 0,
+      "line_total": 9500,
+      "conversion_factor": 1,
+      "vat_rate": 0.08
+     }
+    ],
+    "returns": null,
+    "return_lines": []
+   },
+   "goi_lai": false,
+   "mong": {
+    "ma": "dieu_khoan_rong",
+    "ok": true,
+    "ma_loi": null,
+    "loi": null,
+    "ct": {
+     "lan": [
+      {
+       "giong_don": true,
+       "already_existed": false
+      }
+     ],
+     "vat": 760,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "notes": null,
+     "total": 10260,
+     "status": "draft",
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 9500,
+     "created_by": "sales_a",
+     "sales_user": "sales_a",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_submitted_at": false,
+     "expected_delivery": null
+    }
+   }
+  }
+ ]
+}
