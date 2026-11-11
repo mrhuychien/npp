@@ -66,3 +66,26 @@ describe("cửa sổ: window.open + thẻ <a> thường", () => {
     expect(a.getAttribute("href")).toBe("/nppsale/home")
   })
 })
+
+describe("sendBeacon tới /api cũ đi bằng fetch keepalive (để có CSRF)", () => {
+  it("chuyển sang fetch, trả true; địa chỉ khác giữ beacon gốc", async () => {
+    const beacon = vi.fn(() => true)
+    ;(navigator as any).sendBeacon = beacon
+    const goi: Array<[string, RequestInit | undefined]> = []
+    ;(window as any).fetch = vi.fn(async (u: any, i?: RequestInit) => {
+      goi.push([String(u), i])
+      return new Response(null, { status: 204 })
+    })
+    vi.resetModules()
+    const { caiApiCu } = await import("@khung/api-cu")
+    caiApiCu()
+    expect(navigator.sendBeacon("/api/do-nap", new Blob(["{}"], { type: "application/json" }))).toBe(true)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(goi[0][0]).toBe("/api/method/nppsale.api.tuyen.goi")
+    expect(goi[0][1]?.keepalive).toBe(true)
+    expect(new Headers(goi[0][1]?.headers).get("X-Npp-Duong")).toBe("/api/do-nap")
+    expect(beacon).not.toHaveBeenCalled()
+    navigator.sendBeacon("https://x.vn/thu", "a")
+    expect(beacon).toHaveBeenCalledTimes(1)
+  })
+})

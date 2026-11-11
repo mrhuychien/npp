@@ -48,6 +48,8 @@ def _nap():
 
 
 def _tra(ma, than):
+	if ma == 204 or than is None:
+		return Response(status=ma)
 	return Response(json.dumps(than, ensure_ascii=False, default=str), status=ma, mimetype="application/json")
 
 
@@ -76,7 +78,7 @@ def goi():
 				try:
 					than = json.loads(du_lieu)
 				except ValueError:
-					than = None
+					than = du_lieu  # chữ thô (route cũ nhận cả chữ không phải JSON)
 		from urllib.parse import parse_qs
 
 		query = {k: v[-1] for k, v in parse_qs(chuoi_query).items()}

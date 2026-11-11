@@ -38,4 +38,14 @@ export function caiApiCu() {
     }
     return goc(input, init)
   }
+  // sendBeacon không gắn được header CSRF của Frappe → đường /api cũ đi bằng fetch keepalive (cũng sống qua lúc đóng trang).
+  if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+    const beaconGoc = navigator.sendBeacon.bind(navigator)
+    navigator.sendBeacon = (url: string | URL, data?: BodyInit | null) => {
+      const u = typeof url === "string" ? url : url.pathname + url.search
+      if (!laApiCu(u)) return beaconGoc(url, data)
+      void window.fetch(u, { method: "POST", body: data ?? null, keepalive: true, headers: { "content-type": "application/json" } }).catch(() => {})
+      return true
+    }
+  }
 }
