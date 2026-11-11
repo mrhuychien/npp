@@ -10,3 +10,4 @@ nppsale/public/portal/app/
 portal/dist/
 portal/nguon/
 portal/src/khung/routes.generated.tsx
+portal/src/khung/duong-chi-tiet.generated.ts

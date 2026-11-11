@@ -138,6 +138,40 @@ ${ketQua}
 ]
 `
 fs.writeFileSync(OUT, out)
+
+// Mẫu đường dẫn TRANG CHI TIẾT (có đoạn [id]) — bản Frappe dùng mã thật (DH-0042, KH-00042, email NV) thay UUID nên
+// laTrangDanhSach của nppsale (nhận chi tiết bằng đoạn UUID) cần biết đoạn nào là id theo chính cây route. Bỏ route bắt-tất-cả.
+const mauChiTiet = []
+function quetChiTiet(rel) {
+  for (const ten of thuMucCon(rel)) {
+    if (ten.startsWith("_") || ten.startsWith("@") || (rel === "" && ten === "api")) continue
+    const con = path.join(rel, ten)
+    if (/^\[[^.].*\]$/.test(ten)) {
+      // Đoạn [id] khớp mọi giá trị TRỪ tên các route tĩnh cùng cấp (/customers/new, /customers/missing-photos…); mọi trang
+      // con bên dưới một chi tiết (…/<id>/edit, /settings/users/<id>/permissions) cũng là chi tiết.
+      const anh = thuMucCon(rel).filter((t) => !/^\[.*\]$/.test(t) && !/^\(.*\)$/.test(t) && !t.startsWith("_"))
+      const thoat = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      const doanCha = rel.split(path.sep).filter((d) => d && !/^\(.*\)$/.test(d))
+      if (doanCha.some((d) => /^\[.*\]$/.test(d))) {
+        quetChiTiet(con)
+        continue
+      }
+      const tru = anh.length ? `(?!(?:${anh.map(thoat).join("|")})(?:/|$))` : ""
+      mauChiTiet.push("^/" + doanCha.map(thoat).map((d) => d + "/").join("") + tru + "[^/]+(?:/.*)?$")
+    }
+    quetChiTiet(con)
+  }
+}
+quetChiTiet("")
+const OUT_CT = path.join(ROOT, "src", "khung", "duong-chi-tiet.generated.ts")
+fs.writeFileSync(
+  OUT_CT,
+  `/* TỰ SINH bởi scripts/tao-route.mjs — đừng sửa tay. Mẫu đường dẫn trang chi tiết (có đoạn [id]). */\nexport const MAU_CHI_TIET: RegExp[] = [\n${mauChiTiet
+    .sort()
+    .map((m) => `  /${m.replace(/\//g, "\\/")}/,`)
+    .join("\n")}\n]\n`
+)
+console.log(`chi tiết: ${mauChiTiet.length} mẫu -> ${path.relative(ROOT, OUT_CT)}`)
 console.log(`routes: ${imports.filter((x) => x.includes("lazy(")).length} trang -> ${path.relative(ROOT, OUT)}`)
 if (canhBao.length) {
   console.log(`CẦN CHUYỂN TAY (async / server component): ${canhBao.length}`)
