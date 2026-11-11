@@ -6,3 +6,7 @@ nppsale/public/dist/
 nppsale/public/node_modules/
 .env
 *.log
+nppsale/public/portal/app/
+portal/dist/
+portal/nguon/
+portal/src/khung/routes.generated.tsx

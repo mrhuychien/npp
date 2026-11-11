@@ -1,0 +1,74 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "types": [
+      "vite/client",
+      "node"
+    ],
+    "paths": {
+      "@/*": [
+        "./src/thay/*",
+        "./nguon/src/*"
+      ],
+      "@goc/*": [
+        "./nguon/src/*"
+      ],
+      "@khung/*": [
+        "./src/khung/*"
+      ],
+      "next/navigation": [
+        "./src/khung/next/navigation.tsx"
+      ],
+      "next/link": [
+        "./src/khung/next/link.tsx"
+      ],
+      "next/image": [
+        "./src/khung/next/image.tsx"
+      ],
+      "next/dynamic": [
+        "./src/khung/next/dynamic.tsx"
+      ],
+      "next/font/google": [
+        "./src/khung/next/font.ts"
+      ],
+      "next/server": [
+        "./src/khung/next/server.ts"
+      ],
+      "next/headers": [
+        "./src/khung/next/headers.ts"
+      ],
+      "next": [
+        "./src/khung/next/index.ts"
+      ],
+      "@supabase/supabase-js": [
+        "./src/thay/lib/supabase/cong/index.ts"
+      ],
+      "@supabase/ssr": [
+        "./src/thay/lib/supabase/cong/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

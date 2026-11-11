@@ -285,4 +285,22 @@ website_route_rules = [
 	{"from_route": "/nppsale/<path:app_path>", "to_route": "nppsale"},
 ]
 # sw.js + manifest phục vụ không cache, đúng scope /nppsale/ (xem nppsale/portal/tinh.py)
-page_renderer = ["nppsale.portal.tinh.TepTinhPortal"]
+page_renderer = ["nppsale.portal.rest.CongRest", "nppsale.portal.tinh.TepTinhPortal"]
+
+# Đường lùi cho đường dẫn tuyệt đối của mã nppsale đi thẳng bằng trình duyệt (dấu trang cũ, link dán Zalo, `location.href`):
+# "/sales-invoices/1?x" → "/nppsale/sales-invoices/1?x". Bỏ các đường dẫn trùng trang của Frappe / ERPNext (login, orders,
+# invoices, products, home, help, dashboard) — những lối ấy phía trình duyệt đã thêm tiền tố (src/khung/cua-so.ts).
+_DUONG_APP_CU = (
+	"analytics|bao-cao|commissions|customers|deliveries|finance|hr|inventory|luong-cua-toi|notifications|operations"
+	"|payables|promotions|purchase-returns|purchasing|receivables|reports|returns|sales|sales-invoices|sell|settings|setup"
+	"|suppliers|warehouse|pos|in|maintenance|backup|qr-login"
+)
+website_redirects = [
+	{
+		"source": rf"({_DUONG_APP_CU})(/[^?]*)?(\?.*)?",
+		"target": r"/nppsale/\1\2\3",
+		"match_with_query_string": True,
+		"redirect_http_status": 302,
+	},
+]
+

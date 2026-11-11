@@ -2,18 +2,29 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>npp.sale</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#ffffff">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="npp.sale">
+<title>npp.sale - Mini ERP cho Nhà Phân Phối</title>
+<meta name="description" content="Quản lý đơn hàng, kho, khách hàng, công nợ, hoa hồng trong một hệ thống duy nhất">
 <link rel="manifest" href="/nppsale/manifest.webmanifest">
+<link rel="icon" href="/assets/nppsale/portal/app/icons/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/nppsale/portal/app/apple-touch-icon.png" sizes="180x180">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap&subset=vietnamese">
+<style>:root{--font-manrope:"Manrope"}</style>
 <meta name="csrf_token" content="{{ csrf_token }}">
-<meta name="npp-nguoi-dung" content="{{ nguoi_dung }}">
-<meta name="npp-phien-ban" content="{{ phien_ban }}">
+{% if tai_san %}{% for c in tai_san.css %}<link rel="stylesheet" href="{{ c }}">
+{% endfor %}{% for p in tai_san.nap_san %}<link rel="modulepreload" href="{{ p }}">
+{% endfor %}{% endif %}
+<script>window.NPP_CONTEXT = {{ npp_context_json }};</script>
 </head>
-<body>
-<div id="goc" data-duong-dan="{{ duong_dan_app }}">Đang tải npp.sale…</div>
-<!-- Bản thật: Vite build nhúng <script type="module" src="/assets/nppsale/portal/..."> tại đây -->
-<script>
-if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/nppsale/sw.js", { scope: "/nppsale/" }).catch(function () {}); }
-</script>
+<body class="font-sans antialiased bg-background text-foreground">
+<div id="goc"></div>
+{% if tai_san %}<script type="module" src="{{ tai_san.js }}"></script>
+{% else %}<p style="padding:24px;font-family:sans-serif">Chưa build portal: chạy <code>cd apps/nppsale/portal && npm ci && npm run build</code>.</p>{% endif %}
 </body>
 </html>

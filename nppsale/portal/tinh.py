@@ -2,7 +2,7 @@
 
 Vì sao không để trong /assets: Frappe/nginx gắn Cache-Control dài hạn cho /assets, còn service worker
 phải được trình duyệt kiểm lại mỗi lần (và phải nằm dưới /nppsale/ để scope đúng). Tệp nguồn nằm ở
-nppsale/public/portal/ (sau build Vite sẽ ghi đè bằng bản build).
+nppsale/portal/tep/ (của app — không lấy bản sw.js / manifest của nppsale vì đường dẫn khác).
 """
 import os
 
@@ -13,7 +13,7 @@ TEP = {
 	"nppsale/sw.js": ("sw.js", "application/javascript; charset=utf-8"),
 	"nppsale/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json; charset=utf-8"),
 }
-THU_MUC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "portal")
+THU_MUC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tep")
 
 
 class TepTinhPortal(BaseRenderer):

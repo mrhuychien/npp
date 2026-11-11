@@ -1,0 +1,6 @@
+{
+  "ghi_chu": "Mã giao diện lấy từ repo nppsale (Next.js) tại commit ghim dưới đây; scripts/lay-nguon.mjs chép vào portal/nguon/ (không commit). Đổi commit = cập nhật giao diện.",
+  "repo": "https://github.com/mrhuychien/nppsale.git",
+  "ref": "58158b1fd5b1e9f51f33ed60934ac85873b6903c",
+  "tep": ["src", "public", "tests", "tailwind.config.ts", "components.json"]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "nppsale",
+  "private": true,
+  "description": "Gói gốc của app Frappe nppsale: `bench build --app nppsale` gọi `yarn build` ở đây để build portal (Vite).",
+  "scripts": {
+    "build": "cd portal && (test -d node_modules || npm ci --no-audit --no-fund) && npm run build"
+  }
+}
