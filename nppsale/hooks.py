@@ -171,6 +171,13 @@ after_migrate = ["nppsale.thiet_lap.sau_khi_migrate"]
 # Scheduled Tasks
 # ---------------
 
+scheduler_events = {
+	"cron": {
+		# Dọn khoá chứng từ quá 10 phút không nhịp (nppsale: pg_cron mỗi phút + dọn lười trong acquire / heartbeat)
+		"*/5 * * * *": ["nppsale.rpc.khoa_chung_tu.release_stale_entity_locks"],
+	},
+}
+
 # scheduler_events = {
 # 	"all": [
 # 		"nppsale.tasks.all"
