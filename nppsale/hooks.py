@@ -167,6 +167,9 @@ doc_events = {
 		"on_update": "nppsale.su_kien.khach_hang.thay_doi",
 		"on_trash": "nppsale.su_kien.khach_hang.thay_doi",
 	},
+	"Supplier": {
+		"validate": "nppsale.su_kien.nha_cung_cap.validate",
+	},
 	"Customer Group": {
 		"after_insert": "nppsale.su_kien.khach_hang.thay_doi",
 		"on_update": "nppsale.su_kien.khach_hang.thay_doi",

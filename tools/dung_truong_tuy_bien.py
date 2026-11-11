@@ -120,14 +120,16 @@ def main():
 	ap = argparse.ArgumentParser()
 	ap.add_argument("blueprint", nargs="+")
 	ap.add_argument("--ghi", action="store_true")
+	ap.add_argument("--chi-dt", default="", help="chỉ các DocType lõi này (phẩy ngăn)")
 	a = ap.parse_args()
+	chi_dt = {x.strip() for x in a.chi_dt.split(",") if x.strip()}
 	kq: dict[str, list[dict]] = {}
 	canh_bao: list[str] = []
 	for bp in a.blueprint:
 		for tieu_de, than in doc_bang(open(bp, encoding="utf-8").read()):
 			for d in than:
 				dt, f = truong(tieu_de, d, canh_bao)
-				if not f:
+				if not f or (chi_dt and dt not in chi_dt):
 					continue
 				ds = kq.setdefault(dt, [])
 				cu = next((x for x in ds if x["fieldname"] == f["fieldname"]), None)

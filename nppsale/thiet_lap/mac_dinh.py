@@ -12,7 +12,7 @@ def _co(dt: str) -> bool:
 
 
 def _dat_ten_chung_tu():
-	"""Khách đặt tên KH-.##### (Selling Settings = Naming Series; bản bàn bạc 3.11)."""
+	"""Khách KH-.#####, NCC NCC-.#### (Selling / Buying Settings = Naming Series; bản bàn bạc 3.11)."""
 	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
 	# Customer.autoname đọc mặc định toàn cục cust_master_name (Selling Settings.on_update ghi) — lưu qua controller, không set thẳng
@@ -23,9 +23,18 @@ def _dat_ten_chung_tu():
 		ss.cust_master_name = "Naming Series"
 		ss.flags.ignore_mandatory = True
 		ss.save(ignore_permissions=True)
-	for prop, val in (("options", "KH-.#####"), ("default", "KH-.#####")):
-		if frappe.db.get_value("Property Setter", {"doc_type": "Customer", "field_name": "naming_series", "property": prop}, "value") != val:
-			make_property_setter("Customer", "naming_series", prop, val, "Text", validate_fields_for_doctype=False)
+	for dt, mau in (("Customer", "KH-.#####"), ("Supplier", "NCC-.####")):
+		for prop in ("options", "default"):
+			if frappe.db.get_value("Property Setter", {"doc_type": dt, "field_name": "naming_series", "property": prop}, "value") != mau:
+				make_property_setter(dt, "naming_series", prop, mau, "Text", validate_fields_for_doctype=False)
+	# NCC đặt tên theo dãy (Buying Settings supp_master_name — Supplier.autoname đọc mặc định toàn cục)
+	if frappe.db.get_single_value("Buying Settings", "supp_master_name") != "Naming Series" or (
+		frappe.defaults.get_global_default("supp_master_name") != "Naming Series"
+	):
+		bs = frappe.get_single("Buying Settings")
+		bs.supp_master_name = "Naming Series"
+		bs.flags.ignore_mandatory = True
+		bs.save(ignore_permissions=True)
 
 
 def dam_bao():

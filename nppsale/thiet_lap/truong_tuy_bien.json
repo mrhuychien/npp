@@ -167,5 +167,141 @@
    "read_only": 1,
    "unique": 1
   }
+ ],
+ "Supplier": [
+  {
+   "fieldname": "npp_ma",
+   "fieldtype": "Data",
+   "insert_after": "supplier_name",
+   "label": "Mã NCC",
+   "search_index": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "npp_nhom",
+   "fieldtype": "Data",
+   "insert_after": "npp_ma",
+   "label": "Nhóm NCC"
+  },
+  {
+   "fieldname": "npp_ngung_hop_tac",
+   "fieldtype": "Check",
+   "insert_after": "disabled",
+   "label": "Ngừng hợp tác",
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_nguoi_lien_he",
+   "fieldtype": "Data",
+   "insert_after": "tax_id",
+   "label": "Người liên hệ"
+  },
+  {
+   "fieldname": "npp_dien_thoai",
+   "fieldtype": "Data",
+   "insert_after": "npp_nguoi_lien_he",
+   "label": "Điện thoại",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "npp_email",
+   "fieldtype": "Data",
+   "insert_after": "npp_dien_thoai",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "npp_dia_chi",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_email",
+   "label": "Địa chỉ"
+  },
+  {
+   "fieldname": "npp_ten_phap_ly",
+   "fieldtype": "Data",
+   "insert_after": "npp_dia_chi",
+   "label": "Tên pháp lý"
+  },
+  {
+   "fieldname": "npp_loai_hinh",
+   "fieldtype": "Data",
+   "insert_after": "npp_ten_phap_ly",
+   "label": "Loại hình"
+  },
+  {
+   "fieldname": "npp_dai_dien",
+   "fieldtype": "Data",
+   "insert_after": "npp_loai_hinh",
+   "label": "Người đại diện"
+  },
+  {
+   "fieldname": "npp_so_dkkd",
+   "fieldtype": "Data",
+   "insert_after": "npp_dai_dien",
+   "label": "Số ĐKKD"
+  },
+  {
+   "fieldname": "npp_ngay_dkkd",
+   "fieldtype": "Date",
+   "insert_after": "npp_so_dkkd",
+   "label": "Ngày cấp ĐKKD"
+  },
+  {
+   "fieldname": "npp_dia_chi_dkkd",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_ngay_dkkd",
+   "label": "Địa chỉ đăng ký"
+  },
+  {
+   "fieldname": "npp_so_tai_khoan",
+   "fieldtype": "Data",
+   "insert_after": "npp_dia_chi_dkkd",
+   "label": "Số tài khoản"
+  },
+  {
+   "fieldname": "npp_ngan_hang",
+   "fieldtype": "Data",
+   "insert_after": "npp_so_tai_khoan",
+   "label": "Ngân hàng"
+  },
+  {
+   "fieldname": "npp_co_han_muc",
+   "fieldtype": "Check",
+   "insert_after": "npp_ngan_hang",
+   "label": "Có hạn mức"
+  },
+  {
+   "depends_on": "eval:doc.npp_co_han_muc",
+   "fieldname": "npp_han_muc",
+   "fieldtype": "Currency",
+   "insert_after": "npp_co_han_muc",
+   "label": "Hạn mức nợ"
+  },
+  {
+   "fieldname": "npp_danh_gia",
+   "fieldtype": "Float",
+   "insert_after": "npp_han_muc",
+   "label": "Đánh giá"
+  },
+  {
+   "fieldname": "npp_da_xac_minh",
+   "fieldtype": "Check",
+   "insert_after": "npp_danh_gia",
+   "label": "Đã xác minh"
+  },
+  {
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "supplier_details",
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "npp_ghi_chu",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  }
  ]
 }
