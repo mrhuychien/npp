@@ -268,6 +268,7 @@ DECLARE
   v_ok boolean := false; v_loi text; v_ma text; v_ct jsonb; v_lan jsonb := '[]'::jsonb; r record; i int; v_don uuid;
 BEGIN
   BEGIN
+    EXECUTE 'SET CONSTRAINTS ALL DEFERRED';  -- mỗi tình huống = giao dịch mới: ràng buộc hoãn về mặc định
     PERFORM set_config('request.jwt.claim.sub', {_lit(u)}, true);
     EXECUTE 'SET LOCAL ROLE authenticated';
     FOR i IN 1..{lan} LOOP

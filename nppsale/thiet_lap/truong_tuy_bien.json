@@ -260,6 +260,7 @@
    "unique": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "npp_lan_sua",
    "fieldtype": "Int",
    "insert_after": "transaction_date",
@@ -267,6 +268,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "npp_ly_do_canh_bao",
    "fieldtype": "Small Text",
    "insert_after": "npp_lan_sua",
@@ -315,6 +317,16 @@
    "fieldtype": "Currency",
    "insert_after": "npp_giam_gia_don",
    "label": "Trừ hàng trả lúc lên đơn",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "description": "applyOrderEdit ghi dòng trước, đầu đơn sau — lần lưu đầu đơn kế tiếp tính là một lần sửa (edit_no, mig 130)",
+   "fieldname": "npp_dong_doi",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "insert_after": "npp_tru_hang_tra",
+   "label": "Dòng đã đổi, đầu đơn chưa lưu",
    "no_copy": 1,
    "read_only": 1
   }

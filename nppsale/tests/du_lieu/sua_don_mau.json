@@ -1,0 +1,6915 @@
+{
+ "ghi_chu": "Sinh bởi tools/vang_sua_don.py — chuỗi lệnh sửa / huỷ / xoá đơn trên trigger + RLS thật của nppsale.",
+ "nen": {
+  "nguoi": {
+   "owner": [
+    "owner",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "accountant": [
+    "accountant",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "manager": [
+    "manager",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "manager_nang10": [
+    "manager",
+    false,
+    10,
+    true,
+    "pct",
+    null,
+    true
+   ],
+   "sales_a": [
+    "sales",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_b": [
+    "sales",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_giam": [
+    "sales",
+    false,
+    0,
+    true,
+    "pct",
+    null,
+    true
+   ],
+   "sales_giam5": [
+    "sales",
+    false,
+    0,
+    true,
+    "pct",
+    5,
+    true
+   ],
+   "sales_giam20k": [
+    "sales",
+    false,
+    0,
+    true,
+    "vnd",
+    20000,
+    true
+   ],
+   "sales_nang10": [
+    "sales",
+    true,
+    10,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_nang_khong_co": [
+    "sales",
+    false,
+    15,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "warehouse": [
+    "warehouse",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    true
+   ],
+   "sales_nghi": [
+    "sales",
+    false,
+    0,
+    false,
+    "pct",
+    null,
+    false
+   ]
+  },
+  "nhom": {
+   "G1": "VTD Nhom 1"
+  },
+  "khach": {
+   "C1": [
+    "Tap hoa VTD 1",
+    "G1"
+   ],
+   "C2": [
+    "Tap hoa VTD 2",
+    null
+   ]
+  },
+  "hang": {
+   "P1": [
+    "VTD-P1",
+    "Nuoc ngot VTD",
+    "Lon",
+    10000,
+    0.08,
+    {
+     "Thung": 24,
+     "Loc": 6
+    }
+   ],
+   "P2": [
+    "VTD-P2",
+    "Dau an VTD",
+    "Chai",
+    5000,
+    0.1,
+    {
+     "Hop": 10
+    }
+   ],
+   "P3": [
+    "VTD-P3",
+    "Hang chua gia VTD",
+    "Goi",
+    0,
+    0,
+    {}
+   ]
+  },
+  "gia": [
+   [
+    "P1",
+    null,
+    "Lon",
+    10000
+   ],
+   [
+    "P1",
+    null,
+    "Thung",
+    230000
+   ],
+   [
+    "P1",
+    "G1",
+    "Lon",
+    9500
+   ]
+  ]
+ },
+ "tinh_huong": [
+  {
+   "ma": "sua_sl_roi_luu_dau",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "a4f287b0-6c41-5a5f-ae8b-4c37c919d125",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 3,
+      "line_total": 28500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 33500,
+      "vat": 2780,
+      "total": 36280,
+      "status": "draft"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2780,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 3,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 36280,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 33500,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "sua_gia_xuong_khong_quyen",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "69549ff1-7a2c-584e-90fa-48d6259287a2",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "unit_price": 9000,
+      "line_total": 18000
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "sua_gia_xuong_co_quyen",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_giam",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "a10aa46b-4069-52a2-9917-551b55cfb0c8",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "unit_price": 9000,
+      "line_discount": 1000,
+      "line_total": 18000
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 23000,
+      "vat": 1940,
+      "total": 24940
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 1940,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9000,
+       "giam": 1000,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 24940,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 23000,
+     "thong_bao": 0,
+     "sales_user": "sales_giam",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giu_gia_cu_cao_hon_tran",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "owner",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "b112db94-06ea-534b-b3db-89eacd1acd60",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": "@u:sales_a",
+        "subtotal": 12000,
+        "vat": 960,
+        "total": 12960
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 1,
+         "unit_price": 12000,
+         "line_discount": 0,
+         "line_total": 12000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 2,
+      "line_total": 24000
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 24000,
+      "vat": 1920,
+      "total": 25920
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "unit_price": 12100,
+      "line_total": 24200
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "PRICE_OVER_CEILING: Đơn giá 12.100 vượt mức tối đa 9.500 (giá bảng 9.500, được nâng 0%).",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 1920,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 12000,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 25920,
+     "status": "submitted",
+     "edit_no": 1,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "them_dong_roi_luu",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "52f9aa21-da17-5a58-90a0-60c7e218d0b6",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "insert",
+     "gia_tri": [
+      {
+       "product_id": "@P2",
+       "unit_name": "Hop",
+       "quantity": 1,
+       "unit_price": 50000,
+       "line_discount": 0,
+       "conversion_factor": 10,
+       "vat_rate": 0.1,
+       "order_id": "@don",
+       "line_total": 50000
+      }
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 74000,
+      "vat": 7020,
+      "total": 81020
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 7020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Hop",
+       "hs": 10.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 50000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 81020,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 74000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "them_dong_duoi_gia",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "e2a69be3-aac8-5aac-bcf5-59873080d8ab",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "insert",
+     "gia_tri": [
+      {
+       "product_id": "@P2",
+       "unit_name": "Hop",
+       "quantity": 1,
+       "unit_price": 49000,
+       "line_discount": 0,
+       "conversion_factor": 10,
+       "vat_rate": 0.1,
+       "order_id": "@don",
+       "line_total": 49000
+      }
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "xoa_dong_roi_luu",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "da7bb27d-5d5d-5d4a-a2b8-686af4ed8c0c",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P2"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Chai"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 19000,
+      "vat": 1520,
+      "total": 20520
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 1520,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 20520,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 19000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thay_het_dong",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "25be3a42-9272-57f2-a617-4eeee4e4d68b",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P2"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Chai"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "insert",
+     "gia_tri": [
+      {
+       "product_id": "@P1",
+       "unit_name": "Thung",
+       "quantity": 1,
+       "unit_price": 228000,
+       "line_discount": 0,
+       "conversion_factor": 24,
+       "vat_rate": 0.08,
+       "order_id": "@don",
+       "line_total": 228000
+      }
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 228000,
+      "vat": 18240,
+      "total": 246240
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá dòng (kể cả bán dưới giá bảng) — bỏ giảm giá ở các dòng rồi gửi lại.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": null,
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": true,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thay_het_dong_dung_gia",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "22400d2e-ea7f-5c87-bafa-9bdb0df16d31",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P2"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Chai"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "insert",
+     "gia_tri": [
+      {
+       "product_id": "@P1",
+       "unit_name": "Loc",
+       "quantity": 1,
+       "unit_price": 57000,
+       "line_discount": 0,
+       "conversion_factor": 6,
+       "vat_rate": 0.08,
+       "order_id": "@don",
+       "line_total": 57000
+      }
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 57000,
+      "vat": 4560,
+      "total": 61560
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 4560,
+     "dong": [
+      {
+       "dv": "Loc",
+       "hs": 6.0,
+       "sl": 1,
+       "sp": "VTD-P1",
+       "gia": 57000,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 61560,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 57000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "doi_khach_va_dieu_khoan",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "d4eb8403-faf8-58c8-9bc9-e2398b3cc242",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "customer_id": "@C2",
+      "payment_terms": "NET15",
+      "expected_delivery": "2026-12-05",
+      "notes": "Doi khach",
+      "subtotal": 24000,
+      "vat": 2020,
+      "total": 26020
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 2",
+     "notes": "Doi khach",
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "NET15",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": "2026-12-05"
+    }
+   }
+  },
+  {
+   "ma": "dv_rong_khi_sua",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "c71707e1-e574-53c5-abea-f06d237bdea0",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "unit_name": "",
+      "quantity": 3,
+      "line_total": 28500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 3,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 9500,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": true,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "thue_ngoai_khoang",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "ef31ed51-2a19-59bd-b473-3fc056bf0e05",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "vat_rate": 8
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "new row for relation \"sales_order_lines\" violates check constraint \"sales_order_lines_vat_rate_check\"",
+      "ma_loi": "23514"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "ghi_tay_da_xuat",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "324e7844-2636-582e-9a92-e142253d9c01",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "invoiced_qty": 1
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "DON_KHOA: số đã xuất chỉ đổi khi lập / huỷ hóa đơn",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "sua_dong_khong_doi_tien",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "dde0c516-5e95-5bad-880c-e2ee7d59b900",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "note": "giao som"
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 24000,
+      "vat": 2020,
+      "total": 26020
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": "giao som"
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_tang_khong_quyen",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "3a3bf9df-9e7b-5376-9a9a-49d790b4d931",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 23000,
+      "vat": 2020,
+      "total": 25020
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "DISCOUNT_NOT_ALLOWED: Bạn không có quyền giảm giá đơn.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_giu_nguyen_khi_sua_dong",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_giam5",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "fd3ddc53-7b84-504a-92a2-a6535f831b34",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 90250,
+        "vat": 7600,
+        "total": 97850
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 10,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 95000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam5",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 11,
+      "line_total": 104500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam5",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 99750,
+      "vat": 8360,
+      "total": 108110
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 8360,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 11,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 108110,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 4750,
+     "subtotal": 99750,
+     "thong_bao": 0,
+     "sales_user": "sales_giam5",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_tang_vuot_tran",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_giam5",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "5284b3d5-1daa-5879-abeb-ca847d42b740",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 90250,
+        "vat": 7600,
+        "total": 97850
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 10,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 95000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam5",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 11,
+      "line_total": 104500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam5",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 99200,
+      "vat": 8360,
+      "total": 107560
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "DISCOUNT_OVER_LIMIT: Giảm giá đơn vượt mức cho phép (tối đa 5%).",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 7600,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 11,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 97850,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 14250,
+     "subtotal": 90250,
+     "thong_bao": 0,
+     "sales_user": "sales_giam5",
+     "co_moc_giam": true,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_tang_trong_tran",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_giam5",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "b3e1cc9f-f3d6-5f05-9a7f-1732f0f8d706",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 90250,
+        "vat": 7600,
+        "total": 97850
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 10,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 95000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam5",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 11,
+      "line_total": 104500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam5",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 99274,
+      "vat": 8360,
+      "total": 107634
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 8360,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 11,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 107634,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 5226,
+     "subtotal": 99274,
+     "thong_bao": 0,
+     "sales_user": "sales_giam5",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "giam_don_moc_qua_lan_hong",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_giam",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "339d6419-698a-5534-baac-3dab90a49258",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 18000,
+        "vat": 1520,
+        "total": 19520
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 3,
+      "line_total": 28500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 27500,
+      "vat": 2280,
+      "total": 29780
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_giam",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 27000,
+      "vat": 2280,
+      "total": 29280
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2280,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 3,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 29280,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 1500,
+     "subtotal": 27000,
+     "thong_bao": 0,
+     "sales_user": "sales_giam",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_giam_don_tuy_y",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "7f33e474-b011-5c32-8acb-8fca213bd932",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 4000,
+      "vat": 2020,
+      "total": 6020
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 6020,
+     "status": "submitted",
+     "edit_no": 1,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 20000,
+     "subtotal": 4000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "tru_hang_tra_khi_luu",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "56d7bb7d-b4f7-5526-a64d-38877cf6da2d",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 24000,
+      "vat": 2020,
+      "total": 23020
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 23020,
+     "status": "draft",
+     "edit_no": 1,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nhap_sang_gui",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "a4ddd84a-e028-5aaf-92b4-e3f9ec44b618",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "status": "submitted"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "gui_ve_nhap",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "66a6ac1a-320c-51bc-89b7-a8c653f6a7de",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "status": "draft"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ],
+      [
+       "submitted",
+       "draft"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nhap_sang_hoan_thanh",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "owner",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "ceaf220d-acb8-513b-953c-62ad2cc145d4",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "status": "completed"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "Không thể chuyển đơn từ draft sang completed",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "owner",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "gui_sang_hoan_thanh",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "owner",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "3a464013-ad64-5eea-8fec-b71dcb7ad6f1",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "status": "completed"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "USE_RPC: dùng nút Xuất hàng / Huỷ hóa đơn / Đóng đơn",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "owner",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "trang_thai_la",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "owner",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "fdaef405-a0d3-5267-abc7-63234f7d46d0",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "status": "approved"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "Không thể chuyển đơn từ draft sang approved",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "owner",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "huy_bang_cap_nhat",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "0bdc5188-9845-51aa-80cf-3aab7c0bf7f2",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "status": "cancelled"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "status": "draft"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "cancelled",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ],
+      [
+       "submitted",
+       "cancelled"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "huy_qua_rpc",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "5cad1cfc-41c5-5693-b234-e813bd47549f",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_order_lines",
+     "hanh_dong": "insert",
+     "gia_tri": [
+      {
+       "product_id": "@P1",
+       "unit_name": "Lon",
+       "quantity": 1,
+       "unit_price": 9500,
+       "line_discount": 0,
+       "conversion_factor": 1,
+       "vat_rate": 0.08,
+       "order_id": "@don",
+       "line_total": 9500
+      }
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "ORDER_CANCELLED: đơn này đã bị huỷ — không sửa dòng hàng được nữa. Tải lại đơn để xem trạng thái mới.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "cancelled",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ],
+      [
+       "submitted",
+       "cancelled"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 1,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": "sales_a",
+     "cancel_reason": "Khach doi y",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "huy_qua_rpc_hai_lan",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "0973ac5c-eb1c-5d98-83d7-a1a8d93eb961",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "lan 2"
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "cancelled",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "cancelled"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 1,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": "sales_a",
+     "cancel_reason": "Khach doi y",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_huy_don_nv",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "ae7290e8-a329-5e0e-8596-b02a3e02ed09",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "owner",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "NPP huy"
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "cancelled",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ],
+      [
+       "submitted",
+       "cancelled"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 1,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": "owner",
+     "cancel_reason": "NPP huy",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nv_khac_huy",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "1f449048-9de8-5c69-845d-704978317721",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_b",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "FORBIDDEN_NOT_OWNER: chỉ huỷ được đơn của mình",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "ke_toan_huy",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "a25c4d81-194a-5477-9f6e-d5b6c25278e3",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "accountant",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "FORBIDDEN: bạn không có quyền huỷ đơn",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "sua_dong_don_da_huy",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "a61ec2a9-3e35-596e-8389-b32f1d073646",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 5,
+      "line_total": 47500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "ORDER_CANCELLED: đơn này đã bị huỷ — không sửa dòng hàng được nữa. Tải lại đơn để xem trạng thái mới.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "cancelled",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ],
+      [
+       "submitted",
+       "cancelled"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 1,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": "sales_a",
+     "cancel_reason": "Khach doi y",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "xoa_dong_don_da_huy",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "f9acc0eb-e09a-5fd6-aa0a-e7ee6273cad7",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_order_lines",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "cancelled",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ],
+      [
+       "submitted",
+       "cancelled"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 1,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": "sales_a",
+     "cancel_reason": "Khach doi y",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": true,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nv_khac_sua_dau",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "6c3a12fb-4640-58da-aa39-0f20f5290f32",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_b",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "notes": "sua tram"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nv_khac_sua_dong",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "a5957905-debe-54c9-a23e-d617949ab722",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_b",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 9,
+      "line_total": 85500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_sua_nhap_nguoi_khac",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "32dcdc55-d5d1-57d0-802a-1358e38725e8",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "notes": "chu sua"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 9,
+      "line_total": 85500
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_sua_don_gui",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "0144f3c5-4b8f-532f-a18f-cd112c9f71b4",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_order_lines",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "quantity": 4,
+      "line_total": 38000
+     },
+     "loc": [
+      [
+       "order_id",
+       "eq",
+       "@don"
+      ],
+      [
+       "product_id",
+       "eq",
+       "@P1"
+      ],
+      [
+       "unit_name",
+       "eq",
+       "Lon"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 43000,
+      "vat": 3540,
+      "total": 46540
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 3540,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 4,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 46540,
+     "status": "submitted",
+     "edit_no": 1,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 43000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "kho_sua_don_gui",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "1f16779b-168e-589c-be94-4fa91b64b425",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "warehouse",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "notes": "kho ghi"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": "kho ghi",
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 1,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_doi_nguoi_dung_ten",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "350052aa-1ecf-5bf0-9ba5-ce6451857ead",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "sales_user_id": "@u:sales_b"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_b",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nv_doi_nguoi_dung_ten",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "596d38dd-1e42-59b8-a259-4600c6857ced",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "sales_user_id": "@u:sales_b"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "DON_HO_KHONG_DUOC_PHEP: chỉ chủ nhà phân phối hoặc quản lý mới lập đơn đứng tên nhân viên khác.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_dung_ten_kho",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "ce873c05-d881-55b5-828b-7edb0cfa3969",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "sales_user_id": "@u:warehouse"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": false,
+      "loi": "NHAN_VIEN_KHONG_BAN_HANG: warehouse không phải vai trò bán hàng, không đứng tên đơn được.",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "ghi_chu_hai_lan",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "80dde5ed-acf0-5184-a6e6-7d43f8bb1b6a",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "notes": "lan 1"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "notes": "lan 2"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": "lan 2",
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 2,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "luu_khong_doi_gi",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "59b30442-7b2d-5f42-a77b-ea53c16b1e0f",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "update",
+     "gia_tri": {
+      "subtotal": 24000,
+      "vat": 2020,
+      "total": 26020,
+      "notes": null,
+      "status": "draft"
+     },
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "draft",
+     "edit_no": 0,
+     "lich_su": null,
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "nv_xoa_nhap",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "98dbeee2-a13d-505e-bc11-fdc07f1e51ab",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "draft",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": false
+    }
+   }
+  },
+  {
+   "ma": "nv_xoa_don_gui",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "89e2e305-0ccf-58fa-9cf9-38ea9ddf8665",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_xoa_don_gui",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "26f7f079-8a82-58f3-b8f1-8e1643bec804",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "submitted",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 0,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": null,
+     "cancel_reason": null,
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": false,
+     "expected_delivery": null
+    }
+   }
+  },
+  {
+   "ma": "chu_xoa_don_huy",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "e3bdcdc7-6648-5e0f-b9d3-a0520dbc428d",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "bang": "sales_orders",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     }
+    ],
+    "ct": {
+     "con": false
+    }
+   }
+  },
+  {
+   "ma": "nv_xoa_don_huy",
+   "buoc": [
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "create_order_with_lines",
+     "tham_so": {
+      "p": {
+       "client_request_id": "7ec64e8f-793f-5cb9-966a-071fa90d0b5f",
+       "order": {
+        "order_code": "TAM-1",
+        "customer_id": "@C1",
+        "payment_terms": "COD",
+        "expected_delivery": null,
+        "notes": null,
+        "status": "submitted",
+        "approval_reason": null,
+        "sales_user_id": null,
+        "subtotal": 24000,
+        "vat": 2020,
+        "total": 26020
+       },
+       "lines": [
+        {
+         "product_id": "@P1",
+         "unit_name": "Lon",
+         "quantity": 2,
+         "unit_price": 9500,
+         "line_discount": 0,
+         "line_total": 19000,
+         "conversion_factor": 1,
+         "vat_rate": 0.08
+        },
+        {
+         "product_id": "@P2",
+         "unit_name": "Chai",
+         "quantity": 1,
+         "unit_price": 5000,
+         "line_discount": 0,
+         "line_total": 5000,
+         "conversion_factor": 1,
+         "vat_rate": 0.1
+        }
+       ],
+       "returns": null,
+       "return_lines": []
+      }
+     }
+    },
+    {
+     "buoc": "rpc",
+     "nguoi": "sales_a",
+     "ten": "cancel_order",
+     "tham_so": {
+      "p_order_id": "@don",
+      "p_reason": "Khach doi y"
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "bang": "sales_orders",
+     "hanh_dong": "delete",
+     "loc": [
+      [
+       "id",
+       "eq",
+       "@don"
+      ]
+     ]
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 1
+     },
+     {
+      "ok": true,
+      "so_dong": 0
+     }
+    ],
+    "ct": {
+     "con": true,
+     "vat": 2020,
+     "dong": [
+      {
+       "dv": "Lon",
+       "hs": 1.0,
+       "sl": 2,
+       "sp": "VTD-P1",
+       "gia": 9500,
+       "giam": 0,
+       "thue": 0.08,
+       "ghi_chu": null
+      },
+      {
+       "dv": "Chai",
+       "hs": 1.0,
+       "sl": 1,
+       "sp": "VTD-P2",
+       "gia": 5000,
+       "giam": 0,
+       "thue": 0.1,
+       "ghi_chu": null
+      }
+     ],
+     "khach": "Tap hoa VTD 1",
+     "notes": null,
+     "total": 26020,
+     "status": "cancelled",
+     "edit_no": 0,
+     "lich_su": [
+      [
+       "draft",
+       "submitted"
+      ],
+      [
+       "submitted",
+       "cancelled"
+      ]
+     ],
+     "giam_don": 0,
+     "subtotal": 24000,
+     "thong_bao": 1,
+     "sales_user": "sales_a",
+     "co_moc_giam": false,
+     "cancelled_by": "sales_a",
+     "cancel_reason": "Khach doi y",
+     "payment_terms": "COD",
+     "approval_reason": null,
+     "co_cancelled_at": true,
+     "expected_delivery": null
+    }
+   }
+  }
+ ]
+}

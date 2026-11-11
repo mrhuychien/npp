@@ -1,5 +1,6 @@
 """Bảng ĐƠN HÀNG của nppsale trên cổng: sales_orders (Sales Order + trường npp_*), sales_order_lines (Sales Order Item) —
-blueprint 02 phần Bán hàng §3.2, §4. Đọc theo sales_order_select (mig 161); ghi đi qua RPC (create_order_with_lines, sửa đơn…).
+blueprint 02 phần Bán hàng §3.2, §4. Đọc theo sales_order_select (mig 161); tạo đơn qua RPC create_order_with_lines; sửa đơn (ghi thẳng
+bảng như applyOrderEdit của nppsale) và xoá đơn đi bộ ghi GhiDon / GhiDongDon → nppsale.rpc.sua_don (luật trigger).
 
 sales_order_select: (đơn không phải nháp OR người đứng tên = tôi — NHÁP KÍN, kể cả chủ NPP) AND (vai ∈ owner / manager / accountant /
 warehouse OR quyền customer.view_all OR người đứng tên = tôi OR khách thuộc phân công đang hiệu lực của tôi).
@@ -8,6 +9,7 @@ from __future__ import annotations
 
 from ..dang_ky import Bang, CotDef, NguCanh, QuanHe, dang_ky
 from ..ngu_canh import co_quyen
+from ..sql import LoiCong
 from ._chung import c, co_cot, la_nv, org
 
 VAI_XEM_DON = ("owner", "manager", "accountant", "warehouse")
@@ -58,8 +60,10 @@ def _cot_don():
 		"tim_kd": c("npp_tim_kd"),
 	}
 	if _co_hd():
-		ra["completed_at"] = c("(SELECT MIN(hd.`creation`) FROM `tabSales Invoice` hd WHERE hd.`npp_don_hang` = {t}.`name` AND hd.`docstatus` = 1)", "gio")
-		ra["completed_by"] = c("(SELECT hd.`owner` FROM `tabSales Invoice` hd WHERE hd.`npp_don_hang` = {t}.`name` AND hd.`docstatus` = 1 "
+		# mốc xuất HĐ đầu tiên — giữ cả khi HĐ đã huỷ sau đó (nppsale không xoá completed_at khi huỷ HĐ; chặn xoá đơn)
+		ra["completed_at"] = c("(SELECT MIN(hd.`creation`) FROM `tabSales Invoice` hd WHERE hd.`npp_don_hang` = {t}.`name` "
+			"AND hd.`docstatus` IN (1, 2))", "gio")
+		ra["completed_by"] = c("(SELECT hd.`owner` FROM `tabSales Invoice` hd WHERE hd.`npp_don_hang` = {t}.`name` AND hd.`docstatus` IN (1, 2) "
 			"ORDER BY hd.`creation` LIMIT 1)")
 	else:
 		ra["completed_at"] = CotDef("NULL", "gio")
@@ -69,6 +73,43 @@ def _cot_don():
 
 def _rls_don(nc):
 	return ve_don(nc)
+
+
+class GhiDon:
+	"""sales_orders: sửa đầu đơn / xoá đơn theo luật trigger (nppsale.rpc.sua_don); tạo đơn đi RPC create_order_with_lines."""
+
+	def them(self, ds, nc):
+		raise LoiCong("42501", 'new row violates row-level security policy for table "sales_orders"', "Tạo đơn qua create_order_with_lines.",
+			http=403)
+
+	def sua(self, gia_tri, ids, nc):
+		from nppsale.rpc.sua_don import sua_dau_don
+
+		return sua_dau_don(gia_tri, ids, nc)
+
+	def xoa(self, ids, nc):
+		from nppsale.rpc.sua_don import xoa_don
+
+		return xoa_don(ids, nc)
+
+
+class GhiDongDon:
+	"""sales_order_lines: thêm / sửa / xoá dòng của đơn chưa xuất (applyOrderEdit) theo luật trigger (nppsale.rpc.sua_don)."""
+
+	def them(self, ds, nc):
+		from nppsale.rpc.sua_don import them_dong
+
+		return them_dong(ds, nc)
+
+	def sua(self, gia_tri, ids, nc):
+		from nppsale.rpc.sua_don import sua_dong
+
+		return sua_dong(gia_tri, ids, nc)
+
+	def xoa(self, ids, nc):
+		from nppsale.rpc.sua_don import xoa_dong
+
+		return xoa_dong(ids, nc)
 
 
 def _rls_dong(nc):
@@ -96,6 +137,7 @@ def nap():
 			QuanHe("sales_order_lines", "id", "order_id", True, ("sales_order_lines_order_id_fkey",)),
 		],
 		rls=_rls_don,
+		ghi=GhiDon(),
 	))
 	dang_ky(Bang(
 		ten="sales_order_lines",
@@ -112,6 +154,7 @@ def nap():
 			QuanHe("sales_orders", "order_id", "id", False, ("sales_order_lines_order_id_fkey",)),
 		],
 		rls=_rls_dong,
+		ghi=GhiDongDon(),
 	))
 
 

@@ -25,3 +25,13 @@ class NPPThongBao(Document):
 def on_doctype_update():
 	frappe.db.add_index("NPP Thong Bao", ["nguoi_nhan", "da_doc", "creation"], "idx_thong_bao_chua_doc")
 	frappe.db.add_index("NPP Thong Bao", ["nguoi_nhan", "creation"], "idx_thong_bao_gan_day")
+
+
+def gui_thong_bao(nguoi: str | None, loai: str, tieu_de: str, noi_dung: str | None = None, duong_dan: str | None = None,
+		du_lieu: dict | None = None):
+	"""_wf2_notify của nppsale: người nhận rỗng / không phải nhân viên → bỏ qua."""
+	if not nguoi or not frappe.db.exists("NPP Nhan Vien", nguoi):
+		return
+	frappe.get_doc({"doctype": "NPP Thong Bao", "nguoi_nhan": nguoi, "loai": loai, "tieu_de": (tieu_de or "")[:500],
+		"noi_dung": noi_dung, "duong_dan": duong_dan, "du_lieu": frappe.as_json(du_lieu) if du_lieu else None}).insert(
+		ignore_permissions=True)
