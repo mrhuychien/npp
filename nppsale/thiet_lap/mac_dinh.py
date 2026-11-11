@@ -11,7 +11,25 @@ def _co(dt: str) -> bool:
 	return bool(frappe.db.exists("DocType", dt))
 
 
+def _dat_ten_chung_tu():
+	"""Khách đặt tên KH-.##### (Selling Settings = Naming Series; bản bàn bạc 3.11)."""
+	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+	# Customer.autoname đọc mặc định toàn cục cust_master_name (Selling Settings.on_update ghi) — lưu qua controller, không set thẳng
+	if frappe.db.get_single_value("Selling Settings", "cust_master_name") != "Naming Series" or (
+		frappe.defaults.get_global_default("cust_master_name") != "Naming Series"
+	):
+		ss = frappe.get_single("Selling Settings")
+		ss.cust_master_name = "Naming Series"
+		ss.flags.ignore_mandatory = True
+		ss.save(ignore_permissions=True)
+	for prop, val in (("options", "KH-.#####"), ("default", "KH-.#####")):
+		if frappe.db.get_value("Property Setter", {"doc_type": "Customer", "field_name": "naming_series", "property": prop}, "value") != val:
+			make_property_setter("Customer", "naming_series", prop, val, "Text", validate_fields_for_doctype=False)
+
+
 def dam_bao():
+	_dat_ten_chung_tu()
 	if _co("NPP Cai Dat"):
 		cd = frappe.get_single("NPP Cai Dat")
 		doi = False

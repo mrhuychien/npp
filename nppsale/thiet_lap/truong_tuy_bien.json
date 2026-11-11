@@ -1,0 +1,171 @@
+{
+ "Customer": [
+  {
+   "fieldname": "npp_sb_diem_ban",
+   "fieldtype": "Section Break",
+   "insert_after": "customer_name",
+   "label": "Điểm bán (NPP)"
+  },
+  {
+   "fieldname": "npp_id_cu",
+   "fieldtype": "Data",
+   "insert_after": "npp_sb_diem_ban",
+   "label": "Mã cũ (nppsale)",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "npp_chu_cua_hang",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "insert_after": "npp_id_cu",
+   "label": "Chủ cửa hàng"
+  },
+  {
+   "fieldname": "npp_sdt",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "insert_after": "npp_chu_cua_hang",
+   "label": "Số điện thoại",
+   "options": "Phone",
+   "unique": 1
+  },
+  {
+   "fieldname": "npp_dia_chi",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_sdt",
+   "label": "Địa chỉ"
+  },
+  {
+   "fieldname": "npp_phuong",
+   "fieldtype": "Data",
+   "insert_after": "npp_dia_chi",
+   "label": "Phường / xã"
+  },
+  {
+   "fieldname": "npp_quan",
+   "fieldtype": "Data",
+   "insert_after": "npp_phuong",
+   "label": "Quận / huyện"
+  },
+  {
+   "fieldname": "npp_tinh",
+   "fieldtype": "Data",
+   "insert_after": "npp_quan",
+   "label": "Tỉnh / TP"
+  },
+  {
+   "fieldname": "npp_tuyen",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "insert_after": "npp_tinh",
+   "label": "Mã tuyến",
+   "search_index": 1
+  },
+  {
+   "default": "active",
+   "fieldname": "npp_trang_thai",
+   "fieldtype": "Select",
+   "insert_after": "npp_tuyen",
+   "label": "Trạng thái",
+   "options": "active\nsuspended\nlocked",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "npp_han_muc",
+   "fieldtype": "Currency",
+   "insert_after": "npp_trang_thai",
+   "label": "Hạn mức nợ"
+  },
+  {
+   "fieldname": "npp_vi_do",
+   "fieldtype": "Float",
+   "insert_after": "npp_han_muc",
+   "label": "Vĩ độ",
+   "precision": "7"
+  },
+  {
+   "fieldname": "npp_kinh_do",
+   "fieldtype": "Float",
+   "insert_after": "npp_vi_do",
+   "label": "Kinh độ",
+   "precision": "7"
+  },
+  {
+   "fieldname": "npp_duyet_anh_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_kinh_do",
+   "label": "Duyệt ảnh + vị trí lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_duyet_anh_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_duyet_anh_luc",
+   "label": "Người duyệt ảnh",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_nhac_anh_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_duyet_anh_boi",
+   "label": "Nhắc ảnh lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_nhac_tuyen_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_nhac_anh_luc",
+   "label": "Nhắc tuyến lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_ten_xuat_hd",
+   "fieldtype": "Data",
+   "insert_after": "npp_nhac_tuyen_luc",
+   "label": "Tên đơn vị xuất HĐ"
+  },
+  {
+   "fieldname": "npp_dia_chi_xuat_hd",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_ten_xuat_hd",
+   "label": "Địa chỉ xuất HĐ"
+  },
+  {
+   "fieldname": "npp_email_xuat_hd",
+   "fieldtype": "Data",
+   "insert_after": "npp_dia_chi_xuat_hd",
+   "label": "Email nhận HĐ",
+   "options": "Email"
+  },
+  {
+   "default": "Chuyển khoản",
+   "fieldname": "npp_hinh_thuc_tt",
+   "fieldtype": "Data",
+   "insert_after": "npp_email_xuat_hd",
+   "label": "Hình thức thanh toán (HĐĐT)"
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_hinh_thuc_tt",
+   "label": "Khoá tìm",
+   "read_only": 1
+  }
+ ],
+ "File": [
+  {
+   "fieldname": "npp_duong_dan",
+   "fieldtype": "Data",
+   "insert_after": "file_url",
+   "label": "Đường dẫn kho (nppsale)",
+   "length": 500,
+   "read_only": 1,
+   "unique": 1
+  }
+ ]
+}

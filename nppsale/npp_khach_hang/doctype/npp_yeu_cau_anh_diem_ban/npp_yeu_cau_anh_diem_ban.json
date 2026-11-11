@@ -1,0 +1,170 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "khach",
+  "loai",
+  "anh",
+  "o_anh",
+  "anh_url",
+  "chup_luc",
+  "vi_do",
+  "kinh_do",
+  "sai_so",
+  "vi_do_ghim",
+  "kinh_do_ghim",
+  "trang_thai",
+  "nguoi_xin",
+  "xin_luc",
+  "nguoi_duyet",
+  "duyet_luc",
+  "ghi_chu_duyet",
+  "khoa_cho"
+ ],
+ "fields": [
+  {
+   "fieldname": "khach",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Khách hàng",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Loại",
+   "options": "photo_add\nphoto_replace\nphoto_delete\npin_set\npin_clear",
+   "reqd": 1
+  },
+  {
+   "fieldname": "anh",
+   "fieldtype": "Link",
+   "label": "Ảnh bị thay / xoá",
+   "options": "NPP Anh Diem Ban"
+  },
+  {
+   "fieldname": "o_anh",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Ô ảnh"
+  },
+  {
+   "fieldname": "anh_url",
+   "fieldtype": "Data",
+   "label": "Ảnh mới",
+   "length": 500
+  },
+  {
+   "fieldname": "chup_luc",
+   "fieldtype": "Datetime",
+   "label": "Chụp lúc"
+  },
+  {
+   "fieldname": "vi_do",
+   "fieldtype": "Float",
+   "label": "Vĩ độ ảnh"
+  },
+  {
+   "fieldname": "kinh_do",
+   "fieldtype": "Float",
+   "label": "Kinh độ ảnh"
+  },
+  {
+   "fieldname": "sai_so",
+   "fieldtype": "Float",
+   "label": "Sai số (m)"
+  },
+  {
+   "fieldname": "vi_do_ghim",
+   "fieldtype": "Float",
+   "label": "Vĩ độ ghim"
+  },
+  {
+   "fieldname": "kinh_do_ghim",
+   "fieldtype": "Float",
+   "label": "Kinh độ ghim"
+  },
+  {
+   "default": "pending",
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái",
+   "options": "pending\napproved\nrejected\ncancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "nguoi_xin",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Người xin",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "default": "Now",
+   "fieldname": "xin_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Xin lúc",
+   "reqd": 1
+  },
+  {
+   "fieldname": "nguoi_duyet",
+   "fieldtype": "Link",
+   "label": "Người quyết",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "fieldname": "duyet_luc",
+   "fieldtype": "Datetime",
+   "label": "Quyết lúc"
+  },
+  {
+   "fieldname": "ghi_chu_duyet",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú quyết định"
+  },
+  {
+   "fieldname": "khoa_cho",
+   "fieldtype": "Data",
+   "label": "Khoá chờ",
+   "read_only": 1,
+   "unique": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Khach Hang",
+ "name": "NPP Yeu Cau Anh Diem Ban",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "khach,trang_thai",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

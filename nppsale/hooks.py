@@ -160,6 +160,20 @@ after_migrate = ["nppsale.thiet_lap.sau_khi_migrate"]
 # ---------------
 # Hook on document methods and events
 
+doc_events = {
+	"Customer": {
+		"validate": "nppsale.su_kien.khach_hang.validate",
+		"after_insert": "nppsale.su_kien.khach_hang.thay_doi",
+		"on_update": "nppsale.su_kien.khach_hang.thay_doi",
+		"on_trash": "nppsale.su_kien.khach_hang.thay_doi",
+	},
+	"Customer Group": {
+		"after_insert": "nppsale.su_kien.khach_hang.thay_doi",
+		"on_update": "nppsale.su_kien.khach_hang.thay_doi",
+		"on_trash": "nppsale.su_kien.khach_hang.thay_doi",
+	},
+}
+
 # doc_events = {
 # 	"*": {
 # 		"on_update": "method",

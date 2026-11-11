@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "nguon",
+  "tu_nv",
+  "den_nv",
+  "kieu",
+  "bo_loc",
+  "khach",
+  "ket_qua",
+  "tao_boi",
+  "tao_luc"
+ ],
+ "fields": [
+  {
+   "fieldname": "nguon",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Nguồn khách",
+   "options": "nv\nchua_ai\ntat_ca",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tu_nv",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "NV giao",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "fieldname": "den_nv",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "NV nhận",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "fieldname": "kieu",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Kiểu",
+   "options": "chung\nchuyen",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bo_loc",
+   "fieldtype": "JSON",
+   "label": "Bộ lọc"
+  },
+  {
+   "fieldname": "khach",
+   "fieldtype": "JSON",
+   "label": "Khách đã giao"
+  },
+  {
+   "fieldname": "ket_qua",
+   "fieldtype": "JSON",
+   "label": "Kết quả"
+  },
+  {
+   "fieldname": "tao_boi",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Người làm",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "default": "Now",
+   "fieldname": "tao_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Lúc",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Khach Hang",
+ "name": "NPP Ban Giao Khach",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "tu_nv,den_nv,kieu",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

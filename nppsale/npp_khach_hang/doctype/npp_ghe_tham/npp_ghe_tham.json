@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "nhan_vien",
+  "khach",
+  "ngay_ghe",
+  "vao_luc",
+  "ra_luc",
+  "vi_do",
+  "kinh_do",
+  "dia_chi_vao",
+  "ket_qua",
+  "don_hang",
+  "ghi_chu",
+  "anh_cu"
+ ],
+ "fields": [
+  {
+   "fieldname": "nhan_vien",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Nhân viên",
+   "options": "NPP Nhan Vien",
+   "reqd": 1
+  },
+  {
+   "fieldname": "khach",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Khách hàng",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "ngay_ghe",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ngày ghé",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vao_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Vào lúc"
+  },
+  {
+   "fieldname": "ra_luc",
+   "fieldtype": "Datetime",
+   "label": "Ra lúc"
+  },
+  {
+   "fieldname": "vi_do",
+   "fieldtype": "Float",
+   "label": "Vĩ độ"
+  },
+  {
+   "fieldname": "kinh_do",
+   "fieldtype": "Float",
+   "label": "Kinh độ"
+  },
+  {
+   "fieldname": "dia_chi_vao",
+   "fieldtype": "Small Text",
+   "label": "Địa chỉ check-in"
+  },
+  {
+   "fieldname": "ket_qua",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Kết quả",
+   "options": "\norder_placed\nno_order\nclosed\nnot_visited"
+  },
+  {
+   "fieldname": "don_hang",
+   "fieldtype": "Link",
+   "label": "Đơn hàng",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "anh_cu",
+   "fieldtype": "Data",
+   "label": "Ảnh (cũ)",
+   "length": 500
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Khach Hang",
+ "name": "NPP Ghe Tham",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "khach,nhan_vien,ngay_ghe",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

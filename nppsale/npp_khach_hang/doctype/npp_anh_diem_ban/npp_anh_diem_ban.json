@@ -1,0 +1,99 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "khach",
+  "o_anh",
+  "anh_url",
+  "chup_luc",
+  "vi_do",
+  "kinh_do",
+  "sai_so",
+  "nguoi_tai"
+ ],
+ "fields": [
+  {
+   "fieldname": "khach",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Khách hàng",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "o_anh",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Ô ảnh",
+   "reqd": 1
+  },
+  {
+   "fieldname": "anh_url",
+   "fieldtype": "Data",
+   "label": "Đường dẫn ảnh",
+   "length": 500,
+   "reqd": 1
+  },
+  {
+   "fieldname": "chup_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Chụp lúc",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vi_do",
+   "fieldtype": "Float",
+   "label": "Vĩ độ"
+  },
+  {
+   "fieldname": "kinh_do",
+   "fieldtype": "Float",
+   "label": "Kinh độ"
+  },
+  {
+   "fieldname": "sai_so",
+   "fieldtype": "Float",
+   "label": "Sai số (m)"
+  },
+  {
+   "fieldname": "nguoi_tai",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Người chụp",
+   "options": "NPP Nhan Vien"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Khach Hang",
+ "name": "NPP Anh Diem Ban",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "khach",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

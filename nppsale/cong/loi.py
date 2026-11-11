@@ -2,8 +2,13 @@
 Postgres (code P0001, message = mã nppsale) để explainInvoiceError, errorMessage, kiemLaiSauLoiXuat của nppsale chạy nguyên."""
 from __future__ import annotations
 
+try:  # Desk / bench hiện NppLoi như lỗi kiểm tra (thông báo), không phải lỗi máy chủ
+	from frappe.exceptions import ValidationError as _Goc
+except ImportError:  # test thuần không có frappe
+	_Goc = Exception
 
-class NppLoi(Exception):
+
+class NppLoi(_Goc):
 	def __init__(self, ma: str, chi_tiet: str | None = None, code: str = "P0001", http: int = 400, goi_y: str | None = None):
 		super().__init__(ma)
 		self.ma, self.chi_tiet, self.code, self.http, self.goi_y = ma, chi_tiet, code, http, goi_y

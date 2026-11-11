@@ -38,3 +38,32 @@ def email_ky_thuat(tho: str | None) -> str:
 	if not p:
 		raise ValueError("Không sinh được email từ số điện thoại rỗng")
 	return f"{p}@{MIEN_EMAIL_KY_THUAT}"
+
+
+# --- SĐT của KHÁCH (luật riêng — nppsale `src/lib/customers/tao-khach.ts`, `kiem-trung-hang-loat.ts`) -----------------------
+_KY_TU_SO = re.compile(r"^[\d\s.+()-]+$")
+
+
+def chuan_hoa_sdt_khach(tho: str | None) -> str:
+	"""chuanHoaSdt: chỉ chữ số; đúng 84 + 9 số → 0 + 9 số; còn lại giữ nguyên dãy số (không xử lý 00 / thiếu 0 đầu như SĐT NV)."""
+	d = re.sub(r"\D", "", str(tho or ""))
+	if re.fullmatch(r"84\d{9}", d):
+		return "0" + d[2:]
+	return d
+
+
+def sdt_khach_de_luu(tho: str | None) -> str:
+	"""sdtDeLuu: chuỗi chỉ gồm số / dấu cách . + ( ) - và chuẩn hoá ra 0 + 8..10 số → lưu bản chuẩn hoá; còn lại giữ nguyên
+	(đã cắt khoảng trắng hai đầu) — UNIQUE(org_id, phone) so nguyên văn nên "0911.111.111" lưu thô là khách thứ hai cùng số."""
+	t = str(tho or "").strip()
+	d = chuan_hoa_sdt_khach(t)
+	return d if _KY_TU_SO.match(t or "x") and re.fullmatch(r"0\d{8,10}", d) else t
+
+
+def sdt_khach_tim_chinh_xac(q: str | None) -> str:
+	"""sdtTimChinhXac: chỉ tìm khi gõ đúng một số điện thoại (0 + 9..10 số sau chuẩn hoá); không thì "" (không tìm từng phần)."""
+	t = str(q or "").strip()
+	if not t or not _KY_TU_SO.match(t):
+		return ""
+	d = chuan_hoa_sdt_khach(t)
+	return d if re.fullmatch(r"0\d{9,10}", d) else ""

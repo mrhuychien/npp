@@ -31,3 +31,17 @@ class TestSdt(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestSdtKhach(unittest.TestCase):
+	"""SĐT khách (chuanHoaSdt / sdtDeLuu / sdtTimChinhXac) — mẫu sinh bằng chính hàm TS (vite-node, du_lieu/sdt_khach_mau.json)."""
+
+	def test_mau_ts(self):
+		from nppsale.luat.sdt import chuan_hoa_sdt_khach, sdt_khach_de_luu, sdt_khach_tim_chinh_xac
+
+		mau = json.load(open(os.path.join(os.path.dirname(__file__), "du_lieu", "sdt_khach_mau.json"), encoding="utf-8"))
+		self.assertGreater(len(mau), 10)
+		for m in mau:
+			self.assertEqual(chuan_hoa_sdt_khach(m["v"]), m["chuan"], m)
+			self.assertEqual(sdt_khach_de_luu(m["v"]), m["luu"], m)
+			self.assertEqual(sdt_khach_tim_chinh_xac(m["v"]), m["tim"], m)
