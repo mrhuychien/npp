@@ -1,17 +1,28 @@
-"""RPC cùng tên với hàm Postgres của nppsale (74 hàm). Khai bằng @rpc("ten", ghi=True|False).
+"""RPC cùng tên với hàm Postgres của nppsale. Khai bằng @rpc("ten", ghi=True|False, cho_khach=False).
 
-ghi=False: hàm chỉ đọc (STABLE ở nppsale) — gọi được bằng GET (an toàn để thử lại); ghi=True: chỉ POST."""
+ghi=False: hàm chỉ đọc (STABLE ở nppsale) — gọi được bằng GET (an toàn để thử lại); ghi=True: chỉ POST.
+cho_khach=True: gọi được khi chưa đăng nhập (nppsale GRANT … TO anon) — luôn kèm giới hạn tần suất theo IP."""
 from __future__ import annotations
 
 import importlib
 import pkgutil
+from dataclasses import dataclass
+from typing import Callable
 
 DANG_KY: dict = {}
 
 
-def rpc(ten: str, ghi: bool = True):
+@dataclass
+class MucRpc:
+	ham: Callable
+	ghi: bool = True
+	cho_khach: bool = False
+	gioi_han_phut: int = 20  # lượt / phút / IP khi người gọi là khách
+
+
+def rpc(ten: str, ghi: bool = True, cho_khach: bool = False, gioi_han_phut: int = 20):
 	def boc(ham):
-		DANG_KY[ten] = (ham, ghi)
+		DANG_KY[ten] = MucRpc(ham, ghi, cho_khach, gioi_han_phut)
 		return ham
 	return boc
 

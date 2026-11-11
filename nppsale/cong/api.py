@@ -66,23 +66,38 @@ def truy_van(yeu_cau=None):
 		return _loi(e)
 
 
-@frappe.whitelist(methods=["GET", "POST"])
+def _gioi_han_khach(ten: str, toi_da: int) -> bool:
+	"""Đếm lượt gọi của khách (chưa đăng nhập) theo IP trong một phút — True nếu còn được gọi."""
+	ip = getattr(frappe.local, "request_ip", None) or "?"
+	k = frappe.cache.make_key(f"npp_rl:{ten}:{ip}")
+	n = frappe.cache.incr(k)
+	if n == 1:
+		frappe.cache.expire(k, 60)
+	return n <= toi_da
+
+
+@frappe.whitelist(methods=["GET", "POST"], allow_guest=True)
 def rpc(ten=None, tham_so=None, sau=None):
-	if frappe.session.user == "Guest":
-		return {"error": {"message": "JWT expired", "code": "PGRST301", "details": None, "hint": None}, "status": 401}
 	from nppsale import rpc as R
 
 	R.nap()
 	muc = R.DANG_KY.get(ten or "")
+	khach = frappe.session.user == "Guest"
 	if muc is None:
+		if khach:
+			return {"error": {"message": "JWT expired", "code": "PGRST301", "details": None, "hint": None}, "status": 401}
 		return {"error": {"message": f"Could not find the function public.{ten} in the schema cache", "code": "PGRST202",
 			"details": None, "hint": None}, "status": 404}
-	ham, la_ghi = muc
-	if la_ghi and _phuong_thuc() != "POST":
+	if khach and not muc.cho_khach:
+		return {"error": {"message": "JWT expired", "code": "PGRST301", "details": None, "hint": None}, "status": 401}
+	if khach and not _gioi_han_khach(ten, muc.gioi_han_phut):
+		return {"error": {"message": "Thử quá nhiều lần — đợi một phút rồi thử lại.", "code": "429", "details": None, "hint": None},
+			"status": 429}
+	if muc.ghi and _phuong_thuc() != "POST":
 		return {"error": {"message": f"{ten} ghi sổ — phải gọi bằng POST", "code": "PGRST105", "details": None, "hint": None},
 			"status": 405}
 	try:
-		kq = ham(**_doc_json(tham_so))
+		kq = muc.ham(**_doc_json(tham_so))
 		sau = _doc_json(sau)
 		if sau:
 			if not isinstance(kq, list):
