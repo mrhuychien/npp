@@ -115,3 +115,34 @@ class TestCongKhachHang(IntegrationTestCase):
 		self.assertEqual(r["sales_user_id"], self.a.user)  # ép = người gọi
 		self.assertTrue(r["check_in_at"].startswith("2026-11-11T08:00:00"))  # 01:00 UTC = 08:00 giờ VN
 		self.assertEqual(doc({"bang": "visit_logs", "select": "id"}, self.b)["data"], [])
+
+
+class TestKhachThieuAnh(IntegrationTestCase):
+	def setUp(self):
+		frappe.db.savepoint("npp_test")
+		self.chu = _nv("0916000751", "owner")
+		self.a = _nv("0916000752", "sales")
+
+	def tearDown(self):
+		frappe.db.rollback(save_point="npp_test")
+
+	def test_loc_dem_phan_trang_theo_nguoi_goi(self):
+		from nppsale.rpc.khach_hang import khach_cho_duyet_anh, khach_thieu_anh
+
+		k1 = _them_khach(self.a, "AA Thiếu cả hai", "0987000101")
+		k2 = _them_khach(self.a, "AB Có vị trí", "0987000102", gps_lat=20.8, gps_lng=106.7)
+		k3 = _them_khach(self.chu, "AC Của chủ", "0987000103")
+		with _La(self.a):
+			ds = khach_thieu_anh("all", 0, 50)
+			ids = [r["id"] for r in ds]
+			self.assertIn(k1, ids)
+			self.assertIn(k2, ids)  # có vị trí nhưng chưa có ảnh
+			self.assertNotIn(k3, ids)  # NVBH không thấy khách của chủ
+			self.assertEqual(ds[0]["total_count"], len(ds))
+			self.assertEqual([r["id"] for r in khach_thieu_anh("no_gps", 0, 50) if r["id"] in (k1, k2)], [k1])
+			trang = khach_thieu_anh("all", 0, 1)
+			self.assertEqual(len(trang), 1)
+			self.assertGreaterEqual(trang[0]["total_count"], 2)
+			cho = [r["id"] for r in khach_cho_duyet_anh(0, 50)]
+			self.assertIn(k2, cho)  # chưa duyệt mà đã có vị trí → chờ duyệt
+			self.assertNotIn(k1, cho)

@@ -64,3 +64,69 @@ def claim_customer_for_me(p_customer_id: str):
 	except (frappe.DuplicateEntryError, frappe.UniqueValidationError) as e:
 		raise LoiCong("23505", 'duplicate key value violates unique constraint "customer_assignments_customer_id_user_id_key"', http=409) from e
 	return {"status": "claimed", "role": vai}
+
+
+def _ve_khach_sql(nc) -> tuple[str, dict]:
+	"""Vế customer_select (SECURITY INVOKER của mig 253 = RLS lọc theo người gọi) dạng câu SQL trên bí danh c."""
+	from nppsale.cong.bang.khach_hang import ve_khach
+
+	v = ve_khach(nc, "c.`name`")
+	if v is None:
+		return "1=1", {}
+	if v is False:
+		return "1=0", {}
+	return v[0], v[1]
+
+
+def _gioi_han(p_offset, p_limit) -> tuple[int, int]:
+	return max(int(p_offset or 0), 0), min(max(int(p_limit or 50), 1), 200)
+
+
+@rpc("khach_thieu_anh", ghi=False)
+def khach_thieu_anh(p_tab: str = "all", p_offset: int = 0, p_limit: int = 50):
+	"""Điểm bán đang hoạt động còn thiếu ảnh / vị trí (mig 253): lọc + đếm ảnh + phân trang trên máy chủ, mỗi dòng kèm total_count."""
+	nc = hien_tai()
+	ve, tham = _ve_khach_sql(nc)
+	tab = p_tab or "all"
+	dieu = {"no_photo": "kh.photo_count = 0", "no_gps": "kh.gps_lat IS NULL OR kh.gps_lng IS NULL"}.get(
+		tab, "kh.photo_count = 0 OR kh.gps_lat IS NULL OR kh.gps_lng IS NULL")
+	bo, lay = _gioi_han(p_offset, p_limit)
+	ds = frappe.db.sql(f"""
+		SELECT kh.*, COUNT(*) OVER () AS total_count FROM (
+			SELECT c.`name` AS id, c.`customer_name` AS store_name, c.`npp_dia_chi` AS address, c.`npp_sdt` AS phone,
+				NULLIF(c.`npp_vi_do`, 0) AS gps_lat, NULLIF(c.`npp_kinh_do`, 0) AS gps_lng,
+				(SELECT COUNT(*) FROM `tabNPP Anh Diem Ban` p WHERE p.`khach` = c.`name`) AS photo_count
+			FROM `tabCustomer` c
+			WHERE IFNULL(c.`npp_trang_thai`, 'active') = 'active' AND ({ve})
+		) kh
+		WHERE {dieu}
+		ORDER BY kh.store_name, kh.id
+		LIMIT {lay} OFFSET {bo}
+	""", tham, as_dict=True)
+	return [{**r, "gps_lat": float(r.gps_lat) if r.gps_lat is not None else None, "gps_lng": float(r.gps_lng) if r.gps_lng is not None else None,
+		"photo_count": int(r.photo_count), "total_count": int(r.total_count)} for r in ds]
+
+
+@rpc("khach_cho_duyet_anh", ghi=False)
+def khach_cho_duyet_anh(p_offset: int = 0, p_limit: int = 50):
+	"""Điểm bán chờ duyệt ảnh + vị trí (mig 244 / 253): có yêu cầu đổi đang chờ, hoặc chưa duyệt mà đã có ảnh / vị trí."""
+	nc = hien_tai()
+	ve, tham = _ve_khach_sql(nc)
+	bo, lay = _gioi_han(p_offset, p_limit)
+	ds = frappe.db.sql(f"""
+		SELECT kh.*, COUNT(*) OVER () AS total_count FROM (
+			SELECT c.`name` AS id, c.`customer_name` AS store_name, c.`npp_dia_chi` AS address, c.`npp_sdt` AS phone,
+				NULLIF(c.`npp_vi_do`, 0) AS gps_lat, NULLIF(c.`npp_kinh_do`, 0) AS gps_lng,
+				(SELECT COUNT(*) FROM `tabNPP Anh Diem Ban` p WHERE p.`khach` = c.`name`) AS photo_count,
+				(c.`npp_duyet_anh_luc` IS NOT NULL) AS da_duyet,
+				(SELECT COUNT(*) FROM `tabNPP Yeu Cau Anh Diem Ban` r WHERE r.`khach` = c.`name` AND r.`trang_thai` = 'pending') AS so_yeu_cau
+			FROM `tabCustomer` c
+			WHERE IFNULL(c.`npp_trang_thai`, 'active') = 'active' AND ({ve})
+		) kh
+		WHERE kh.so_yeu_cau > 0 OR (NOT kh.da_duyet AND (kh.photo_count > 0 OR (kh.gps_lat IS NOT NULL AND kh.gps_lng IS NOT NULL)))
+		ORDER BY kh.store_name, kh.id
+		LIMIT {lay} OFFSET {bo}
+	""", tham, as_dict=True)
+	return [{**r, "gps_lat": float(r.gps_lat) if r.gps_lat is not None else None, "gps_lng": float(r.gps_lng) if r.gps_lng is not None else None,
+		"photo_count": int(r.photo_count), "da_duyet": bool(r.da_duyet), "so_yeu_cau": int(r.so_yeu_cau), "total_count": int(r.total_count)}
+		for r in ds]
