@@ -105,3 +105,23 @@ class TestCongTichHop(IntegrationTestCase):
 		ket = api.truy_van({"bang": "t_sales_orders", "select": "id", "limit": 2})
 		self.assertEqual(len(ket["data"]), 2)
 		self.assertEqual(ket["status"], 200)
+
+
+class TestGopNhomLong(IntegrationTestCase):
+	"""count() kèm bảng lồng nhiều-một (đếm theo tuyến — gopMayChu / docDemTheoTuyen của nppsale)."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		_khai_tam()
+
+	def test_dem_theo_cot_bang_long(self):
+		ket = doc({"bang": "t_sales_orders", "select": "count(), customer:t_customers!inner(group)"}, NC_CHU)["data"]
+		mong = {r[0]: r[1] for r in frappe.db.sql("SELECT c.customer_group, COUNT(*) FROM `tabSales Order` so JOIN `tabCustomer` c "
+			"ON c.name = so.customer GROUP BY c.customer_group")}
+		self.assertEqual({r["customer"]["group"]: r["count"] for r in ket}, mong)
+		self.assertTrue(all(set(r) == {"count", "customer"} for r in ket))
+
+	def test_gop_kem_mot_nhieu_bao_loi_ro(self):
+		with self.assertRaises(LoiCong):
+			doc({"bang": "t_sales_orders", "select": "count(), lines:t_sales_order_lines(product_id)"}, NC_CHU)

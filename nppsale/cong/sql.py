@@ -179,6 +179,9 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 		if o.get("bang_ngoai"):
 			thu_tu_long.setdefault(o["bang_ngoai"], []).append(o)
 
+	if nut_gop and nut_long:
+		return _ke_hoach_gop_long(bang, yc, nc, cot, nut_long, nut_gop, where, dieu_long, thu_tu_goc, ts, bd), bang
+
 	ke_long = []
 	for i, nl in enumerate(nut_long):
 		kl = _ke_hoach_long(bang, nl, f"k{i}", dieu_long, thu_tu_long, nc)
@@ -189,8 +192,6 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 			where.append(_exists_long(kl, e_nay, nc, ts, f"e{i}"))
 
 	if nut_gop:
-		if nut_long:
-			raise LoiCong("PGRST100", "gộp nhóm kèm bảng lồng chưa hỗ trợ ở cổng — dùng đường lùi")
 		nhom = [c for c in cot]
 		chon = [f"{c[0]} AS `{c[1]}`" for c in nhom]
 		cot_ra = [(c[2], c[1], c[3]) for c in nhom]
@@ -232,6 +233,52 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 		sql_dem = "SELECT COUNT(*) AS n" + from_where
 		tham_dem = dict(ts.gia_tri)
 	return KeHoach(sql, ts.gia_tri, sql_dem, tham_dem, cot_ra, ke_long), bang
+
+
+def _ke_hoach_gop_long(bang, yc, nc, cot, nut_long, nut_gop, where, dieu_long, thu_tu_goc, ts, bd) -> KeHoach:
+	"""Gộp nhóm theo cột của bảng lồng NHIỀU-MỘT (PostgREST: `count(), customer:customers!inner(channel)` → mỗi nhóm một dòng
+	{count, customer: {channel}}). Nối bảng lồng bằng JOIN (inner → INNER JOIN, còn lại LEFT JOIN) kèm vế RLS + bộ lọc của nó;
+	cột ra dạng (khoá lồng, cột) để dựng object lồng. Bảng lồng một-nhiều / lồng nhiều cấp / gộp bên trong bảng lồng: chưa hỗ trợ."""
+	join = []
+	nhom = list(cot)  # (biểu thức, bí danh, khoá ra, kiểu) của bảng gốc
+	for i, nl in enumerate(nut_long):
+		qh = D.tim_quan_he(bang, nl.ten, nl.goi_y)
+		if qh is None:
+			raise LoiCong("PGRST200", f"Could not find a relationship between '{bang.ten}' and '{nl.ten}' in the schema cache")
+		if qh.nhieu or any(isinstance(x, (C.Long, C.Gop)) for x in nl.con):
+			raise LoiCong("PGRST100", "gộp nhóm kèm bảng lồng một-nhiều / lồng nhiều cấp chưa hỗ trợ ở cổng — dùng đường lùi")
+		bang_dich = D.lay(qh.bang)
+		if bang_dich is None:
+			raise LoiCong("42P01", f'relation "public.{qh.bang}" does not exist', http=404)
+		al = f"q_j{i}"
+		e_nay, _ = _bieu(bang, qh.cot_nay, bd)
+		e_kia, _ = _bieu(bang_dich, qh.cot_kia, al)
+		dk = dieu_long.get(nl.khoa_ra, []) + (dieu_long.get(nl.ten, []) if nl.khoa_ra != nl.ten else [])
+		on = [f"{e_kia} = {e_nay}", vế_rls(bang_dich, nc, al, ts)] + [dieu_kien(bang_dich, d, al, ts) for d in dk]
+		join.append(f"{'INNER' if nl.inner else 'LEFT'} JOIN {bang_dich.nguon} {al} ON {' AND '.join(on)}")
+		con = nl.con or [C.TatCa()]
+		for x in con:
+			ten_cot = list(bang_dich.cot) if isinstance(x, C.TatCa) else [x.ten]
+			for tc in ten_cot:
+				e, cd = _bieu(bang_dich, tc, al)
+				ra = tc if isinstance(x, C.TatCa) else (x.bi_danh or x.ten)
+				nhom.append((e, f"n{i}__{ra}", (nl.khoa_ra, ra), cd.kieu))
+	chon = [f"{c[0]} AS `{c[1]}`" for c in nhom]
+	cot_ra = [(c[2], c[1], c[3]) for c in nhom if c[2] is not None]
+	for j, g in enumerate(nut_gop):
+		if g.ham == "count" and g.cot is None:
+			ex, kieu = "COUNT(*)", "so"
+		else:
+			e, cd = _bieu(bang, g.cot, bd)
+			ex = f"{g.ham.upper()}({e})"
+			kieu = "so" if g.ham == "count" else ("tien" if cd.kieu in ("tien", "so") else cd.kieu)
+		chon.append(f"{ex} AS `g__{j}`")
+		cot_ra.append((g.khoa_ra, f"g__{j}", kieu))
+	sql = f"SELECT {', '.join(chon)} FROM {bang.nguon} {bd} {' '.join(join)} WHERE {' AND '.join(where)}"
+	if nhom:
+		sql += " GROUP BY " + ", ".join(c[0] for c in nhom)
+	sql += _sap_xep(bang, thu_tu_goc, bd) if thu_tu_goc and all(bang.cot_def(o['cot']) for o in thu_tu_goc) else ""
+	return KeHoach(sql, ts.gia_tri, None, None, cot_ra, [], co_gop=True)
 
 
 def _ke_hoach_long(bang_cha: D.Bang, nl: C.Long, khoa_an: str, dieu_long: dict, thu_tu_long: dict, nc) -> KeHoachLong:

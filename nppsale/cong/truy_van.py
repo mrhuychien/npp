@@ -65,7 +65,19 @@ def chuan_gia_tri(kieu: str | None, v):
 
 
 def _dung_dong(raw: dict, cot_ra: list) -> dict:
-	return {k: chuan_gia_tri(kieu, raw.get(bd)) for (k, bd, kieu) in cot_ra}
+	ra: dict = {}
+	long = set()
+	for k, bd, kieu in cot_ra:
+		v = chuan_gia_tri(kieu, raw.get(bd))
+		if isinstance(k, tuple):  # cột của bảng lồng nhiều-một trong câu gộp nhóm → object lồng
+			ra.setdefault(k[0], {})[k[1]] = v
+			long.add(k[0])
+		else:
+			ra[k] = v
+	for k in long:  # LEFT JOIN không khớp → null như PostgREST (chỉ object lồng, không đụng cột JSON thường)
+		if all(x is None for x in ra[k].values()):
+			ra[k] = None
+	return ra
 
 
 def _gan_long(raw_cha: list[dict], ra_cha: list[dict], kl: KeHoachLong, nc: D.NguCanh):
