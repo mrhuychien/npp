@@ -1,0 +1,204 @@
+{
+ "actions": [],
+ "autoname": "field:user",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "id_cu",
+  "ho_ten",
+  "vai",
+  "sdt",
+  "dang_hoat_dong",
+  "sb_gia",
+  "cho_sua_gia",
+  "tran_tang_gia",
+  "cho_giam_gia",
+  "kieu_tran_giam",
+  "co_tran_giam",
+  "tran_giam",
+  "sb_nghi",
+  "nghi_viec_luc",
+  "nghi_viec_boi",
+  "cong_ty",
+  "sb_qr",
+  "qr_token",
+  "qr_token_bam",
+  "qr_cap_luc",
+  "khoa_tim"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Tài khoản đăng nhập",
+   "options": "User",
+   "reqd": 1,
+   "set_only_once": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "id_cu",
+   "fieldtype": "Data",
+   "label": "Mã cũ (nppsale)",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "ho_ten",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Họ tên",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vai",
+   "options": "owner\nmanager\naccountant\nsales\nwarehouse\ndriver",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sdt",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Số điện thoại",
+   "options": "Phone"
+  },
+  {
+   "default": "1",
+   "fieldname": "dang_hoat_dong",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Đang hoạt động"
+  },
+  {
+   "fieldname": "sb_gia",
+   "fieldtype": "Section Break",
+   "label": "Giá và giảm giá"
+  },
+  {
+   "default": "0",
+   "fieldname": "cho_sua_gia",
+   "fieldtype": "Check",
+   "label": "Được sửa giá"
+  },
+  {
+   "default": "0",
+   "fieldname": "tran_tang_gia",
+   "fieldtype": "Float",
+   "label": "Trần tăng giá (%)"
+  },
+  {
+   "default": "0",
+   "fieldname": "cho_giam_gia",
+   "fieldtype": "Check",
+   "label": "Được giảm giá"
+  },
+  {
+   "default": "pct",
+   "fieldname": "kieu_tran_giam",
+   "fieldtype": "Select",
+   "label": "Kiểu trần giảm",
+   "options": "pct\nvnd"
+  },
+  {
+   "fieldname": "co_tran_giam",
+   "fieldtype": "Check",
+   "label": "Có trần giảm"
+  },
+  {
+   "depends_on": "eval:doc.co_tran_giam",
+   "fieldname": "tran_giam",
+   "fieldtype": "Float",
+   "label": "Trần giảm"
+  },
+  {
+   "fieldname": "sb_nghi",
+   "fieldtype": "Section Break",
+   "label": "Nghỉ việc"
+  },
+  {
+   "fieldname": "nghi_viec_luc",
+   "fieldtype": "Datetime",
+   "label": "Nghỉ việc lúc"
+  },
+  {
+   "fieldname": "nghi_viec_boi",
+   "fieldtype": "Link",
+   "label": "Người cho nghỉ",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "fieldname": "cong_ty",
+   "fieldtype": "Table",
+   "label": "Công ty được làm",
+   "options": "NPP Nhan Vien Cong Ty"
+  },
+  {
+   "fieldname": "sb_qr",
+   "fieldtype": "Section Break",
+   "label": "QR đăng nhập"
+  },
+  {
+   "fieldname": "qr_token",
+   "fieldtype": "Password",
+   "label": "Mã QR",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "qr_token_bam",
+   "fieldtype": "Data",
+   "label": "Băm mã QR",
+   "permlevel": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "qr_cap_luc",
+   "fieldtype": "Datetime",
+   "label": "Phát QR lúc",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "khoa_tim",
+   "fieldtype": "Small Text",
+   "label": "Khoá tìm"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP He Thong",
+ "name": "NPP Nhan Vien",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "ho_ten,sdt,vai",
+ "show_title_field_in_link": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "ho_ten",
+ "track_changes": 1
+}

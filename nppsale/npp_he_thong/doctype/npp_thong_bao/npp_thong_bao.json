@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "nguoi_nhan",
+  "loai",
+  "tieu_de",
+  "noi_dung",
+  "duong_dan",
+  "da_doc",
+  "doc_luc",
+  "du_lieu"
+ ],
+ "fields": [
+  {
+   "fieldname": "nguoi_nhan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Người nhận",
+   "options": "NPP Nhan Vien",
+   "reqd": 1
+  },
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Loại",
+   "options": "order_pending_approval\norder_approved\norder_cancelled\norder_completed\norder_edited\ninvoice_cancelled\nreturn_completed\npayment_received\nreceivable_overdue\nvisit_logged\ncustomer_photo_missing\ncustomer_route_missing\ncustomer_photo_review\ninfo",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tieu_de",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tiêu đề",
+   "length": 500,
+   "reqd": 1
+  },
+  {
+   "fieldname": "noi_dung",
+   "fieldtype": "Small Text",
+   "label": "Nội dung"
+  },
+  {
+   "fieldname": "duong_dan",
+   "fieldtype": "Data",
+   "label": "Đường dẫn",
+   "length": 500
+  },
+  {
+   "default": "0",
+   "fieldname": "da_doc",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Đã đọc"
+  },
+  {
+   "fieldname": "doc_luc",
+   "fieldtype": "Datetime",
+   "label": "Đọc lúc"
+  },
+  {
+   "fieldname": "du_lieu",
+   "fieldtype": "JSON",
+   "label": "Dữ liệu kèm"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP He Thong",
+ "name": "NPP Thong Bao",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "nguoi_nhan,loai",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "tieu_de"
+}

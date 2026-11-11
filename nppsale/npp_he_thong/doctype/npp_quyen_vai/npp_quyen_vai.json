@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "autoname": "format:{vai}:{mo_dun}:{hanh_dong}",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "vai",
+  "mo_dun",
+  "hanh_dong",
+  "duoc_phep"
+ ],
+ "fields": [
+  {
+   "fieldname": "vai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vai",
+   "options": "owner\nmanager\naccountant\nsales\nwarehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mo_dun",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Mô-đun / ô quyền",
+   "reqd": 1
+  },
+  {
+   "fieldname": "hanh_dong",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Hành động",
+   "options": "read\ncreate\nupdate\ndelete\napprove\nexport",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "duoc_phep",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Được phép"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP He Thong",
+ "name": "NPP Quyen Vai",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "vai,mo_dun",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

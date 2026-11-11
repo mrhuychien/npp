@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "don",
+  "loai",
+  "tu_trang_thai",
+  "den_trang_thai",
+  "ghi_chu",
+  "hanh_dong",
+  "dong_don",
+  "giai_doan",
+  "thay_doi",
+  "nguoi",
+  "luc"
+ ],
+ "fields": [
+  {
+   "fieldname": "don",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Đơn hàng",
+   "options": "Sales Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Loại",
+   "options": "trang_thai\ndong",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tu_trang_thai",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Từ trạng thái"
+  },
+  {
+   "fieldname": "den_trang_thai",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sang trạng thái"
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "hanh_dong",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Hành động",
+   "options": "\nadd_line\nedit_line\nremove_line\nedit_after_complete\ncancel_after_complete\ninvoice_posted\ninvoice_cancelled\norder_closed"
+  },
+  {
+   "fieldname": "dong_don",
+   "fieldtype": "Data",
+   "label": "Dòng đơn"
+  },
+  {
+   "fieldname": "giai_doan",
+   "fieldtype": "Data",
+   "label": "Giai đoạn"
+  },
+  {
+   "fieldname": "thay_doi",
+   "fieldtype": "JSON",
+   "label": "Thay đổi"
+  },
+  {
+   "fieldname": "nguoi",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Người làm",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "default": "Now",
+   "fieldname": "luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Lúc",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP He Thong",
+ "name": "NPP Nhat Ky Don",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "don,loai",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

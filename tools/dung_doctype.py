@@ -220,7 +220,8 @@ def doc_truong(bang: list[str], ten_dt: str) -> tuple[list[dict], list[str]]:
 			permlevel_khoi = int(m_pl.group(1)) if m_pl else 0
 		elif kieu == "Tab Break":
 			permlevel_khoi = 0
-		elif permlevel_khoi:
+		elif permlevel_khoi and fn not in ("khoa_tim", "tim_kd"):
+			# Khoá tìm là trường nội bộ (cổng đọc bằng SQL) — không theo permlevel của khối đứng trước nó
 			f["permlevel"] = permlevel_khoi
 		m_pl_rieng = re.search(r"(?<![\w])permlevel\s+(\d)(?!\s+cả)", ghi)
 		if m_pl_rieng and kieu not in KIEU_BO_CUC:
@@ -272,6 +273,10 @@ def dung(k: dict) -> tuple[dict, list[str]]:
 	}
 	if la_single:
 		j["issingle"] = 1
+		# Single luôn "đã tồn tại" → set_only_once của lõi chặn cả lần đặt giá trị đầu tiên; luật "không đổi" viết ở controller.
+		for f in truong:
+			if f.pop("set_only_once", None):
+				canh_bao.append(f"{ten}.{f['fieldname']}: bỏ set_only_once trên Single (controller tự chặn đổi)")
 	if la_con:
 		j["istable"] = 1
 		j["editable_grid"] = 1
@@ -344,7 +349,8 @@ def ghi(j: dict, goc: str, thu_muc: str):
 		f.write("\n")
 	py = os.path.join(d, f"{thu_muc}.py")
 	if not os.path.exists(py):
-		lop = "".join(p.capitalize() for p in thu_muc.split("_"))
+		# Frappe tìm lớp theo tên DocType bỏ dấu cách / gạch ("NPP Nhan Vien" → NPPNhanVien)
+		lop = j["name"].replace(" ", "").replace("-", "")
 		with open(py, "w", encoding="utf-8") as f:
 			f.write(CONTROLLER.format(lop=lop))
 

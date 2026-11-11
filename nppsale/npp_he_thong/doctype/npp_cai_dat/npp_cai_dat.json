@@ -1,0 +1,210 @@
+{
+ "actions": [],
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sb_don_vi",
+  "org_id",
+  "cong_ty",
+  "ten_npp",
+  "ma_npp",
+  "dia_chi",
+  "so_dien_thoai",
+  "ma_so_thue",
+  "email",
+  "setup_xong_luc",
+  "cai_dat_khac",
+  "cho_ban_vuot_ton",
+  "sb_kho_date",
+  "nguong_kho_date_ngay",
+  "sb_canh_bao",
+  "tu_duyet_toi_da",
+  "quan_ly_duyet_toi_da",
+  "no_khach_toi_da",
+  "no_qua_han_toi_da",
+  "no_danh_muc_nv_toi_da",
+  "kiem_han_muc",
+  "bat_canh_bao",
+  "ghi_chu_canh_bao",
+  "sb_lam_tron",
+  "luat_sl_le",
+  "luat_vat_hddt"
+ ],
+ "fields": [
+  {
+   "fieldname": "sb_don_vi",
+   "fieldtype": "Section Break",
+   "label": "Đơn vị"
+  },
+  {
+   "fieldname": "org_id",
+   "fieldtype": "Data",
+   "label": "Mã đơn vị (cổng)",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "cong_ty",
+   "fieldtype": "Link",
+   "label": "Công ty sổ sách",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ten_npp",
+   "fieldtype": "Data",
+   "label": "Tên NPP",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ma_npp",
+   "fieldtype": "Data",
+   "label": "Mã NPP"
+  },
+  {
+   "fieldname": "dia_chi",
+   "fieldtype": "Small Text",
+   "label": "Địa chỉ"
+  },
+  {
+   "fieldname": "so_dien_thoai",
+   "fieldtype": "Data",
+   "label": "Điện thoại",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "ma_so_thue",
+   "fieldtype": "Data",
+   "label": "Mã số thuế"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "setup_xong_luc",
+   "fieldtype": "Datetime",
+   "label": "Xong cài đặt lúc"
+  },
+  {
+   "fieldname": "cai_dat_khac",
+   "fieldtype": "JSON",
+   "label": "Khoá cài đặt khác"
+  },
+  {
+   "default": "0",
+   "fieldname": "cho_ban_vuot_ton",
+   "fieldtype": "Check",
+   "label": "Cho bán / xuất vượt tồn"
+  },
+  {
+   "fieldname": "sb_kho_date",
+   "fieldtype": "Section Break",
+   "label": "Kho cận date"
+  },
+  {
+   "default": "30",
+   "fieldname": "nguong_kho_date_ngay",
+   "fieldtype": "Int",
+   "label": "Số ngày tự chuyển kho date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sb_canh_bao",
+   "fieldtype": "Section Break",
+   "label": "Ngưỡng cảnh báo đơn"
+  },
+  {
+   "default": "20000000",
+   "fieldname": "tu_duyet_toi_da",
+   "fieldtype": "Currency",
+   "label": "Ngưỡng giá trị đơn",
+   "reqd": 1
+  },
+  {
+   "default": "50000000",
+   "fieldname": "quan_ly_duyet_toi_da",
+   "fieldtype": "Currency",
+   "label": "Ngưỡng quản lý",
+   "reqd": 1
+  },
+  {
+   "fieldname": "no_khach_toi_da",
+   "fieldtype": "Currency",
+   "label": "Nợ khách tối đa"
+  },
+  {
+   "fieldname": "no_qua_han_toi_da",
+   "fieldtype": "Currency",
+   "label": "Nợ quá hạn tối đa"
+  },
+  {
+   "fieldname": "no_danh_muc_nv_toi_da",
+   "fieldtype": "Currency",
+   "label": "Nợ danh mục NV tối đa"
+  },
+  {
+   "default": "1",
+   "fieldname": "kiem_han_muc",
+   "fieldtype": "Check",
+   "label": "Kiểm hạn mức khách"
+  },
+  {
+   "default": "1",
+   "fieldname": "bat_canh_bao",
+   "fieldtype": "Check",
+   "label": "Bật quy tắc cảnh báo"
+  },
+  {
+   "fieldname": "ghi_chu_canh_bao",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "sb_lam_tron",
+   "fieldtype": "Section Break",
+   "label": "Làm tròn (câu 19)"
+  },
+  {
+   "default": "a",
+   "fieldname": "luat_sl_le",
+   "fieldtype": "Data",
+   "label": "Tiền dòng SL lẻ",
+   "read_only": 1
+  },
+  {
+   "default": "c",
+   "fieldname": "luat_vat_hddt",
+   "fieldtype": "Select",
+   "label": "VAT trên HĐĐT",
+   "options": "c\ne"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP He Thong",
+ "name": "NPP Cai Dat",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
