@@ -63,7 +63,11 @@ def xu_ly(con, req):
 		return 400, {"error": {"message": "Yêu cầu không phải JSON hợp lệ.", "code": "PGRST100", "details": None, "hint": None}}
 	if con.startswith("rpc/"):
 		ten = con[4:]
-		kq = api.rpc(ten=ten, tham_so=tham if isinstance(tham, dict) else {})
+		try:
+			sau = json.loads(req.args.get("sau") or "null")
+		except ValueError:
+			return 400, {"error": {"message": "Tham số sau không phải JSON.", "code": "PGRST100", "details": None, "hint": None}}
+		kq = api.rpc(ten=ten, tham_so=tham if isinstance(tham, dict) else {}, sau=sau)
 	else:
 		yc = tham if isinstance(tham, dict) else {}
 		if yc.get("bang") and yc["bang"] != con:

@@ -7,6 +7,8 @@ import { lamMoiCsrf, nguCanh } from "./phien"
 type SuKien = "INITIAL_SESSION" | "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "USER_UPDATED"
 type NguoiDung = { id: string; email: string; phone?: string; user_metadata: Record<string, unknown>; app_metadata: Record<string, unknown> }
 type Phien = { user: NguoiDung; access_token: string; expires_at?: number }
+/** Như AuthError của supabase-js (để `error ? error.message : …` của nppsale qua được kiểu). */
+type LoiDangNhap = { message: string; status?: number; name?: string }
 
 const KHOA_TAB = "npp:phien"
 const nghe = new Set<(e: SuKien, s: Phien | null) => void>()
@@ -48,10 +50,10 @@ function baoTabKhac(loai: "in" | "out") {
 }
 
 export const auth = {
-  async getSession() {
+  async getSession(): Promise<{ data: { session: Phien | null }; error: LoiDangNhap | null }> {
     return { data: { session: phienHienTai() }, error: null }
   },
-  async getUser() {
+  async getUser(): Promise<{ data: { user: NguoiDung | null }; error: LoiDangNhap | null }> {
     const p = phienHienTai()
     return p ? { data: { user: p.user }, error: null } : { data: { user: null }, error: { message: "Auth session missing!", status: 400 } }
   },

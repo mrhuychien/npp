@@ -1,5 +1,5 @@
-/** Kiểu dữ liệu giống @supabase/postgrest-js để mã nppsale không phải đổi chữ ký. */
-export type PostgrestError = { message: string; code: string; details: string | null; hint: string | null }
+/** Kiểu dữ liệu giống @supabase/postgrest-js để mã nppsale không phải đổi chữ ký (chuỗi rỗng thay cho null như thư viện khai). */
+export type PostgrestError = { message: string; code: string; details: string; hint: string }
 
 export type PostgrestResponse<T = any> = {
   data: T | null

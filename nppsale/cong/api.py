@@ -67,7 +67,7 @@ def truy_van(yeu_cau=None):
 
 
 @frappe.whitelist(methods=["GET", "POST"])
-def rpc(ten=None, tham_so=None):
+def rpc(ten=None, tham_so=None, sau=None):
 	if frappe.session.user == "Guest":
 		return {"error": {"message": "JWT expired", "code": "PGRST301", "details": None, "hint": None}, "status": 401}
 	from nppsale import rpc as R
@@ -83,6 +83,14 @@ def rpc(ten=None, tham_so=None):
 			"status": 405}
 	try:
 		kq = ham(**_doc_json(tham_so))
+		sau = _doc_json(sau)
+		if sau:
+			if not isinstance(kq, list):
+				raise LoiCong("PGRST100", f"{ten} không trả tập dòng — không lọc / sắp / phân trang được kết quả")
+			from .sau_ham import ap
+
+			kq, dem = ap(kq, sau)
+			return {"data": kq, "count": dem, "status": 200}
 		return {"data": kq, "status": 200}
 	except Exception as e:  # noqa: BLE001
 		frappe.db.rollback()

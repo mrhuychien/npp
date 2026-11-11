@@ -24,14 +24,14 @@ export class SupabaseClient<_DB = any, _S = any, _X = any> {
     const f = opts?.global?.fetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a))
     this.t = taoTransport(f)
   }
-  from<T = any>(bang: string): QueryBuilder<T> {
+  from<T = any[]>(bang: string): QueryBuilder<T> {
     return new QueryBuilder<T>(this.t, bang)
   }
   schema(_s: string) {
     return this
   }
-  rpc<T = any>(ten: string, thamSo?: Record<string, unknown>, opts?: { get?: boolean; head?: boolean; count?: string }): RpcBuilder<T> {
-    return new RpcBuilder<T>(this.t, ten, thamSo, Boolean(opts?.get))
+  rpc<T = any>(ten: string, thamSo?: object, opts?: { get?: boolean; head?: boolean; count?: "exact" | "planned" | "estimated" }): RpcBuilder<T> {
+    return new RpcBuilder<T>(this.t, ten, thamSo, Boolean(opts?.get || opts?.head), opts?.count, Boolean(opts?.head))
   }
   channel(ten: string) {
     return new Kenh(ten)

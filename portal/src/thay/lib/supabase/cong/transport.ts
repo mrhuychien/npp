@@ -50,7 +50,8 @@ export function taoTransport(fetchFn: typeof fetch): Transport {
     const url = duong
     const json = JSON.stringify(than ?? {})
     if (doc && json.length < TRAN_GET) {
-      return fetchFn(`${url}?q=${encodeURIComponent(json)}`, { method: "GET", headers: { Accept: "application/json" }, signal, credentials: "same-origin" })
+      const noi = url.includes("?") ? "&" : "?"
+      return fetchFn(`${url}${noi}q=${encodeURIComponent(json)}`, { method: "GET", headers: { Accept: "application/json" }, signal, credentials: "same-origin" })
     }
     return fetchFn(url, {
       method: "POST",
@@ -100,8 +101,8 @@ export function taoTransport(fetchFn: typeof fetch): Transport {
           status: res.status,
           statusText: res.statusText,
           error: het
-            ? { message: "JWT expired", code: "PGRST301", details: body?.exc_type ?? null, hint: null }
-            : { message: cauTuFrappe(body), code: body?.exc_type === "PermissionError" ? "42501" : "FRAPPE", details: body?.exc_type ?? null, hint: null },
+            ? { message: "JWT expired", code: "PGRST301", details: body?.exc_type ?? "", hint: "" }
+            : { message: cauTuFrappe(body), code: body?.exc_type === "PermissionError" ? "42501" : "FRAPPE", details: body?.exc_type ?? "", hint: "" },
         }
       }
       return { data: body?.data ?? null, count: body?.count ?? null, status: res.status, statusText: "OK", error: null }

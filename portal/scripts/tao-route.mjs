@@ -84,7 +84,7 @@ function dung(dir, laGoc, loiGanNhat, choGanNhat) {
   if (page) {
     if (laAsync(page)) canhBao.push(path.relative(ROOT, page))
     const id = ten(tuongDoi(page))
-    imports.push(`const ${id} = lazy(() => import("${tuongDoi(page)}"))`)
+    imports.push(`const ${id} = lazy(() => import("${tuongDoi(page)}") as Promise<{ default: ComponentType<any> }>)`)
     con.push(`{ index: true, element: <Trang C={${id}} cho={${choNay ?? "null"}} /> }`)
   }
   for (const ten_ of thuMucCon(dir)) {
@@ -126,7 +126,7 @@ const ketQua = than.replace(/\n\]\s*\}$/, `,\n{ path: "*", element: ${notFound ?
 
 const out = `/* TỰ SINH bởi scripts/tao-route.mjs — đừng sửa tay. */
 /* eslint-disable */
-import { lazy } from "react"
+import { lazy, type ComponentType } from "react"
 import { Outlet, type RouteObject } from "react-router-dom"
 import Goc from "./goc"
 import { BoLoi } from "./loi"
