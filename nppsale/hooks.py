@@ -96,7 +96,8 @@ app_license = "mit"
 # ------------
 
 # before_install = "nppsale.install.before_install"
-# after_install = "nppsale.install.after_install"
+after_install = "nppsale.thiet_lap.sau_khi_cai"
+after_migrate = ["nppsale.thiet_lap.sau_khi_migrate"]
 
 # Uninstallation
 # ------------
