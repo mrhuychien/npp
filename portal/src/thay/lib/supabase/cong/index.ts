@@ -34,7 +34,16 @@ export class SupabaseClient<_DB = any, _S = any, _X = any> {
     return new RpcBuilder<T>(this.t, ten, thamSo, Boolean(opts?.get || opts?.head), opts?.count, Boolean(opts?.head))
   }
   channel(ten: string) {
-    return new Kenh(ten)
+    // Đường hạ cấp của realtime: kênh tự hỏi bảng qua chính cổng dữ liệu (xem thoi-gian-thuc.ts)
+    return new Kenh(ten, async (bang, cot, giaTri) => {
+      const { data, error } = await this.from(bang).select("*").eq(cot, giaTri).order("created_at", { ascending: false }).limit(50)
+      if (error) {
+        // bảng không có created_at (entity_locks) → hỏi không sắp
+        const lai = await this.from(bang).select("*").eq(cot, giaTri).limit(50)
+        return lai.error ? null : (lai.data as any[])
+      }
+      return data as any[]
+    })
   }
   removeChannel(k: Kenh) {
     return k.unsubscribe()
