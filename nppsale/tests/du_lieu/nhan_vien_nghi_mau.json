@@ -1,0 +1,442 @@
+{
+ "ghi_chu": "Sinh bởi tools/vang_nhan_vien.py — so_chung_tu_nhan_vien / cho_nhan_vien_nghi / giao_cong_no_npp thật của nppsale.",
+ "nen": {
+  "phan_cong": [
+   [
+    "C1",
+    "sales_a",
+    "primary"
+   ],
+   [
+    "C2",
+    "sales_a",
+    "primary"
+   ],
+   [
+    "C1",
+    "sales_b",
+    "secondary"
+   ]
+  ],
+  "lich_tuyen": [
+   [
+    "sales_a",
+    2,
+    "C1"
+   ],
+   [
+    "sales_a",
+    3,
+    "C2"
+   ],
+   [
+    "sales_b",
+    4,
+    "C1"
+   ]
+  ],
+  "don": [
+   {
+    "buoc": "tao",
+    "nguoi": "sales_a",
+    "p": {
+     "client_request_id": "bc17c070-1ad5-5963-948c-4186e85e4eb9",
+     "order": {
+      "order_code": "TAM-1",
+      "customer_id": "@C1",
+      "payment_terms": "COD",
+      "expected_delivery": null,
+      "notes": null,
+      "status": "submitted",
+      "approval_reason": null,
+      "sales_user_id": null,
+      "subtotal": 24000,
+      "vat": 2020,
+      "total": 26020
+     },
+     "lines": [
+      {
+       "product_id": "@P1",
+       "unit_name": "Lon",
+       "quantity": 2,
+       "unit_price": 9500,
+       "line_discount": 0,
+       "line_total": 19000,
+       "conversion_factor": 1,
+       "vat_rate": 0.08
+      },
+      {
+       "product_id": "@P2",
+       "unit_name": "Chai",
+       "quantity": 1,
+       "unit_price": 5000,
+       "line_discount": 0,
+       "line_total": 5000,
+       "conversion_factor": 1,
+       "vat_rate": 0.1
+      }
+     ],
+     "returns": null,
+     "return_lines": []
+    }
+   },
+   {
+    "buoc": "tao",
+    "nguoi": "sales_a",
+    "p": {
+     "client_request_id": "b43ea7a6-a0e0-50a9-81d6-801f2058bea8",
+     "order": {
+      "order_code": "TAM-1",
+      "customer_id": "@C2",
+      "payment_terms": "COD",
+      "expected_delivery": null,
+      "notes": null,
+      "status": "submitted",
+      "approval_reason": null,
+      "sales_user_id": null,
+      "subtotal": 10000,
+      "vat": 800,
+      "total": 10800
+     },
+     "lines": [
+      {
+       "product_id": "@P1",
+       "unit_name": "Lon",
+       "quantity": 1,
+       "unit_price": 10000,
+       "line_discount": 0,
+       "line_total": 10000,
+       "conversion_factor": 1,
+       "vat_rate": 0.08
+      }
+     ],
+     "returns": null,
+     "return_lines": []
+    }
+   },
+   {
+    "buoc": "tao",
+    "nguoi": "sales_b",
+    "p": {
+     "client_request_id": "da32b005-f56a-5242-80e8-c0c1963a516d",
+     "order": {
+      "order_code": "TAM-1",
+      "customer_id": "@C1",
+      "payment_terms": "COD",
+      "expected_delivery": null,
+      "notes": null,
+      "status": "submitted",
+      "approval_reason": null,
+      "sales_user_id": null,
+      "subtotal": 9500,
+      "vat": 760,
+      "total": 10260
+     },
+     "lines": [
+      {
+       "product_id": "@P1",
+       "unit_name": "Lon",
+       "quantity": 1,
+       "unit_price": 9500,
+       "line_discount": 0,
+       "line_total": 9500,
+       "conversion_factor": 1,
+       "vat_rate": 0.08
+      }
+     ],
+     "returns": null,
+     "return_lines": []
+    }
+   }
+  ],
+  "da_thu_du": [
+   1
+  ]
+ },
+ "buoc": [
+  {
+   "nguoi": "owner",
+   "ham": "so_chung_tu_nhan_vien",
+   "tham_so": {
+    "p_user_id": "@u:sales_a"
+   }
+  },
+  {
+   "nguoi": "manager",
+   "ham": "so_chung_tu_nhan_vien",
+   "tham_so": {
+    "p_user_id": "@u:sales_a"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "so_chung_tu_nhan_vien",
+   "tham_so": {
+    "p_user_id": "00000000-0000-4000-8000-000000000999"
+   }
+  },
+  {
+   "nguoi": "manager",
+   "ham": "cho_nhan_vien_nghi",
+   "tham_so": {
+    "p_user_id": "@u:sales_a"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "cho_nhan_vien_nghi",
+   "tham_so": {
+    "p_user_id": "@u:owner"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "cho_nhan_vien_nghi",
+   "tham_so": {
+    "p_user_id": "00000000-0000-4000-8000-000000000999"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "cho_nhan_vien_nghi",
+   "tham_so": {
+    "p_user_id": "@u:sales_a"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "so_chung_tu_nhan_vien",
+   "tham_so": {
+    "p_user_id": "@u:sales_a"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "giao_cong_no_npp",
+   "tham_so": {
+    "p_customer_id": "@C1",
+    "p_user_id": "@u:sales_a"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "giao_cong_no_npp",
+   "tham_so": {
+    "p_customer_id": "@C1",
+    "p_user_id": "@u:sales_nghi"
+   }
+  },
+  {
+   "nguoi": "sales_b",
+   "ham": "giao_cong_no_npp",
+   "tham_so": {
+    "p_customer_id": "@C1",
+    "p_user_id": "@u:sales_b"
+   }
+  },
+  {
+   "nguoi": "accountant",
+   "ham": "giao_cong_no_npp",
+   "tham_so": {
+    "p_customer_id": "@C2",
+    "p_user_id": "@u:sales_b"
+   }
+  },
+  {
+   "nguoi": "accountant",
+   "ham": "giao_cong_no_npp",
+   "tham_so": {
+    "p_customer_id": "@C1",
+    "p_user_id": "@u:sales_giam"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "so_chung_tu_nhan_vien",
+   "tham_so": {
+    "p_user_id": "@u:sales_giam"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "so_chung_tu_nhan_vien",
+   "tham_so": {
+    "p_user_id": "@u:sales_b"
+   }
+  },
+  {
+   "nguoi": "owner",
+   "ham": "cho_nhan_vien_nghi",
+   "tham_so": {
+    "p_user_id": "@u:sales_a"
+   }
+  }
+ ],
+ "mong": {
+  "buoc": [
+   {
+    "ok": true,
+    "tra": {
+     "co_chung_tu": true,
+     "khach": 2,
+     "lich_tuyen": 2,
+     "so_khoan_no": 1,
+     "tien_no": 26020
+    }
+   },
+   {
+    "ok": false,
+    "loi": "KHONG_DU_QUYEN: chỉ Chủ NPP",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": false,
+    "loi": "KHONG_TIM_THAY_NV",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": false,
+    "loi": "KHONG_DU_QUYEN: chỉ Chủ NPP",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": false,
+    "loi": "TU_NGHI: không tự cho mình nghỉ việc",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": false,
+    "loi": "KHONG_TIM_THAY_NV",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": true,
+    "tra": {
+     "khach": 2,
+     "tien_no": 26020,
+     "lich_tuyen": 2,
+     "so_khoan_no": 1
+    }
+   },
+   {
+    "ok": true,
+    "tra": {
+     "co_chung_tu": true,
+     "khach": 0,
+     "lich_tuyen": 0,
+     "so_khoan_no": 0,
+     "tien_no": 0
+    }
+   },
+   {
+    "ok": false,
+    "loi": "NV_KHONG_HOP_LE: nhân viên đã nghỉ / bị khoá",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": false,
+    "loi": "NV_KHONG_HOP_LE: nhân viên đã nghỉ / bị khoá",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": false,
+    "loi": "KHONG_DU_QUYEN",
+    "ma_loi": "P0001"
+   },
+   {
+    "ok": true,
+    "tra": {
+     "tien_no": 0,
+     "so_khoan_no": 0
+    }
+   },
+   {
+    "ok": true,
+    "tra": {
+     "tien_no": 26020,
+     "so_khoan_no": 1
+    }
+   },
+   {
+    "ok": true,
+    "tra": {
+     "co_chung_tu": true,
+     "khach": 0,
+     "lich_tuyen": 0,
+     "so_khoan_no": 1,
+     "tien_no": 26020
+    }
+   },
+   {
+    "ok": true,
+    "tra": {
+     "co_chung_tu": true,
+     "khach": 1,
+     "lich_tuyen": 1,
+     "so_khoan_no": 1,
+     "tien_no": 10260
+    }
+   },
+   {
+    "ok": true,
+    "tra": {
+     "khach": 0,
+     "tien_no": 0,
+     "lich_tuyen": 0,
+     "so_khoan_no": 0
+    }
+   }
+  ],
+  "ct": {
+   "cong_no": [
+    {
+     "hd": "HD-0001",
+     "nv": "sales_giam",
+     "con": 26020,
+     "co_ve": false,
+     "status": "open"
+    },
+    {
+     "hd": "HD-0002",
+     "nv": "sales_a",
+     "con": 0,
+     "co_ve": false,
+     "status": "paid"
+    },
+    {
+     "hd": "HD-0003",
+     "nv": "sales_b",
+     "con": 10260,
+     "co_ve": false,
+     "status": "open"
+    }
+   ],
+   "nhan_vien": {
+    "sales_a": {
+     "da_nghi": true,
+     "dang_lam": false,
+     "nghi_boi": "owner"
+    },
+    "sales_b": {
+     "da_nghi": false,
+     "dang_lam": true,
+     "nghi_boi": null
+    }
+   },
+   "phan_cong": [
+    [
+     "C1",
+     "sales_b",
+     "secondary"
+    ]
+   ],
+   "lich_tuyen": [
+    [
+     "sales_b",
+     4,
+     "C1"
+    ]
+   ]
+  }
+ }
+}

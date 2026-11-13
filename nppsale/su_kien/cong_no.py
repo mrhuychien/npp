@@ -78,6 +78,24 @@ def chieu_hoa_don(ten: str) -> str | None:
 	})
 
 
+# Trường người giữ nợ trên chứng từ nguồn của từng loại dòng (blueprint 02 §5.6): (người giữ, mốc về NPP, dấu bàn giao)
+TRUONG_GIU = {"Sales Invoice": ("npp_nv_giu_no", "npp_ve_npp_luc", "npp_giao_tu_nv"),
+	"NPP Phieu Thu": ("nv_giu_tien_thua", "ve_npp_luc", "giao_tu_nv")}
+
+
+def dat_nguoi_giu(dong: str, nv: str | None, ve_npp_luc) -> None:
+	"""Chế độ GIAO NỢ (`npp.giao_cong_no` — RPC nghỉ việc / giao nợ / bàn giao): đặt thẳng người giữ của MỘT dòng công nợ trên chứng từ
+	nguồn; có người giữ thì bỏ mốc về NPP (`_cong_no_giu_ve_npp`); dấu bàn giao giữ nguyên. Rồi chiếu lại dòng."""
+	khoa = frappe.db.get_value(DT, dong, "khoa_nguon")
+	dt, _, ten = (khoa or "").partition(":")
+	truong = TRUONG_GIU.get(dt)
+	if not truong or not ten:
+		frappe.throw(f"Không rõ chứng từ nguồn của dòng công nợ {dong} ({khoa})")
+	frappe.db.set_value(dt, ten, {truong[0]: nv, truong[1]: None if nv else ve_npp_luc}, update_modified=False)
+	if dt == "Sales Invoice":
+		chieu_nguon_cua(frappe.db.get_value("Sales Invoice", ten, ["name", "is_return", "npp_hoa_don_goc"], as_dict=True))
+
+
 def chieu_nguon_cua(si) -> None:
 	"""Mọi dòng công nợ chịu ảnh hưởng của một Sales Invoice (HĐ: chính nó; tờ ghi có: HĐ gắn)."""
 	if si.get("is_return"):

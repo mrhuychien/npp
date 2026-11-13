@@ -78,6 +78,12 @@ def xoa(yc: YeuCauCu):
 		return 403, {"error": "Chỉ Chủ sở hữu mới được xóa người dùng"}
 	if not frappe.db.exists("NPP Nhan Vien", dich):
 		return 404, {"error": "Không tìm thấy người dùng trong tổ chức"}
+	# ĐÃ CÓ CHỨNG TỪ THÌ KHÔNG XOÁ (chủ nhà 02/10/2026, mig 223) — hỏi cùng bộ đếm với so_chung_tu_nhan_vien, như route xoá của nppsale
+	from nppsale.rpc.nhan_vien import dem_chung_tu
+
+	ct = dem_chung_tu(dich)
+	if ct["tong"] > 0:
+		return 409, {"error": "Nhân viên đã có chứng từ — không xoá được, dùng Cho nghỉ việc.", "code": "CO_CHUNG_TU", "chung_tu": ct}
 	frappe.db.savepoint("xoa_nv")
 	try:
 		for dt, truong in _XOA_THEO:
