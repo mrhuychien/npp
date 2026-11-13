@@ -5,6 +5,12 @@ quyền `orders.approve` → trạng thái đơn → dòng → xuất kho FIFO l
 (giảm giá cả đơn sau thuế, không hạ nền thuế) → đơn Hoàn thành (giao thiếu: đóng SO) → chiếu công nợ → nhật ký + báo NV.
 Hàng theo lô thiếu tồn luôn chặn (CFD-05); hàng không lô bán vượt khi mặt hàng cho phép + NPP Cai Dat.cho_ban_vuot_ton.
 
+cancel_invoice (mig 125 / 131 / 162 / 217): huỷ HĐ = huỷ đơn — lõi hoàn kho đúng lô (đảo gói lô), hook on_cancel bỏ dòng công nợ, đơn về
+submitted rồi Đã huỷ (lý do "Huỷ theo hóa đơn …"), báo NV; khoá khi đã thu tiền / đã phát hành HĐĐT / có phiếu trả hoàn thành.
+
+reissue_invoice (mig 128 / 182 / 213 / 215 / 227 / 247): Sửa HĐ = huỷ (đơn KHÔNG huỷ theo) + lập tờ mới amend tờ cũ (`HD-0001-1`) trong
+CÙNG giao dịch; giữ hệ số tờ cũ, NV đứng tên + người giữ nợ, mặc định ngày / điều khoản / giảm giá của tờ cũ.
+
 get_invoiceable_lines (mig 124 / 212): dòng của đơn để màn Xuất hàng (POS / điện thoại) dựng hoá đơn — SL đặt, đã xuất, còn lại, giá, giảm,
 thuế, tồn kho bán (theo đơn vị kho), cộng dòng HÀNG ĐỔI của phiếu trả nháp / chờ kèm đơn chưa bám HĐ nào. Hàm gốc SECURITY DEFINER, chỉ
 kiểm cùng đơn vị — không lọc theo người (POS của chủ / thủ kho mở đơn của mọi NV). Chỉ đọc (GET — POS gọi `{ get: true }`).
@@ -21,6 +27,7 @@ from nppsale.cong.loi import NppLoi
 from nppsale.cong.ngu_canh import co_quyen, hien_tai
 from nppsale.luat import gia_don as L
 from nppsale.luat import xuat_kho as XK
+from nppsale.luat.giu_no import khi_lap
 from nppsale.npp_he_thong.doctype.npp_nhat_ky_don.npp_nhat_ky_don import ghi_nhat_ky_don
 from nppsale.npp_he_thong.doctype.npp_thong_bao.npp_thong_bao import gui_thong_bao
 from nppsale.su_kien.cong_no import chieu_hoa_don
@@ -205,26 +212,43 @@ def _goi_lo(si, r, lay: list, cd):
 
 
 def _nv_giu_no(nv: str | None) -> tuple[str | None, object]:
-	"""Ghi sổ HĐ: nợ theo NV đứng tên; NV ấy đã nghỉ → nợ về NPP (trống + mốc) — _cong_no_giu_ve_npp (mig 223)."""
-	if nv and frappe.db.get_value("NPP Nhan Vien", nv, "nghi_viec_luc"):
-		return None, now_datetime()
-	return nv, None
+	"""Ghi sổ HĐ: nợ theo NV đứng tên; NV ấy đã nghỉ → nợ về NPP (trống + mốc) — _cong_no_giu_ve_npp lượt INSERT (mig 223)."""
+	from .gan_nguoi import da_nghi
+
+	g = khi_lap(nv, da_nghi, now_datetime())
+	return g.nv, g.ve_npp
+
+
+def _khoa_bin(hang, cd) -> None:
+	"""Câu ĐẦU TIÊN của giao dịch ghi kho: khoá Bin của mọi mặt hàng (kho bán + kho cận date) theo thứ tự tên (CFD-05, PoC 1d)."""
+	if hang:
+		frappe.db.sql("""SELECT `name` FROM `tabBin` WHERE `item_code` IN %(h)s AND `warehouse` IN %(k)s ORDER BY `name` FOR UPDATE""",
+			{"h": tuple(sorted(hang)), "k": tuple(x for x in (cd.kho_ban, cd.kho_can_date) if x) or ("",)})
+
+
+def _hang_cua(dong_vao) -> set:
+	return {_chu(x.get("product_id")) for x in dong_vao or [] if isinstance(x, dict) and _chu(x.get("product_id"))}
 
 
 @rpc("post_invoice", ghi=True, chuan_bi=_chuan_bi_xuat)
 def post_invoice(p=None):
+	"""Xuất hàng. `reissue_of` chỉ đi qua reissue_invoice (màn Sửa HĐ gọi RPC riêng — post_invoice gốc nhận khoá ấy từ chính
+	reissue_invoice); trình duyệt gửi kèm thì từ chối thay vì lập tờ `-n` bên cạnh tờ còn hiệu lực."""
 	nc = hien_tai()
 	cd = cai_dat_ban()
 	p = p if isinstance(p, dict) else (frappe.parse_json(p) if p else {})
-	dong_vao = p.get("lines") if isinstance(p.get("lines"), list) else []
-	# Câu ĐẦU TIÊN của giao dịch: khoá Bin của mọi mặt hàng trên HĐ (CFD-05, PoC 1d)
-	hang = sorted({_chu(x.get("product_id")) for x in dong_vao if isinstance(x, dict) and _chu(x.get("product_id"))})
-	if hang:
-		frappe.db.sql("""SELECT `name` FROM `tabBin` WHERE `item_code` IN %(h)s AND `warehouse` IN %(k)s ORDER BY `name` FOR UPDATE""",
-			{"h": tuple(hang), "k": tuple(x for x in (cd.kho_ban, cd.kho_can_date) if x) or ("",)})
+	_khoa_bin(_hang_cua(p.get("lines") if isinstance(p.get("lines"), list) else []), cd)
 	if p.get("reissue_of"):
-		raise NppLoi("REISSUE_CHUA_HO_TRO: Sửa HĐ dựng ở bước reissue_invoice.")
-	dong_vao = chuan_he_so(dong_vao, None)
+		raise NppLoi("REISSUE_QUA_RPC_RIENG: sửa hóa đơn dùng reissue_invoice")
+	return [_xuat(nc, cd, p)]
+
+
+def _xuat(nc, cd, p: dict, *, hd_cu: str | None = None, giu: dict | None = None) -> dict:
+	"""Thân post_invoice (Bin đã khoá). Sửa HĐ: `hd_cu` = tờ vừa huỷ — tờ mới amend nó (Amend Counter → `HD-0001-1`), dòng cùng mặt hàng
+	+ đơn vị giữ hệ số chụp trên tờ cũ (mig 247), đơn ĐÃ ĐÓNG (dữ liệu cũ) vẫn lập lại được (mig 215); `giu` = NV đứng tên + người giữ
+	nợ của tờ cũ (mig 182 / 227 / 246)."""
+	dong_vao = p.get("lines") if isinstance(p.get("lines"), list) else []
+	dong_vao = chuan_he_so(dong_vao, hd_cu)
 	don = _chu(p.get("order_id"))
 	if not don or not frappe.db.sql("SELECT `name` FROM `tabSales Order` WHERE `name` = %s FOR UPDATE", don):
 		raise NppLoi("ORDER_NOT_FOUND")
@@ -232,7 +256,7 @@ def post_invoice(p=None):
 	if not co_quyen(nc, "orders.approve"):
 		raise NppLoi("FORBIDDEN: bạn không có quyền xuất hàng")
 	tt = so.get("npp_trang_thai") or "draft"
-	if tt not in ("submitted", "partially_invoiced"):
+	if tt not in ("submitted", "partially_invoiced") and not (tt == "closed" and hd_cu):
 		raise NppLoi(f"ORDER_NOT_INVOICEABLE: đơn {so.name} đang ở trạng thái {tt}, không xuất hàng được")
 	co_sl = [x for x in dong_vao if isinstance(x, dict) and (_so(x.get("quantity"), 0) or 0) > 0]
 	if not co_sl:
@@ -242,7 +266,9 @@ def post_invoice(p=None):
 		oli = _chu(x.get("order_line_id")) if isinstance(x, dict) else None
 		if oli and (oli not in dong_don or dong_don[oli].item_code != _chu(x.get("product_id"))):
 			raise NppLoi("BAD_LINE: dòng hóa đơn không thuộc đơn này hoặc sai sản phẩm")
-	if (isinstance(p.get("return_adds"), list) and p["return_adds"]) or (isinstance(p.get("return_edits"), list) and p["return_edits"]):
+	# hàng trả kèm đơn: post_invoice áp return_adds (Sửa HĐ đã gỡ khỏi tải trọng) và return_edits chỉ lúc xuất lần đầu
+	if not hd_cu and ((isinstance(p.get("return_adds"), list) and p["return_adds"]) or (
+			isinstance(p.get("return_edits"), list) and p["return_edits"])):
 		raise NppLoi("RETURNS_CHUA_HO_TRO: hàng trả kèm HĐ dựng ở bước phiếu trả của P3.")
 	ngay = str(getdate(_chu(p.get("invoice_date")) or nowdate()))
 	dk = _chu(p.get("payment_terms")) or so.payment_terms_template
@@ -259,11 +285,15 @@ def post_invoice(p=None):
 			"oli": _chu(x.get("order_line_id"))})
 	# ---- xuất kho (FIFO lô kho bán; thiếu → INSUFFICIENT_STOCK)
 	phan, thieu, can_han = _phan_bo_kho(dong, cd)
-	# ---- ghi sổ đơn (Sales Order nháp → submit; hệ số dòng đơn theo danh mục trước khi ghi sổ — mig 174)
+	# ---- dòng nối đơn phải cùng đơn vị + hệ số với dòng SO (lõi so ở validate_with_previous_doc): đơn nháp → sửa dòng rồi ghi sổ đơn
+	# (mig 174); đơn đã ghi sổ (Sửa HĐ, dòng không có trên tờ cũ mà danh mục đã đổi hệ số) → chép hệ số mới vào dòng SO
 	for d in dong:
 		r = dong_don.get(d["oli"]) if d["oli"] else None
 		if r is not None and r.uom == d["dv"] and abs(float(r.conversion_factor or 1) - float(d["hs"])) > 1e-9:
 			r.conversion_factor = d["hs"]
+			if so.docstatus == 1:
+				frappe.db.set_value("Sales Order Item", r.name, {"conversion_factor": d["hs"], "stock_qty": flt(r.qty) * flt(d["hs"])},
+					update_modified=False)
 	so.flags.ignore_permissions = True
 	if so.docstatus == 0:
 		so.submit()
@@ -271,15 +301,21 @@ def post_invoice(p=None):
 	bang_nhom = _bang_gia_nhom(so.customer)
 	tien_hang = sum(Decimal(str(d["sl"])) * Decimal(str(d["gia"])) for d in dong)
 	giam = giam_gia_don(p.get("discount"), tien_hang)
-	nv, ve_npp = _nv_giu_no(so.npp_nhan_vien)
+	if giu:
+		nv_dung_ten, nv, ve_npp, giao = giu.get("nhan_vien"), giu.get("nv_giu_no"), giu.get("ve_npp_luc"), giu.get("giao_tu_nv")
+	else:
+		nv_dung_ten, giao = so.npp_nhan_vien, None
+		nv, ve_npp = _nv_giu_no(so.npp_nhan_vien)
 	si = frappe.new_doc("Sales Invoice")
 	si.update({
 		"naming_series": "HD-.####", "customer": so.customer, "company": cd.cong_ty, "posting_date": ngay, "set_posting_time": 1,
 		"posting_time": nowtime(), "update_stock": 1, "set_warehouse": cd.kho_ban, "selling_price_list": so.selling_price_list,
 		"ignore_pricing_rule": 1, "disable_rounded_total": 1, "taxes_and_charges": cd.mau_thue_ban, "npp_don_hang": so.name,
-		"npp_nhan_vien": so.npp_nhan_vien, "npp_nv_giu_no": nv, "npp_ve_npp_luc": ve_npp,
+		"npp_nhan_vien": nv_dung_ten, "npp_nv_giu_no": nv, "npp_ve_npp_luc": ve_npp, "npp_giao_tu_nv": giao,
 		"npp_han_thanh_toan": add_days(ngay, so_ngay_dieu_khoan(dk)), "npp_ghi_chu": _chu(p.get("notes")) or None,
 	})
+	if hd_cu:
+		si.amended_from = hd_cu  # tên tờ mới: Amend Counter của lõi → HD-0001-1, HD-0001-2… (giữ số gốc — mig 128)
 	if dk and frappe.db.exists("Payment Terms Template", dk):
 		si.payment_terms_template = dk
 	else:
@@ -321,10 +357,162 @@ def post_invoice(p=None):
 	so.npp_trang_thai = "completed"
 	so.flags.ignore_permissions = True
 	so.save()
-	ghi_nhat_ky_don(so.name, "trang_thai", tu_trang_thai=tt, den_trang_thai="completed")
+	if tt != "completed":
+		ghi_nhat_ky_don(so.name, "trang_thai", tu_trang_thai=tt, den_trang_thai="completed")
 	no = chieu_hoa_don(si.name)
 	ghi_nhat_ky_don(so.name, "dong", hanh_dong="invoice_posted", giai_doan="completed",
 		thay_doi={"invoice_id": si.name, "invoice_code": si.name, "entry_id": si.name})
 	gui_thong_bao(so.npp_nhan_vien, "order_completed", f"Đơn {so.name} đã xuất hóa đơn {si.name}", None, f"/sales-invoices/{si.name}")
-	return [{"invoice_id": si.name, "invoice_code": si.name, "entry_id": si.name, "receivable_id": no, "short_qty": float(thieu),
-		"near_expiry_skipped": can_han, "order_status": "completed"}]
+	return {"invoice_id": si.name, "invoice_code": si.name, "entry_id": si.name, "receivable_id": no, "short_qty": float(thieu),
+		"near_expiry_skipped": can_han, "order_status": "completed"}
+
+
+# ================================================================================================ cancel_invoice (Huỷ HĐ = huỷ đơn)
+def _chuan_bi_huy(p_invoice_id=None, p_reason=None, p=None):
+	nc = hien_tai()
+	co_quyen(nc, "orders.approve")
+	cai_dat_ban()
+
+
+def _tien_da_thu(hd: str) -> bool:
+	"""Đã có tiền thu vào HĐ (dòng công nợ đã thu > 0, hoặc Payment Entry còn hiệu lực phân bổ vào HĐ)."""
+	if frappe.db.sql("SELECT 1 FROM `tabNPP Cong No` WHERE `hoa_don` = %s AND `da_thu` > 0 LIMIT 1", hd):
+		return True
+	return bool(frappe.db.sql("""SELECT 1 FROM `tabPayment Entry Reference` r JOIN `tabPayment Entry` pe ON pe.`name` = r.`parent`
+		WHERE r.`reference_doctype` = 'Sales Invoice' AND r.`reference_name` = %s AND pe.`docstatus` = 1 LIMIT 1""", hd))
+
+
+def _hang_cua_hd(hd: str | None) -> set:
+	return {r[0] for r in frappe.db.sql("SELECT DISTINCT `item_code` FROM `tabSales Invoice Item` WHERE `parent` = %s", hd)} if hd else set()
+
+
+@rpc("cancel_invoice", ghi=True, chuan_bi=_chuan_bi_huy)
+def cancel_invoice(p_invoice_id=None, p_reason=None):
+	"""Huỷ HĐ (mig 217): đơn về Đã huỷ (không về Nháp), hàng về đúng lô đã xuất (lõi đảo gói lô), dòng công nợ bỏ. Sửa HĐ dùng
+	reissue_invoice (không huỷ đơn)."""
+	nc = hien_tai()
+	cd = cai_dat_ban()
+	hd = _chu(p_invoice_id)
+	_khoa_bin(_hang_cua_hd(hd), cd)
+	si, _so_don, tt_don = _huy(nc, cd, hd, p_reason)
+	return [{"import_entry_id": si.name, "order_status": tt_don}]
+
+
+def _huy(nc, cd, hd: str | None, p_reason, *, lap_lai: bool = False):
+	"""Thân cancel_invoice (Bin đã khoá). `lap_lai` (Sửa HĐ — cờ `npp.reissue_chuyen_thu` của nppsale): tiền thu không khoá (chuyển sang
+	tờ mới — mig 184) và đơn KHÔNG huỷ theo (còn sống để lập tờ mới — `_huy_don_theo_hoa_don`)."""
+	if not hd or not frappe.db.sql("""SELECT `name` FROM `tabSales Invoice` WHERE `name` = %s AND `is_return` = 0 FOR UPDATE""", hd):
+		raise NppLoi("INVOICE_NOT_FOUND")
+	if not co_quyen(nc, "orders.approve"):
+		raise NppLoi("FORBIDDEN: bạn không có quyền huỷ hóa đơn")
+	si = frappe.get_doc("Sales Invoice", hd)
+	tt_hd = {1: "posted", 2: "cancelled"}.get(si.docstatus, "draft")
+	if tt_hd != "posted":
+		raise NppLoi(f"INVOICE_NOT_POSTED: hóa đơn {si.name} đang ở trạng thái {tt_hd}")
+	ly_do = (p_reason or "").strip() if isinstance(p_reason, str) else ""
+	if not ly_do:
+		raise NppLoi("REASON_REQUIRED: phải ghi lý do huỷ hóa đơn")
+	ly_do = p_reason  # nppsale ghi nguyên văn (chỉ kiểm sau khi bỏ khoảng trắng)
+	don = si.get("npp_don_hang")
+	if don:
+		frappe.db.sql("SELECT `name` FROM `tabSales Order` WHERE `name` = %s FOR UPDATE", don)
+	if not lap_lai and _tien_da_thu(hd):
+		raise NppLoi("LOCKED_HAS_PAYMENT: hóa đơn đã có tiền thu, huỷ phiếu thu trước")
+	if frappe.db.exists("DocType", "NPP HDDT") and frappe.db.sql("""SELECT 1 FROM `tabNPP HDDT` WHERE `hoa_don_ban` = %s
+			AND (`trang_thai` = 'issued' OR IFNULL(`so_hddt`, '') != '' OR `trang_thai_misa` IN ('signed', 'replaced')) LIMIT 1""", hd):
+		raise NppLoi("LOCKED_EINVOICE: hóa đơn đã phát hành hóa đơn điện tử")
+	if frappe.db.exists("DocType", "NPP Phieu Tra") and frappe.db.exists("NPP Phieu Tra", {"hoa_don": hd, "trang_thai": "completed"}):
+		raise NppLoi("LOCKED_RETURN_DONE: hóa đơn đã có phiếu trả hoàn thành")
+	so = frappe.get_doc("Sales Order", don) if don else None
+	if so is not None and so.docstatus == 1 and so.status == "Closed":  # lõi đòi mở lại SO đã đóng trước khi huỷ HĐ (bàn bạc 6.12)
+		so.update_status("Draft")
+	# ---- huỷ HĐ: lõi hoàn kho đúng lô qua gói lô, gỡ phân bổ, đảo sổ cái; hook on_cancel chiếu lại công nợ (xoá dòng của tờ)
+	si.npp_ly_do_huy = ly_do
+	si.npp_huy_luc = now_datetime()
+	si.npp_huy_boi = nc.user if frappe.db.exists("NPP Nhan Vien", nc.user) else None
+	si.flags.ignore_permissions = True
+	si.cancel()
+	frappe.local.message_log = []
+	# ---- đơn: _wf2b_sync_order_status (không còn HĐ ghi sổ → submitted) rồi _huy_don_theo_hoa_don (→ Đã huỷ; Sửa HĐ thì không)
+	tt_don = None
+	if so is not None:
+		so.reload()
+		tt_cu = so.get("npp_trang_thai") or "draft"
+		tt_don = tt_cu
+		if tt_cu not in ("draft", "cancelled"):
+			con_hd = frappe.db.count("Sales Invoice", {"npp_don_hang": so.name, "docstatus": 1, "is_return": 0})
+			tt_don = "submitted" if con_hd == 0 else "completed"
+			if tt_don != tt_cu:
+				ghi_nhat_ky_don(so.name, "trang_thai", tu_trang_thai=tt_cu, den_trang_thai=tt_don)
+		if tt_don == "submitted" and not lap_lai:
+			# phiếu trả nháp / chờ của đơn → Đã huỷ: thêm khi có NPP Phieu Tra
+			so.npp_trang_thai = "cancelled"
+			so.npp_huy_luc = now_datetime()
+			so.npp_huy_boi = si.npp_huy_boi
+			so.npp_ly_do_huy = f"Huỷ theo hóa đơn {si.name}: {ly_do}"
+			so.flags.ignore_permissions = True
+			if so.docstatus == 1:
+				so.cancel()
+			else:
+				so.save()
+			ghi_nhat_ky_don(so.name, "trang_thai", tu_trang_thai="submitted", den_trang_thai="cancelled")
+			ghi_nhat_ky_don(so.name, "dong", hanh_dong="cancel_after_complete", giai_doan="cancelled",
+				thay_doi={"reason": ly_do, "invoice_code": si.name})
+			tt_don = "cancelled"
+		elif tt_don != tt_cu:
+			so.npp_trang_thai = tt_don
+			so.flags.ignore_permissions = True
+			so.save()
+		ghi_nhat_ky_don(so.name, "dong", hanh_dong="invoice_cancelled", giai_doan=tt_don,
+			thay_doi={"invoice_id": si.name, "invoice_code": si.name, "import_entry_id": si.name, "reason": ly_do})
+	gui_thong_bao(si.npp_nhan_vien or (so.npp_nhan_vien if so else None), "invoice_cancelled", f"Hóa đơn {si.name} đã bị huỷ", ly_do,
+		f"/orders/{don}" if don else None)
+	frappe.local.message_log = []
+	return si, so, tt_don
+
+
+# ================================================================================================ reissue_invoice (Sửa HĐ)
+def _mac_dinh_lap_lai(hd: str, p: dict) -> dict:
+	"""_mac_dinh_lap_lai (mig 213): thiếu ngày / điều khoản → của tờ cũ; vắng khoá `discount` → giảm giá cả đơn của tờ cũ
+	(= round(Σ tiền dòng − subtotal), chỉ khi > 0). Gửi `discount` (kể cả 0) là ý định của màn — giữ nguyên."""
+	ra = dict(p or {})
+	cu = frappe.db.get_value("Sales Invoice", hd, ["posting_date", "payment_terms_template", "net_total", "discount_amount"], as_dict=True)
+	if not cu:
+		return ra
+	if not _chu(ra.get("invoice_date")) and cu.posting_date:
+		ra["invoice_date"] = str(cu.posting_date)
+	if not _chu(ra.get("payment_terms")) and cu.payment_terms_template:
+		ra["payment_terms"] = cu.payment_terms_template
+	if "discount" not in ra:
+		giam = L.lam_tron(Decimal(str(cu.discount_amount or 0)))  # subtotal của cổng = net_total − giảm cả đơn → Σ dòng − subtotal = giảm
+		if giam > 0:
+			ra["discount"] = int(giam)
+	return ra
+
+
+@rpc("reissue_invoice", ghi=True, chuan_bi=_chuan_bi_huy)
+def reissue_invoice(p_invoice_id=None, p=None):
+	"""Sửa HĐ (mig 128 / 149 / 152 / 182 / 184 / 213 / 215 / 227 / 246 / 247): huỷ tờ cũ (đơn KHÔNG huỷ theo) rồi lập tờ mới trong CÙNG
+	giao dịch — tờ mới amend tờ cũ (`HD-0001-1`), giữ hệ số tờ cũ, giữ NV đứng tên + người giữ nợ, mặc định ngày / điều khoản / giảm giá
+	của tờ cũ. Lỗi ở bất kỳ bước nào (thiếu tồn, không dòng…) → cả giao dịch lùi, tờ cũ còn nguyên.
+	Chưa gồm (báo rõ, không làm dở): hàng trả kèm (return_edits / return_adds / tra_da_nhap — bước phiếu trả) và chuyển tiền thu sang tờ
+	mới (mig 184 — bước phiếu thu)."""
+	nc = hien_tai()
+	cd = cai_dat_ban()
+	hd = _chu(p_invoice_id)
+	p = p if isinstance(p, dict) else (frappe.parse_json(p) if p else {})
+	_khoa_bin(_hang_cua_hd(hd) | _hang_cua(p.get("lines") if isinstance(p.get("lines"), list) else []), cd)
+	if not hd or not frappe.db.exists("Sales Invoice", {"name": hd, "is_return": 0}):
+		raise NppLoi("INVOICE_NOT_FOUND")
+	p = _mac_dinh_lap_lai(hd, p)
+	if any(isinstance(p.get(k), list) and p[k] for k in ("return_edits", "return_adds")) or _chu(p.get("tra_da_nhap")):
+		raise NppLoi("RETURNS_CHUA_HO_TRO: hàng trả kèm khi sửa HĐ dựng ở bước phiếu trả của P3.")
+	if frappe.db.get_value("Sales Invoice", hd, "docstatus") == 1 and _tien_da_thu(hd):
+		raise NppLoi("REISSUE_TIEN_THU_CHUA_HO_TRO: sửa HĐ đã có tiền thu dựng ở bước phiếu thu của P3.")
+	cu = frappe.db.get_value("Sales Invoice", hd, ["npp_don_hang", "npp_nhan_vien", "npp_nv_giu_no", "npp_ve_npp_luc", "npp_giao_tu_nv"],
+		as_dict=True)
+	giu = {"nhan_vien": cu.npp_nhan_vien, "nv_giu_no": cu.npp_nv_giu_no, "ve_npp_luc": cu.npp_ve_npp_luc, "giao_tu_nv": cu.npp_giao_tu_nv}
+	_huy(nc, cd, hd, f"Lập lại hóa đơn {hd}", lap_lai=True)
+	tai = {k: v for k, v in p.items() if k != "return_adds"}
+	tai["order_id"] = cu.npp_don_hang
+	return [_xuat(nc, cd, tai, hd_cu=hd, giu=giu)]

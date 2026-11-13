@@ -1,0 +1,997 @@
+{
+ "ghi_chu": "Sinh bởi tools/vang_giu_no.py — trigger _cong_no_giu_ve_npp thật của nppsale; N = NV đã nghỉ.",
+ "dong": [
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "N",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": null
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "N",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "B",
+   "nv": "A",
+   "co_ve": false,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "N",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "N",
+   "nv": "A",
+   "co_ve": false,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "A",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "N",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": null
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "A",
+   "nv": "B",
+   "co_ve": false,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "N",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "N",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "N",
+   "nv": "B",
+   "co_ve": false,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "B",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": null
+   },
+   "moi": "N",
+   "nv": "N",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": null
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "A",
+   "nv": "N",
+   "co_ve": false,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "N",
+   "nv": "N",
+   "co_ve": false,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "B",
+   "nv": "N",
+   "co_ve": false,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "N",
+   "nv": "N",
+   "co_ve": false,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "N",
+   "nv": "N",
+   "co_ve": false,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": "N",
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": null
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": null
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": null
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": null
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "A",
+   "nv": null,
+   "co_ve": false,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "A"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "B",
+   "nv": null,
+   "co_ve": false,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "B"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": false,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": false,
+    "giao": "N"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": null
+   },
+   "moi": "A",
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": null
+   },
+   "moi": "B",
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": null
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": null
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "A"
+   },
+   "moi": "A",
+   "nv": null,
+   "co_ve": true,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "A"
+   },
+   "moi": "B",
+   "nv": null,
+   "co_ve": true,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "A"
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "A"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": true,
+   "giao": "A"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "B"
+   },
+   "moi": "A",
+   "nv": null,
+   "co_ve": true,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "B"
+   },
+   "moi": "B",
+   "nv": null,
+   "co_ve": true,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "B"
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "B"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": true,
+   "giao": "B"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "N"
+   },
+   "moi": "A",
+   "nv": null,
+   "co_ve": true,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "N"
+   },
+   "moi": "B",
+   "nv": null,
+   "co_ve": true,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "N"
+   },
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": "N"
+  },
+  {
+   "loai": "doi",
+   "cu": {
+    "nv": null,
+    "ve": true,
+    "giao": "N"
+   },
+   "moi": null,
+   "nv": null,
+   "co_ve": true,
+   "giao": "N"
+  },
+  {
+   "loai": "lap",
+   "cu": null,
+   "moi": "A",
+   "nv": "A",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "lap",
+   "cu": null,
+   "moi": "B",
+   "nv": "B",
+   "co_ve": false,
+   "giao": null
+  },
+  {
+   "loai": "lap",
+   "cu": null,
+   "moi": "N",
+   "nv": null,
+   "co_ve": true,
+   "giao": null
+  },
+  {
+   "loai": "lap",
+   "cu": null,
+   "moi": null,
+   "nv": null,
+   "co_ve": false,
+   "giao": null
+  }
+ ]
+}

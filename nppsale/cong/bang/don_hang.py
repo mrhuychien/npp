@@ -60,11 +60,13 @@ def _cot_don():
 		"tim_kd": c("npp_tim_kd"),
 	}
 	if _co_hd():
-		# mốc xuất HĐ đầu tiên — giữ cả khi HĐ đã huỷ sau đó (nppsale không xoá completed_at khi huỷ HĐ; chặn xoá đơn)
-		ra["completed_at"] = c("(SELECT MIN(hd.`creation`) FROM `tabSales Invoice` hd WHERE hd.`npp_don_hang` = {t}.`name` "
-			"AND hd.`docstatus` IN (1, 2))", "gio")
-		ra["completed_by"] = c("(SELECT hd.`owner` FROM `tabSales Invoice` hd WHERE hd.`npp_don_hang` = {t}.`name` AND hd.`docstatus` IN (1, 2) "
-			"ORDER BY hd.`creation` LIMIT 1)")
+		# CHỈ khi đơn đang Hoàn thành — `_wf2b_sync_order_status` xoá completed_at / completed_by khi đơn rời 'completed' (huỷ HĐ → đơn về
+		# submitted rồi Đã huỷ; Sửa HĐ → về submitted rồi hoàn thành LẠI lúc lập tờ mới). Vậy mốc = lúc lập HĐ ĐANG hiệu lực (mới nhất).
+		_hd_hl = ("FROM `tabSales Invoice` hd WHERE hd.`npp_don_hang` = {t}.`name` AND hd.`docstatus` = 1 AND hd.`is_return` = 0 "
+			"ORDER BY hd.`creation` DESC LIMIT 1")
+		ra["completed_at"] = c("CASE WHEN {t}.`npp_trang_thai` = 'completed' THEN (SELECT hd.`creation` " + _hd_hl + ") END", "gio")
+		ra["completed_by"] = c("CASE WHEN {t}.`npp_trang_thai` = 'completed' THEN (SELECT CASE WHEN hd.`owner` IN ('Administrator', "
+			"'Guest') THEN NULL ELSE hd.`owner` END " + _hd_hl + ") END")
 	else:
 		ra["completed_at"] = CotDef("NULL", "gio")
 		ra["completed_by"] = CotDef("NULL")
