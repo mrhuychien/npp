@@ -84,7 +84,7 @@ def truong(tieu_de, dong, canh_bao):
 	# Cờ: AOS / RO / idx là viết tắt của phần Bán hàng
 	ghi2 = re.sub(r"\bAOS\b", "allow_on_submit", re.sub(r"\bRO\b", "read_only", re.sub(r"\bidx\b", "search_index", ghi)))
 	for c in CO + ("in_list_view", "in_standard_filter"):
-		if re.search(r"(?<![\w.])" + c + r"(?![\w])", ghi2) and not re.search(r"(không|bỏ|chưa)\s+" + c, ghi2):
+		if re.search(r"(?<![\w.])" + c + r"(?![\w])", ghi2) and not re.search(r"(không|bỏ|chưa)\s+`?" + c, ghi2):
 			if c == "unique" and re.search(r"unique\s+(của|ở|trên)", ghi2):
 				continue
 			f[c] = 1
@@ -159,6 +159,11 @@ def main():
 			print("  - " + c)
 	if a.ghi:
 		os.makedirs(os.path.dirname(DICH), exist_ok=True)
+		if chi_dt and os.path.exists(DICH):  # chỉ thay các DocType được chọn, giữ phần còn lại của tệp
+			with open(DICH, encoding="utf-8") as f:
+				cu = json.load(f)
+			cu.update(kq)
+			kq = cu
 		with open(DICH, "w", encoding="utf-8") as f:
 			json.dump(kq, f, ensure_ascii=False, indent=1, sort_keys=True)
 			f.write("\n")

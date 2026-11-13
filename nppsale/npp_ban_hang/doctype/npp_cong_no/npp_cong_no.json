@@ -1,0 +1,218 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "loai",
+  "khach_hang",
+  "ten_khach",
+  "hoa_don",
+  "phieu_tra",
+  "phieu_thu",
+  "don_hang",
+  "khoa_nguon",
+  "nhan_vien",
+  "giao_tu_nv",
+  "ve_npp_luc",
+  "so_tien",
+  "da_thu",
+  "con_no",
+  "han_thanh_toan",
+  "trang_thai",
+  "qua_han_tay",
+  "ghi_chu",
+  "tao_luc",
+  "tinh_luc"
+ ],
+ "fields": [
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Loại khoản",
+   "options": "hoa_don\ndau_ky\nphieu_tra\ntien_thua",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "khach_hang",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Khách hàng",
+   "options": "Customer",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ten_khach",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tên khách",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hoa_don",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Hoá đơn / tờ đầu kỳ",
+   "options": "Sales Invoice",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "phieu_tra",
+   "fieldtype": "Link",
+   "label": "Phiếu trả",
+   "options": "NPP Phieu Tra",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "phieu_thu",
+   "fieldtype": "Link",
+   "label": "Phiếu thu (tiền thừa)",
+   "options": "NPP Phieu Thu",
+   "read_only": 1
+  },
+  {
+   "fieldname": "don_hang",
+   "fieldtype": "Link",
+   "label": "Đơn hàng",
+   "options": "Sales Order",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "khoa_nguon",
+   "fieldtype": "Data",
+   "label": "Khoá nguồn",
+   "read_only": 1,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "nhan_vien",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "NV giữ nợ",
+   "options": "NPP Nhan Vien",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "giao_tu_nv",
+   "fieldtype": "Link",
+   "label": "Nợ giao từ NV",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ve_npp_luc",
+   "fieldtype": "Datetime",
+   "label": "Nợ về NPP lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "so_tien",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Số nợ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "da_thu",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Đã thu",
+   "read_only": 1
+  },
+  {
+   "fieldname": "con_no",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Còn nợ",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "han_thanh_toan",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Hạn thanh toán",
+   "read_only": 1
+  },
+  {
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái",
+   "options": "open\npartial\npaid\noverdue",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "qua_han_tay",
+   "fieldtype": "Check",
+   "label": "Đánh dấu quá hạn",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tao_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Ngày ghi nợ",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "tinh_luc",
+   "fieldtype": "Datetime",
+   "label": "Tính lại lúc",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Ban Hang",
+ "name": "NPP Cong No",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "khach_hang,hoa_don,nhan_vien",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "ten_khach"
+}

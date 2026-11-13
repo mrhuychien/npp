@@ -194,6 +194,16 @@ doc_events = {
 		"on_update": "nppsale.su_kien.khach_hang.thay_doi",
 		"on_trash": "nppsale.su_kien.khach_hang.thay_doi",
 	},
+	# Công nợ = bản chiếu từ sổ (blueprint 02 §4.3.0): chứng từ nguồn ghi sổ / huỷ / đổi trường AOS → chiếu lại dòng NPP Cong No
+	"Sales Invoice": {
+		"on_submit": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",
+		"on_cancel": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",
+		"on_update_after_submit": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",
+	},
+	"Payment Entry": {
+		"on_submit": "nppsale.su_kien.cong_no.sau_thanh_toan",
+		"on_cancel": "nppsale.su_kien.cong_no.sau_thanh_toan",
+	},
 }
 
 # doc_events = {

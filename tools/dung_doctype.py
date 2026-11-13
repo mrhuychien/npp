@@ -184,9 +184,11 @@ def doc_truong(bang: list[str], ten_dt: str) -> tuple[list[dict], list[str]]:
 			f["in_list_view"] = 1
 		if "✓" in o(cot, "instandard"):
 			f["in_standard_filter"] = 1
-		# Cờ trong Notes: chỉ nhận từ khoá đứng riêng, không đi sau "không"/"bỏ"
+		# Cờ trong Notes: chỉ nhận từ khoá đứng riêng, không đi sau "không"/"bỏ". AOS / RO / idx là viết tắt blueprint dùng (như công cụ
+		# Custom Field — tools/dung_truong_tuy_bien.py)
+		ghi = re.sub(r"\bAOS\b", "allow_on_submit", re.sub(r"\bRO\b", "read_only", re.sub(r"\bidx\b", "search_index", ghi)))
 		for c in CO:
-			if re.search(r"(?<![\w.])" + c + r"(?![\w])", ghi) and not re.search(r"(không|bỏ|chưa)\s+" + c, ghi):
+			if re.search(r"(?<![\w.])" + c + r"(?![\w])", ghi) and not re.search(r"(không|bỏ|chưa)\s+`?" + c, ghi):
 				if c == "unique" and re.search(r"unique\s+(của|ở|trên)", ghi):
 					continue
 				f[c] = 1

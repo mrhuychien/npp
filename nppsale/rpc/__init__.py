@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 DANG_KY: dict = {}
 
@@ -18,11 +18,15 @@ class MucRpc:
 	ghi: bool = True
 	cho_khach: bool = False
 	gioi_han_phut: int = 20  # lượt / phút / IP khi người gọi là khách
+	# Method ghi kho (CFD-05): chạy `chuan_bi(**tham_so)` (đọc người gọi, cài đặt — mọi thứ cần trước khi khoá) → cổng COMMIT → đặt
+	# savepoint → gọi hàm, mà câu ĐẦU TIÊN là khoá Bin `FOR UPDATE`: ảnh chụp dữ liệu (REPEATABLE READ) chỉ lập ở câu đọc thường sau
+	# khoá, nên hàm đọc tồn mới nhất (PoC 1d). Deadlock / quá hạn khoá → lui cả lượt, thử lại có giãn cách.
+	chuan_bi: Callable | None = None
 
 
-def rpc(ten: str, ghi: bool = True, cho_khach: bool = False, gioi_han_phut: int = 20):
+def rpc(ten: str, ghi: bool = True, cho_khach: bool = False, gioi_han_phut: int = 20, chuan_bi: Callable | None = None):
 	def boc(ham):
-		DANG_KY[ten] = MucRpc(ham, ghi, cho_khach, gioi_han_phut)
+		DANG_KY[ten] = MucRpc(ham, ghi, cho_khach, gioi_han_phut, chuan_bi)
 		return ham
 	return boc
 

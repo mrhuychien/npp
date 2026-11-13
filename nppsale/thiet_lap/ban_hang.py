@@ -92,6 +92,17 @@ def _dieu_khoan():
 				"due_date_based_on": "Day(s) after invoice date", "credit_days": ngay}]}).insert(ignore_permissions=True)
 
 
+def _tk_giam_gia_don(cong_ty: str, abbr: str) -> str:
+	"""Tài khoản của giảm giá cả đơn (additional_discount_account của HĐ — giảm sau thuế, không hạ nền thuế, mig 183)."""
+	ma = f"Chiet khau thuong mai - {abbr}"
+	if frappe.db.exists("Account", ma):
+		return ma
+	nhom = frappe.db.get_value("Account", {"company": cong_ty, "account_name": "Indirect Expenses", "is_group": 1}) or frappe.db.get_value(
+		"Account", {"company": cong_ty, "root_type": "Expense", "is_group": 1}, order_by="lft")
+	return frappe.get_doc({"doctype": "Account", "account_name": "Chiet khau thuong mai", "parent_account": nhom, "company": cong_ty,
+		"account_type": "", "is_group": 0}).insert(ignore_permissions=True).name
+
+
 def dam_bao():
 	cong_ty = _cong_ty()
 	if not cong_ty:
@@ -109,7 +120,8 @@ def dam_bao():
 		return
 	cd = frappe.get_single("NPP Cai Dat")
 	doi = False
-	for k, v in (("kho_ban", kho_ban), ("kho_can_date", kho_date), ("mau_thue_ban", ban), ("mau_thue_mua", mua)):
+	tk_giam = _tk_giam_gia_don(cong_ty, abbr)
+	for k, v in (("kho_ban", kho_ban), ("kho_can_date", kho_date), ("mau_thue_ban", ban), ("mau_thue_mua", mua), ("tk_giam_gia_don", tk_giam)):
 		if cd.meta.has_field(k) and not cd.get(k):
 			cd.set(k, v)
 			doi = True
@@ -131,7 +143,7 @@ def cai_dat_ban() -> frappe._dict:
 			kho_can_date=g.get("kho_can_date") or (f"Kho can date - {abbr}" if abbr else None),
 			mau_thue_ban=g.get("mau_thue_ban") or (f"VAT theo mat hang - {abbr}" if abbr else None),
 			mau_thue_mua=g.get("mau_thue_mua") or (f"VAT mua theo mat hang - {abbr}" if abbr else None),
-			tk_giam_gia_don=g.get("tk_giam_gia_don"),
+			tk_giam_gia_don=g.get("tk_giam_gia_don") or (f"Chiet khau thuong mai - {abbr}" if abbr else None),
 		)
 		frappe.local._npp_cai_dat_ban = cd
 	return cd

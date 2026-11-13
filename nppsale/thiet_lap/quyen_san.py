@@ -2,7 +2,8 @@
 
 Method của app lập chứng từ lõi (Sales Order, Sales Invoice…) dưới chính người dùng để chủ chứng từ / người sửa đúng người; lõi tự kiểm
 quyền ĐỌC danh mục trong lúc ấy (vd. `get_item_details` gọi `item.check_permission()`; cờ bỏ qua quyền của tờ không lan sang). Vì
-vậy vai NPP được ĐỌC danh mục ở lớp Frappe — chỉ đọc, không ghi; ghi chứng từ tiền / kho không cấp cho ai (chỉ method).
+vậy vai NPP được ĐỌC danh mục ở lớp Frappe — chỉ đọc; ghi chứng từ tiền / kho không cấp cho ai (chỉ method). Ngoại lệ duy nhất: chứng
+từ phụ nội bộ mà lõi tự lập / tự ghi sổ trong lúc method ghi sổ chứng từ chính (gói lô) — ghi rõ ở từng dòng.
 
 Đọc ở lớp Frappe KHÔNG phải lối đọc của người dùng: các cửa đọc chung của lõi (`/api/resource`, `frappe.client.*`,
 `frappe.desk.*`…) bị chặn với người chỉ mang vai NPP (`nppsale.portal.chan`) — mọi đọc đi qua cổng / method của app đã lọc theo vai
@@ -30,6 +31,10 @@ SAN: dict[str, tuple[str, ...]] = {
 	"Sales Taxes and Charges Template": ("read", "select"),
 	"Payment Terms Template": ("read", "select"),
 	"Account": ("read", "select"),  # get_party_account → account_perm_check (Sales Order.validate)
+	# Chứng từ phụ NỘI BỘ của kho: lõi tự lập gói lô (SerialBatchCreation → doc.save()) và tự ghi sổ / huỷ nó trong Stock Ledger
+	# Entry.on_submit / on_cancel dưới quyền người gọi (dò bằng bài Xuất hàng, 13/11/2026). Người dùng không chạm được gói lô nào ngoài
+	# method của app (cửa /api/resource… bị chặn với vai NPP — nppsale.portal.chan).
+	"Serial and Batch Bundle": ("read", "select", "create", "write", "submit", "cancel"),
 }
 
 

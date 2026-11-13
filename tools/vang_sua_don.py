@@ -17,7 +17,21 @@ import sys
 import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from vang_tao_don import GIA, HANG, KHACH, NGUOI, NHOM, NS, PSQL, _lit, dong, ref, sql_nen, tong, uid  # noqa: E402
+from vang_tao_don import (  # noqa: E402
+	GIA,
+	HANG,
+	KHACH,
+	NGUOI,
+	NHOM,
+	NS,
+	PSQL,
+	_lit,
+	dong,
+	ref,
+	sql_nen,
+	tong,
+	uid,
+)
 
 GOC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DICH = os.path.join(GOC, "nppsale", "tests", "du_lieu", "sua_don_mau.json")

@@ -1,4 +1,58 @@
 {
+ "Batch": [
+  {
+   "fieldname": "npp_ngay_nhap",
+   "fieldtype": "Datetime",
+   "insert_after": "expiry_date",
+   "label": "Ngày nhập",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_vi_tri",
+   "fieldtype": "Data",
+   "insert_after": "npp_ngay_nhap",
+   "label": "Vị trí"
+  },
+  {
+   "fieldname": "npp_kho_tao",
+   "fieldtype": "Link",
+   "insert_after": "npp_vi_tri",
+   "label": "Kho khi tạo",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_gia_von_lo_rong",
+   "fieldtype": "Currency",
+   "insert_after": "npp_kho_tao",
+   "label": "Giá vốn lô rỗng",
+   "precision": "6"
+  },
+  {
+   "fieldname": "npp_chuyen_vung_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_gia_von_lo_rong",
+   "label": "Chuyển vùng lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_chuyen_vung_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_chuyen_vung_luc",
+   "label": "Người chuyển vùng",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "item_name",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
  "Customer": [
   {
    "fieldname": "npp_sb_diem_ban",
@@ -221,6 +275,171 @@
    "label": "Khoá tìm",
    "read_only": 1,
    "search_index": 1
+  }
+ ],
+ "Sales Invoice": [
+  {
+   "fieldname": "npp_don_hang",
+   "fieldtype": "Link",
+   "insert_after": "customer_name",
+   "label": "Đơn hàng",
+   "options": "Sales Order",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_nhan_vien",
+   "fieldtype": "Link",
+   "insert_after": "npp_don_hang",
+   "label": "Người đứng tên",
+   "options": "NPP Nhan Vien",
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "npp_nhan_vien",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_qua_han_tay",
+   "label": "Ghi chú"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_soan_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_ghi_chu",
+   "label": "Đã soạn lúc",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_soan_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_soan_luc",
+   "label": "Người soạn",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ly_do_huy",
+   "fieldtype": "Small Text",
+   "insert_after": "amended_from",
+   "label": "Lý do huỷ"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_ly_do_huy",
+   "label": "Huỷ lúc",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_huy_luc",
+   "label": "Người huỷ",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.is_return",
+   "fieldname": "npp_hoa_don_goc",
+   "fieldtype": "Link",
+   "insert_after": "return_against",
+   "label": "HĐ gắn",
+   "options": "Sales Invoice",
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.is_return",
+   "fieldname": "npp_phieu_tra",
+   "fieldtype": "Link",
+   "insert_after": "npp_hoa_don_goc",
+   "label": "Phiếu trả",
+   "options": "NPP Phieu Tra",
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_nv_giu_no",
+   "fieldtype": "Link",
+   "insert_after": "npp_tim_kd",
+   "label": "NV giữ nợ",
+   "options": "NPP Nhan Vien",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_giao_tu_nv",
+   "fieldtype": "Link",
+   "insert_after": "npp_nv_giu_no",
+   "label": "Nợ giao từ NV",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ve_npp_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_giao_tu_nv",
+   "label": "Nợ về NPP lúc",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_han_thanh_toan",
+   "fieldtype": "Date",
+   "insert_after": "due_date",
+   "label": "Hạn nợ"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_qua_han_tay",
+   "fieldtype": "Check",
+   "insert_after": "npp_han_thanh_toan",
+   "label": "Đánh dấu quá hạn"
+  }
+ ],
+ "Sales Invoice Item": [
+  {
+   "fieldname": "npp_giam_dong",
+   "fieldtype": "Currency",
+   "insert_after": "discount_amount",
+   "label": "Giảm dòng (ghi nhớ)"
+  },
+  {
+   "fieldname": "npp_thue_suat",
+   "fieldtype": "Float",
+   "insert_after": "item_tax_template",
+   "label": "Thuế suất",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_hang_doi",
+   "fieldtype": "Check",
+   "insert_after": "is_free_item",
+   "label": "Hàng đổi"
+  },
+  {
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "description",
+   "label": "Ghi chú dòng"
   }
  ],
  "Sales Order": [

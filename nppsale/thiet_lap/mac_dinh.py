@@ -23,10 +23,12 @@ def _dat_ten_chung_tu():
 		ss.cust_master_name = "Naming Series"
 		ss.flags.ignore_mandatory = True
 		ss.save(ignore_permissions=True)
-	for dt, mau in (("Customer", "KH-.#####"), ("Supplier", "NCC-.####"), ("Sales Order", "DH-.####")):
-		for prop in ("options", "default"):
-			if frappe.db.get_value("Property Setter", {"doc_type": dt, "field_name": "naming_series", "property": prop}, "value") != mau:
-				make_property_setter(dt, "naming_series", prop, mau, "Text", validate_fields_for_doctype=False)
+	# (DocType, lựa chọn naming_series, mặc định) — HĐ bán HD-, tờ ghi có của phiếu trả HDT-, tờ nợ đầu kỳ DK- (blueprint 02 §2.4 / §5.6)
+	for dt, chon, mac in (("Customer", "KH-.#####", "KH-.#####"), ("Supplier", "NCC-.####", "NCC-.####"),
+			("Sales Order", "DH-.####", "DH-.####"), ("Sales Invoice", "HD-.####\nHDT-.####\nDK-.####", "HD-.####")):
+		for prop, gt in (("options", chon), ("default", mac)):
+			if frappe.db.get_value("Property Setter", {"doc_type": dt, "field_name": "naming_series", "property": prop}, "value") != gt:
+				make_property_setter(dt, "naming_series", prop, gt, "Text", validate_fields_for_doctype=False)
 	# NCC đặt tên theo dãy (Buying Settings supp_master_name — Supplier.autoname đọc mặc định toàn cục)
 	if frappe.db.get_single_value("Buying Settings", "supp_master_name") != "Naming Series" or (
 		frappe.defaults.get_global_default("supp_master_name") != "Naming Series"

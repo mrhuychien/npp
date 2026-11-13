@@ -101,9 +101,12 @@ def rpc(ten=None, tham_so=None, sau=None):
 		return {"error": {"message": f"{ten} ghi sổ — phải gọi bằng POST", "code": "PGRST105", "details": None, "hint": None},
 			"status": 405}
 	diem = "npp_cong_rpc"
+	ts = _doc_json(tham_so)
+	if muc.chuan_bi is not None:
+		return _goi_co_khoa(ten, muc, ts, sau, diem)
 	frappe.db.savepoint(diem)
 	try:
-		kq = muc.ham(**_doc_json(tham_so))
+		kq = muc.ham(**ts)
 		sau = _doc_json(sau)
 		if sau:
 			if not isinstance(kq, list):
@@ -116,3 +119,32 @@ def rpc(ten=None, tham_so=None, sau=None):
 	except Exception as e:  # noqa: BLE001 — RPC là một đơn vị: hỏng thì quay lui đúng phần của nó (như hàm Postgres)
 		frappe.db.rollback(save_point=diem)
 		return _loi(e)
+
+
+THU_LAI_KHOA = (0.2, 0.5, 1.0)  # giây chờ trước lượt thử lại thứ 2, 3, 4
+
+
+def _goi_co_khoa(ten, muc, ts, sau, diem):
+	"""RPC ghi kho: chuẩn bị → COMMIT → savepoint → hàm (câu đầu là khoá). Deadlock / quá hạn khoá → lui hẳn và thử lại."""
+	import time
+
+	for lan in range(len(THU_LAI_KHOA) + 1):
+		try:
+			muc.chuan_bi(**ts)
+			if not frappe.flags.in_test:  # bài kiểm chạy trong một giao dịch lui cuối bài — commit là ghi hẳn dữ liệu thử
+				frappe.db.commit()
+			frappe.db.savepoint(diem)
+			kq = muc.ham(**ts)
+			if _doc_json(sau):
+				raise LoiCong("PGRST100", f"{ten} không trả tập dòng — không lọc / sắp / phân trang được kết quả")
+			return {"data": kq, "status": 200}
+		except (frappe.QueryDeadlockError, frappe.QueryTimeoutError) as e:
+			frappe.db.rollback()
+			frappe.local._npp_ngu_canh = None
+			if lan >= len(THU_LAI_KHOA):
+				return _loi(LoiCong("40P01", f"Máy chủ đang bận ghi kho — thử lại sau ít giây ({type(e).__name__}).", http=503))
+			time.sleep(THU_LAI_KHOA[lan])
+		except Exception as e:  # noqa: BLE001 — như RPC thường: lui đúng phần của nó
+			frappe.db.rollback(save_point=diem)
+			return _loi(e)
+
