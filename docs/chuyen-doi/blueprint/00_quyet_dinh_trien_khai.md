@@ -96,6 +96,9 @@ chỗ khác nppsale ghi ở `LECH_PT` / `SUA_MONG` trong bài, đổi được m
 | Q12 — tài khoản chênh lệch phiếu nhập lại `NL-` | — | mặc định của lõi (Stock Adjustment) — chưa thêm ô `tk_*` |
 | Q13 — hệ số quy đổi | tra danh mục lúc hoàn thành | chụp lúc lập chứng từ (tờ ghi có / phiếu nhập) — cùng thời điểm |
 | Q14 — lập lại tờ ghi có khi tiền phiếu tự sinh đổi | — | huỷ tờ cũ, amend `HDT-x-n` |
+| Q15 — tự gắn HĐ khi hoàn thành phiếu theo đơn | không kiểm khách (phiếu khách khác gắn được HĐ, trừ nợ khách HĐ) | chặn `INVOICE_CUSTOMER_MISMATCH` (luật "khách phiếu = khách HĐ" mig 212) |
+| Q8i — ghi thẳng phiếu Nháp kèm cột "chỉ RPC" | nhận (kể cả `applied_receipt_id` → phiếu không bao giờ trừ nợ) | nhận như nppsale các cột khác (giờ hoàn thành / huỷ…, kho nhận); riêng `applied_receipt_id` báo `PHIEU_TRA_KHOA: cột này chỉ đổi qua RPC` (cột không port) |
+| Q8j — người lập ghi dòng của phiếu đã sang tên NV khác | được; xoá hết dòng thì tiền phiếu GIỮ số cũ (hoàn thành phiếu rỗng ra dư có) | ghi dòng được như nppsale; tiền phiếu luôn tính lại (xoá hết dòng → 0) |
 
 Khác biệt kỹ thuật không đổi số: nppsale đảo nhập kho bằng phiếu xuất "Đảo phiếu trả" + ghi chú "(đã đảo)", bản ERPNext huỷ chứng từ (docstatus 2);
 giá vốn lô nền sau khi nhập lại do lõi định giá theo lô (nppsale giữ giá lô).

@@ -67,6 +67,9 @@ class NPPPhieuTra(Document):
 			self.flags.kiem_rls()
 		if not self.khach_hang:
 			raise LoiCong("23502", 'null value in column "customer_id" of relation "returns" violates not-null constraint', http=400)
+		# CHECK theo tên ràng buộc: chk_returns_destination_zone < chk_returns_status_v2 < returns_reason_check
+		if self.kho_nhan == "__zone_sai__":
+			_check("returns", "chk_returns_destination_zone")
 		if self.ly_do and self.ly_do not in LT.LY_DO:
 			_check("returns", "returns_reason_check")
 		for truong, dt, cot, bang, rb in (("khach_hang", "Customer", "customer_id", "customers", "returns_customer_id_fkey"),

@@ -123,6 +123,11 @@ def doi_khach_don(khach):
 	return {"buoc": "doi_khach_don", "nguoi": "owner", "khach": khach}
 
 
+def goi(nguoi, ten, sql_args, ts):
+	"""Gọi RPC bất kỳ: sql_args = đối số SQL cho Postgres (@C1 / @u:x = id nền; :pt :hd :don lúc chạy); ts = tham số RPC của bản Frappe."""
+	return {"buoc": "goi", "nguoi": nguoi, "ten": ten, "sql": sql_args, "ts": ts}
+
+
 def doi_nv_don(nv):
 	"""Đổi người đứng tên đơn đang xét bằng quyền quản trị (UPDATE sales_orders.sales_user_id / Sales Order.npp_nhan_vien)."""
 	return {"buoc": "doi_nv_don", "nguoi": "owner", "nv": nv}
@@ -226,6 +231,9 @@ def _lenh(b: dict) -> str:
 			"v_ds := v_ds || jsonb_build_array(jsonb_build_object('dong_hd', v_tra));")
 	if k == "doi_khach_don":
 		return f"EXECUTE 'RESET ROLE'; UPDATE sales_orders SET customer_id = '{uid(b['khach'][1:])}' WHERE id = v_don;"
+	if k == "goi":
+		args = _sql_ref(b["sql"]).replace(":pt", "%1$L::uuid").replace(":hd", "%2$L::uuid").replace(":don", "%3$L::uuid")
+		return f"EXECUTE format($q$SELECT public.{b['ten']}({args})$q$, v_pt::text, v_hd::text, v_don::text);"
 	if k == "doi_nv_don":
 		return f"EXECUTE 'RESET ROLE'; UPDATE sales_orders SET sales_user_id = '{uid('u:' + b['nv'])}' WHERE id = v_don;"
 	raise ValueError(f"bước lạ: {k}")
@@ -752,6 +760,58 @@ def tinh_huong() -> list[dict]:
 	th("g56b_doi_nguoi_hd_lan_phieu", *gan_b, chon("hd"), gan("owner", "sales_a"))
 	th("g56c_sua_hd_doi_ngay", *gan_b, sua("owner", [(0, {})], invoice_date="@hom_nay-5", tra_da_nhap="xyz"), hoan("owner", "sale"),
 		sua("owner", [(0, {})], tra_da_nhap="giu", invoice_date="@hom_nay-3"))
+
+	# ---------------------------------------------------------------- nhóm 7: bổ sung khi soát thiếu (G59–G65)
+	r1 = pos("sales_a", {"customer_id": "@C2", "lines": [dt(sl=2, gia=9000)]})
+	th("g59a_nvbh_huy_nhap", r1, huy_pt("sales_a", "lap nham"))
+	th("g59b_chu_huy_nhap_con_dong", r1, huy_pt("owner", "lap nham"), huy_pt("owner", "lai"))
+	th("g59c_huy_nhap_gan_hd", *_hd_c1("g59c"), pos("owner", {"customer_id": "@C1", "invoice_id": "@hd", "lines": [dt()]}),
+		huy_pt("owner", "khach doi y"), hoan("owner"))
+	th("g59d_sua_phieu_da_huy", r1, huy_pt("owner", "lap nham"), sua_pt("owner", {"notes": "da huy"}, "notes = 'da huy'"),
+		pos("owner", {"return_id": "@pt", "customer_id": "@C2", "lines": [dt(gia=9000)]}))
+	doc_lap60 = [pos("owner", {"customer_id": "@C2", "complete": True, "zone": "sale", "lines": [dt(dv="Thung", sl=2, gia=200000, thue=0.1)]})]
+	ghi_lai = {"return_id": "@pt", "customer_id": "@C2", "complete": True, "zone": "sale", "lines": [dt(dv="Thung", gia=200000, thue=0.1)]}
+	th("g60a_ql_mat_quyen_ghi_nhan_lai", *doc_lap60, quyen("manager", "returns.approve", False), pos("manager", ghi_lai))
+	th("g60b_ql_mat_quyen_luu_nhap", *doc_lap60, quyen("manager", "returns.approve", False), pos("manager", {**ghi_lai, "complete": False}))
+	th("g60c_chu_mat_quyen", quyen("owner", "returns.approve", False), pos("owner", {"customer_id": "@C2", "lines": [dt(gia=10000)]}),
+		hoan("owner"))
+	th("g60d_chu_mat_quyen_huy", quyen("owner", "returns.approve", False), pos("owner", {"customer_id": "@C2", "lines": [dt(gia=10000)]}),
+		huy_pt("owner", "x"))
+	r61 = [pos("sales_a", {"customer_id": "@C2", "lines": [dt(sl=2, gia=9000)]}),
+		sua_pt("manager", {"sales_user_id": "@u:sales_b"}, "sales_user_id = @u:sales_b"),
+		sua_pt("sales_a", {"notes": "x"}, "notes = 'x'"),
+		ghi("sales_a", "DELETE FROM returns WHERE id = :pt", {"bang": "returns", "hanh_dong": "delete", "loc": [PT_ID]}),
+		ghi("sales_a", "INSERT INTO return_lines (return_id, product_id, unit_name, quantity, unit_price, line_total) VALUES "
+			"(:pt, @P1, 'Lon', 1, 9000, 0)", {"bang": "return_lines", "hanh_dong": "insert", "gia_tri": {"return_id": "@pt",
+				"product_id": "@P1", "unit_name": "Lon", "quantity": 1, "unit_price": 9000}}),
+		ghi("sales_a", "UPDATE return_lines SET quantity = 3 WHERE return_id = :pt AND quantity = 2", {"bang": "return_lines",
+			"hanh_dong": "update", "gia_tri": {"quantity": 3}, "loc": [{"op": "eq", "cot": "return_id", "gt": "@pt"},
+				{"op": "eq", "cot": "quantity", "gt": 2}]})]
+	th("g61a_nguoi_lap_ghi_dong_phieu_nguoi_khac", *r61)
+	th("g61b_nguoi_lap_xoa_het_dong", *r61, ghi("sales_a", "DELETE FROM return_lines WHERE return_id = :pt", {"bang": "return_lines",
+		"hanh_dong": "delete", "loc": [{"op": "eq", "cot": "return_id", "gt": "@pt"}]}))
+	r62 = [*_hd_c1("g62"), ghi("owner", f"INSERT INTO returns (org_id, customer_id, order_id, requested_by, status, reason) VALUES "
+		f"('{ORG}', @C2, :don, @u:owner, 'draft', 'damaged')", {"bang": "returns", "hanh_dong": "insert", "gia_tri": {"customer_id": "@C2",
+			"order_id": "@don", "status": "draft", "reason": "damaged"}}), chon("moi_nhat")]
+	th("g62a_theo_don_khach_khac_hoan_thanh", *r62, hoan("owner"))
+	th("g62b_theo_don_khach_khac_ghi_nhan", *r62, pos("owner", {"return_id": "@pt", "customer_id": "@C2", "complete": True, "zone": "sale",
+		"lines": [dt("@P2", "Chai", 1, 5000, 0.1)]}))
+	r63 = [pos("owner", {"customer_id": "@C2", "lines": [dt(gia=10000)]}), gan("owner", "sales_a"), hoan("owner", "sale")]
+	th("g63a_nghi_viec_ghi_nhan_lai_giao_no", *r63, goi("owner", "cho_nhan_vien_nghi", "@u:sales_a", {"p_user_id": "@u:sales_a"}),
+		pos("owner", {"return_id": "@pt", "customer_id": "@C2", "complete": True, "zone": "sale", "lines": [dt(sl=2, gia=10000)]}),
+		goi("owner", "giao_cong_no_npp", "@C2, @u:sales_b", {"p_customer_id": "@C2", "p_user_id": "@u:sales_b"}))
+	th("g63b_phieu_moi_dung_ten_nv_da_nghi", *_hd_c1("g63b"), goi("owner", "cho_nhan_vien_nghi", "@u:sales_a", {"p_user_id": "@u:sales_a"}),
+		pos("owner", {"customer_id": "@C1", "complete": True, "zone": "sale", "lines": [dt()]}))
+	th("g65a_chen_cot_chi_rpc", ghi("owner", f"INSERT INTO returns (org_id, customer_id, requested_by, status, reason, destination_zone, "
+		"completed_by, completed_at, cancelled_at, cancel_reason, credited_at) VALUES ('" + ORG + "', @C2, @u:owner, 'draft', 'damaged', 'date', "
+		"@u:owner, now(), now(), 'x', now())", {"bang": "returns", "hanh_dong": "insert", "gia_tri": {"customer_id": "@C2", "status": "draft",
+			"reason": "damaged", "destination_zone": "date", "completed_by": "@u:owner", "completed_at": "2026-11-15T10:00:00+07:00",
+			"cancelled_at": "2026-11-15T10:00:00+07:00", "cancel_reason": "x", "credited_at": "2026-11-15T10:00:00+07:00"}}),
+		chon("moi_nhat"), sua_pt("owner", {"destination_zone": "sale", "cancel_reason": "y"}, "destination_zone = 'sale', cancel_reason = 'y'"),
+		sua_pt("owner", {"completed_at": "2026-11-15T11:00:00+07:00"}, "completed_at = now() + interval '1 hour'"))
+	th("g65b_vung_kho_sai", ghi("owner", f"INSERT INTO returns (org_id, customer_id, requested_by, status, destination_zone) VALUES "
+		f"('{ORG}', @C2, @u:owner, 'draft', 'kho')", {"bang": "returns", "hanh_dong": "insert", "gia_tri": {"customer_id": "@C2",
+			"status": "draft", "destination_zone": "kho"}}))
 	return T
 
 

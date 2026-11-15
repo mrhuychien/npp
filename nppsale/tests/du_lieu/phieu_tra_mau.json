@@ -14780,7 +14780,7 @@
        50.0,
        8200
       ],
-      "RESTOCK-NL-261116-003028@sale": [
+      "RESTOCK-NL-261116-004540@sale": [
        2.0,
        0
       ]
@@ -19415,7 +19415,7 @@
          "invoiced_qty": 0,
          "product_name": "Nuoc ngot VTD",
          "line_discount": 0,
-         "order_line_id": "77863aba-c82f-45d7-87ff-c42a06a9f4ee",
+         "order_line_id": "bccbf32e-1fdd-4ad8-b9c3-3950a6f64444",
          "remaining_qty": 2,
          "available_base": 80.0,
          "return_line_id": null,
@@ -19437,7 +19437,7 @@
          "order_line_id": null,
          "remaining_qty": 1,
          "available_base": 10.0,
-         "return_line_id": "be674676-8bfa-47aa-aa19-8e3476f4cad1",
+         "return_line_id": "b0abe4ab-6e40-4c73-b02b-cfd83e9daa53",
          "conversion_factor": 1
         }
        ]
@@ -19466,7 +19466,7 @@
          "invoiced_qty": 2.0,
          "product_name": "Nuoc ngot VTD",
          "line_discount": 0,
-         "order_line_id": "77863aba-c82f-45d7-87ff-c42a06a9f4ee",
+         "order_line_id": "bccbf32e-1fdd-4ad8-b9c3-3950a6f64444",
          "remaining_qty": 0,
          "available_base": 78.0,
          "return_line_id": null,
@@ -19662,7 +19662,7 @@
          "invoiced_qty": 0,
          "product_name": "Nuoc ngot VTD",
          "line_discount": 0,
-         "order_line_id": "6e2cddc9-247e-44aa-afac-daecf94b03cd",
+         "order_line_id": "5ddceca3-db0a-4724-b493-71118c66961e",
          "remaining_qty": 2,
          "available_base": 80.0,
          "return_line_id": null,
@@ -19684,7 +19684,7 @@
          "order_line_id": null,
          "remaining_qty": 1,
          "available_base": 10.0,
-         "return_line_id": "bb84ba6c-12d0-44a2-b4e2-15320f4d5625",
+         "return_line_id": "ef4505c3-4da6-451b-80a0-ba7a23cae7d7",
          "conversion_factor": 10
         }
        ]
@@ -36552,6 +36552,2786 @@
        "ghi_chu": "Nhập lại từ phiếu trả <id>"
       }
      ]
+    }
+   }
+  },
+  {
+   "ma": "g59a_nvbh_huy_nhap",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "sales_a",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "huy_pt",
+     "nguoi": "sales_a",
+     "ly_do": "lap nham"
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "FORBIDDEN: bạn không có quyền huỷ đơn trả",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9000,
+         "thue": 0.08,
+         "tien": 19440,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 19440,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "draft",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": null,
+       "nguoi_lap": "sales_a",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g59b_chu_huy_nhap_con_dong",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "sales_a",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "huy_pt",
+     "nguoi": "owner",
+     "ly_do": "lap nham"
+    },
+    {
+     "buoc": "huy_pt",
+     "nguoi": "owner",
+     "ly_do": "lai"
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "RETURN_NOT_CANCELLABLE: phiếu ở trạng thái cancelled không huỷ được",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9000,
+         "thue": 0.08,
+         "tien": 19440,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 19440,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "cancelled",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": "lap nham",
+       "nguoi_lap": "sales_a",
+       "co_huy_luc": true,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g59c_huy_nhap_gan_hd",
+   "buoc": [
+    {
+     "buoc": "tao",
+     "nguoi": "sales_a",
+     "p": {
+      "client_request_id": "34b5b0ae-d10c-5c5a-9a55-c0abd1180913",
+      "order": {
+       "order_code": "TAM-1",
+       "customer_id": "@C1",
+       "payment_terms": "COD",
+       "expected_delivery": null,
+       "notes": null,
+       "status": "submitted",
+       "approval_reason": null,
+       "sales_user_id": null,
+       "subtotal": 19000,
+       "vat": 1520,
+       "total": 20520
+      },
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9500,
+        "line_discount": 0,
+        "line_total": 19000,
+        "conversion_factor": 1,
+        "vat_rate": 0.08
+       }
+      ],
+      "returns": null,
+      "return_lines": []
+     }
+    },
+    {
+     "buoc": "xuat",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {}
+      ]
+     ],
+     "p": {}
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "customer_id": "@C1",
+      "invoice_id": "@hd",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 1,
+        "unit_price": 9500,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "huy_pt",
+     "nguoi": "owner",
+     "ly_do": "khach doi y"
+    },
+    {
+     "buoc": "hoan",
+     "nguoi": "owner",
+     "zone": "sale",
+     "ngay": null
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "RETURN_NOT_SUBMITTED: phiếu trả không ở Phiếu tạm",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": [
+      {
+       "ma": "HD-0001",
+       "han": "@hom_nay",
+       "vat": 1520,
+       "dong": [
+        {
+         "dv": "Lon",
+         "hs": 1.0,
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9500,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 19000,
+         "noi_don": true
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 20520,
+       "status": "posted",
+       "subtotal": 19000,
+       "huy_ly_do": null,
+       "sales_user": "sales_a"
+      }
+     ],
+     "pt": [
+      {
+       "hd": "HD-0001",
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9500,
+         "thue": 0.08,
+         "tien": 10260,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 10260,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "cancelled",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": "khach doi y",
+       "nguoi_lap": "owner",
+       "co_huy_luc": true,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": [
+      {
+       "status": "completed",
+       "dong_don": [
+        [
+         "VTD-P1",
+         "Lon",
+         2,
+         2.0
+        ]
+       ]
+      }
+     ],
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       28.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
+      }
+     ],
+     "cong_no": [
+      {
+       "hd": "HD-0001",
+       "nv": "sales_a",
+       "pt": null,
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": 20520
+      }
+     ],
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g59d_sua_phieu_da_huy",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "sales_a",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "huy_pt",
+     "nguoi": "owner",
+     "ly_do": "lap nham"
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "cau": "UPDATE returns SET notes = 'da huy' WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "notes": "da huy"
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "return_id": "@pt",
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 1,
+        "unit_price": 9000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "RETURN_LOCKED: phiếu trả đã huỷ — không sửa được",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9000,
+         "thue": 0.08,
+         "tien": 19440,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 19440,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "cancelled",
+       "ghi_chu": "da huy",
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": "lap nham",
+       "nguoi_lap": "sales_a",
+       "co_huy_luc": true,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "so_dong": 1
+      }
+     ],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g60a_ql_mat_quyen_ghi_nhan_lai",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "customer_id": "@C2",
+      "complete": true,
+      "zone": "sale",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Thung",
+        "quantity": 2,
+        "unit_price": 200000,
+        "vat_rate": 0.1,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "quyen",
+     "nguoi": "owner",
+     "nv": "manager",
+     "khoa": "returns.approve",
+     "duoc": false
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "manager",
+     "p": {
+      "return_id": "@pt",
+      "customer_id": "@C2",
+      "complete": true,
+      "zone": "sale",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Thung",
+        "quantity": 1,
+        "unit_price": 200000,
+        "vat_rate": 0.1,
+        "is_exchange": false
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "FORBIDDEN: bạn không có quyền huỷ đơn trả",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "owner",
+       "dong": [
+        {
+         "dv": "Thung",
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 200000,
+         "thue": 0.1,
+         "tien": 440000,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 440000,
+       "zone": "sale",
+       "ly_do": null,
+       "co_don": false,
+       "status": "completed",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": "@hom_nay",
+       "co_ghi_co": true,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": true,
+       "hoan_thanh_boi": "owner"
+      }
+     ],
+     "don": null,
+     "nhap": [
+      [
+       "PT-0001",
+       "VTD-P1",
+       48.0,
+       8200
+      ]
+     ],
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       98.0,
+       8200
+      ]
+     },
+     "tra_ve": [],
+     "cong_no": [
+      {
+       "hd": null,
+       "nv": "owner",
+       "pt": "PT-0001",
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": -440000
+      }
+     ],
+     "phieu_kho": [
+      {
+       "dong": [
+        [
+         "VTD-P1",
+         "Thung",
+         2,
+         48.0,
+         8200
+        ]
+       ],
+       "loai": "import",
+       "status": "posted",
+       "ghi_chu": "Nhập lại từ phiếu trả <id>"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "ma": "g60b_ql_mat_quyen_luu_nhap",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "customer_id": "@C2",
+      "complete": true,
+      "zone": "sale",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Thung",
+        "quantity": 2,
+        "unit_price": 200000,
+        "vat_rate": 0.1,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "quyen",
+     "nguoi": "owner",
+     "nv": "manager",
+     "khoa": "returns.approve",
+     "duoc": false
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "manager",
+     "p": {
+      "return_id": "@pt",
+      "customer_id": "@C2",
+      "complete": false,
+      "zone": "sale",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Thung",
+        "quantity": 1,
+        "unit_price": 200000,
+        "vat_rate": 0.1,
+        "is_exchange": false
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "RETURN_COMPLETED: phiếu đã nhập kho — sửa xong phải bấm Ghi nhận để kho và công nợ đổi theo",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "owner",
+       "dong": [
+        {
+         "dv": "Thung",
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 200000,
+         "thue": 0.1,
+         "tien": 440000,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 440000,
+       "zone": "sale",
+       "ly_do": null,
+       "co_don": false,
+       "status": "completed",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": "@hom_nay",
+       "co_ghi_co": true,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": true,
+       "hoan_thanh_boi": "owner"
+      }
+     ],
+     "don": null,
+     "nhap": [
+      [
+       "PT-0001",
+       "VTD-P1",
+       48.0,
+       8200
+      ]
+     ],
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       98.0,
+       8200
+      ]
+     },
+     "tra_ve": [],
+     "cong_no": [
+      {
+       "hd": null,
+       "nv": "owner",
+       "pt": "PT-0001",
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": -440000
+      }
+     ],
+     "phieu_kho": [
+      {
+       "dong": [
+        [
+         "VTD-P1",
+         "Thung",
+         2,
+         48.0,
+         8200
+        ]
+       ],
+       "loai": "import",
+       "status": "posted",
+       "ghi_chu": "Nhập lại từ phiếu trả <id>"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "ma": "g60c_chu_mat_quyen",
+   "buoc": [
+    {
+     "buoc": "quyen",
+     "nguoi": "owner",
+     "nv": "owner",
+     "khoa": "returns.approve",
+     "duoc": false
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 1,
+        "unit_price": 10000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "hoan",
+     "nguoi": "owner",
+     "zone": "sale",
+     "ngay": null
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "FORBIDDEN: bạn không có quyền hoàn thành đơn trả",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "owner",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 10000,
+         "thue": 0.08,
+         "tien": 10800,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 10800,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "draft",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g60d_chu_mat_quyen_huy",
+   "buoc": [
+    {
+     "buoc": "quyen",
+     "nguoi": "owner",
+     "nv": "owner",
+     "khoa": "returns.approve",
+     "duoc": false
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 1,
+        "unit_price": 10000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "huy_pt",
+     "nguoi": "owner",
+     "ly_do": "x"
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "FORBIDDEN: bạn không có quyền huỷ đơn trả",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "owner",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 10000,
+         "thue": 0.08,
+         "tien": 10800,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 10800,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "draft",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g61a_nguoi_lap_ghi_dong_phieu_nguoi_khac",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "sales_a",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "manager",
+     "cau": "UPDATE returns SET sales_user_id = @u:sales_b WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "sales_user_id": "@u:sales_b"
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "UPDATE returns SET notes = 'x' WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "notes": "x"
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "DELETE FROM returns WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "delete",
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "INSERT INTO return_lines (return_id, product_id, unit_name, quantity, unit_price, line_total) VALUES (:pt, @P1, 'Lon', 1, 9000, 0)",
+     "cong": {
+      "bang": "return_lines",
+      "hanh_dong": "insert",
+      "gia_tri": {
+       "return_id": "@pt",
+       "product_id": "@P1",
+       "unit_name": "Lon",
+       "quantity": 1,
+       "unit_price": 9000
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "UPDATE return_lines SET quantity = 3 WHERE return_id = :pt AND quantity = 2",
+     "cong": {
+      "bang": "return_lines",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "quantity": 3
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "return_id",
+        "gt": "@pt"
+       },
+       {
+        "op": "eq",
+        "cot": "quantity",
+        "gt": 2
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_b",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9000,
+         "thue": 0,
+         "tien": 9000,
+         "ly_do": null,
+         "ghi_chu": null
+        },
+        {
+         "dv": "Lon",
+         "sl": 3,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9000,
+         "thue": 0.08,
+         "tien": 29160,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 38160,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "draft",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": null,
+       "nguoi_lap": "sales_a",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "so_dong": 1
+      },
+      {
+       "so_dong": 0
+      },
+      {
+       "so_dong": 0
+      },
+      {
+       "so_dong": 1
+      },
+      {
+       "so_dong": 1
+      }
+     ],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g61b_nguoi_lap_xoa_het_dong",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "sales_a",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "manager",
+     "cau": "UPDATE returns SET sales_user_id = @u:sales_b WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "sales_user_id": "@u:sales_b"
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "UPDATE returns SET notes = 'x' WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "notes": "x"
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "DELETE FROM returns WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "delete",
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "INSERT INTO return_lines (return_id, product_id, unit_name, quantity, unit_price, line_total) VALUES (:pt, @P1, 'Lon', 1, 9000, 0)",
+     "cong": {
+      "bang": "return_lines",
+      "hanh_dong": "insert",
+      "gia_tri": {
+       "return_id": "@pt",
+       "product_id": "@P1",
+       "unit_name": "Lon",
+       "quantity": 1,
+       "unit_price": 9000
+      }
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "UPDATE return_lines SET quantity = 3 WHERE return_id = :pt AND quantity = 2",
+     "cong": {
+      "bang": "return_lines",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "quantity": 3
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "return_id",
+        "gt": "@pt"
+       },
+       {
+        "op": "eq",
+        "cot": "quantity",
+        "gt": 2
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "sales_a",
+     "cau": "DELETE FROM return_lines WHERE return_id = :pt",
+     "cong": {
+      "bang": "return_lines",
+      "hanh_dong": "delete",
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "return_id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_b",
+       "dong": null,
+       "tien": 38160,
+       "zone": null,
+       "ly_do": null,
+       "co_don": false,
+       "status": "draft",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": null,
+       "nguoi_lap": "sales_a",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "so_dong": 1
+      },
+      {
+       "so_dong": 0
+      },
+      {
+       "so_dong": 0
+      },
+      {
+       "so_dong": 1
+      },
+      {
+       "so_dong": 1
+      },
+      {
+       "so_dong": 2
+      }
+     ],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g62a_theo_don_khach_khac_hoan_thanh",
+   "buoc": [
+    {
+     "buoc": "tao",
+     "nguoi": "sales_a",
+     "p": {
+      "client_request_id": "fe8c022c-47fe-5bb5-93ff-11683e082dba",
+      "order": {
+       "order_code": "TAM-1",
+       "customer_id": "@C1",
+       "payment_terms": "COD",
+       "expected_delivery": null,
+       "notes": null,
+       "status": "submitted",
+       "approval_reason": null,
+       "sales_user_id": null,
+       "subtotal": 19000,
+       "vat": 1520,
+       "total": 20520
+      },
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9500,
+        "line_discount": 0,
+        "line_total": 19000,
+        "conversion_factor": 1,
+        "vat_rate": 0.08
+       }
+      ],
+      "returns": null,
+      "return_lines": []
+     }
+    },
+    {
+     "buoc": "xuat",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {}
+      ]
+     ],
+     "p": {}
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "cau": "INSERT INTO returns (org_id, customer_id, order_id, requested_by, status, reason) VALUES ('f3083a35-d168-5d69-9608-deafc1a13fa0', @C2, :don, @u:owner, 'draft', 'damaged')",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "insert",
+      "gia_tri": {
+       "customer_id": "@C2",
+       "order_id": "@don",
+       "status": "draft",
+       "reason": "damaged"
+      }
+     }
+    },
+    {
+     "buoc": "chon",
+     "nguoi": "owner",
+     "cach": "moi_nhat"
+    },
+    {
+     "buoc": "hoan",
+     "nguoi": "owner",
+     "zone": "sale",
+     "ngay": null
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "RETURN_NOT_SUBMITTED: phiếu trả không ở Phiếu tạm",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": [
+      {
+       "ma": "HD-0001",
+       "han": "@hom_nay",
+       "vat": 1520,
+       "dong": [
+        {
+         "dv": "Lon",
+         "hs": 1.0,
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9500,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 19000,
+         "noi_don": true
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 20520,
+       "status": "posted",
+       "subtotal": 19000,
+       "huy_ly_do": null,
+       "sales_user": "sales_a"
+      }
+     ],
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": null,
+       "tien": null,
+       "zone": null,
+       "ly_do": "damaged",
+       "co_don": true,
+       "status": "draft",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": false,
+       "hoan_thanh_boi": null
+      }
+     ],
+     "don": [
+      {
+       "status": "completed",
+       "dong_don": [
+        [
+         "VTD-P1",
+         "Lon",
+         2,
+         2.0
+        ]
+       ]
+      }
+     ],
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       28.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
+      },
+      {
+       "so_dong": 1
+      }
+     ],
+     "cong_no": [
+      {
+       "hd": "HD-0001",
+       "nv": "sales_a",
+       "pt": null,
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": 20520
+      }
+     ],
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g62b_theo_don_khach_khac_ghi_nhan",
+   "buoc": [
+    {
+     "buoc": "tao",
+     "nguoi": "sales_a",
+     "p": {
+      "client_request_id": "fe8c022c-47fe-5bb5-93ff-11683e082dba",
+      "order": {
+       "order_code": "TAM-1",
+       "customer_id": "@C1",
+       "payment_terms": "COD",
+       "expected_delivery": null,
+       "notes": null,
+       "status": "submitted",
+       "approval_reason": null,
+       "sales_user_id": null,
+       "subtotal": 19000,
+       "vat": 1520,
+       "total": 20520
+      },
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9500,
+        "line_discount": 0,
+        "line_total": 19000,
+        "conversion_factor": 1,
+        "vat_rate": 0.08
+       }
+      ],
+      "returns": null,
+      "return_lines": []
+     }
+    },
+    {
+     "buoc": "xuat",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {}
+      ]
+     ],
+     "p": {}
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "cau": "INSERT INTO returns (org_id, customer_id, order_id, requested_by, status, reason) VALUES ('f3083a35-d168-5d69-9608-deafc1a13fa0', @C2, :don, @u:owner, 'draft', 'damaged')",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "insert",
+      "gia_tri": {
+       "customer_id": "@C2",
+       "order_id": "@don",
+       "status": "draft",
+       "reason": "damaged"
+      }
+     }
+    },
+    {
+     "buoc": "chon",
+     "nguoi": "owner",
+     "cach": "moi_nhat"
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "return_id": "@pt",
+      "customer_id": "@C2",
+      "complete": true,
+      "zone": "sale",
+      "lines": [
+       {
+        "product_id": "@P2",
+        "unit_name": "Chai",
+        "quantity": 1,
+        "unit_price": 5000,
+        "vat_rate": 0.1,
+        "is_exchange": false
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": [
+      {
+       "ma": "HD-0001",
+       "han": "@hom_nay",
+       "vat": 1520,
+       "dong": [
+        {
+         "dv": "Lon",
+         "hs": 1.0,
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9500,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 19000,
+         "noi_don": true
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 20520,
+       "status": "posted",
+       "subtotal": 19000,
+       "huy_ly_do": null,
+       "sales_user": "sales_a"
+      }
+     ],
+     "pt": [
+      {
+       "hd": "HD-0001",
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": [
+        {
+         "dv": "Chai",
+         "sl": 1,
+         "sp": "VTD-P2",
+         "doi": false,
+         "gia": 5000,
+         "thue": 0.1,
+         "tien": 5500,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 5500,
+       "zone": "sale",
+       "ly_do": null,
+       "co_don": true,
+       "status": "completed",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": "@hom_nay",
+       "co_ghi_co": true,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": true,
+       "hoan_thanh_boi": "owner"
+      }
+     ],
+     "don": [
+      {
+       "status": "completed",
+       "dong_don": [
+        [
+         "VTD-P1",
+         "Lon",
+         2,
+         2.0
+        ]
+       ]
+      }
+     ],
+     "nhap": [
+      [
+       "PT-0001",
+       "VTD-P2",
+       1.0,
+       4000
+      ]
+     ],
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       28.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       11.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
+      },
+      {
+       "so_dong": 1
+      }
+     ],
+     "cong_no": [
+      {
+       "hd": "HD-0001",
+       "nv": "sales_a",
+       "pt": null,
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": 15020
+      }
+     ],
+     "phieu_kho": [
+      {
+       "dong": [
+        [
+         "VTD-P2",
+         "Chai",
+         1,
+         1.0,
+         4000
+        ]
+       ],
+       "loai": "import",
+       "status": "posted",
+       "ghi_chu": "Nhập lại từ phiếu trả <id>"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "ma": "g63a_nghi_viec_ghi_nhan_lai_giao_no",
+   "buoc": [
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "customer_id": "@C2",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 1,
+        "unit_price": 10000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "gan",
+     "nguoi": "owner",
+     "nv": "sales_a"
+    },
+    {
+     "buoc": "hoan",
+     "nguoi": "owner",
+     "zone": "sale",
+     "ngay": null
+    },
+    {
+     "buoc": "goi",
+     "nguoi": "owner",
+     "ten": "cho_nhan_vien_nghi",
+     "sql": "@u:sales_a",
+     "ts": {
+      "p_user_id": "@u:sales_a"
+     }
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "return_id": "@pt",
+      "customer_id": "@C2",
+      "complete": true,
+      "zone": "sale",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 10000,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "goi",
+     "nguoi": "owner",
+     "ten": "giao_cong_no_npp",
+     "sql": "@C2, @u:sales_b",
+     "ts": {
+      "p_customer_id": "@C2",
+      "p_user_id": "@u:sales_b"
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 10000,
+         "thue": 0.08,
+         "tien": 21600,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 21600,
+       "zone": "sale",
+       "ly_do": null,
+       "co_don": false,
+       "status": "completed",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": "@hom_nay",
+       "co_ghi_co": true,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": true,
+       "hoan_thanh_boi": "owner"
+      }
+     ],
+     "don": null,
+     "nhap": [
+      [
+       "PT-0001",
+       "VTD-P1",
+       2.0,
+       8200
+      ]
+     ],
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       52.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "entry_id": true
+      }
+     ],
+     "cong_no": [
+      {
+       "hd": null,
+       "nv": "sales_b",
+       "pt": "PT-0001",
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": -21600
+      }
+     ],
+     "phieu_kho": [
+      {
+       "dong": [
+        [
+         "VTD-P1",
+         "Lon",
+         1,
+         1.0,
+         0
+        ]
+       ],
+       "loai": "export",
+       "status": "posted",
+       "ghi_chu": "Đảo phiếu trả <id>"
+      },
+      {
+       "dong": [
+        [
+         "VTD-P1",
+         "Lon",
+         1,
+         1.0,
+         8200
+        ]
+       ],
+       "loai": "import",
+       "status": "posted",
+       "ghi_chu": "Nhập lại từ phiếu trả <id> (đã đảo)"
+      },
+      {
+       "dong": [
+        [
+         "VTD-P1",
+         "Lon",
+         2,
+         2.0,
+         8200
+        ]
+       ],
+       "loai": "import",
+       "status": "posted",
+       "ghi_chu": "Nhập lại từ phiếu trả <id>"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "ma": "g63b_phieu_moi_dung_ten_nv_da_nghi",
+   "buoc": [
+    {
+     "buoc": "tao",
+     "nguoi": "sales_a",
+     "p": {
+      "client_request_id": "f97ad643-1076-5939-9bed-56cd673f1ff7",
+      "order": {
+       "order_code": "TAM-1",
+       "customer_id": "@C1",
+       "payment_terms": "COD",
+       "expected_delivery": null,
+       "notes": null,
+       "status": "submitted",
+       "approval_reason": null,
+       "sales_user_id": null,
+       "subtotal": 19000,
+       "vat": 1520,
+       "total": 20520
+      },
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 2,
+        "unit_price": 9500,
+        "line_discount": 0,
+        "line_total": 19000,
+        "conversion_factor": 1,
+        "vat_rate": 0.08
+       }
+      ],
+      "returns": null,
+      "return_lines": []
+     }
+    },
+    {
+     "buoc": "xuat",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {}
+      ]
+     ],
+     "p": {}
+    },
+    {
+     "buoc": "goi",
+     "nguoi": "owner",
+     "ten": "cho_nhan_vien_nghi",
+     "sql": "@u:sales_a",
+     "ts": {
+      "p_user_id": "@u:sales_a"
+     }
+    },
+    {
+     "buoc": "pos",
+     "nguoi": "owner",
+     "p": {
+      "customer_id": "@C1",
+      "complete": true,
+      "zone": "sale",
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 1,
+        "unit_price": 9500,
+        "vat_rate": 0.08,
+        "is_exchange": false
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": [
+      {
+       "ma": "HD-0001",
+       "han": "@hom_nay",
+       "vat": 1520,
+       "dong": [
+        {
+         "dv": "Lon",
+         "hs": 1.0,
+         "sl": 2,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9500,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 19000,
+         "noi_don": true
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 20520,
+       "status": "posted",
+       "subtotal": 19000,
+       "huy_ly_do": null,
+       "sales_user": "sales_a"
+      }
+     ],
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "sales_a",
+       "dong": [
+        {
+         "dv": "Lon",
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 9500,
+         "thue": 0.08,
+         "tien": 10260,
+         "ly_do": null,
+         "ghi_chu": null
+        }
+       ],
+       "tien": 10260,
+       "zone": "sale",
+       "ly_do": null,
+       "co_don": false,
+       "status": "completed",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": "@hom_nay",
+       "co_ghi_co": true,
+       "ly_do_huy": null,
+       "nguoi_lap": "owner",
+       "co_huy_luc": false,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": true,
+       "hoan_thanh_boi": "owner"
+      }
+     ],
+     "don": [
+      {
+       "status": "completed",
+       "dong_don": [
+        [
+         "VTD-P1",
+         "Lon",
+         2,
+         2.0
+        ]
+       ]
+      }
+     ],
+     "nhap": [
+      [
+       "PT-0001",
+       "VTD-P1",
+       1.0,
+       8200
+      ]
+     ],
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       28.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       51.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
+      }
+     ],
+     "cong_no": [
+      {
+       "hd": "HD-0001",
+       "nv": null,
+       "pt": null,
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": 20520
+      },
+      {
+       "hd": null,
+       "nv": null,
+       "pt": "PT-0001",
+       "da_thu": 0,
+       "dau_ky": false,
+       "status": "open",
+       "so_tien": -10260
+      }
+     ],
+     "phieu_kho": [
+      {
+       "dong": [
+        [
+         "VTD-P1",
+         "Lon",
+         1,
+         1.0,
+         8200
+        ]
+       ],
+       "loai": "import",
+       "status": "posted",
+       "ghi_chu": "Nhập lại từ phiếu trả <id>"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "ma": "g65a_chen_cot_chi_rpc",
+   "buoc": [
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "cau": "INSERT INTO returns (org_id, customer_id, requested_by, status, reason, destination_zone, completed_by, completed_at, cancelled_at, cancel_reason, credited_at) VALUES ('f3083a35-d168-5d69-9608-deafc1a13fa0', @C2, @u:owner, 'draft', 'damaged', 'date', @u:owner, now(), now(), 'x', now())",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "insert",
+      "gia_tri": {
+       "customer_id": "@C2",
+       "status": "draft",
+       "reason": "damaged",
+       "destination_zone": "date",
+       "completed_by": "@u:owner",
+       "completed_at": "2026-11-15T10:00:00+07:00",
+       "cancelled_at": "2026-11-15T10:00:00+07:00",
+       "cancel_reason": "x",
+       "credited_at": "2026-11-15T10:00:00+07:00"
+      }
+     }
+    },
+    {
+     "buoc": "chon",
+     "nguoi": "owner",
+     "cach": "moi_nhat"
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "cau": "UPDATE returns SET destination_zone = 'sale', cancel_reason = 'y' WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "destination_zone": "sale",
+       "cancel_reason": "y"
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    },
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "cau": "UPDATE returns SET completed_at = now() + interval '1 hour' WHERE id = :pt",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "update",
+      "gia_tri": {
+       "completed_at": "2026-11-15T11:00:00+07:00"
+      },
+      "loc": [
+       {
+        "op": "eq",
+        "cot": "id",
+        "gt": "@pt"
+       }
+      ]
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": false,
+      "loi": "PHIEU_TRA_KHOA: cột này chỉ đổi qua RPC",
+      "ma_loi": "P0001"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": [
+      {
+       "hd": null,
+       "ma": "PT-0001",
+       "nv": "owner",
+       "dong": null,
+       "tien": null,
+       "zone": "sale",
+       "ly_do": "damaged",
+       "co_don": false,
+       "status": "draft",
+       "ghi_chu": null,
+       "tu_sinh": false,
+       "ngay_tra": "@hom_nay",
+       "ngay_tru": null,
+       "co_ghi_co": false,
+       "ly_do_huy": "y",
+       "nguoi_lap": "owner",
+       "co_huy_luc": true,
+       "ghi_co_12h": false,
+       "co_hoan_thanh": true,
+       "hoan_thanh_boi": "owner"
+      }
+     ],
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [
+      {
+       "so_dong": 1
+      },
+      {
+       "so_dong": 1
+      }
+     ],
+     "cong_no": null,
+     "phieu_kho": null
+    }
+   }
+  },
+  {
+   "ma": "g65b_vung_kho_sai",
+   "buoc": [
+    {
+     "buoc": "ghi",
+     "nguoi": "owner",
+     "cau": "INSERT INTO returns (org_id, customer_id, requested_by, status, destination_zone) VALUES ('f3083a35-d168-5d69-9608-deafc1a13fa0', @C2, @u:owner, 'draft', 'kho')",
+     "cong": {
+      "bang": "returns",
+      "hanh_dong": "insert",
+      "gia_tri": {
+       "customer_id": "@C2",
+       "status": "draft",
+       "destination_zone": "kho"
+      }
+     }
+    }
+   ],
+   "mong": {
+    "buoc": [
+     {
+      "ok": false,
+      "loi": "new row for relation \"returns\" violates check constraint \"chk_returns_destination_zone\"",
+      "ma_loi": "23514"
+     }
+    ],
+    "ct": {
+     "hd": null,
+     "pt": null,
+     "don": null,
+     "nhap": null,
+     "lo_moi": null,
+     "ton_lo": {
+      "L1-CU@sale": [
+       30.0,
+       8000
+      ],
+      "L4-DAU@sale": [
+       10.0,
+       4000
+      ],
+      "L3-CAN-DATE@date": [
+       20.0,
+       7900
+      ],
+      "L5-DAU-DATE@date": [
+       6.0,
+       3900
+      ],
+      "L2-MOI-HAN-SOM@sale": [
+       50.0,
+       8200
+      ]
+     },
+     "tra_ve": [],
+     "cong_no": null,
+     "phieu_kho": null
     }
    }
   }

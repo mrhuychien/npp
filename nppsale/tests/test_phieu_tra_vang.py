@@ -45,11 +45,19 @@ LECH_PT: dict[str, tuple[int, str, str, str]] = {
 		"Q3: nppsale nhập lại giá vốn 0 (lõi sẽ lấy giá bán làm giá vốn) — chặn, báo nhập giá vốn mặc định"),
 	"g28_huy_khi_hang_da_ban": (5, "P0001", "RETURN_STOCK_USED: hàng nhập lại của phiếu trả đã xuất đi tiếp",
 		"Q5: nppsale cho lô âm khi đảo nhập kho; lõi chặn lô âm vô điều kiện (CFD-05)"),
+	"g62b_theo_don_khach_khac_ghi_nhan": (5, "P0001", "INVOICE_CUSTOMER_MISMATCH: hóa đơn gốc là của khách khác",
+		"Q15: nppsale tự gắn HĐ khách khác khi hoàn thành (trigger khách–HĐ không chạy) — chặn theo luật mig 212"),
 }
 # tình huống → (hàm sửa ảnh chụp mong của nppsale, lý do) — lệch không phải lỗi
+def _phieu_rong(ct):
+	ct["pt"][0]["tien"], ct["pt"][0]["dong"] = 0.0, None
+
+
 SUA_MONG = {
 	"g54a_xuat_lam_rong": (lambda ct: ct["tra_ve"].__setitem__(1, {"entry_id": False}),
 		"Q11: phiếu rỗng hoàn thành không lập chứng từ kho rỗng (nppsale lập phiếu NL không dòng)"),
+	"g61b_nguoi_lap_xoa_het_dong": (_phieu_rong,
+		"Q8j: xoá hết dòng → nppsale giữ tiền cũ (trigger INVOKER bị RLS chặn ghi đầu phiếu); Frappe lưu dòng = lưu phiếu → tiền 0"),
 }
 
 
@@ -261,6 +269,8 @@ class TestPhieuTraVang(IntegrationTestCase):
 		if k == "doi_nv_don":
 			frappe.db.set_value("Sales Order", st["don"], "npp_nhan_vien", self.ma["u:" + b["nv"]])
 			return {"data": None}, None
+		if k == "goi":
+			return self._goi(b["nguoi"], b["ten"], self._thay(b["ts"], st)), None
 		if k == "ghi":
 			ket = self._ghi(b["nguoi"], self._thay(b["cong"], st))
 			return ket, None if "error" in ket else {"so_dong": len(ket.get("data") or [])}

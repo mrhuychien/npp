@@ -38,9 +38,10 @@ VAI_DUYET = ("owner", "manager")
 COT_PHIEU = {"customer_id": "khach_hang", "invoice_id": "hoa_don", "order_id": "don_hang", "reason": "ly_do", "notes": "ghi_chu",
 	"status": "trang_thai", "return_date": "ngay_tra", "sales_user_id": "nhan_vien", "credit_note_amount": "tien_tra",
 	"revenue_date": "ngay_tru_doanh_so", "credit_with_invoice": "tu_sinh", "completed_at": "hoan_thanh_luc", "credited_at": "ghi_co_luc",
-	"cancel_reason": "ly_do_huy", "cancelled_at": "huy_luc", "completed_by": "hoan_thanh_boi"}
+	"cancel_reason": "ly_do_huy", "cancelled_at": "huy_luc", "completed_by": "hoan_thanh_boi", "destination_zone": "kho_nhan"}
 COT_PHIEU_BO = {"id", "org_id", "requested_by", "created_at", "updated_at", "return_code", "return_seq", "tim_kd", "approved_by",
-	"photo_url", "destination_zone", "applied_receipt_id"}
+	"photo_url", "applied_receipt_id"}
+ZONE_SAI = "__zone_sai__"  # destination_zone ngoài {sale, date}: controller báo CHECK chk_returns_destination_zone đúng chỗ (sau trigger)
 # phiếu đã qua Nháp: chỉ các cột này (v_cho của mig 227)
 CHO_SUA_SAU_NHAP = {"ghi_chu", "ly_do", "ngay_tra", "nhan_vien", "ngay_tru_doanh_so"}
 CHI_QUA_RPC = {"hoan_thanh_luc", "ghi_co_luc", "tu_sinh"}
@@ -67,6 +68,18 @@ def _gia_tri(v, truong: str, bang: str, nullif: set):
 	lý do rỗng → vi phạm CHECK (23514). bool → 0 / 1."""
 	if truong in ("tu_sinh", "hang_doi"):
 		return 1 if (v is True or str(v).lower() in ("true", "t", "1")) else 0
+	if truong in ("hoan_thanh_luc", "huy_luc", "ghi_co_luc"):  # timestamptz của nppsale (ISO có múi giờ) → giờ site không múi giờ
+		from nppsale.cong.bang._chung import gio_vao
+
+		return gio_vao(v)
+	if truong == "ngay_tra" and isinstance(v, str) and v:
+		return _ngay_pg(v)
+	if truong == "kho_nhan":  # destination_zone: vùng kho nppsale → kho của NPP Cai Dat
+		if v is None:
+			return None
+		from nppsale.thiet_lap.ban_hang import cai_dat_ban
+
+		return _kho_cua(v, cai_dat_ban()) if v in VUNG_KHO else ZONE_SAI
 	if v == "":
 		if truong in nullif:
 			return None
@@ -682,13 +695,19 @@ def _lap_to_ghi_co_co_kho(doc, kho: str, zone: str, luc, cd, to_cu: str | None =
 	from nppsale.su_kien.san_pham import bang_gia_chung
 
 	g = khi_lap(doc.nhan_vien, da_nghi, now_datetime())
+	cu_giu = frappe.db.get_value("Sales Invoice", to_cu, ["npp_nv_giu_no", "npp_ve_npp_luc", "npp_giao_tu_nv"], as_dict=True) \
+		if to_cu else None
+	if cu_giu:  # ghi nhận lại: `_cong_no_phieu_tra` UPDATE dòng nợ → `_cong_no_giu_ve_npp` giữ người đang giữ (nợ về NPP đứng yên, dấu bàn giao)
+		from nppsale.luat.giu_no import GiuNo, khi_doi_nguoi
+
+		g = khi_doi_nguoi(GiuNo(cu_giu.npp_nv_giu_no, cu_giu.npp_ve_npp_luc, cu_giu.npp_giao_tu_nv), doc.nhan_vien, da_nghi, now_datetime())
 	bang = _bang_gia_nhom(doc.khach_hang) or bang_gia_chung()
 	cn = frappe.new_doc("Sales Invoice")
 	cn.update({"naming_series": "HDT-.####", "customer": doc.khach_hang, "company": cd.cong_ty, "is_return": 1, "update_stock": 1,
 		"set_warehouse": kho, "set_posting_time": 1, "posting_date": luc.date(), "posting_time": luc.strftime("%H:%M:%S"),
 		"selling_price_list": bang, "ignore_pricing_rule": 1, "disable_rounded_total": 1, "taxes_and_charges": cd.mau_thue_ban,
 		"npp_hoa_don_goc": doc.hoa_don or None, "npp_phieu_tra": doc.name, "npp_nhan_vien": doc.nhan_vien, "npp_nv_giu_no": g.nv,
-		"npp_ve_npp_luc": g.ve_npp, "update_outstanding_for_self": 1, "due_date": luc.date()})
+		"npp_ve_npp_luc": g.ve_npp, "npp_giao_tu_nv": g.giao, "update_outstanding_for_self": 1, "due_date": luc.date()})
 	if to_cu and frappe.db.get_value("Sales Invoice", to_cu, "docstatus") == 2:
 		cn.amended_from = to_cu  # ghi nhận lại phiếu tự lập: amend tờ cũ (HDT-x-n), số PT giữ (bàn bạc 6.11)
 	for d in doc.dong:
@@ -768,6 +787,10 @@ def _hoan_thanh(pt: str, zone, ngay, nc, cd, to_cu: str | None = None):
 			raise NppLoi("RETURN_NEEDS_INVOICE: đơn gốc chưa có hóa đơn đã xuất — phiếu trả hoàn thành phải gắn với một hóa đơn đã xuất")
 		if len(ds) > 1:
 			raise NppLoi(f"RETURN_NEEDS_INVOICE: đơn có {len(ds)} hóa đơn đã xuất — chọn hóa đơn cho phiếu trả trước khi hoàn thành")
+		# ⚠ Q15: PG gắn HĐ trong lệnh UPDATE chỉ có status / completed_* nên trigger khách–HĐ (mig 212) không chạy — phiếu khách khác
+		# gắn được HĐ và trừ vào nợ khách HĐ. Chủ nhà chốt "khách phiếu = khách HĐ" (mig 212) → chặn ở đây, trước khi lập chứng từ.
+		if frappe.db.get_value("Sales Invoice", ds[0], "customer") != doc.khach_hang:
+			raise NppLoi("INVOICE_CUSTOMER_MISMATCH: hóa đơn gốc là của khách khác — phiếu trả phải cùng khách với hóa đơn")
 		doc.hoa_don = ds[0]
 		doc.nhan_vien = frappe.db.get_value("Sales Invoice", ds[0], "npp_nhan_vien") or doc.nhan_vien
 	kho = _kho_cua(zone, cd)
