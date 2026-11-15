@@ -606,8 +606,13 @@ Không có Link. Máy NVBH so hai số với khoá bản lưu IndexedDB (`dungLa
 - **Vì sao không để trong Single `NPP Cai Dat`** (bản bàn bạc 3.3 ghi vào đó): Single lưu ở `tabSingles` dạng chữ + có cache tài
   liệu; tăng kiểu đọc-sửa-ghi thì hai giao dịch cùng ghi N+1 → một lần đổi danh mục không làm đổi số, máy NVBH giữ danh mục cũ.
   Dòng riêng + câu cộng dồn thì như Postgres.
-- Nguồn tăng `phien`: doc_events `Item`, `Item Price`, `Price List` (after_insert / on_update / on_trash / after_rename) — hook của Item / Item Price / Price List (§5.3)
-  gọi hàm chung `tang_phien_danh_muc()` (đơn vị và mã vạch là bảng con của `Item` nên đi theo `Item`).
+- Nguồn tăng `phien`: doc_events `Item`, `Item Price` **chỉ dòng bán** (`Item Price.selling = 1` — bỏ `Gia nhap`), `Price List` bán (after_insert / on_update /
+  on_trash / after_rename) — đúng tập bảng của `trg_phien_danh_muc_ban` (mig 209: `products`, `price_lists`, `product_units`; không có `purchase_price_lists` của
+  mig 234 — giá `Gia nhap` tự cập nhật mỗi lần phiếu nhập hoàn thành, tăng `phien` ở đó thì sau mỗi lần nhập hàng mọi máy NVBH tải lại cả danh mục, trong khi
+  NVBH không được xem giá nhập) **và `Customer Group` khi đổi tên (after_rename) / đổi `default_price_list`** (cổng suy `price_lists.group_id` từ Customer Group —
+  §5.4 — nên đổi nhóm là đổi bảng giá máy NVBH đã nhớ theo `phien`; thiếu bước này `unitPriceFor` không khớp `pl.group_id` mới và rơi về giá chung; nppsale
+  `group_id` là UUID nên chỉ cần `phien_khach`) — hook của Item / Item Price / Price List (§5.3) và Customer Group (§5.4) gọi hàm chung `tang_phien_danh_muc()`
+  (đơn vị và mã vạch là bảng con của `Item` nên đi theo `Item`).
 - Nguồn tăng `phien_khach`: doc_events `Customer`, `Customer Group`, `NPP Phan Cong Khach`, `NPP Quyen Rieng`, `NPP Quyen Vai`
   (đúng tập bảng có `trg_phien_khach_ban` — mig 254) **và** mọi method ghi SQL hàng loạt vào các bảng ấy (`ban_giao_khach`,
   `cho_nhan_vien_nghi`, `claim_customer_for_me`) gọi `tang_phien_khach()` — ghi SQL thẳng không chạy doc_events.
@@ -631,7 +636,7 @@ Không submit; một dòng sống suốt đời site; không ai ghi tay (DocPerm
 | ho_ten | Họ tên | Data | | ✓ | ✓ | | `users.full_name`; đồng bộ `User.first_name` |
 | vai | Vai | Select | `owner`↵`manager`↵`accountant`↵`sales`↵`warehouse`↵`driver` | ✓ | ✓ | ✓ | `users.role` (giữ mã). `driver` chỉ để giữ người cũ: validate chặn gán mới / đổi sang — `ROLE_RETIRED` (như `trg_block_driver_role`, mig 122). on_update đổi Role Frappe: owner→`NPP Chu`, manager→`NPP Quan Ly`, accountant→`NPP Ke Toan`, sales→`NPP NVBH`, warehouse→`NPP Thu Kho` |
 | sdt | Số điện thoại | Data | Phone | | ✓ | | `users.phone` — lưu **nguyên văn** người gõ (hiển thị, bấm gọi). `User.mobile_no` (unique của lõi) lưu bản chuẩn hoá `normalize_phone` để đăng nhập bằng SĐT; trùng số chuẩn hoá → lỗi "Số điện thoại đã được dùng cho tài khoản khác" (như `idx_users_phone_unique`) |
-| dang_hoat_dong | Đang hoạt động | Check | | | ✓ | ✓ | `users.is_active`, default 1. Đồng bộ `User.enabled`; tắt → `clear_sessions(user, force=True)` (lõi không tự xoá phiên khi tắt User — `user.py:329–368`) |
+| dang_hoat_dong | Đang hoạt động | Check | | | ✓ | ✓ | `users.is_active`, default 1. Đồng bộ `User.enabled`; tắt → `clear_sessions(user, force=True)` tường minh để phủ cả đường ngoài request (việc nền, `bench execute`, `frappe.db.set_value("User", …, "enabled", 0)`): lõi chỉ tự đăng xuất người bị tắt khi `User` được lưu trong request có `login_manager` — `validate` → `check_enable_disable` → `login_manager.logout(user=…)` → `clear_sessions` xoá mọi phiên của người ấy (`user.py:244, 382–389`, `auth.py:368–379`, `sessions.py:53–79`) |
 | sb_gia | Giá và giảm giá | Section Break | | | | | |
 | cho_sua_gia | Được sửa giá | Check | | | | | `allow_price_edit`, default 0 (owner / accountant lúc tạo = 1 — luật "free" của `/api/admin/users`) |
 | tran_tang_gia | Trần tăng giá (%) | Float | | | | | `price_edit_max_increase_pct`, default 0, validate 0..100 |
@@ -659,7 +664,7 @@ xin cột này, `settings/users/[id]/permissions/page.tsx:42`).
   Cũng Link `NPP Nhan Vien` (§2.5): trường NV của Sales Order / Sales Invoice / tờ ghi có (§5.5, §5.6), Payment Entry, Purchase Invoice, Batch (§5),
   `NPP Phieu Tra`, `NPP Cong No`, `NPP Luot Soan`, `NPP Vi Hoa Hong`, `NPP Phieu Thu`, `NPP Kiem Ke`, nhân sự (§4.7) và lưu trữ (§4.8); `owner` của
   mọi tài liệu mang cùng giá trị.
-- Role Frappe (fixtures, tệp 06) đi theo `vai`; `Role.home_page` → `/nppsale/...` (3.5).
+- Role Frappe (`nppsale.thiet_lap.vai` — §2.2; tệp 06) đi theo `vai`; `Role.home_page` → `/nppsale/...` (3.5).
 
 #### Computed/Auto fields
 - `on_update` đồng bộ `User`: `first_name` ← `ho_ten`; `mobile_no` ← `normalize_phone(sdt)`; `enabled` ← `dang_hoat_dong`; roles
@@ -669,16 +674,19 @@ xin cột này, `settings/users/[id]/permissions/page.tsx:42`).
   (`send_welcome_email = 0`, mật khẩu), `NPP Nhan Vien`, phát QR — một giao dịch (hỏng giữa chừng không để lại tài khoản mồ côi
   như nhánh `deleteUser` bù của bản cũ). Trả `{id, token, loginUrl}`.
 - QR (`nppsale.api.qr.*`, chỉ chủ NPP): `lay` (giải `qr_token`), `phat` (token mới, ghi `qr_token` + `qr_token_bam` + `qr_cap_luc`,
-  QR cũ hết hiệu lực ngay), `thu_hoi` (xoá ba trường), `ds_link` (link của mọi NV đã có mã — nút "Đăng nhập" ở danh sách NV).
-  `dang_nhap(t)` (`allow_guest`, `rate_limit` 10 lượt / phút / IP như `src/app/qr-login/route.ts`): tra `qr_token_bam`, kiểm
-  `dang_hoat_dong` + `User.enabled` + `nghi_viec_luc` trống (lõi `login_as` không tự kiểm) → `login_manager.login_as` → `/nppsale/orders`.
+  QR cũ hết hiệu lực ngay), `thu_hoi` (xoá ba trường), `ds_link` (link của mọi NV đã có mã — nút "Đăng nhập" ở danh sách NV) — bốn hàm này là xử lý route cũ
+  `/api/admin/users/<id>/qr` (GET / POST / DELETE) và `/api/admin/users/qr-links` qua `nppsale.api.tuyen.goi`.
+  Đăng nhập QR không phải method: renderer `nppsale.portal.qr.DangNhapQR` (hook `page_renderer`) ở `/nppsale/qr-login?t=…` — 10 lượt / phút / IP đếm bằng cache
+  (như `src/app/qr-login/route.ts`), tra `qr_token_bam`, kiểm `dang_hoat_dong` + `User.enabled` + `nghi_viec_luc` trống (lõi `login_as` không tự kiểm) →
+  `login_manager.login_as` → 302 `/nppsale/orders`; mã sai / NV khoá / lỗi → `/nppsale/login?qr=invalid|inactive|server`.
 - Đặt lại mật khẩu: method chủ NPP (`update_password`) — email kỹ thuật không nhận thư nên "Quên mật khẩu" của lõi vô dụng (3.6).
 - Nghỉ việc (`cho_nhan_vien_nghi`, chỉ chủ NPP, không tự cho mình, không cho chủ NPP): `dang_hoat_dong = 0`, `nghi_viec_luc/boi`,
   xoá phân công + lịch tuyến của người ấy, nợ chưa thu về NPP (trên chứng từ nguồn: `npp_nv_giu_no` trống, `npp_ve_npp_luc` = now, rồi chiếu lại `NPP Cong No` — §4.3.0), xoá QR,
   xoá khoá chứng từ đang giữ, `tang_phien_khach()`, trả `{khach, lich_tuyen, so_khoan_no, tien_no}`.
 - Xoá (`DELETE /api/admin/users/[id]` → `nguoi_dung.xoa`): chỉ khi `so_chung_tu_nhan_vien` = 0 (đếm mọi chứng từ Link tới người
   này qua khoá ngoại `NO ACTION` của nppsale — lõi `check_if_doc_is_linked` cũng chặn); trước khi xoá dọn các bản ghi mà nppsale
-  khai `ON DELETE CASCADE` tới `users` (phân công, lịch tuyến, thông báo, quyền riêng, công ty được làm, khoá chứng từ, QR, chấm công,
+  khai `ON DELETE CASCADE` tới `users` (phân công, lịch tuyến, thông báo, quyền riêng, công ty được làm, khoá chứng từ, QR, đo nạp `NPP Do Nap` — bảng mới, `nguoi`
+  là Link bắt buộc nên phải xoá dòng, còn dòng (giữ 30 ngày) là `check_if_doc_is_linked` chặn xoá NV —, chấm công,
   bậc KPI / thưởng số đơn / thưởng hoạt động riêng, ví hoa hồng) và đặt null các trường nppsale khai `SET NULL`
   (`Customer.npp_duyet_anh_boi`, người xin / người duyệt yêu cầu ảnh, người của log bàn giao, người soạn hàng…; `owner` để nguyên —
   cổng trả null cho email không còn NV, đúng nghĩa `SET NULL` của `customers.created_by`);
@@ -698,7 +706,7 @@ Không submit. Trạng thái là trường: đang làm (`dang_hoat_dong = 1`) �
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| nha_cung_cap | Công ty (NCC) | Link | Supplier | ✓ | ✓ | | `supplier_id`. Cha validate không trùng (PK cũ `(user_id, supplier_id)`); `creation` của dòng = `created_at` |
+| nha_cung_cap | Công ty (NCC) | Link | Supplier | ✓ | ✓ | | `supplier_id`. Cha validate không trùng (PK cũ `(user_id, supplier_id)`). **Gộp NCC** (`gop_nha_cung_cap` = `rename_doc(merge=True)`): lõi đổi thẳng cột này bằng `frappe.db.set_value` và không bỏ dòng trùng (`frappe/model/rename_doc.py:418–450`), nên NV phụ trách cả hai NCC sẽ mang hai dòng cùng NCC và lần lưu NV sau vấp luật không trùng — method gộp tự bỏ dòng trùng như mig 232 (`ON CONFLICT DO NOTHING` rồi `DELETE`). **Xoá NCC** (`xoa_nha_cung_cap`): method xoá các dòng này trước (nppsale `ON DELETE CASCADE`, mig 080), không thì `check_if_doc_is_linked` chặn. `creation` của dòng thêm sau lấy theo `creation` của cha (`frappe/model/document.py:1049–1055`), nên không phải giờ gắn NCC (màn không đọc `created_at`) |
 
 #### Relationships
 Child of NPP Nhan Vien; Links to Supplier (`NCC-.####` — §5.2).
@@ -789,8 +797,9 @@ Không submit; "xoá ghi đè" = xoá dòng (`.delete().eq("user_id")…`).
 Links to NPP Nhan Vien. Không Link chứng từ (đường dẫn là chữ, như nppsale).
 
 #### Computed/Auto fields
-- `after_insert` / `on_update` (đổi `da_doc`) → `frappe.publish_realtime("npp_cong", {bang: "notifications", su_kien, moi},
-  user=<NPP Nhan Vien.user>, after_commit=True)` — thay `postgres_changes` của chuông (§6.3).
+- `after_insert` / `on_update` (đổi `da_doc`) → `frappe.publish_realtime("npp_cong", {bang: "notifications", su_kien, id},
+  user=<nguoi_nhan — email>, after_commit=True)` — thay `postgres_changes` của chuông (§6.3). Gói chỉ mang `id`: khi nối socket portal đọc lại dòng qua cổng
+  (đúng vế lọc) rồi phát `payload.new` / `payload.old` như hôm nay; portal hôm nay chưa nghe socket mà hỏi `notifications` qua cổng mỗi 30 giây (§6.3).
 - Nguồn ghi: method (thu tiền, xuất / huỷ HĐ, hoàn thành phiếu trả, duyệt ảnh, bàn giao…), việc đêm (nhắc ảnh thứ Hai, nhắc tuyến
   hạ nhiệt 3 ngày), và trình duyệt qua cổng (`visit_logged`, `payment_received` — `lib/notifications.ts`).
 - **Vì sao không dùng `Notification Log` lõi**: loại là Link `Notification Type`, người nhận là `User` (email), không có `read_at`
@@ -828,9 +837,16 @@ Links to NPP Nhan Vien.
 - `scheduler_events.cron "* * * * *"` gọi `release_stale_entity_locks` **mỗi phút**, như pg_cron `release-stale-entity-locks` của mig 053; dọn lười
   trong acquire / heartbeat vẫn giữ. Không chạy theo lịch thì khoá của một tab đã sập chỉ được nhả khi có người khác thử giành — người đang chờ không
   nhận được tin.
-- Mọi chèn / sửa / xoá → `publish_realtime("npp_cong", {bang: "entity_locks", su_kien, moi|cu}, doctype="NPP Khoa Chung Tu")`;
-  portal `doctype_subscribe("NPP Khoa Chung Tu")` (socket.io lõi kiểm quyền đọc DocType trước khi cho vào phòng —
-  `realtime/handlers.js`).
+- Giành (chèn — `on_change`) và nhả / dọn (xoá — `on_trash`) — **kể cả xoá bằng SQL** trong `release_stale_entity_locks` và phần dọn lười của
+  `acquire_entity_lock` / `heartbeat_entity_lock` (không qua hook nên method đọc các dòng quá hạn trước rồi tự phát từng dòng) →
+  `publish_realtime("npp_cong", {bang: "entity_locks", su_kien: "UPSERT" | "DELETE", entity_type, entity_id, locked_by}, user=<từng NV đang hoạt động>,
+  after_commit=True)` — phòng `user:<email>` của mọi NV đang làm (= `entity_locks_select`: mọi vai thấy mọi khoá); NV nghỉ / bị khoá không nhận. Không truyền
+  `doctype=` trơn: thiếu `docname` thì lõi gửi vào phòng `all` mà chỉ System User vào (`frappe/realtime/__init__.py:65–78`, `realtime/handlers.js:8–10`) — NV NPP
+  là Website User nên không bao giờ nhận, người đang chờ khoá (`use-entity-lock.ts:137–162` chỉ giành lại khi nhận DELETE) treo ở "người khác đang sửa", còn mã
+  chứng từ + người giữ khoá lại phát cho mọi tài khoản Desk. Thiếu `after_commit` thì khoá chưa commit / bị rollback vẫn báo đi. Nhịp tim (`db.set_value` mỗi
+  60 giây) không cần phát — người chờ chỉ đổi trạng thái theo chèn / xoá. Cách khác: `frappe.realtime.publish_to_doctype("NPP Khoa Chung Tu", …)` + portal
+  `doctype_subscribe` — cần DocPerm đọc `NPP Khoa Chung Tu` cho vai NPP (lõi kiểm `frappe.realtime.has_permission` trước khi cho vào phòng `doctype:…` —
+  `realtime/handlers.js:12–36`).
 
 #### Submission / vòng đời
 Không submit; sống từ lúc mở sửa tới lúc nhả / quá 10 phút không nhịp.
@@ -903,7 +919,9 @@ Không submit; sống từ lúc mở sửa tới lúc nhả / quá 10 phút khô
 - Ghi bởi script sao lưu chạy theo cron của hệ điều hành (cần quyền đọc thư mục site, age, rclone — không chạy trong worker web) qua
   `bench --site <site> execute nppsale.lich.sao_luu.ghi_ket_qua` lúc bắt đầu và lúc xong; không có method web.
 - Việc theo lịch `nppsale.lich.sao_luu.kiem` (hằng ngày, sau giờ sao lưu): không có lượt `thanh_cong` trong 26 giờ → `NPP Thong Bao` loại `info`
-  cho chủ NPP. Dọn: Log Settings giữ 365 ngày.
+  cho chủ NPP. Dọn: Log Settings giữ 365 ngày — controller khai `clear_old_logs(days)` (staticmethod, như `NPP Do Nap`) và hook
+  `default_log_clearing_doctypes` thêm `"NPP Sao Luu": 365`. Thiếu hàm ấy thì Log Settings coi DocType không hỗ trợ dọn, gỡ khỏi danh sách
+  (`remove_unsupported_doctypes` — `frappe/core/doctype/log_settings/log_settings.py:14–27, 48–59`), và bản ghi không bao giờ bị xoá.
 #### Submission / vòng đời — không submit; chỉ thêm (script cập nhật đúng dòng của lượt mình từ dang_chay sang kết quả).
 
 ### 4.1.9 Bảo trì — không DocType
@@ -943,7 +961,8 @@ Không Link đi. Khách tham chiếu **bằng mã** (`Customer.npp_tuyen`, Data 
 
 #### Computed/Auto fields
 Đổi mã: màn tự chạy hai câu như hôm nay (sửa tuyến rồi `customers.update({channel: mã mới}).eq("channel", mã cũ)` —
-`route-form.tsx:72–90`); xoá: màn tự gỡ `channel` của khách trước (`routes/page.tsx:90–93`). Cổng không thêm luật.
+`route-form.tsx:72–90`); xoá: màn xoá tuyến **trước** rồi mới gỡ `channel` của khách (`customers/routes/page.tsx:86–95` — "XOÁ TUYẾN TRƯỚC, GỠ KHÁCH SAU": xoá
+hỏng thì khách chưa mất tuyến; gỡ hỏng thì tạo lại tuyến cùng mã là khôi phục — gộp hai câu thành một method thì giữ đúng thứ tự này). Cổng không thêm luật.
 
 #### Submission / vòng đời
 Không submit; tắt bằng `dang_dung`.
@@ -1027,7 +1046,7 @@ Không submit.
 | kinh_do | Kinh độ | Float | precision 7 | | | | `check_in_lng` (0 = không có) |
 | dia_chi_vao | Địa chỉ check-in | Small Text | | | | | `check_in_address` (mig 014) |
 | ket_qua | Kết quả | Select | ↵`order_placed`↵`no_order`↵`closed`↵`not_visited` |  | ✓ | ✓ | `result` (cho trống — pjp chèn `null` rồi sửa) |
-| don_hang | Đơn hàng | Link | Sales Order | | | | `order_id` |
+| don_hang | Đơn hàng | Link | Sales Order | | | | `order_id`. Khi xoá đơn (`xoa_don`), method đặt `don_hang` = null ở mọi lượt ghé trỏ tới **trước** `frappe.delete_doc("Sales Order", …)`, như trigger nppsale `UPDATE visit_logs SET order_id = NULL` (mig 118 / 129). Thiếu bước này thì lõi chặn xoá đơn nháp đã gắn lượt ghé (`check_if_doc_is_linked` → `LinkExistsError` — method Delete thì mọi dòng Link đều chặn, `frappe/model/delete_doc.py:317–392`) |
 | ghi_chu | Ghi chú | Small Text | | | | | `notes` |
 | anh_cu | Ảnh (cũ) | Data | length 500 | | | | `photo_url` — chỉ dòng cũ; đi tuyến không chụp ảnh (chủ nhà 12/10/2026), màn vẫn hiện ảnh cũ |
 
@@ -3042,7 +3061,7 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
 ## 5. Custom Field trên DocType lõi
 
 Một bảng mỗi DocType lõi (bảng con lõi đi cùng bảng cha). Cột **Bảng nppsale** là bảng (hoặc phần bảng) mà dòng thay cho; dòng ghi "dùng `<trường lõi>`" /
-"(lõi)" là cột nppsale đi thẳng vào trường có sẵn — **không** đẻ trường; dòng `npp_*` là Custom Field mới (ship bằng fixtures, module theo §2.2). Ký hiệu
+"(lõi)" là cột nppsale đi thẳng vào trường có sẵn — **không** đẻ trường; dòng `npp_*` là Custom Field mới (hôm nay `nppsale.thiet_lap` tạo ở after_install / after_migrate từ chính các bảng này — §2.2; module theo §2.2). Ký hiệu
 Notes: **AOS** = `allow_on_submit` (CFD-02 — chỉ method ghi), **RO** = `read_only`, **idx** = `search_index`. Mọi `insert_after` đã đối chiếu JSON DocType
 của bench thử (trường lõi có thật, hoặc là Custom Field đứng trước trong cùng bảng).
 
@@ -3058,8 +3077,8 @@ bảng `Customer Credit Limit` (3.11), không dùng `mobile_no` / `primary_addre
 | customers | Customer | — | Mã số thuế | — | — | — | dùng `tax_id` (lõi) ← `tax_code` |
 | customers | Customer | — | Nhóm khách | — | — | — | dùng `customer_group` (Link Customer Group, lõi) ← `group_id`; để trống được (= bảng giá chung, như `group_id NULL`) |
 | customers | Customer | — | Điều khoản TT | — | — | — | dùng `payment_terms` (Link Payment Terms Template, lõi) ← `payment_terms`; template tên đúng mã `COD`, `NET7`, `NET15`, `NET30`, `NET45`, `NET60` (setup tạo — §5.16) |
-| customers | Customer | — | Tạo lúc | — | — | — | dùng `creation` ← `created_at` |
-| customers | Customer | npp_sb_diem_ban | Điểm bán (NPP) | Section Break |  | customer_name | gom trường NPP trên Desk |
+| customers | Customer | — | Tạo lúc | — | — | — | dùng `creation` ← `created_at` (dữ liệu cũ đặt lại bằng `db_set` sau khi chèn — §2.5; màn Khách mới lọc theo cột này) |
+| customers | Customer | npp_sb_diem_ban | Điểm bán (NPP) | Section Break |  | image | gom trường NPP trên Desk — đặt sau `image` (trường cuối khối `basic_info`, ngay trước `section_break_hwkr`). Đặt sau `customer_name` thì `customer_type`, `alias`, `gender`, `column_break0`, `customer_group`, `territory`, `image` của lõi bị kéo vào khối NPP |
 | customers | Customer | npp_id_cu | Mã cũ (nppsale) | Data |  | npp_sb_diem_ban | `customers.id` cũ; read_only, unique, no_copy; chỉ dòng chuyển sang — chuyển hướng `/customers/<uuid>` và đối chiếu số (§2.3) |
 | customers | Customer | npp_chu_cua_hang | Chủ cửa hàng | Data |  | npp_id_cu | `owner_name`; in_list. Form bắt buộc (`loiKhachMoi`), nhập Excel cho trống như hôm nay (cột NOT NULL nhận chuỗi rỗng) → không đặt reqd |
 | customers | Customer | npp_sdt | Số điện thoại | Data | Phone | npp_chu_cua_hang | `phone`; **unique** (UNIQUE `(org_id, phone)`), in_list, in_standard_filter. Lưu **chuẩn hoá** (`chuanHoaSdt`: chỉ số, `84…` → `0…`) như `taoKhach` / `sdtDeLuu`. Trùng → lỗi mã `23505`, câu có `customers_org_id_phone` (để `laLoiTrung` nhận) |
