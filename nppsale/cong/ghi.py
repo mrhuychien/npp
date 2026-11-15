@@ -22,6 +22,17 @@ def _ids_khop(bang: D.Bang, yc: dict, nc: D.NguCanh) -> list:
 	return [r[bang.khoa] for r in (ket["data"] or [])]
 
 
+_KHOA_XOA = "__khoa_xoa"
+
+
+def _doc_truoc_khi_xoa(bang: D.Bang, yc: dict, ids: list, nc: D.NguCanh) -> list:
+	"""Dòng (theo select của yêu cầu) của các id sắp xoá + khoá ẩn `__khoa_xoa` — bỏ vế RLS dòng như đọc lại sau khi ghi (cột vẫn che)."""
+	chon = f"{yc.get('select') or '*'}, {_KHOA_XOA}:{bang.khoa}"
+	ket = doc({"bang": bang.ten, "select": chon, "loc": [{"op": "in", "cot": bang.khoa, "gt": ids}]},
+		D.NguCanh(user=nc.user, vai=nc.vai, quyen=nc.quyen, bo_qua_rls=True, them=nc.them))
+	return ket["data"] or []
+
+
 def ghi(yc: dict, nc: D.NguCanh) -> dict:
 	bang = D.lay(yc.get("bang") or "")
 	if bang is None:
@@ -44,7 +55,14 @@ def ghi(yc: dict, nc: D.NguCanh) -> dict:
 		ids = bo.sua(gt or {}, ids, nc) if ids else []
 	elif hd == "delete":
 		ids = _ids_khop(bang, yc, nc)
+		# DELETE … RETURNING: đọc dòng TRƯỚC khi xoá (kèm khoá ẩn để lọc đúng dòng bộ ghi đã xoá) — đọc lại sau khi xoá ra [] và
+		# giao diện báo "không xoá được" dù đã xoá (vd. xoá phiếu trả nháp, sửa đơn bỏ phiếu trả cũ).
+		truoc = _doc_truoc_khi_xoa(bang, yc, ids, nc) if yc.get("select") is not None and ids else []
 		ids = bo.xoa(ids, nc) if ids else []
+		da_xoa = set(ids)
+		ket = {"data": [{k: v for k, v in r.items() if k != _KHOA_XOA} for r in truoc if r.get(_KHOA_XOA) in da_xoa]
+			if yc.get("select") is not None else None, "count": len(ids) if yc.get("count") else None}
+		return ket
 	else:
 		raise LoiCong("PGRST100", f"hành động không hỗ trợ: {hd}")
 	ket = {"data": None, "count": None}

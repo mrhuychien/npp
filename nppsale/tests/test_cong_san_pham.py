@@ -198,3 +198,28 @@ class TestCongSanPham(IntegrationTestCase):
 		dam_bao()
 		self.assertEqual(frappe.db.get_single_value("Selling Settings", "selling_price_list", cache=False), "Bang gia chung thu")
 		self.assertEqual(frappe.db.get_single_value("Buying Settings", "buying_price_list", cache=False), "Bang gia nhap thu")
+
+	def test_xoa_tra_dong_da_xoa(self):
+		"""DELETE … RETURNING như PostgREST: `.delete().select(...)` trả các dòng ĐÃ xoá (đọc trước khi xoá) — đọc lại sau khi xoá thì ra
+		[] và giao diện báo "không xoá được" dù đã xoá. Dòng bộ ghi không xoá (NVBH không có quyền) không có trong kết quả."""
+		a = self._sp("SPT-XOA-01")
+		frappe.set_user(self.chu.user)
+		try:
+			gia = ghi({"bang": "price_lists", "hanh_dong": "insert", "gia_tri": {"product_id": a, "unit_name": "Lon thử", "price": 12345,
+				"group_id": None}, "select": "id"}, self.chu)["data"][0]["id"]
+		finally:
+			frappe.set_user("Administrator")
+		loc = [{"op": "eq", "cot": "id", "gt": gia}]
+		# NVBH: không có quyền xoá giá → 0 dòng, không lỗi; dòng còn nguyên
+		self.assertEqual(ghi({"bang": "price_lists", "hanh_dong": "delete", "loc": loc, "select": "id, price"}, self.nv)["data"], [])
+		self.assertTrue(frappe.db.exists("Item Price", gia))
+		frappe.set_user(self.chu.user)
+		try:
+			ket = ghi({"bang": "price_lists", "hanh_dong": "delete", "loc": loc, "select": "id, price", "count": "exact"}, self.chu)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(ket["data"], [{"id": gia, "price": 12345}])
+		self.assertEqual(ket["count"], 1)
+		self.assertFalse(frappe.db.exists("Item Price", gia))
+		# không select → data None (return=minimal)
+		self.assertIsNone(ghi({"bang": "price_lists", "hanh_dong": "delete", "loc": loc}, self.chu)["data"])
