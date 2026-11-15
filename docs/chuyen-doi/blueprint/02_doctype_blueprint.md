@@ -34,34 +34,34 @@ nppsale; `tệp 03` / `04` / `05` / `06` là các tệp blueprint sau (quyền �
 | `NPP Luu Tru` | 20 `NPP LS *` — đơn, HĐ, phiếu trả, công nợ + khoản thu, phiếu thu, phiếu nhập, trả NCC, công nợ NCC + khoản chi + phiếu chi NCC, phiếu kho, chi phí (mỗi chứng từ một DocType đầu phiếu + một DocType dòng) | 20 |
 | **Tổng** | | **66** |
 
-**138 Custom Field** trên 17 DocType lõi (kể cả bảng con lõi và `File`) — chỉ chỗ trường lõi không thay được; mọi cột còn lại đi thẳng vào
+**142 Custom Field** trên 18 DocType lõi (kể cả bảng con lõi và `File`) — chỉ chỗ trường lõi không thay được; mọi cột còn lại đi thẳng vào
 trường có sẵn ("dùng `<trường lõi>`" ở §5):
 
 | DocType lõi | Custom Field mới | Dòng "dùng trường lõi" | Ở |
 |---|---|---|---|
 | Customer | 22 | 6 | §5.1 |
-| Supplier | 22 | 2 | §5.2 |
+| Supplier | 21 | 3 | §5.2 |
 | Item | 9 | 18 | §5.3 |
 | UOM Conversion Detail (bảng con của Item) | — | 1 | §5.3 |
 | Sales Order | 13 | 8 | §5.5 |
 | Sales Order Item | 2 | 3 | §5.5 |
-| Sales Invoice | 16 | 14 | §5.6 |
-| Sales Invoice Item | 4 | 3 | §5.6 |
-| Payment Entry | 6 | 2 | §5.7 |
+| Sales Invoice | 16 | 15 | §5.6 |
+| Sales Invoice Item | 5 | 3 | §5.6 |
+| Payment Entry | 8 | 2 | §5.7 |
 | Payment Entry Reference | 2 | — | §5.7 |
 | Journal Entry | 4 | 1 | §5.8 |
 | Journal Entry Account | 2 | — | §5.8 |
-| Purchase Invoice | 17 | 3 | §5.9 |
+| Purchase Invoice | 18 | 3 | §5.9 |
 | Purchase Invoice Item | 3 | 1 | §5.9 |
 | Landed Cost Voucher | 2 | 1 | §5.10 |
 | Stock Entry | 6 | 1 | §5.11 |
-| Stock Entry Detail | — | 1 | §5.11 |
+| Stock Entry Detail | 1 | 1 | §5.11 |
 | Batch | 7 | 1 | §5.12 |
 | File | 1 | — | §5.14 |
 | Item Price | — | 4 | §5.4 |
 | Customer Group | — | 1 | §5.4 |
 | User | — | 6 | §5.13 |
-| **Tổng** | **138** | | |
+| **Tổng** | **142** | | |
 
 **Sổ đăng ký cổng (Q1)**: 84 dòng — 80 bảng đang sống sau mig 260 + 4 view; 74 bảng + 3 view có lời gọi `.from()` ở giao diện, 6 bảng chỉ RPC /
 trigger dùng (§6.1). Tiền, kho, trạng thái chứng từ chỉ ghi qua method / RPC; bảng nppsale cấm ghi thẳng (mig 214 / 227 / 170…) thì cổng cũng cấm
@@ -131,8 +131,10 @@ Module cũ `NPP Sale` bỏ. Python theo Q4: `nppsale/luat/` (luật thuần, kh�
   route ấy đã thành Python (`nppsale/api/anh.py` + `tach_duong` ở `nppsale/api/tep.py`, khách `[^/]+` nên nhận `KH-00042`).
 - **DocType riêng không cần số người đọc**: `autoname: "UUID"` — Frappe v16 sinh uuid7 khi `name` trống, giữ UUID truyền sẵn (`frappe/model/naming.py:165–175`);
   cột `name` và mọi cột Link trỏ tới DocType ấy thành kiểu `uuid` của MariaDB (`frappe/database/schema.py:419–428`; cần MariaDB ≥ 10.7 — bench thử
-  10.11.14). Bản ghi chuyển sang **giữ nguyên UUID nppsale** → link cũ, `metadata`, URL `/…/<uuid>` vẫn đúng. Chưa DocType lõi nào dùng kiểu này → P2 thử
-  Link / danh sách / báo cáo / cổng trên kiểu UUID trước; hỏng thì lùi về `hash` + trường `id_cu`.
+  10.11.14; Link chỉ thành `uuid` khi DocType đích đã có lúc tạo bảng nguồn — `nppsale.thiet_lap` sửa cột còn là varchar, §4.8.0, §7.2 điểm 1; trộn cột
+  `uuid` với varchar trong UNION / `COALESCE` thì ép nhánh `uuid` về chữ — §4.8.0). Bản ghi chuyển sang **giữ nguyên UUID nppsale** → link cũ, `metadata`,
+  URL `/…/<uuid>` vẫn đúng. Chưa DocType lõi nào dùng kiểu này → P2 thử Link / danh sách / báo cáo / cổng trên kiểu UUID trước; hỏng thì lùi về `hash` + trường
+  `id_cu`.
 - **Có số người đọc**: naming series đúng tiền tố nppsale (§2.4). **Khoá tự nhiên**: `format:` / `field:` / controller đặt (`NPP Nhan Vien` = `field:user`,
   `NPP Quyen Vai`, `NPP Quyen Rieng`, `NPP Khoa Chung Tu`, `NPP Vi Hoa Hong`, `NPP Thuong Thang`, `NPP Ky Luong`). **Bảng con**: `hash`.
 - **DocType lõi có tên riêng** (Customer `KH-00042`, Item = SKU, Supplier `NCC-0007`): `id` = tên ấy; UUID cũ cất ở `npp_id_cu` (Customer, Item, Supplier —
@@ -212,7 +214,8 @@ Number" — v16 không còn DocType `Naming Series` — hoặc câu SQL của c�
 ### 2.7 Tiền, số lượng, thuế suất, số trống
 - **Tiền**: Currency VND, `currency_precision = 0` (3.11, PoC 2.(2)). Ngoại lệ: đơn giá phiếu trả precision 2 (mig 181 — đổi quy cách 2 số lẻ); **giá vốn mỗi
   đơn vị cơ sở** (`unit_cost`) Currency precision 6 (nppsale để `numeric` không giới hạn — mig 016; 6 số lẻ là làm tròn **mới** (giá ÷ hệ số như 250.000 / 24),
-  bộ so số P8 so với dung sai 1e-6); bảng lưu trữ precision 2 (giữ đúng số cũ — tiền dòng SL lẻ có `,5`).
+  bộ so số P8 so với dung sai 1e-6); bảng lưu trữ precision 2 (giữ đúng số cũ — tiền dòng SL lẻ có `,5`; `precision` cũng là số lẻ của cột CSDL `decimal(21,n)`
+  nên P8 đo `max(scale)` từng cột nppsale trước khi chốt n — §4.8.0).
 - **Số lượng**: Float; trường của app khai precision 6 (nppsale `numeric` không giới hạn — mig 001 / 124 / 228; chỉ `conversion_factor` là `numeric(18,6)` — mig 039);
   trường lõi theo `float_precision` của site.
 - **Thuế suất**: tỉ lệ 0..1 như nppsale (Float precision 4) ở trường `*thue_suat`; chứng từ lõi mang thêm Item Tax Template `VAT n% - <viết tắt>` theo dòng
@@ -290,8 +293,9 @@ Number" — v16 không còn DocType `Naming Series` — hoặc câu SQL của c�
 - **Giá vốn bán / lãi gộp đang tạm** khi còn việc Repost Item Valuation `Queued` / `In Progress` của mặt hàng + kho (CFD-07) — màn báo cáo đếm việc theo trạng thái.
 - **Dòng tiền kiểu nppsale**: thu = dòng `payment` của phiếu thu chưa huỷ (bỏ `credit_applied` / `return_credit`); chi = `payable_payments` tiền mặt / chuyển khoản
   (bỏ `offset`) + `NPP Phieu Chi.da_tra` theo `tra_luc`.
-- **Lịch sử trước ngày cắt**: hàm dòng thô của báo cáo / lương UNION phần `NPP LS *` với phần ERPNext cho kỳ chạm trước `NPP Cai Dat.ngay_cat_chuyen`, áp vế
-  lọc chép từ RLS bảng gốc (§4.8.0); báo cáo của app loại `is_opening = Yes` khỏi doanh thu nên tờ đầu kỳ không bị đếm hai lần.
+- **Lịch sử trước ngày cắt**: hàm dòng thô của báo cáo / lương UNION phần `NPP LS *` với phần ERPNext cho kỳ chạm trước `NPP Cai Dat.ngay_cat_chuyen` (cột
+  `uuid` của nhánh lưu trữ ép về chữ); hàm SECURITY INVOKER của nppsale áp vế lọc chép từ RLS bảng gốc, hàm SECURITY DEFINER (`hang_khach_da_lay`,
+  `compute_payroll_run`) giữ luật lọc riêng của hàm (§4.8.0); báo cáo của app loại `is_opening = Yes` khỏi doanh thu nên tờ đầu kỳ không bị đếm hai lần.
 
 ---
 
@@ -352,7 +356,7 @@ erDiagram
     "Sales Order" }o--|| "NPP Nhan Vien" : npp_nhan_vien
     "Sales Invoice" ||--|{ "Sales Invoice Item" : items
     "Sales Invoice" }o--o| "Sales Order" : npp_don_hang
-    "Sales Invoice Item" }o--o| "Sales Order Item" : so_detail
+    "Sales Invoice Item" }o--o| "Sales Order Item" : "so_detail / npp_dong_don (khac don vi)"
     "Sales Invoice" }o--o| "Sales Invoice" : "npp_hoa_don_goc (to ghi co gan HD)"
     "Sales Invoice" }o--o| "NPP Phieu Tra" : "npp_phieu_tra (to ghi co)"
     "NPP Phieu Tra" ||--|{ "NPP Phieu Tra Dong" : dong
@@ -488,7 +492,9 @@ Mọi trường người của bảng lưu trữ Link `NPP Nhan Vien`; danh mụ
 
 Mỗi DocType theo khuôn GIAI ĐOẠN 2 của `nextcode-design`. Cột Notes mở đầu bằng cột nppsale tương ứng; "**mới**" = trường không có cột nppsale (cần cho
 luật đã chốt); default / RO / unique / chỉ mục / depends_on ghi trong Notes. Trường dấu vết `owner` / `creation` / `modified` / `modified_by` có sẵn của
-Frappe không liệt kê (§2.5). Options của Select ghi `a`↵`b`↵`c` (↵ đứng đầu = cho phép để trống); Reqd / InList / InStandard đánh dấu ✓.
+Frappe không liệt kê (§2.5). Options của Select ghi `a`↵`b`↵`c` (↵ đứng đầu = cho phép để trống); Reqd / InList / InStandard đánh dấu ✓. Options của
+Currency để trống (VND mặc định của site, `currency_precision` 0 — §2.7; `options` của Currency là **tên trường** giữ mã tiền tệ, ghi `VND` vào đó thì lõi đọc
+như tên trường); số lẻ riêng là thuộc tính `precision` của DocField — ghi ở Notes (§4.1–§4.7) hoặc chữ `precision n` ở cột Options của bảng lưu trữ (§4.8.0).
 
 ## 4.1 Module `NPP He Thong`
 
@@ -659,7 +665,7 @@ xin cột này, `settings/users/[id]/permissions/page.tsx:42`).
 
 #### Relationships
 - Links to: User (1–1), NPP Nhan Vien (nghỉ việc), Supplier (qua bảng con).
-- Linked from (Link `NPP Nhan Vien`): NPP Quyen Rieng, NPP Thong Bao, NPP Khoa Chung Tu, NPP Do Nap, NPP Phan Cong
+- Linked from (Link `NPP Nhan Vien`): NPP Quyen Rieng, NPP Thong Bao, NPP Khoa Chung Tu, NPP Do Nap, NPP Nhat Ky Don (`nguoi`), NPP Phan Cong
   Khach, NPP Lich Tuyen, NPP Ghe Tham, NPP Anh Diem Ban, NPP Yeu Cau Anh Diem Ban, NPP Ban Giao Khach, Customer (`npp_duyet_anh_boi`).
   Cũng Link `NPP Nhan Vien` (§2.5): trường NV của Sales Order / Sales Invoice / tờ ghi có (§5.5, §5.6), Payment Entry, Purchase Invoice, Batch (§5),
   `NPP Phieu Tra`, `NPP Cong No`, `NPP Luot Soan`, `NPP Vi Hoa Hong`, `NPP Phieu Thu`, `NPP Kiem Ke`, nhân sự (§4.7) và lưu trữ (§4.8); `owner` của
@@ -862,7 +868,7 @@ Không submit; sống từ lúc mở sửa tới lúc nhả / quá 10 phút khô
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
 | nhan | Nhãn | Select | `pos-nap`↵`bao-cao-nap` | ✓ | ✓ | ✓ | suy từ `man` như route nppsale: `bc-*` / `pt-*` → bao-cao-nap, còn lại → pos-nap |
-| man | Màn | Data |  | ✓ | ✓ | ✓ | `man` của `BaoNap` (`xuat-hang` / `sua-hd` / `sua-don` / `bc-*` / `pt-*`); không chặn theo khuôn (route nppsale ghi mọi gói có `man`; khuôn chỉ để suy `nhan`). Chỉ mục |
+| man | Màn | Data |  |  | ✓ | ✓ | `man` của `BaoNap` (`xuat-hang` / `sua-hd` / `sua-don` / `bc-*` / `pt-*`); không chặn theo khuôn, không bắt buộc — route nppsale ghi mọi gói là JSON object, kể cả thiếu `man` (nhãn `pos-nap`; `src/app/api/do-nap/route.ts`); khuôn chỉ để suy `nhan`. Chỉ mục |
 | ms | Thời gian (ms) | Int |  | ✓ | ✓ |  | `ms` — từ lúc mở trang nếu là màn đầu của lượt tải trang, không thì từ lúc mở màn |
 | tu_mo_trang | Tính từ lúc mở trang | Check |  |  | ✓ |  | `tuMoTrang` |
 | loi | Lỗi | Small Text |  |  | ✓ |  | `loi` (cắt 300 ký tự ở trình duyệt; máy chủ cắt lại) |
@@ -1075,7 +1081,7 @@ Không submit; NV sửa giờ ra / kết quả của chính mình; không xoá (
 |---|---|---|---|---|---|---|---|
 | khach | Khách hàng | Link | Customer | ✓ | ✓ | ✓ | `customer_id` |
 | o_anh | Ô ảnh | Int | | ✓ | ✓ | | `slot` 1..3 (CHECK); UNIQUE `(khach, o_anh)` qua `on_doctype_update` — trần 3 ảnh bằng ràng buộc, không bằng đếm (lý do ghi ở mig 103) |
-| anh_url | Đường dẫn ảnh | Data | length 500 | ✓ | | | `photo_url` dạng `/storage/v1/object/public/customer-photos/<org>/<khách>/<ô>-<ms>.jpg` (§6.2) |
+| anh_url | Đường dẫn ảnh | Data | length 500 | ✓ | | | `photo_url` dạng `/storage/v1/object/public/customer-photos/<org>/<khách>/<ô>-<ms>.jpg` (§6.2); dòng chuyển sang mang URL tuyệt đối của bucket public Supabase — công cụ chuyển dữ liệu chép ảnh và viết lại theo khuôn này (§6.2) |
 | chup_luc | Chụp lúc | Datetime | | ✓ | ✓ | | `taken_at` — giờ máy chụp, khác `creation` khi mất mạng |
 | vi_do | Vĩ độ | Float | precision 7 | | | | `gps_lat` (0 = máy từ chối định vị) |
 | kinh_do | Kinh độ | Float | precision 7 | | | | `gps_lng` |
@@ -1117,7 +1123,7 @@ Không submit.
 | loai | Loại | Select | `photo_add`↵`photo_replace`↵`photo_delete`↵`pin_set`↵`pin_clear` | ✓ | ✓ | ✓ | `kind` |
 | anh | Ảnh bị thay / xoá | Link | NPP Anh Diem Ban | | | | `photo_id` (null khi ảnh gốc đã đổi → lỗi thời) |
 | o_anh | Ô ảnh | Int | | | ✓ | | `slot` 1..3; bắt buộc với `photo_*` (CHECK `yc_anh_moi_du_truong`, `yc_xoa_anh_co_o`) |
-| anh_url | Ảnh mới | Data | length 500 | | | | `photo_url` — file đã tải lên, chưa gắn điểm bán; bắt buộc với add / replace |
+| anh_url | Ảnh mới | Data | length 500 | | | | `photo_url` — file đã tải lên, chưa gắn điểm bán; bắt buộc với add / replace. Dòng chuyển sang: viết lại như `NPP Anh Diem Ban.anh_url` (§6.2) |
 | chup_luc | Chụp lúc | Datetime | | | | | `taken_at`; bắt buộc với add / replace |
 | vi_do | Vĩ độ ảnh | Float | precision 7 | | | | `gps_lat` |
 | kinh_do | Kinh độ ảnh | Float | precision 7 | | | | `gps_lng` |
@@ -1231,7 +1237,7 @@ của `NPP Phieu Thu`); số tiền lấy từ **Payment Ledger Entry** của l�
 | trang_thai | Trạng thái | Select | `draft`↵`submitted`↵`completed`↵`cancelled` | ✓ | ✓ | ✓ | `status` (CHECK mig 119); default `draft`; read_only — chỉ method đổi; nhãn Nháp / **Chờ xử lý** (chỉ phiếu tự sinh) / Hoàn thành / Đã huỷ |
 | khach_hang | Khách hàng | Link | Customer | ✓ | | ✓ | `customer_id`; search_index; phải trùng khách của `hoa_don` (`INVOICE_CUSTOMER_MISMATCH`, mig 212) |
 | ten_khach | Tên khách | Data | | | ✓ | | fetch_from `khach_hang.customer_name`; read_only |
-| ngay_tra | Ngày phiếu | Date | | ✓ | ✓ | ✓ | `return_date` (mig 188); default hôm nay (giờ VN); ≤ hôm nay (CFD-12); phiếu tự sinh: chỉ hiển thị, không đổi ngày trừ |
+| ngay_tra | Ngày phiếu | Date | | ✓ | ✓ | ✓ | `return_date` (mig 188); default hôm nay (giờ VN); ≤ hôm nay (CFD-12); đổi được ở mọi phiếu chưa huỷ, **kể cả phiếu tự sinh** (chủ nhà 08/10/2026 — `loiDoiNgayPhieuTra`); phiếu tự sinh: chỉ đổi ngày của phiếu (in, nhóm ở danh sách) — công nợ / doanh số vẫn theo ngày HĐ, không đổi ngày trừ (`giaiThichDoiNgay`) |
 | don_hang | Đơn hàng | Link | Sales Order | | | ✓ | `order_id`; search_index; phiếu "theo đơn" (nháp, có đơn, chưa HĐ) chỉ sửa ở màn đơn (`hanhDongPhieuTra`) |
 | hoa_don | Hoá đơn gắn | Link | Sales Invoice | | ✓ | ✓ | `invoice_id` (mig 124); search_index; link_filters `is_return = 0`; hoàn thành phiếu gắn đơn mà chưa gắn HĐ → tự gắn HĐ ghi sổ duy nhất của đơn, 0 / nhiều HĐ → `RETURN_NEEDS_INVOICE` (mig 200) |
 | nhan_vien | Người đứng tên | Link | NPP Nhan Vien | | ✓ | ✓ | `sales_user_id` (mig 160); search_index; luật điền / gán ở mục Computed |
@@ -1243,6 +1249,7 @@ của `NPP Phieu Thu`); số tiền lấy từ **Payment Ledger Entry** của l�
 | ghi_co_luc | Mốc ghi có | Datetime | | | | | `credited_at` (mig 097/188); read_only |
 | hoan_thanh_luc | Hoàn thành / nhập kho lúc | Datetime | | | | | `completed_at`; read_only |
 | hoan_thanh_boi | Người hoàn thành | Link | NPP Nhan Vien | | | | `completed_by`; read_only |
+| sua_luc | Sửa lần cuối lúc | Datetime | | | | | **mới**; read_only; = `updated_at` của cổng — "giờ sửa cuối" của tờ in / Excel phiếu trả (mig 220, chủ nhà 01/10/2026; `docGioSuaCuoi`); luật đặt ở mục Computed |
 | huy_luc | Huỷ lúc | Datetime | | | | | `cancelled_at`; read_only |
 | ly_do_huy | Lý do huỷ | Small Text | | | | | `cancel_reason` (mig 120); bắt buộc khi huỷ (`REASON_REQUIRED`) |
 | to_ghi_co | Tờ ghi có | Link | Sales Invoice | | | | **mới**; read_only; tờ ghi có đang hiệu lực (`is_return = 1`, không `return_against`, `HDT-…`) |
@@ -1250,7 +1257,9 @@ của `NPP Phieu Thu`); số tiền lấy từ **Payment Ledger Entry** của l�
 | dong | Dòng hàng trả | Table | NPP Phieu Tra Dong | | | | `return_lines` |
 | tim_kd | Khoá tìm | Data | | | | | `tim_kd` (mig 249) = khoá tìm của `name`; read_only; search_index |
 
-Cột chuẩn: `owner` = `requested_by`; `creation` = `created_at`; `modified` = `updated_at`. **Không port**: `approved_by` (luồng duyệt cũ — không RPC
+Cột chuẩn: `owner` = `requested_by`; `creation` = `created_at`. `updated_at` **không** lấy `modified` — Frappe đặt lại `modified` ở mọi lần lưu
+(`set_user_and_timestamp`, `frappe/model/document.py:1036–1038`), kể cả khi method đổi `trang_thai`, hoàn thành, huỷ, gắn / gỡ `to_ghi_co` / `phieu_nhap_kho`,
+tính lại `ngay_tru_doanh_so` hay đổi người — cổng trả `updated_at` = `sua_luc` (trống → `creation`). **Không port**: `approved_by` (luồng duyệt cũ — không RPC
 nào còn ghi), `photo_url` (không lối ghi), `applied_receipt_id` (cấn phiếu trả ở phiếu thu đã bỏ từ mig 191; phiếu cũ nằm ở lưu trữ H3), `return_seq` (tách từ `name`).
 
 #### Relationships
@@ -1265,19 +1274,29 @@ nào còn ghi), `photo_url` (không lối ghi), `applied_receipt_id` (cấn phi�
 - `ngay_tru_doanh_so` (mig 192, hook `validate`): `tu_sinh` và `trang_thai` ∈ {submitted, completed} và HĐ gắn còn ghi sổ → `posting_date` của HĐ;
   `trang_thai = completed` (tự lập) → ngày (giờ VN) của `ghi_co_luc`, rồi `ngay_tra`, rồi `creation`; còn lại → trống. Sửa HĐ (tờ mới) thì method tính lại.
 - `ghi_co_luc` (mig 188): vào `completed` → `ngay_tra` = hôm nay thì now(), khác thì 12:00 ngày ấy; phiếu `completed` đổi `ngay_tra` → mốc đi theo; rời `completed` → trống.
-- `nhan_vien` (mig 160 / 194): = người đứng tên HĐ gắn → giá trị đang có → người đứng tên đơn → người đứng tên HĐ ghi sổ gần nhất của khách;
-  chỉ chủ NPP / quản lý gán người khác (guard mig 160). Đổi người → tờ ghi có (`npp_nhan_vien`) và `NPP Cong No` đi theo (như `assign_doc_seller`).
+- `nhan_vien` (mig 160 / 194): = người đứng tên HĐ gắn → giá trị đang có → người đứng tên đơn → người đứng tên HĐ ghi sổ gần nhất của khách → người lập
+  nếu vai `sales` / `manager` / `owner` (mig 160), không thì để trống ("chưa gán"); chỉ chủ NPP / quản lý gán người khác (`PHIEU_TRA_HO_KHONG_DUOC_PHEP`,
+  guard mig 160); người được gán phải là NV cùng NPP vai `sales` / `manager` / `owner` (`NHAN_VIEN_KHONG_HOP_LE`, `NHAN_VIEN_KHONG_BAN_HANG` — gán thủ kho /
+  kế toán là khoản trừ doanh số không ai nhận; link_filters `vai`). Phiếu gắn HĐ luôn mang người của HĐ (ghi khác cũng bị đặt lại — trigger
+  `trg_phieu_tra_theo_nguoi_hoa_don` chạy trước guard theo tên). Đổi người phiếu không gắn HĐ (`assign_doc_seller`; phiếu gắn HĐ →
+  `RETURN_SELLER_FOLLOWS_INVOICE`, gán ở HĐ) → tờ ghi có (`npp_nhan_vien`) và `NPP Cong No` đi theo.
 - `hoan_thanh_luc / hoan_thanh_boi`: `complete_return`; phiếu tự sinh = ngày nhập kho người chọn, ∈ [ngày HĐ, hôm nay] (mig 211 — hôm nay → now(), khác → 12:00).
 - `to_ghi_co`, `phieu_nhap_kho`: method đặt / gỡ cùng giao dịch lập / huỷ chứng từ lõi. `tim_kd`: hook `before_save`.
+- `sua_luc` (mig 220 — `_sua_luc_phieu_tra` + `_sua_luc_tu_dong`): hook `validate` đặt now() khi lập phiếu, khi đổi khách / đơn / HĐ gắn / lý do / ghi chú /
+  ngày phiếu, hoặc thêm / sửa / xoá dòng; đổi trạng thái (hoàn thành, huỷ), người đứng tên, mốc, `to_ghi_co` / `phieu_nhap_kho` thì **không** ("đổi trạng thái
+  không phải sửa" — VÌ SAO của mig 220).
 - **Không lưu trên phiếu** lô nhập lại và giá vốn — chúng nằm trên dòng tờ ghi có / Stock Entry (gói lô). Luật app chọn (mig 127 / 158, PoC 5):
   giá vốn = giá vốn lô đã xuất trên HĐ gắn (đọc `Serial and Batch Entry.incoming_rate` của gói lô HĐ, không đọc `SLE.batch_no` — luôn trống ở dòng có gói lô)
   → theo đơn → giá vốn lô mới nhất cùng mặt hàng → (nhánh cuối: §7.1 điểm 11); lô nhận = lô mới nhất cùng mặt hàng ở kho nhận, không có thì lô mới
   `RESTOCK-<mã phiếu nhập>` (hạn = hạn xa nhất của mặt hàng, rồi hôm nay + `shelf_life_in_days`, rồi + 365 ngày); mặt hàng không lô (câu 14 B) nhập không lô.
   App **luôn** gửi `incoming_rate` / `basic_rate` theo **đơn vị kho**, không gửi 0 (gửi 0 lõi rơi về giá bán — PoC 5); đặt lúc lập tờ rồi ghi sổ ngay (lưu lại tờ nháp
   đổi dòng là lõi xoá giá app gửi — `selling_controller.py:630–631`).
-- Kiểm khi lưu dòng (luật thuần `nppsale/luat/`): SL > 0, đơn giá ≥ 0, thuế ∈ [0, 1] (mig 227), **trần đơn giá trả theo vai** (mig 230: hạ giá luôn được; trần =
-  giá tham chiếu — giá đã bán trên HĐ gắn, không có thì giá bảng — × (1 + `price_edit_max_increase_pct`); chủ NPP / kế toán không trần), trả bất kỳ mặt hàng
-  kể cả ngừng bán (mig 158 — vì thế ngừng bán là `npp_ngung_ban`, không phải `Item.disabled`).
+- Kiểm khi lưu dòng (luật thuần `nppsale/luat/phieu_tra.py`): SL > 0, đơn giá ≥ 0, thuế ∈ [0, 1] (mig 227), **trần đơn giá trả theo vai** (mig 230: hạ giá luôn
+  được; trần = round(giá tham chiếu × (1 + `tran_tang_gia` / 100)) — `tran_tang_gia` = `price_edit_max_increase_pct` là **phần trăm** 0..100 (mig 027: "10 = giá
+  list × 1.10"), NVBH chưa `cho_sua_gia` → 0 %; giá tham chiếu = giá **trước giảm dòng** đã bán trên HĐ gắn, cùng mặt hàng + đơn vị (`rate` + `npp_giam_dong` /
+  `qty`, lấy số lớn nhất — máy chủ không chặt hơn giao diện), không có thì giá bảng đúng đơn vị + nhóm giá của khách (bộ tra 4 bậc — §5.3); cho qua: dòng hàng
+  đổi, tham chiếu 0, sửa dòng giữ mặt hàng + đơn vị mà không nâng giá so với dòng cũ, việc nền (không phiên), dung sai 1 đ; vượt → `RETURN_PRICE_OVER_CEILING`;
+  chủ NPP / kế toán không trần), trả bất kỳ mặt hàng kể cả ngừng bán (mig 158 — vì thế ngừng bán là `npp_ngung_ban`, không phải `Item.disabled`).
 
 #### Submission / vòng đời (không submit — trạng thái là trường; chứng từ lõi đi kèm)
 | Chuyển | Method (RPC cùng tên) | Chứng từ lõi |
@@ -1344,12 +1363,13 @@ Thứ tự dòng = `idx`.
 |---|---|---|---|---|---|---|---|
 | loai | Loại khoản | Select | `hoa_don`↵`dau_ky`↵`phieu_tra`↵`tien_thua` | ✓ | ✓ | ✓ | **mới** (nppsale suy từ `invoice_id` / `opening_balance` / `return_id`); RO; idx. `hoa_don` gồm cả tờ `is_opening` mang **mã HĐ cũ** khi chuyển dữ liệu (nợ của HĐ cũ ở nppsale là nợ theo HĐ, không phải nợ đầu kỳ); `dau_ky` = nợ đầu kỳ nhập ở màn Nợ đầu kỳ (tờ `DK-`); `tien_thua` = tiền phiếu thu chưa phân bổ (CFD-04 "dòng Tiền thừa chưa phân bổ") |
 | khach_hang | Khách hàng | Link | Customer | ✓ | | ✓ | `customer_id`; RO; idx — theo chứng từ nguồn mỗi lần tính lại (mig 194) |
-| ten_khach | Tên khách | Data | | | ✓ | | fetch_from `khach_hang.customer_name`; RO |
+| ten_khach | Tên khách | Data | | | ✓ | | `customer_name` của chứng từ nguồn — hàm chiếu ghi mỗi lần tính lại (Title Field; công cụ dựng DocType không đọc `fetch_from` trong Notes); RO |
 | hoa_don | Hoá đơn / tờ đầu kỳ | Link | Sales Invoice | | ✓ | ✓ | `invoice_id` (mig 124); RO; idx. Loại `dau_ky` cũng trỏ tờ `DK-…`, nhưng cổng trả `invoice_id` = null cho dòng đầu kỳ như nppsale (dòng đầu kỳ không gắn HĐ — mig 102); dòng của HĐ cũ chuyển sang trả `invoice_id` = mã HĐ cũ (select lồng `invoice:sales_invoices(…)` cần nguồn `sales_invoices` gộp lưu trữ H3 — §7.1 điểm 2) |
 | phieu_tra | Phiếu trả | Link | NPP Phieu Tra | | | | `return_id` (mig 191) — chỉ loại `phieu_tra` (phiếu tự lập Hoàn thành không gắn HĐ / đơn); RO; idx |
 | phieu_thu | Phiếu thu (tiền thừa) | Link | NPP Phieu Thu | | | | **mới** — chỉ loại `tien_thua`; RO |
 | don_hang | Đơn hàng | Link | Sales Order | | | | `order_id` (cột di sản nhưng còn 10 chỗ lọc `.eq/.in("order_id")` và là vế RLS của `payments`) = `npp_don_hang` của HĐ; RO; idx |
 | khoa_nguon | Khoá nguồn | Data | | ✓ | | | **mới**; unique; RO: `Sales Invoice:<tên>` / `NPP Phieu Tra:<tên>` (giữ qua mỗi lần ghi nhận lại tờ ghi có `HDT-…-n`) / `NPP Phieu Thu:<tên>` |
+| khoa_cho | Khoá một dòng đầu kỳ | Data | | | | | **mới**; unique; RO: `dau_ky:<khach_hang>` khi `loai = dau_ky`, trống (NULL) với loại khác — thay `uq_receivables_opening` (`UNIQUE (org_id, customer_id) WHERE opening_balance`, mig 102: "mỗi đối tượng đúng MỘT dòng đầu kỳ" — nhập lại file nợ đầu kỳ là cập nhật, không nhân đôi) theo khuôn `khoa_cho` của §2.9; lưới an toàn sau phép kiểm của `ghi_no_dau_ky` (§6.1 `receivables`); hàm chiếu xoá dòng tờ cũ trước khi chèn dòng tờ `DK-…-n` |
 | nhan_vien | NV giữ nợ | Link | NPP Nhan Vien | | ✓ | ✓ | `sales_user_id`; RO; idx; chép `npp_nv_giu_no` của chứng từ nguồn (trống = nợ NPP đang giữ — mig 223) |
 | giao_tu_nv | Nợ giao từ NV | Link | NPP Nhan Vien | | | | `giao_tu_nv` (mig 246); RO; chép từ nguồn |
 | ve_npp_luc | Nợ về NPP lúc | Datetime | | | | | `ve_npp_luc` (mig 223); RO; chép từ nguồn |
@@ -1378,12 +1398,17 @@ Không port: `org_id` (hằng).
 - **NV giữ nợ** (`npp_nv_giu_no` / `npp_giao_tu_nv` / `npp_ve_npp_luc` trên HĐ, tờ đầu kỳ, tờ ghi có; `nv_giu_tien_thua` / `giao_tu_nv` / `ve_npp_luc` trên
   `NPP Phieu Thu`) — chép luật trigger `_cong_no_giu_ve_npp` (mig 223 / 246) vào các method đổi người, không vào hàm chiếu:
   - Ghi sổ HĐ / tờ ghi có / tờ đầu kỳ: = NV đứng tên chứng từ (`npp_nhan_vien`, §5.6; tờ đầu kỳ: NV chính của khách như `commitPlan`); NV ấy đã nghỉ
-    (`nghi_viec_luc`) → trống + `npp_ve_npp_luc` = bây giờ. Tờ amend của Sửa HĐ **chép** cả ba trường của tờ cũ (amend chép trường không `no_copy` — mig 227 / 246).
-  - `assign_doc_seller` (RPC — §6.4) đổi người đứng tên HĐ: nợ đã về NPP (`npp_ve_npp_luc` có) → giữ nguyên; có `npp_giao_tu_nv` mà người mới = NV giao →
-    giữ NV đang giữ; khác → nợ theo người mới, xoá dấu giao; không dấu → theo người mới.
+    (`nghi_viec_luc`) → trống + `npp_ve_npp_luc` = bây giờ (`luat/giu_no.khi_lap`). Tờ mới của Sửa HĐ nhận cả ba trường + `npp_nhan_vien` của tờ cũ —
+    `reissue_invoice` chép **tường minh** (mig 227 / 246), không dựa vào amend (tờ mới dựng từ tải trọng như `post_invoice`, chỉ đặt `amended_from`).
+  - `assign_doc_seller` (RPC — §6.4) đổi người đứng tên HĐ (mọi trạng thái; dòng nợ chỉ đổi khi HĐ ghi sổ và NV giữ khác người mới) — luật
+    `_cong_no_giu_ve_npp` ở `nppsale/luat/giu_no.khi_doi_nguoi` (khớp 84 dòng chân trị sinh từ trigger thật — `tests/du_lieu/giu_no_mau.json`): nợ đã về NPP
+    (`npp_ve_npp_luc` có) → giữ nguyên; có `npp_giao_tu_nv` mà người mới = NV giao → giữ NV đang giữ; người mới khác NV đang giữ → bỏ dấu giao; người mới đã
+    nghỉ việc → giữ NV đang giữ (chưa ai giữ → về NPP, mốc = bây giờ); người mới trống → trống, không mốc; còn lại → theo người mới.
   - `ban_giao_khach` chuyển hẳn (A → B, `NPP Ban Giao Khach`): khoản `con_no` ≠ 0 đang ở A → `npp_giao_tu_nv` = A, NV giữ = B; B làm chính → nhận luôn khoản NPP đang giữ
     (xoá `npp_ve_npp_luc`). Chỉ method `ban_giao_khach` đặt / xoá dấu (mig 246).
   - `cho_nhan_vien_nghi(A)` (`NPP Nhan Vien`): khoản `con_no` ≠ 0 đang ở A → trống + mốc về NPP; `giao_cong_no_npp(khách, NV)`: khoản đang ở NPP của khách → NV.
+- `khoa_cho`: hàm chiếu đặt `dau_ky:<khách>` cho dòng `dau_ky`, trống cho loại khác; `ghi_no_dau_ky` khoá dòng Customer `FOR UPDATE` và kiểm khách chưa có dòng
+  `dau_ky` còn hiệu lực trước khi lập tờ `DK-` (trùng → 23505 nêu `uq_receivables_opening`, như nppsale).
 - **Dấu quá hạn**: người có quyền đặt / bỏ qua cổng (`receivables.update({status:'overdue'})`, mig 214) → `npp_qua_han_tay` của nguồn; `void_cash_receipt` đặt dấu
   cho khoản vừa bị gỡ tiền mà hạn đã qua (mig 120 — `v_due < vn_today()` → `overdue`).
 - `han_thanh_toan`: HĐ = `posting_date` + NETn của điều khoản (`_wf2b_payment_terms_days`); tờ đầu kỳ = hạn người nhập; tờ ghi có / tiền thừa = ngày chứng từ.
@@ -1395,8 +1420,9 @@ Không submit; không có thao tác của người dùng trên bản ghi này. M
 
 ### DocType: NPP Luot Soan (npp_luot_soan)
 - **Module**: NPP Ban Hang
-- **Naming**: autoname `SH-.DD.MM.-.##` (bàn bạc 6.6 — dãy Frappe không nhận `/`: `SH-11/11-01` thành `SH-1111-01`). Phương án giữ đúng mẫu nppsale
-  `SH-dd/mm-NN` (`name` băm + trường `ma` do method đặt) và lỗi đếm nối tiếp qua năm của dãy theo ngày-tháng: §7.1 điểm 9
+- **Naming**: autoname `SH-.DD./.MM.-.##` — dãy Frappe **nhận** `/` (`NAMING_SERIES_PATTERN`, `frappe/model/naming.py:24`; bàn bạc 6.6 ghi
+  `SH-.DD.MM.-.##` vì tưởng lõi không nhận) nên mã người dùng thấy giữ đúng mẫu `SH-dd/mm-NN` (§2.4). Còn lỗi đếm nối tiếp qua năm (khoá đếm `SH-13/11-`
+  không mang năm) và phương án `name` băm + trường `ma` do method đặt: §7.1 điểm 9
 - **Is Submittable**: No — trạng thái là trường · **Is Single / Is Child Table**: No / No
 - **Track Changes**: **No** (`tien_do` đổi theo từng lần bấm nhặt / chia — Version sẽ phình)
 - **Title Field**: `ma` · **Search Fields**: `ma`
@@ -1563,8 +1589,9 @@ Phiếu nhập / trả NCC là Purchase Invoice có kho, lô là Batch, phiếu 
   — giữ được cả cờ tổ chức của nppsale (`organizations.allow_oversell`) lẫn cờ từng mặt hàng của câu 14 B. Mã lỗi giữ nguyên (`INSUFFICIENT_STOCK`,
   `KHONG_DU_TON`, `STOCK_MOVED`, `NOT_ENOUGH_STOCK`).
 
-**Lô — `name` = mã lô, cổng chiếu theo (lô × kho).** Batch `name` = `batch_id` = mã lô nppsale (`PN-0042-001`, mã người gõ ở màn Nhập kho, `RESTOCK-…`); sửa mã lô = method gọi
-`rename_doc("Batch", cũ, mới, force=True, rebuild_search=False)` có kiểm vai (PoC 8, CFD-10). Một dòng `batches` của nppsale là một lô **ở một vùng** —
+**Lô — `name` = mã lô, cổng chiếu theo (lô × kho).** Batch `name` = `batch_id` = mã lô nppsale (`PN-0042-001`, mã người gõ ở màn Nhập kho, `RESTOCK-…`); sửa mã lô = method tự kiểm vai rồi gọi
+`rename_doc("Batch", cũ, mới, force=True, ignore_permissions=True, rebuild_search=False)` (PoC 8, CFD-10 — `force` chỉ bỏ chặn
+`allow_rename`, lõi vẫn kiểm quyền ghi Batch của người gọi — `frappe/model/rename_doc.py:377` — nên phải kèm `ignore_permissions` như §2.10). Một dòng `batches` của nppsale là một lô **ở một vùng** —
 chuyển kho một phần thì nppsale tạo dòng thứ hai cùng mã ở vùng kia (mig 148) — nên cổng dựng `batches` theo cặp (Batch × kho NPP) có phát sinh, `id` =
 `<lô>::sale` / `<lô>::date`. Hàng **không lô** (câu 14 B) không có Batch: cổng thêm một **dòng lô ảo** mỗi (mặt hàng × kho) từ `Bin` (`id` `~<SKU>::<vùng>`,
 `batch_code` `—`, hạn `2099-12-31`, tồn có thể âm như `qty_on_hand` khi `allow_oversell`) để màn tồn, kiểm kê, xuất lẻ, POS vẫn có dòng để đọc. Mã lô người gõ
@@ -1580,13 +1607,14 @@ trùng mã đã có → §7.1 điểm 14.
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| loai | Loại khoản | Select | `phieu_nhap`↵`tra_ncc`↵`dau_ky`↵`lap_tay`↵`tra_truoc` | ✓ | ✓ | ✓ | **mới** — đúng năm loại màn công nợ NCC đang suy (`src/lib/payables/theo-ncc.ts`); RO; idx |
+| loai | Loại khoản | Select | `phieu_nhap`↵`tra_ncc`↵`dau_ky`↵`lap_tay`↵`tra_truoc` | ✓ | ✓ | ✓ | **mới** — đúng năm loại màn công nợ NCC đang suy (`src/lib/payables/so-no-ncc.ts` — `LoaiDongNoNcc`, `chungTuCuaNo`); RO; idx |
 | nha_cung_cap | Nhà cung cấp | Link | Supplier | ✓ | | ✓ | `supplier_id`; RO; idx |
 | ten_ncc | Tên NCC | Data | | | ✓ | | fetch_from `nha_cung_cap.supplier_name`; RO |
 | chung_tu | Chứng từ nợ | Link | Purchase Invoice | | ✓ | ✓ | **mới** — PN / PTNCC / DKN / NTN của dòng; RO; idx |
 | phieu_chi | Phiếu chi (trả trước) | Link | Payment Entry | | | | **mới** — loại `tra_truoc` (`supplier_payments.prepay_payable_id` trỏ ngược về dòng này); RO |
 | khoa_nguon | Khoá nguồn | Data | | ✓ | | | **mới**; unique; `Purchase Invoice:<tên>` / `Payment Entry:<tên>` |
-| so_hd_ncc | Số HĐ NCC | Data | | | ✓ | | `invoice_number` = `bill_no` của PI; RO |
+| khoa_cho | Khoá một dòng đầu kỳ | Data | | | | | **mới**; unique; RO: `dau_ky:<nha_cung_cap>` khi `loai = dau_ky`, trống (NULL) với loại khác — thay `uq_payables_opening` (`UNIQUE (org_id, supplier_id) WHERE opening_balance`, mig 102: mỗi NCC đúng MỘT dòng nợ đầu kỳ — nhập lại file nợ đầu kỳ là cập nhật, không nhân đôi) theo khuôn `khoa_cho` của §2.9; lưới an toàn sau phép kiểm của method lập tờ `DKN-` (§6.1 `payables`); hàm chiếu xoá dòng tờ cũ trước khi chèn dòng tờ `DKN-…-n` |
+| so_hd_ncc | Số HĐ NCC | Data | | | ✓ | | `invoice_number`: PN / DKN / NTN = `bill_no` của PI; PTNCC = `bill_no` khi đã sửa ở màn công nợ, không thì `name` của tờ (nppsale ghi mã phiếu trả — `complete_supplier_return`, mig 228 / 240); `tra_truoc` = `name` của PE `PCNCC-…` (`chi_tra_ncc`, mig 242) — `tim_kd` tính trên số này; RO |
 | tim_kd | Khoá tìm | Data | | | | | **mới khi gộp**: `payables.tim_kd` (mig 249 — khoá tìm của `invoice_number`) mà ô tìm danh sách công nợ NCC hỏi (`BANG_TIM_KD_TINH`); `chieu_cong_no_ncc` ghi; RO; idx |
 | phieu_kho | Phiếu kho | Data | | | | | `stock_entry_id`: = `chung_tu` (PI là chứng từ kho) với PN / PTNCC; = `npp_phieu_kho` của PI lập tay; RO; idx (lọc `.in("stock_entry_id")`, `debt:payables!inner`) |
 | so_tien | Số nợ | Currency | | | ✓ | | `amount` — âm với trả NCC (mig 231 / 239), 0 với trả trước (mig 242); RO |
@@ -1596,18 +1624,22 @@ trùng mã đã có → §7.1 điểm 14.
 | trang_thai | Trạng thái | Select | `open`↵`partial`↵`paid`↵`overdue` | ✓ | ✓ | ✓ | `status`; cùng luật §4.3.0 (dòng âm / trả trước còn tiền = `open` để tổng NCC trừ nó — mig 242); RO |
 | qua_han_tay | Đánh dấu quá hạn | Check | | | | | **mới**; chép `npp_qua_han_tay` của PI; RO |
 | ghi_chu | Ghi chú | Small Text | | | | | `notes` = `npp_ghi_chu` của PI / PE; RO |
-| tao_luc | Ngày ghi nợ | Datetime | | | ✓ | | `created_at` = `npp_hoan_thanh_luc` của PI (lúc ghi nợ, như `complete_purchase_invoice`), PE: `creation`; RO; idx — thứ tự "cũ nhất trước" của `chi_tra_ncc` (nợ đầu kỳ trước, rồi theo ngày) |
+| tao_luc | Ngày ghi nợ | Datetime | | | ✓ | | `created_at` = `npp_hoan_thanh_luc` của PI (lúc ghi nợ, như `complete_purchase_invoice`), PE (`tra_truoc`): lúc chi theo luật `v_luc` của `chi_tra_ncc` (mig 242 ghi `created_at` = `v_luc` — cùng luật `payable_payments.paid_at`, §6.1); RO; idx — thứ tự "cũ nhất trước" của `chi_tra_ncc` (nợ đầu kỳ trước, rồi theo ngày) |
 | tinh_luc | Tính lại lúc | Datetime | | | | | **mới**; RO |
 
 Không port: `org_id`; `opening_balance` = (`loai = dau_ky`) do cổng tính.
 
 #### Relationships
-- Links to: Supplier, Purchase Invoice, Payment Entry. Linked from: không (dòng `payable_payments` của cổng suy theo `chung_tu`).
+- Links to: Supplier, Purchase Invoice, Payment Entry. Linked from: không (dòng `payable_payments` của cổng suy theo `chung_tu`; dòng phần chưa phân bổ của
+  phiếu chi — `<PE>::tra_truoc` — theo `phieu_chi`, §6.1).
 
 #### Computed/Auto fields
 - `chieu_cong_no_ncc` (§4.3.0). Dòng tồn tại khi: PI docstatus 1 (mọi loại); PE (Pay) còn tiền chưa phân bổ (`con_no` ≠ 0). Huỷ PI → xoá dòng (nppsale xoá
   `payables` khi huỷ phiếu).
 - `so_tien` của phiếu nhập cộng chênh của các bút toán sửa giá (§5.8) — `sua_phieu_nhap` của nppsale sửa thẳng `payables.amount`, không ghi vào `paid`.
+- `khoa_cho`: hàm chiếu đặt `dau_ky:<NCC>` cho dòng `dau_ky`, trống cho loại khác; method lập tờ `DKN-` (cổng `payables.insert` `opening_balance = true`) khoá dòng
+  Supplier `FOR UPDATE` và kiểm NCC chưa có dòng `dau_ky` còn hiệu lực trước khi lập tờ (trùng → 23505 nêu `uq_payables_opening`, như nppsale) — MariaDB không có
+  chỉ mục duy nhất có điều kiện (§2.9), thiếu bước này thì nhập lại sau khi đứt giữa chừng / hai người cùng nhập ra hai tờ `DKN-` cho một NCC.
 
 #### Submission / vòng đời
 Không submit; mọi ghi của cổng lên `payables` chuyển thành thao tác trên Purchase Invoice (§6.1).
@@ -1744,7 +1776,8 @@ Cột chuẩn: `owner` = `created_by`; `creation` = `created_at` = `payments.col
 
 #### Computed/Auto fields
 - **Lập** (`create_cash_receipt(p)`, cùng tham số / dạng trả về / mã lỗi như mig 120 + 191 / 212 / 215 / 227; trả `name`): quyền `receivables.create`;
-  `CUSTOMER_REQUIRED`; `client_key` đã có → trả phiếu cũ (mig 215); gộp `lines` theo khoản; mỗi dòng > 0, số đồng chẵn (`BAD_AMOUNT`, mig 212); khoá các dòng
+  `CUSTOMER_REQUIRED`; `client_key` đã có → trả phiếu cũ (mig 215); gộp `lines` theo khoản; mỗi dòng > 0, số đồng chẵn (sai → `BAD_RECEIVABLE_LINE` — mig 212 gắn vế này vào phép kiểm khoản nợ);
+  `use_credit` không phải số đồng chẵn → `BAD_AMOUNT` (mig 212); khoá các dòng
   `NPP Cong No` liên quan bằng `SELECT … FOR UPDATE` làm câu đầu giao dịch (thay `FOR UPDATE` trên `receivables`); khoản không thuộc khách hoặc thu vượt
   `con_no` (cộng 0,01) → `BAD_RECEIVABLE_LINE`; `EMPTY_RECEIPT`; `use_credit` > Σ dư có của khách (Σ abs(`con_no`) các dòng âm) → `CREDIT_BALANCE_TOO_LOW`; > phần phải trả →
   `CREDIT_EXCEEDS_SELECTED`; `credits` (cấn phiếu trả kiểu cũ) đã bỏ từ mig 191. Phân bổ theo **hạn cũ trước** (`due_date` trống xếp cuối, rồi `name`) như
@@ -1761,8 +1794,10 @@ Cột chuẩn: `owner` = `created_by`; `creation` = `created_at` = `payments.col
 - **Sửa HĐ có tiền thu** (method `reissue_invoice` gọi): lõi gỡ phân bổ PE khi huỷ HĐ (`unlink_payment_on_cancellation_of_invoice`) → method phân bổ lại
   PE sang tờ mới bằng `reconcile_against_document` (PE giữ tên = số phiếu thu không đổi — mig 184), huỷ + lập lại JE cấn trừ nếu có, trỏ lại `cong_no` /
   `hoa_don` / `chung_tu` của dòng; phần vượt số nợ tờ mới nằm ở PE thành tiền thừa (`nv_giu_tien_thua` = NV giữ nợ của tờ mới).
-- **Phiếu trả nguồn dư có bị sửa / huỷ** (`save_pos_return` ghi nhận lại, `cancel_return` — §4.3): lõi không cho huỷ tờ ghi có khi JE còn tham chiếu →
-  method huỷ JE trước, lập lại JE với số dư có còn lại (thiếu thì phần thiếu quay lại thành nợ trên HĐ được đắp — "nợ tự tăng lại", mig 191); số phiếu không đổi.
+- **Phiếu trả nguồn dư có bị sửa / huỷ** (`save_pos_return` ghi nhận lại, `cancel_return` — §4.3): lõi **không chặn** huỷ tờ ghi có khi JE còn tham chiếu
+  mà tự gỡ tham chiếu ấy khỏi JE (`unlink_payment_on_cancellation_of_invoice` = 1 — §5.16; `on_cancel` chạy trước bước kiểm liên kết —
+  `erpnext/controllers/accounts_controller.py:2273–2274`, `frappe/model/document.py:1728–1730`), để lại JE `CTR-` treo và HĐ được đắp vẫn giữ phần đã trừ →
+  method huỷ JE trước (bài thử không chờ lỗi của lõi), lập lại JE với số dư có còn lại (thiếu thì phần thiếu quay lại thành nợ trên HĐ được đắp — "nợ tự tăng lại", mig 191); số phiếu không đổi.
 - `tim_kd`: hook `before_save`.
 
 #### Submission / vòng đời
@@ -1833,7 +1868,10 @@ Cột chuẩn: `owner` = `created_by`; `creation` = `created_at`; `modified` = `
   = `ngay_chi` → một JE `BTC-` Nợ tài khoản danh mục / Có tài khoản tiền của hình thức; còn lại → JE ghi nhận Có `tk_chi_phi_phai_tra`, và khi đã trả thêm JE trả
   tiền ngày `tra_luc`. Amend giữ số: `BTC-0012-1`.
 - Phiếu nguồn `stocktake`: không JE; `so_tien` = giá trị hụt đọc từ sổ kho của phiếu xuất `DCK-` (`stock_value_difference`), khoá (§7.1 điểm 18).
-- `xoa_phieu_chi`: huỷ JE rồi xoá phiếu (chủ / quản lý — RLS `expenses_delete`); phiếu nguồn kiểm kê không xoá (kiểm kê đã duyệt không đảo được).
+- `xoa_phieu_chi`: huỷ JE rồi xoá phiếu bằng `frappe.delete_doc("NPP Phieu Chi", tên, force=True)` (chủ / quản lý — RLS `expenses_delete`): các JE `BTC-`
+  đã huỷ vẫn giữ `npp_phieu_chi` trỏ về phiếu (giữ làm vết), mà kiểm liên kết khi **xoá** của Frappe tính cả chứng từ đã huỷ (`frappe/model/delete_doc.py:182–185`,
+  `:380–383`; `ignore_links_on_delete` của ERPNext không có Journal Entry) — không `force` là `LinkExistsError`; phiếu nguồn kiểm kê không xoá (kiểm kê đã duyệt
+  không đảo được).
 - Báo cáo tài chính kiểu nppsale (`finance_pnl`, `finance_cash_flow`, `finance_balance_sheet`) đọc thẳng `NPP Phieu Chi` để số không đổi cách tính (bàn bạc 6.10) —
   kể cả việc nppsale đang tính hao hụt kiểm kê (`is_paid = false`) vào "chi phí chưa trả" ở bảng cân đối (mig 243); sổ cái ERPNext ghi đúng bản chất (hao hụt là
   chi phí đối ứng kho).
@@ -1875,8 +1913,8 @@ Không submit. Lập → sửa (lập lại bút toán) → xoá (huỷ bút to�
   | trạng thái pháp lý / quan hệ | `misa_status` / `misa_relation` | luồng kéo về (phát hành ghi bước đầu: pending → sent / signed / error) |
   | đã đẩy lúc / kiểm lần cuối | `misa_sent_at` / `misa_last_checked_at` | phát hành / luồng kéo về (**luôn** cập nhật, kể cả khi chưa có số) |
   | ghi chú đối chiếu | `misa_note` | nhiều nguồn — chỉ thêm dòng, không xoá dòng người khác đã ghi |
-  | khoá không cho đồng bộ đè | `misa_no_locked` | người (method gán tay số HĐĐT) |
-  | số HĐ gõ tay | `so_hd_go_tay` (`invoice_number`) | người (màn Tạo HĐĐT); **không bao giờ** do đồng bộ ghi — luật "số HĐĐT là của MISA" |
+  | khoá không cho đồng bộ đè | `misa_no_locked` | người — nppsale không có màn / route nào bật cờ này (chỉ đọc ở `sync`, `refresh-status`, `apply.ts`; bật tay trong CSDL); bản Frappe: System Manager sửa trên Desk, công cụ chuyển dữ liệu giữ giá trị cũ — §4.6.9 không có method gán tay |
+  | số HĐ gõ tay | `so_hd_go_tay` (`invoice_number`) | người (màn Tạo HĐĐT); **không bao giờ** do đồng bộ ghi — luật "số HĐĐT là của MISA"; ngoại lệ do người bấm: Dựng từ snapshot (đối soát `create`) điền = số MISA như nppsale |
 
 - **Hai trục trạng thái ở hai trường** (Gotcha #4): `misa_status` (pháp lý: `PublishStatus` 0 nháp / 3 đã cấp mã; giá trị lạ không đoán — lùi
   về `InvoiceCode`, đơn vị dùng HĐ không mã thì theo cờ `misa_is_invoice_with_code`) và `misa_relation` (`EInvoiceStatus` 1 / 3 / 4 / 7 / 8).
@@ -1905,16 +1943,16 @@ Không submit. Lập → sửa (lập lại bút toán) → xoá (huỷ bút to�
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
 | hoa_don_ban | Hoá đơn bán | Link | Sales Invoice |  | ✓ | ✓ | `sales_invoice_id` (mig 124). Chỉ mục, **không** unique (như nppsale); method lập dòng khoá dòng HĐ bán (`SELECT … FOR UPDATE`) rồi mới tìm / tạo → hai lượt bấm không đẻ hai dòng (nppsale đẻ được — chú thích ở `sales-invoices/[id]/page.tsx:143`) |
-| hoa_don_ban_ls | Hoá đơn bán (lưu trữ) | Link | NPP LS Hoa Don |  |  |  | **mới**: luôn điền ở dòng chuyển sang (HĐ bán cũ nằm ở lưu trữ). HĐ còn nợ ở ngày cắt có thêm tờ đầu kỳ **cùng mã HĐ cũ** (PoC 10) → điền cả `hoa_don_ban` để khoá Sửa / Huỷ tờ đầu kỳ thấy HĐĐT. Cổng trả `sales_invoice_id` = `hoa_don_ban` ∥ `hoa_don_ban_ls` |
+| hoa_don_ban_ls | Hoá đơn bán (lưu trữ) | Link | NPP LS Hoa Don |  |  |  | **mới**: luôn điền ở dòng chuyển sang (HĐ bán cũ nằm ở lưu trữ). HĐ còn nợ ở ngày cắt có thêm tờ đầu kỳ **cùng mã HĐ cũ** (PoC 10) → điền cả `hoa_don_ban` để khoá Sửa / Huỷ tờ đầu kỳ thấy HĐĐT. Cổng trả `sales_invoice_id` = `hoa_don_ban` ∥ `hoa_don_ban_ls` (cột `uuid` ép về chữ — §6.1 `invoices`) |
 | don_hang | Đơn hàng | Link | Sales Order |  |  | ✓ | `order_id` (mig 001). Vế lọc NVBH đi qua cột này (RLS 084). Chỉ mục |
-| don_hang_ls | Đơn hàng (lưu trữ) | Link | NPP LS Don Hang |  |  |  | **mới**: luôn điền ở dòng chuyển sang (mọi đơn trước ngày cắt nằm ở lưu trữ); cổng trả `order_id` = `don_hang` ∥ `don_hang_ls` |
-| so_hd_go_tay | Số HĐ gõ tay | Data |  |  | ✓ | ✓ | `invoice_number` (mig 001) — số người gõ ở màn Tạo HĐĐT; đồng bộ MISA không bao giờ ghi; khác `misa_inv_no` thì luồng kéo về **thêm** một dòng vào `misa_note` ("sổ ghi X, MISA cấp Y"), không đổi trạng thái (số gõ tay ở nppsale là số nội bộ, nâng "lệch" sẽ báo động giả cả loạt) |
+| don_hang_ls | Đơn hàng (lưu trữ) | Link | NPP LS Don Hang |  |  |  | **mới**: luôn điền ở dòng chuyển sang (mọi đơn trước ngày cắt nằm ở lưu trữ); cổng trả `order_id` = `don_hang` ∥ `don_hang_ls` (cột `uuid` ép về chữ — §6.1 `invoices`) |
+| so_hd_go_tay | Số HĐ gõ tay | Data |  |  | ✓ | ✓ | `invoice_number` (mig 001) — số người gõ ở màn Tạo HĐĐT (dòng Dựng từ snapshot: = số MISA — dưới); đồng bộ MISA không bao giờ ghi; khác `misa_inv_no` thì luồng kéo về **thêm** một dòng vào `misa_note` ("sổ ghi X, MISA cấp Y"), không đổi trạng thái (số gõ tay ở nppsale là số nội bộ, nâng "lệch" sẽ báo động giả cả loạt) |
 | nguoi_mua | Người mua | Data |  | ✓ | ✓ |  | `customer_name` NOT NULL (mig 001); lúc lập = tên xuất HĐ của khách ∥ tên cửa hàng |
 | dia_chi_nguoi_mua | Địa chỉ người mua | Small Text |  |  |  |  | `customer_address` (mig 001) |
 | mst_nguoi_mua | MST người mua | Data |  |  | ✓ | ✓ | `customer_tax_code` (mig 001); lúc lập = `Customer.tax_id` |
-| tien_hang | Tiền hàng | Currency | VND |  |  |  | `subtotal` (mig 001); precision 0; lúc lập = tiền hàng sau giảm đơn, trước thuế của HĐ bán (cùng định nghĩa `sales_invoices.subtotal`); sửa tay chỉ khi `trang_thai` = draft và chưa có `misa_ref_id` |
-| tien_thue | Thuế GTGT | Currency | VND |  |  |  | `vat` (mig 001); như trên |
-| tong_tien | Tổng tiền | Currency | VND |  | ✓ |  | `total` (mig 001); = tiền HĐ (`sales_invoices.total`); tiền duy nhất đem so với MISA (Gotcha #6 — API danh sách không tách thuế) |
+| tien_hang | Tiền hàng | Currency |  |  |  |  | `subtotal` (mig 001); precision 0; lúc lập = tiền hàng sau giảm đơn, trước thuế của HĐ bán (cùng định nghĩa `sales_invoices.subtotal`); sửa tay chỉ khi `trang_thai` = draft và chưa có `misa_ref_id` |
+| tien_thue | Thuế GTGT | Currency |  |  |  |  | `vat` (mig 001); như trên |
+| tong_tien | Tổng tiền | Currency |  |  | ✓ |  | `total` (mig 001); = tiền HĐ (`sales_invoices.total`); tiền duy nhất đem so với MISA (Gotcha #6 — API danh sách không tách thuế) |
 | trang_thai | Trạng thái nội bộ | Select | `draft`↵`issued`↵`cancelled` | ✓ | ✓ | ✓ | `status` (mig 001), default draft. issued = đẩy MISA thành công hoặc người bấm "Khoá HĐ"; cancelled = người bấm "Huỷ HĐ" (không huỷ bên MISA — như nppsale). Chỉ mục |
 | phat_hanh_luc | Phát hành nội bộ lúc | Datetime |  |  | ✓ |  | `issued_at` (mig 001); mốc cửa sổ 60 ngày của vòng quét (cùng `misa_sent_at`, xem dưới). Chỉ mục |
 | misa_ref_id | RefID (khoá nối) | Data |  |  |  | ✓ | `misa_ref_id` (mig 099). **Unique** (nhiều dòng trống được). Sinh **trước** khi gọi MISA, bất biến — validate chặn đổi khi đã có giá trị |
@@ -1929,7 +1967,7 @@ Không submit. Lập → sửa (lập lại bút toán) → xoá (huỷ bút to�
 | misa_org_ref_id | RefID HĐ gốc | Data |  |  |  |  | `misa_org_ref_id` (mig 099); chỉ mục (đánh dấu tờ gốc bị thay thế) |
 | misa_error | Lỗi MISA | Small Text |  |  |  |  | `misa_error` (mig 011) |
 | misa_note | Ghi chú đối chiếu | Small Text |  |  |  |  | `misa_note` (mig 099) |
-| misa_no_locked | Khoá số gán tay | Check |  |  |  |  | `misa_no_locked` (mig 099), default 0; bật thì lượt 2 bỏ qua tờ này, số MISA khác số gán tay → ghi chú + `amount_mismatch` (như `apply.ts`) |
+| misa_no_locked | Khoá số gán tay | Check |  |  |  |  | `misa_no_locked` (mig 099), default 0; chỉ System Manager bật trên Desk (nppsale không có lối bật — §4.6.0); bật thì lượt 2 bỏ qua tờ này, số MISA khác số gán tay → ghi chú + `amount_mismatch` (như `apply.ts`) |
 | misa_sent_at | Đẩy lúc | Datetime |  |  |  |  | `misa_sent_at` (mig 011); ghi ngay khi gửi (kể cả khi chưa biết kết quả) |
 | misa_signed_at | Ký lúc | Datetime |  |  |  |  | `misa_signed_at` (mig 011) |
 | misa_published_at | Phát hành MISA lúc | Datetime |  |  |  |  | `misa_published_at` (mig 072) |
@@ -1967,14 +2005,22 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
   nppsale sẽ bỏ sót).
 - **Tờ gốc bị thay thế**: kết quả có `OrgRefID` mà quan hệ là replacement → tìm dòng `misa_ref_id` = `OrgRefID`, đặt `misa_status` /
   `misa_relation` = replaced + ghi chú (như `mark-replaced.ts`).
-- **Dựng từ snapshot** (`nppsale.api.misa.doi_soat`, hành động `create`): tạo dòng mới (chưa gắn đơn / HĐ) mang đủ trường tích hợp của
-  snapshot, `misa_status` theo luật suy trạng thái; trùng số → báo như nppsale (chỉ mục duy nhất).
+- **Dựng từ snapshot** (`nppsale.api.misa.doi_soat`, hành động `create` — `reconcile-action/route.ts:243–301`): hỏi MISA chi tiết theo RefID (không trả chi tiết
+  hoặc không có tổng tiền → từ chối, không dựng tờ thiếu số liệu); tạo dòng mới (chưa gắn đơn / HĐ) như route nppsale — `trang_thai` = issued, `phat_hanh_luc`
+  = ngày phát hành MISA 00:00 (+07) (MISA không trả ngày → lúc dựng), `so_hd_go_tay` = số MISA (màn danh sách HĐĐT chỉ hiện cột này — `invoices/page.tsx:279`,
+  để trống là "chưa cấp số"; ngoại lệ do người bấm, không phải đồng bộ — §4.6.0), người mua / địa chỉ / MST từ bản ghi thô (thiếu tên → "Khách lẻ"), ba số
+  tiền từ chi tiết MISA, `misa_last_checked_at` = lúc dựng, `misa_note` = câu của route ("Hoá đơn dựng từ đối soát MISA …", kèm ghi chú suy trạng thái) —
+  mang đủ trường tích hợp của snapshot, `misa_status` theo luật suy trạng thái (không suy được → signed); trùng số → báo như nppsale (chỉ mục duy nhất).
 - `tim_kd`: xem bảng Fields.
 
 #### Submission / vòng đời — không submit, trạng thái là trường
 - `trang_thai`: draft → issued (đẩy OK / Khoá HĐ) → cancelled; draft → cancelled. Sửa người mua / tiền / số gõ tay: chỉ khi draft và chưa có
-  `misa_ref_id`. Xoá: chỉ draft **và** chưa có `misa_ref_id` (đã gửi MISA thì giữ khoá nối — Gotcha #1; ở nppsale tờ nháp không bao giờ mang RefID vì RefID
-  chỉ ghi khi đẩy thành công, ở đây RefID ghi trước khi đẩy nên phải chặn).
+  `misa_ref_id`. Xoá: chỉ draft **và** chưa có `misa_ref_id`; `on_trash` của `NPP HDDT` đặt `hddt` = NULL ở mọi `NPP MISA Log` / `NPP MISA Snapshot` trỏ tới
+  tờ. Bước này thay `ON DELETE SET NULL` của mig 072 / 100 và là ngoại lệ duy nhất của luật "chỉ thêm" ở `NPP MISA Log`: Link của Frappe không có SET NULL —
+  `delete_doc` gọi `on_trash` rồi mới kiểm Link (`frappe/model/delete_doc.py:177, 184`) và với thao tác Delete thì mọi dòng trỏ tới đều chặn (LinkExistsError,
+  câu tiếng Anh — `:380`); tờ nháp chuyển sang từ lượt phát hành hỏng của nppsale có log mà không có RefID (`publish/route.ts:369–386`: MISA trả lỗi vẫn ghi
+  `einvoice_logs` có `invoice_id`, tờ chỉ đổi `misa_status` = error). Đã gửi MISA thì giữ khoá nối — Gotcha #1; ở nppsale tờ nháp không bao giờ mang RefID vì
+  RefID chỉ ghi khi đẩy thành công, ở đây RefID ghi trước khi đẩy nên phải chặn.
 - `misa_status`: (trống) → pending → sent / signed / error (pending kéo dài = chưa biết kết quả, vòng quét gỡ); sent → waiting_code → signed;
   mọi trạng thái chưa cuối → amount_mismatch / cancelled / replaced (vòng quét); error → pending (đẩy lại, cùng RefID).
 - Khoá HĐ bán: luật `LOCKED_EINVOICE` ở §4.6.0 (§7.1 điểm 20 đề xuất thêm vế "đang chờ MISA").
@@ -1994,7 +2040,7 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 | moi_truong_thu | Môi trường thử | Check |  |  |  |  | `sandbox` (mig 072), default 1 |
 | dia_chi_api | Địa chỉ API | Data | URL | ✓ |  |  | `api_base` (mig 072 / 077), default `https://testapp.meinvoice.vn/api/v2`; thật: `https://app.meinvoice.vn/api/v2` |
 | duong_lay_token | Đường lấy token | Data |  |  |  |  | `token_path` (mig 075 / 077), default `/oauth` |
-| duong_phat_hanh | Đường phát hành | Data |  |  |  |  | `publish_path` (mig 075 / 078), default `/v3sainvoice`; `misa_is_invoice_with_code` = 1 thì method dùng `/v3sainvoice/Code` |
+| duong_phat_hanh | Đường phát hành | Data |  |  |  |  | `publish_path` (mig 075 / 078), default `/v3sainvoice`; Thử kết nối ghi theo `IsInvoiceWithCode` (dưới); `misa_is_invoice_with_code` = 1 thì method dùng `/v3sainvoice/Code` |
 | tai_khoan | Tài khoản MISA | Password |  |  |  |  | `username_enc` (mig 072 — nppsale mã hoá cả tài khoản, giữ như vậy). Lưu bằng `encryption_key` của site; không bao giờ trả về trình duyệt — method cấu hình chỉ trả `has_username` |
 | mat_khau | Mật khẩu MISA | Password |  |  |  |  | `password_enc` (mig 072). Như trên, trả `has_password`; lưu với ô trống = giữ nguyên. Mất `encryption_key` (`site_config.json`) = mất hai trường này → sao lưu phải kèm `site_config.json` (3.11, `NPP Sao Luu` — §4.1). Không nhập từ Supabase (mục 4 của `01_business_model.md`): chủ / KT nhập lại |
 | mst_nguoi_ban | MST người bán | Data |  |  |  |  | `tax_code` (mig 072); trống → `NPP Cai Dat.ma_so_thue` (= `Company.tax_id`) |
@@ -2016,8 +2062,13 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 - Links to: — · Linked from: — · Đọc: `NPP Cai Dat` (`ten_npp`, `ma_so_thue`) làm mặc định người bán.
 
 #### Computed/Auto fields
-- `misa_is_invoice_with_code` do method Thử kết nối (`nppsale.api.misa.thu_ket_noi`, chủ / KT) ghi; các trường khác do người lưu qua
-  `nppsale.api.misa.cau_hinh` (GET trả cấu hình không kèm hai trường Password; POST chủ / KT, hai ô Password trống = giữ nguyên — như route nppsale).
+- Method Thử kết nối (`nppsale.api.misa.thu_ket_noi`, chủ / KT) ghi như route nppsale (`test-connection/route.ts:120–141`): `misa_is_invoice_with_code` +
+  `duong_phat_hanh` (`/v3sainvoice/Code` hoặc `/v3sainvoice`) theo `IsInvoiceWithCode`; `misa_company_id` / `misa_org_unit_id` / `misa_user_id` lấy từ `/oauth`;
+  mẫu đang dùng (`misa_template_id`, `misa_inv_series`, `misa_inv_template_no`, `loai_hd`, `ke_thua_mau_cu`) lấy từ danh sách mẫu (mẫu còn dùng, ưu tiên mẫu đã
+  phát hành); `tai_khoan` / `mat_khau` khi người vừa gõ. MISA không trả giá trị nào thì giữ giá trị cũ. Phát hành đọc cả bộ này (`publish/route.ts:331–339`) —
+  nếu Thử kết nối chỉ ghi cờ HĐ có mã thì người dùng phải tự tìm và gõ các mã định danh MISA, thiếu là phát hành hỏng. Các trường còn lại do người lưu qua
+  `nppsale.api.misa.cau_hinh` (GET trả cấu hình không kèm hai trường Password; POST chủ / KT ghi cả bộ — sửa tay được cả các mã / mẫu trên — trừ
+  `misa_is_invoice_with_code`, `misa_app_id`, `kieu_ky`; hai ô Password trống = giữ nguyên — như route nppsale).
 
 #### Submission / vòng đời — Single, không submit.
 
@@ -2030,12 +2081,12 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| hddt | HĐĐT | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 072; nppsale `ON DELETE SET NULL`); trống ở dòng nhật ký lượt. Chỉ mục |
+| hddt | HĐĐT | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 072; nppsale `ON DELETE SET NULL` → `on_trash` của `NPP HDDT` đặt NULL — §4.6 `NPP HDDT`); trống ở dòng nhật ký lượt. Chỉ mục |
 | don_hang | Đơn hàng | Data |  |  |  |  | `order_id` (mig 072) — Data: tên Sales Order, hoặc uuid cũ ở dòng chuyển sang (chỉ để tra, không ràng buộc) |
-| nguon | Nguồn | Select | `publish`↵`refresh`↵`sync`↵`sync_run`↵`pull_snapshots`↵`reconcile`↵`test_connection` | ✓ | ✓ | ✓ | **mới** (nppsale để trong `request_payload.source`); `sync_run` / `pull_snapshots` = một dòng mỗi lượt chạy (Gotcha #3) |
+| nguon | Nguồn | Select | `publish`↵`refresh`↵`sync`↵`sync_run`↵`pull_snapshots`↵`reconcile`↵`test_connection` | ✓ | ✓ | ✓ | **mới** — ở nppsale chỉ dòng của đồng bộ mang `request_payload.source = 'sync'` (`sync/route.ts:199–206`); dòng phát hành không có khoá `source` (payload là mảng hoá đơn — `publish/route.ts:369–380, 455–465`). Công cụ nhập: có `source` thì lấy giá trị đó, không có thì ghi `publish` (trường reqd — để trống là chèn hỏng). `sync_run` / `pull_snapshots` = một dòng mỗi lượt chạy (Gotcha #3) |
 | goi_luc | Gọi lúc | Datetime |  | ✓ | ✓ | ✓ | `attempt_at` (mig 072), default now. Chỉ mục |
 | ket_qua | Kết quả | Select | `success`↵`failed`↵`pending` | ✓ | ✓ | ✓ | `status` (mig 072), default pending |
-| gui_di | Gửi đi | JSON |  |  |  |  | `request_payload` (mig 072); **không bao giờ** chứa token / mật khẩu (lấy token không ghi nhật ký) |
+| gui_di | Gửi đi | JSON |  |  |  |  | `request_payload` (mig 072); **không bao giờ** chứa token / mật khẩu (lấy token không ghi nhật ký); payload phát hành là **mảng** hoá đơn (`[header]` — `mapper.ts:202`, `publish/route.ts:373`) → method và công cụ nhập ghi chuỗi `json.dumps(...)`, đọc ra thì `json.loads` (gán `list` Python vào trường JSON thì lưu ném 'Value for … cannot be a list' — `frappe/model/document.py:2585–2586`; chỉ `dict` được tự dump — luật chung ở §4.7 `NPP Thuong Thang.thuong_kpi`); ghi log hỏng không được làm hỏng lượt phát hành mà MISA đã nhận |
 | nhan_ve | Nhận về | JSON |  |  |  |  | `response_payload` (mig 072); dòng nhật ký lượt = báo cáo lượt (đã hỏi / đã cập nhật / khớp / lệch / lỗi, `hit_page_cap`, `short_pull`…) |
 | loi | Lỗi / ghi chú | Text |  |  |  |  | `error_message` (mig 072); vòng đồng bộ ghi các ghi chú đáng nói ở đây (như nppsale) |
 | misa_lookup_code | Mã tra cứu | Data |  |  |  |  | `misa_lookup_code` (mig 072) |
@@ -2050,7 +2101,7 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 - Chỉ method ghi: phát hành (mỗi lần gọi), làm mới / đồng bộ (chỉ tờ có ghi chú đáng nói — "không log tờ bình thường", như nppsale), một
   dòng `sync_run` mỗi lượt đồng bộ, một dòng `pull_snapshots` mỗi lượt kéo, thử kết nối, hành động đối soát.
 
-#### Submission / vòng đời — không submit; chỉ thêm, không sửa / xoá; không tự dọn (vết đối chiếu thuế — nppsale giữ vĩnh viễn).
+#### Submission / vòng đời — không submit; chỉ thêm, không sửa / xoá (ngoại lệ duy nhất: `hddt` = NULL khi tờ HĐĐT nháp bị xoá — §4.6 `NPP HDDT`); không tự dọn (vết đối chiếu thuế — nppsale giữ vĩnh viễn).
 
 ---
 
@@ -2070,15 +2121,15 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 | ma_cqt | Mã CQT | Data |  |  |  |  | `invoice_code` (mig 100) |
 | mst_nguoi_mua | MST người mua | Data |  |  | ✓ | ✓ | `buyer_tax_code` (mig 100) |
 | nguoi_mua | Người mua | Data |  |  | ✓ |  | `buyer_name` (mig 100) |
-| tong_tien | Tổng tiền | Currency | VND |  | ✓ |  | `total_amount` (mig 100); **có thể âm** (HĐ điều chỉnh giảm) — mọi phép so xử dấu; Frappe ép NOT NULL DEFAULT 0 → hàm khớp xét "MISA có trả tổng" trong `ban_ghi_tho` (thiếu thì không so, như nppsale) |
-| tien_truoc_thue | Tiền trước thuế | Currency | VND |  |  |  | `amount_before_vat` (mig 100) — API danh sách trả 0, không đem so (Gotcha #6) |
-| tien_thue | Thuế | Currency | VND |  |  |  | `vat_amount` (mig 100) — như trên |
+| tong_tien | Tổng tiền | Currency |  |  | ✓ |  | `total_amount` (mig 100); **có thể âm** (HĐ điều chỉnh giảm) — mọi phép so xử dấu; Frappe ép NOT NULL DEFAULT 0 → hàm khớp xét "MISA có trả tổng" trong `ban_ghi_tho` (thiếu thì không so, như nppsale) |
+| tien_truoc_thue | Tiền trước thuế | Currency |  |  |  |  | `amount_before_vat` (mig 100) — API danh sách trả 0, không đem so (Gotcha #6) |
+| tien_thue | Thuế | Currency |  |  |  |  | `vat_amount` (mig 100) — như trên |
 | publish_status | PublishStatus | Data |  |  |  |  | `publish_status` integer (mig 100) — **Data**, không Int: Int bị ép NOT NULL DEFAULT 0 mà 0 = "nháp"; trống (MISA không trả) phải khác 0 |
 | einvoice_status | EInvoiceStatus | Data |  |  |  |  | `einvoice_status` integer (mig 100) — Data như trên (trống ≠ giá trị) |
 | quan_he | Quan hệ | Select | ↵`new`↵`replacement`↵`adjustment`↵`replaced`↵`adjusted`↵`unknown` |  |  | ✓ | `relation` (mig 100) |
 | da_huy | MISA báo đã huỷ | Check |  |  |  | ✓ | `is_deleted` (mig 100), default 0 |
 | ref_id_goc | RefID HĐ gốc | Data |  |  |  |  | `org_ref_id` (mig 100) |
-| hddt | HĐĐT trong sổ | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 100; `ON DELETE SET NULL`); chỉ mục |
+| hddt | HĐĐT trong sổ | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 100; `ON DELETE SET NULL` → `on_trash` của `NPP HDDT` đặt NULL — §4.6 `NPP HDDT`); chỉ mục |
 | cach_khop | Cách khớp | Select | ↵`ref_id`↵`transaction_id`↵`inv_no`↵`inv_no_loose`↵`tax_date_amount`↵`manual` |  |  | ✓ | `match_method` (mig 100); `manual` = người chốt — vòng khớp không đụng |
 | do_tin | Độ tin | Select | ↵`certain`↵`review` |  |  |  | `match_confidence` (mig 100; giá trị theo `src/lib/misa/reconcile.ts`) |
 | ket_qua_khop | Kết quả khớp | Select | ↵`matched`↵`amount_diff`↵`misa_only`↵`cancelled`↵`replaced`↵`needs_review` |  | ✓ | ✓ | `match_status` (mig 100); `misa_only` = HĐ ngoài sổ. Chỉ mục (`ket_qua_khop`, `ngay_phat_hanh`) |
@@ -2097,8 +2148,8 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 #### Computed/Auto fields
 - `so_hddt_chuan`, `ky_hieu_chuan`: validate, bằng **cùng** hàm chuẩn hoá của tầng khớp (`nppsale/luat/hddt.py` — chép `src/lib/misa/normalize.ts`;
   một chỗ khai, Gotcha #9). Lượt kéo cập nhật bằng câu ghi gộp → hàm ghi phải tính hai cột này trong cùng câu.
-- Kéo (`nppsale.lich.misa.keo_snapshot`, 01:00 sau đồng bộ; nppsale chỉ chạy bằng cron): tối đa 300 trang × 100, mặc định 60 ngày (≤ 400),
-  ghi theo `ref_id`; rồi khớp bốn tầng (`ref_id` → `transaction_id` → (ký hiệu, số) → lỏng / (MST gốc, ngày, tiền) chỉ khi duy nhất —
+- Kéo (`nppsale.lich.misa.keo_snapshot`, gọi trong việc `nppsale.lich.misa.dong_bo` 01:00 sau khi đồng bộ xong — không phải mục lịch riêng, §4.6.9;
+  nppsale chỉ chạy bằng cron): tối đa 300 trang × 100, mặc định 60 ngày (≤ 400), ghi theo `ref_id`; rồi khớp bốn tầng (`ref_id` → `transaction_id` → (ký hiệu, số) → lỏng / (MST gốc, ngày, tiền) chỉ khi duy nhất —
   "cần review"); **module khớp chỉ ghi bảng này**, không ghi ngược `NPP HDDT`; bỏ qua dòng `cach_khop` = manual; đọc sổ không hết thì không
   hạ cấp liên kết đã khớp (như `reconcile-org.ts`).
 - Đối soát tay (`nppsale.api.misa.doi_soat`: `link` / `unlink` / `create`, chủ / KT / QL): đặt `cach_khop` = manual.
@@ -2114,8 +2165,8 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 | `GET` / `POST /api/einvoice/config` | `nppsale.api.misa.cau_hinh` (GET đọc, POST lưu) | chủ / KT |
 | `POST /api/einvoice/test-connection` | `nppsale.api.misa.thu_ket_noi` (POST) | chủ / KT |
 | `POST /api/einvoice/reconcile-action` | `nppsale.api.misa.doi_soat` (POST) | chủ / KT / QL |
-| `/api/einvoice/sync` (cron 01:00 VN, `CRON_SECRET`) | `scheduler_events.cron "0 1 * * *"` → `nppsale.lich.misa.dong_bo` (giờ site là giờ VN) | việc nền, không qua HTTP |
-| `/api/einvoice/pull-snapshots` (cron) | cùng lịch, sau đồng bộ → `nppsale.lich.misa.keo_snapshot` | việc nền |
+| `/api/einvoice/sync` (cron 01:00 VN, `CRON_SECRET`) | `scheduler_events.cron "0 1 * * *"` → `nppsale.lich.misa.dong_bo` (giờ site là giờ VN); xong đồng bộ thì gọi `keo_snapshot()` (dòng dưới) | việc nền, không qua HTTP |
+| `/api/einvoice/pull-snapshots` (cron) | **không** khai mục lịch riêng: `nppsale.lich.misa.dong_bo` gọi `nppsale.lich.misa.keo_snapshot()` **sau** khi đồng bộ xong, trong cùng một việc (như `/api/cron/daily` của nppsale chạy tuần tự: đồng bộ trước, kéo snapshot cuối — `src/app/api/cron/daily/route.ts:73, 88`; đồng bộ hỏng vẫn kéo, như `runJob`). Hai method cùng khoá `scheduler_events.cron` là hai Scheduled Job Type riêng: thứ tự enqueue bị xáo (`frappe/utils/scheduler.py:138–144`) và chạy song song được trên hàng `default` (300 s mỗi việc — `scheduled_job_type.py:190–191`, `background_jobs.py:62–69`), vòng khớp có thể đọc `NPP HDDT` chưa cập nhật số. Việc cần lâu hơn 300 s thì tự `frappe.enqueue(..., queue='long')` | việc nền |
 
 Lời gọi route cũ đi qua `nppsale.api.tuyen.goi` (Q4). Việc theo lịch commit theo lô (50–200 tờ), không bao giờ chặn ghi sổ HĐ khi tích hợp hỏng.
 
@@ -2136,8 +2187,8 @@ Lời gọi route cũ đi qua `nppsale.api.tuyen.goi` (Q4). Việc theo lịch c
 - **Kỳ đã khoá là chứng từ** (mig 050 `enforce_payroll_lock`): không sửa dòng; không có mở khoá (như nppsale).
 - NVBH không đọc cấu hình lương / thưởng / chấm công người khác (mig 197), xem phiếu lương **của mình, kỳ đã khoá** qua `my_payslips` (mig 201)
   và mục tiêu qua `my_sales_target` (mig 196).
-- Tháng chứa ngày cắt chuyển: doanh số / hàng trả / số HĐ cộng thêm phần trước ngày cắt từ `NPP LS Hoa Don` / `NPP LS Phieu Tra` (§4.8;
-  §7.1 điểm 23).
+- Tháng chứa ngày cắt chuyển: doanh số / hàng trả / số HĐ cộng thêm phần trước ngày cắt từ `NPP LS Hoa Don` / `NPP LS Phieu Tra` — đọc cả NPP như
+  phần sổ thật (`compute_payroll_run` là SECURITY DEFINER, không áp vế lọc RLS — §4.8.0 (b); §7.1 điểm 23).
 
 ### DocType: NPP Cau Hinh Luong (npp_cau_hinh_luong)
 - **Module**: NPP Nhan Su · **Naming**: — (Single) · **Is Submittable**: No · **Is Single / Is Child Table**: **Yes** / No · **Track Changes**: Yes ·
@@ -2149,16 +2200,16 @@ Lời gọi route cũ đi qua `nppsale.api.tuyen.goi` (Q4). Việc theo lịch c
 |---|---|---|---|---|---|---|---|
 | ten_cau_hinh | Tên cấu hình | Data |  |  |  |  | `name` (mig 007, default "Cấu hình mặc định") — đổi tên vì trùng `name` hệ thống; cổng ánh xạ `name` ↔ `ten_cau_hinh` |
 | dang_dung | Đang dùng | Check |  |  |  |  | `is_active` (mig 007), default 1; tắt = tính như chưa cấu hình (lương CB 0, ngày công chuẩn 26 — `COALESCE` của mig 096) |
-| luong_co_ban | Lương cơ bản | Currency | VND |  |  |  | `base_salary` (mig 007), default 3.700.000 |
-| phu_cap_xang | Phụ cấp xăng | Currency | VND |  |  |  | `gas_allowance` (mig 007), default 1.000.000 |
-| phu_cap_dien_thoai | Phụ cấp điện thoại | Currency | VND |  |  |  | `phone_allowance` (mig 007), default 300.000 |
+| luong_co_ban | Lương cơ bản | Currency |  |  |  |  | `base_salary` (mig 007), default 3.700.000 |
+| phu_cap_xang | Phụ cấp xăng | Currency |  |  |  |  | `gas_allowance` (mig 007), default 1.000.000 |
+| phu_cap_dien_thoai | Phụ cấp điện thoại | Currency |  |  |  |  | `phone_allowance` (mig 007), default 300.000 |
 | ngay_cong_chuan | Ngày công chuẩn / tháng | Int |  |  |  |  | `working_days_per_month` (mig 007), default 26 |
-| muc_doanh_so_a | Mức doanh số chung (A) | Currency | VND |  |  |  | `kpi_target_revenue` (mig 061), default 0 (0 = không xét % A); `my_sales_target` trả số này cho NVBH |
-| bac_thuong_pct_a | Bậc thưởng theo % A | JSON |  |  |  |  | `target_tiers` (mig 007) `[{min_percent, bonus, label}]` — màn lưu đã sắp tăng dần; cộng dồn các bậc ≤ % A (mig 062) |
+| muc_doanh_so_a | Mức doanh số chung (A) | Currency |  |  |  |  | `kpi_target_revenue` (mig 061), default 0 (0 = không xét % A); `my_sales_target` trả số này cho NVBH |
+| bac_thuong_pct_a | Bậc thưởng theo % A | JSON |  |  |  |  | `target_tiers` (mig 007) `[{min_percent, bonus, label}]` — màn lưu đã sắp tăng dần; cộng dồn các bậc ≤ % A (mig 062); mảng JSON — ghi `json.dumps`, đọc `json.loads` (luật ở `NPP Thuong Thang.thuong_kpi`) |
 | pct_vuot_100 | % thưởng phần vượt 100 % | Float |  |  |  |  | `over_target_percent` (mig 007), default 5 |
 | pct_duoi_60 | % doanh số khi dưới 60 % A | Float |  |  |  |  | `under_60_percent` (mig 007), default 6 |
 | luat_duoi_70 | Luật dưới 70 % | Data |  |  |  |  | `under_70_rule` (mig 007), default `base_only` — màn còn ghi; công thức không đọc (giữ để màn chạy nguyên) |
-| vai_bo_cham_cong | Vai bỏ qua chấm công | JSON |  |  |  |  | `bypass_attendance_roles` (mig 026), default `["sales"]` — công thức hiện không chia theo công (mig 060), giữ |
+| vai_bo_cham_cong | Vai bỏ qua chấm công | JSON |  |  |  |  | `bypass_attendance_roles` (mig 026), default `["sales"]` — công thức hiện không chia theo công (mig 060), giữ; mảng JSON — ghi `json.dumps`, đọc `json.loads` (luật ở `NPP Thuong Thang.thuong_kpi`) |
 
 #### Relationships — Links to: — · Linked from: — · Đọc bởi: `compute_payroll_run`, `my_sales_target`, wizard `/setup`, `/hr/salary-config`.
 #### Computed/Auto fields — không (người lưu). Cổng: bản Single chưa lưu lần nào → 0 dòng (mã React hiểu là "chưa cấu hình"); insert = lưu lần đầu.
@@ -2177,7 +2228,7 @@ Lời gọi route cũ đi qua `nppsale.api.tuyen.goi` (Q4). Việc theo lịch c
 | bac_doanh_so | Bậc thưởng doanh số | JSON |  |  |  |  | `tiers` (mig 007) `[{min_revenue, bonus}]` |
 | thuong_dau_thung | Thưởng đầu thùng | JSON |  |  |  |  | `per_unit_bonuses` (mig 031) `[{product_id\|null, unit_name, bonus}]` — `product_id` là tên Item; công cụ nhập đổi uuid → mã hàng trong JSON |
 | thuong_moc_so_don | Thưởng mốc số đơn | JSON |  |  |  |  | `order_milestone_tiers` (mig 031) `[{min_orders, bonus, label}]` |
-| thuong_kpi | Thưởng KPI tháng | JSON |  |  |  |  | `kpi_metrics` (mig 031) `[{key, label, tiers:[{min, bonus}]}]` — lồng hai tầng nên không tách bảng con (Frappe cho một tầng) |
+| thuong_kpi | Thưởng KPI tháng | JSON |  |  |  |  | `kpi_metrics` (mig 031) `[{key, label, tiers:[{min, bonus}]}]` — lồng hai tầng nên không tách bảng con (Frappe cho một tầng); giá trị là **mảng** JSON: cổng, method và công cụ nhập ghi chuỗi `json.dumps(...)`, đọc ra thì `json.loads` (lõi trả chuỗi — không tự giải lúc nạp). Gán `list` Python vào trường JSON thì lưu ném 'Value for … cannot be a list' (`frappe/model/document.py:2585–2586`; chỉ `dict` được tự dump — 2594–2595; Single cũng đi qua `get_valid_dict`). Luật này áp cho mọi trường JSON mảng: `bac_doanh_so`, `thuong_dau_thung`, `thuong_moc_so_don` (bảng này), `NPP Cau Hinh Luong.bac_thuong_pct_a` / `vai_bo_cham_cong`, `NPP LS Phieu Kho.ref_order_ids`, `NPP MISA Log.gui_di` |
 | ghi_chu | Ghi chú | Small Text |  |  |  |  | `notes` (mig 007) |
 
 #### Relationships — Links to: — (JSON chứa mã hàng) · Linked from: —
@@ -2219,7 +2270,7 @@ màn chấm công (cổng khai khoá này, ánh xạ sang hai trường ấy). `
 |---|---|---|---|---|---|---|---|
 | nhan_vien | Nhân viên | Link | NPP Nhan Vien |  | ✓ | ✓ | `user_id` (mig 043; nppsale cho NULL nhưng không dòng nào dùng — màn luôn ghi). Chỉ mục ghép (`nhan_vien`, `thang`) |
 | thang | Tháng | Date |  | ✓ | ✓ | ✓ | `month` (mig 043) — ngày 01 |
-| doanh_so_toi_thieu | Doanh số tối thiểu | Currency | VND | ✓ | ✓ |  | `min_revenue` numeric(18,2) (mig 043) |
+| doanh_so_toi_thieu | Doanh số tối thiểu | Currency |  | ✓ | ✓ |  | `min_revenue` numeric(18,2) (mig 043) |
 | kieu_thuong | Kiểu thưởng | Select | `percent`↵`fixed` | ✓ | ✓ |  | `bonus_type` (mig 043) |
 | gia_tri_thuong | Giá trị thưởng | Float |  | ✓ | ✓ |  | `bonus_value` (mig 043); precision 2 — % (percent) hoặc đồng (fixed), nên **không** Currency |
 | thu_tu | Thứ tự | Int |  |  |  |  | `order_index` (mig 043), default 0 |
@@ -2240,8 +2291,8 @@ màn chấm công (cổng khai khoá này, ánh xạ sang hai trường ấy). `
 | nhan_vien | Nhân viên | Link | NPP Nhan Vien |  | ✓ | ✓ | `user_id` (mig 043). Chỉ mục ghép (`nhan_vien`, `hieu_luc_tu`, `hieu_luc_den`) |
 | chu_ky | Chu kỳ | Select | `week`↵`month` | ✓ | ✓ |  | `period` (mig 043); tuần: xét **từng tuần** riêng (mig 096), tuần thứ Hai – Chủ nhật theo ngày HĐ |
 | so_hd_toi_thieu | Số HĐ tối thiểu | Int |  | ✓ | ✓ |  | `min_order_count` (mig 043) — từ câu 7 đếm **HĐ ghi sổ** của NV (không đếm đơn); nhãn màn "đơn" đổi chữ ở lớp phủ `src/thay` |
-| gia_tri_hd_toi_thieu | Giá trị HĐ tối thiểu | Currency | VND | ✓ |  |  | `min_order_value` numeric(18,2) (mig 043); so với tiền HĐ (§7.1 điểm 21) |
-| thuong_moi_hd | Thưởng mỗi HĐ | Currency | VND | ✓ | ✓ |  | `bonus_per_order` (mig 043) |
+| gia_tri_hd_toi_thieu | Giá trị HĐ tối thiểu | Currency |  | ✓ |  |  | `min_order_value` numeric(18,2) (mig 043); so với tiền HĐ (§7.1 điểm 21) |
+| thuong_moi_hd | Thưởng mỗi HĐ | Currency |  | ✓ | ✓ |  | `bonus_per_order` (mig 043) |
 | hieu_luc_tu | Hiệu lực từ | Date |  | ✓ | ✓ | ✓ | `effective_from` (mig 043) |
 | hieu_luc_den | Hiệu lực đến | Date |  |  | ✓ |  | `effective_to` (mig 043); trống = không hết hạn |
 
@@ -2260,7 +2311,7 @@ màn chấm công (cổng khai khoá này, ánh xạ sang hai trường ấy). `
 |---|---|---|---|---|---|---|---|
 | nhan_vien | Nhân viên | Link | NPP Nhan Vien | ✓ | ✓ | ✓ | `user_id` (mig 043) |
 | thang | Tháng | Date |  | ✓ | ✓ | ✓ | `month` (mig 043) — ngày 01 |
-| so_tien | Số tiền | Currency | VND | ✓ | ✓ |  | `amount` numeric(18,2) (mig 043) — kế toán nhập tay (D11) |
+| so_tien | Số tiền | Currency |  | ✓ | ✓ |  | `amount` numeric(18,2) (mig 043) — kế toán nhập tay (D11) |
 | ghi_chu | Ghi chú | Small Text |  |  |  |  | `note` (mig 043) |
 
 Chỉ mục duy nhất ghép (`nhan_vien`, `thang`) = `UNIQUE(user_id, month)`, cũng là khoá `upsert … onConflict: "user_id,month"`. `created_by`
@@ -2295,6 +2346,11 @@ Chỉ mục duy nhất ghép (`nhan_vien`, `thang`) = `UNIQUE(user_id, month)`, 
   với mỗi NV vai NVBH đang làm: cập nhật dòng của NV (giữ `tang_ca`, `khau_tru`, `dieu_chinh_tay`, `ghi_chu` người đã nhập — mig 096 [3]),
   thêm dòng NV mới, bỏ dòng NV đã nghỉ / đổi vai. Tháng chứa ngày cắt chuyển cộng thêm lưu trữ (§4.7.0).
 - `trang_thai` = draft khi docstatus 0, locked khi submit; `khoa_luc` / `nguoi_khoa` ghi trong `before_submit`.
+- **Nhập kỳ cũ** (P8, `frappe.flags.in_import`): kỳ `locked` vào thẳng docstatus 1, giữ nguyên `tinh_luc` / `khoa_luc` / `nguoi_khoa` (`computed_at` /
+  `locked_at` / `locked_by`) và `thuc_nhan` (`net_salary`) từng dòng của nppsale — công cụ nhập đặt `doc.flags.ignore_validate` (lõi bỏ `validate` +
+  `before_submit` — `frappe/model/document.py:1677`) nên không tính lại `thuc_nhan`, không ghi đè giờ / người khoá bằng giờ / người nhập. Mig 173 chỉ tính lại
+  dòng kỳ CHƯA khoá; dòng kỳ đã khoá lệch các khoản để nguyên ("KHÔNG sửa — cần người xem"), nên tính lại lúc nhập là đổi số phiếu lương đã chốt mà
+  `my_payslips` trả. Kỳ `draft` nhập ở docstatus 0, validate tính lại như thường (trùng số cũ — mig 173 đã tính lại mọi dòng kỳ chưa khoá).
 #### Submission / vòng đời
 - Nháp: tính lại được, sửa tay `dieu_chinh_tay` / `ghi_chu` / `bhxh`. Khoá = submit → lõi chặn mọi sửa dòng (thay trigger
   `enforce_payroll_lock`). Không cancel / amend ở giao diện (nppsale không có mở khoá).
@@ -2309,23 +2365,26 @@ Chỉ mục duy nhất ghép (`nhan_vien`, `thang`) = `UNIQUE(user_id, month)`, 
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
 | nhan_vien | Nhân viên | Link | NPP Nhan Vien | ✓ | ✓ |  | `user_id` (mig 050); validate: một NV một dòng / kỳ (= `UNIQUE(payroll_run_id, user_id)`) |
-| luong_co_ban | Lương CB cấu hình | Currency | VND |  | ✓ |  | `base_salary` (mig 050) |
+| luong_co_ban | Lương CB cấu hình | Currency |  |  | ✓ |  | `base_salary` (mig 050) |
 | ngay_cong_chuan | Ngày công chuẩn | Float |  |  |  |  | `standard_workdays` numeric(6,2) (mig 050); precision 2 |
 | ngay_cong_thuc | Ngày công thực | Float |  |  |  |  | `actual_workdays` numeric(6,2) (mig 050); precision 2 |
-| luong_cb_hieu_luc | Lương CB hiệu lực | Currency | VND |  | ✓ |  | `prorated_base` (mig 050); dưới 60 % A = doanh số × % |
-| phu_cap | Phụ cấp | Currency | VND |  | ✓ |  | `allowances` (mig 064); 0 khi dưới 60 % A |
-| thuong_kpi | Thưởng KPI | Currency | VND |  | ✓ |  | `kpi_bonus` (mig 050) |
-| thuong_so_hd | Thưởng số HĐ | Currency | VND |  | ✓ |  | `order_count_bonus` (mig 050); câu 7: đếm HĐ ghi sổ |
-| thuong_hoat_dong | Thưởng hoạt động | Currency | VND |  | ✓ |  | `activity_bonus` (mig 050) |
-| tang_ca | Tăng ca | Currency | VND |  |  |  | `overtime` (mig 050); người nhập — tính lại không đè |
-| khau_tru | Khấu trừ | Currency | VND |  |  |  | `deductions` (mig 050); người nhập — tính lại không đè |
-| bhxh | BHXH | Currency | VND |  |  |  | `social_insurance` (mig 050); máy tính 10,5 %, người sửa được (`setManualAdjustment`) |
-| dieu_chinh_tay | Điều chỉnh tay | Currency | VND |  | ✓ |  | `manual_adjustment` (mig 050); người nhập |
-| thuc_nhan | Thực nhận | Currency | VND |  | ✓ |  | `net_salary` (mig 050); read_only — validate của kỳ tính lại trên **mọi** lần lưu (thay trigger mig 173); trình duyệt gửi gì cũng bị đè |
+| luong_cb_hieu_luc | Lương CB hiệu lực | Currency |  |  | ✓ |  | `prorated_base` (mig 050); dưới 60 % A = doanh số × % |
+| phu_cap | Phụ cấp | Currency |  |  | ✓ |  | `allowances` (mig 064); 0 khi dưới 60 % A |
+| thuong_kpi | Thưởng KPI | Currency |  |  | ✓ |  | `kpi_bonus` (mig 050) |
+| thuong_so_hd | Thưởng số HĐ | Currency |  |  | ✓ |  | `order_count_bonus` (mig 050); câu 7: đếm HĐ ghi sổ |
+| thuong_hoat_dong | Thưởng hoạt động | Currency |  |  | ✓ |  | `activity_bonus` (mig 050) |
+| tang_ca | Tăng ca | Currency |  |  |  |  | `overtime` (mig 050); người nhập — tính lại không đè |
+| khau_tru | Khấu trừ | Currency |  |  |  |  | `deductions` (mig 050); người nhập — tính lại không đè |
+| bhxh | BHXH | Currency |  |  |  |  | `social_insurance` (mig 050); máy tính 10,5 %, người sửa được (`setManualAdjustment`) |
+| dieu_chinh_tay | Điều chỉnh tay | Currency |  |  | ✓ |  | `manual_adjustment` (mig 050); người nhập |
+| thuc_nhan | Thực nhận | Currency |  |  | ✓ |  | `net_salary` (mig 050); read_only — validate của kỳ tính lại trên **mọi** lần lưu (thay trigger mig 173); trình duyệt gửi gì cũng bị đè; ngoại lệ duy nhất: nhập kỳ đã khoá giữ nguyên số nppsale (`NPP Ky Luong` — Computed) |
 | ghi_chu | Ghi chú | Small Text |  |  |  |  | `notes` (mig 050) |
 | chi_tiet_tinh | Chi tiết tính | JSON |  |  |  |  | `computed_breakdown` (mig 050 / 096); read_only — giữ đúng các khoá của mig 096 (`revenue`, `revenue_gross`, `returns_deducted`, `revenue_clamped`, `returns_excess`, `kpi_pct`, `kpi_model`, `kpi_tier_breakdown`, `low_perf`, `oc_*`…) + `oc_nguon` = `hoa_don` (câu 7) |
 
-`updated_at` → `modified` (của dòng).
+`updated_at` → `modified` của dòng — lõi chép `modified` / `creation` của **kỳ cha** xuống mọi dòng con mỗi lần lưu (dòng thêm sau cũng nhận `creation` của cha —
+`frappe/model/document.py:1049–1055`), nên hai cột này là mốc của kỳ, không phải của dòng. Cổng xếp `.order("created_at")` của màn kỳ lương
+(`hr/payroll/runs/page.tsx:144`) theo `idx`, và nhận rồi bỏ `updated_at` mà trình duyệt gửi kèm khi lưu điều chỉnh (`lib/payroll/run.ts:134–138`; không coi là
+ghi cột cấm).
 
 #### Relationships — Child of: NPP Ky Luong · Links to: NPP Nhan Vien.
 #### Computed/Auto fields — như cha. `my_payslips`: NVBH đọc dòng có `nhan_vien` = mình ở kỳ docstatus 1 (mig 201).
@@ -2353,11 +2412,22 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
   chỉ mục — `frappe/database/mariadb/schema.py:28`). `in_create` = 1 (User Cannot Create), không cấp write / delete cho vai nào; vai NPP không
   có Desk — đọc qua hàm dòng thô / method tra cứu (vế lọc dưới).
 - **Trường = cột nppsale 1–1** (trừ `id` → `name`, bỏ `org_id`, `tim_kd`), **giữ** `created_at` / `created_by` / `updated_at` thành trường thường.
+  Chữ `precision n` ở cột Options của Currency / Float trong các bảng dưới là thuộc tính **`precision`** của DocField, không phải `options`: `options` của
+  Currency là tên trường giữ mã tiền tệ (lõi ghi `currency` — `frappe/model/meta.py:909–914` đọc nó như tên trường); để trống thì dùng VND mặc định của
+  site — ghi `VND` hay `precision 2` vào `options` thì lõi đọc như tên trường. Ở v16 `precision` còn là số lẻ của cột CSDL (`decimal(21,n)`; để trống là
+  `decimal(21,9)` — `frappe/database/schema.py:13–15, 440–447`), mà cột nppsale là `numeric` không giới hạn (mig 124, 016…) → P8 đo `max(scale(cột))` từng cột
+  trước khi chốt n (hoặc để trống), kẻo MariaDB làm tròn lặng lẽ lúc nhập (`CAST(4110.885 AS DECIMAL(21,2))` = 4110.89); cột có số lẻ dài hơn mức chọn (giá
+  vốn sau phép chia — §2.7) là làm tròn có chủ ý, bộ so số P8 so với dung sai.
   Khoá ngoại: tới danh mục đã chuyển (khách, hàng, NCC, người, danh mục chi) → **Link tới bản ghi mới** (công cụ nhập ánh xạ qua `npp_id_cu` /
   `NPP Nhan Vien.id_cu`; danh mục chi `NPP Danh Muc Chi Phi` giữ UUID cũ (§4.5) nên không phải ánh xạ);
-  tới chứng từ lưu trữ → Link uuid tới `NPP LS *`; tới thứ không lưu (lô, đơn mua PO, chuyến giao) → Data giữ uuid cũ (+ cột chụp mã nếu báo
-  cáo cần: `batch_code`). Mã giá trị (status, type, method…) là **Data** nguyên văn (Select sẽ từ chối giá trị cũ như
-  `partially_invoiced`, `closed`). Reqd không đặt — bảng nhận nguyên dữ liệu; toàn vẹn kiểm bằng câu đối chiếu sau khi nhập. Cột số nppsale
+  tới chứng từ lưu trữ → Link uuid tới `NPP LS *` (cột chỉ thành `uuid` nếu DocType đích **đã có** lúc bảng nguồn được tạo — `frappe/database/schema.py:419–428`,
+  chính lõi ghi chú XXX giới hạn này; `sync_for` đi module theo `modules.txt` (`NPP HDDT` đứng trước `NPP Luu Tru`) và thư mục DocType theo `os.listdir` không
+  sắp — `frappe/model/sync.py:133, 187` — nên kiểu cột không đoán trước được; `bench migrate` cũng không nâng cột `varchar(140)` lên `uuid` về sau: phép so khi
+  alter gọi `get_definition` không kèm `options` — `schema.py:262–286`. Vì vậy `nppsale.thiet_lap` (after_install + after_migrate — §2.2, chạy lại an toàn; một
+  patch chạy một lần không bắt được Link thêm về sau) tự `ALTER TABLE … MODIFY <cột> uuid` cho mọi Link tới DocType đặt tên UUID còn là varchar (đổi `''` →
+  NULL trước), kể cả `NPP HDDT.hoa_don_ban_ls` / `don_hang_ls`, kèm test đọc `information_schema.columns` khẳng định kiểu — §7.2 điểm 1); tới thứ không lưu
+  (lô, đơn mua PO, chuyến giao) → Data giữ uuid cũ (+ cột chụp mã nếu báo cáo cần: `batch_code`). Mã giá trị (status, type, method…) là **Data** nguyên văn
+  (Select sẽ từ chối giá trị cũ như `partially_invoiced`, `closed`). Reqd không đặt — bảng nhận nguyên dữ liệu; toàn vẹn kiểm bằng câu đối chiếu sau khi nhập. Cột số nppsale
   cho NULL mà NULL mang nghĩa: Check đi kèm hoặc giá trị thay thế tính lúc nhập (§2.7 — ghi ở từng trường).
 - **Nhập** (P8, lệnh máy chủ `nppsale.chuyen_doi.nhap_ls`, không phải method web): theo thứ tự danh mục → đơn → dòng đơn → phiếu kho → dòng kho
   → phiếu thu (đầu) → HĐ → dòng HĐ → phiếu trả → dòng trả → công nợ → khoản thu → dòng phiếu thu → nợ NCC → phiếu nhập / dòng → trả NCC / dòng →
@@ -2365,10 +2435,22 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
   `sales_invoices.replaced_from/by`), sau đó **một câu đối chiếu** mỗi Link (0 Link mồ côi) + so số dòng / tổng tiền từng bảng với Supabase
   (chữ ký số liệu của bước cắt chuyển). Nhập lại toàn bộ (xoá sạch rồi nhập) chỉ được khi `ngay_cat_chuyen` chưa chốt.
 - **Đọc**: mã React không có tên `ls_*` nên cổng không đăng ký bảng lưu trữ dưới tên riêng; nếu chọn gộp vào nguồn của bảng sống (§7.1 điểm 2) thì `sales_invoices` / `returns` / `sales_orders` / `cash_receipts` (+ dòng) đọc thêm `NPP LS *`
-  chỉ đọc — tên cột 1–1 và `name` = id cũ nên phép gộp gần như đồng nhất. Hàm dòng thô của RPC / báo cáo (`bao_cao_so_ban`,
-  `bao_cao_cong_no`, `bao_cao_ton_kho`, `hang_khach_da_lay`, `compute_payroll_run`, `payroll_returns_for`, `dashboard_*`, `finance_*`, `my_sales_target`)
-  **UNION** phần lưu trữ với phần ERPNext cho kỳ chạm trước ngày cắt — mỗi bảng lưu trữ áp **vế lọc chép từ RLS của bảng gốc** (ghi ở từng DocType
-  dưới) với người đang gọi. Đọc chứng từ cũ theo mã / đường dẫn cũ: §7.1 điểm 2.
+  chỉ đọc — tên cột 1–1 và `name` = id cũ, **nhưng** `name` của `NPP LS *` và mọi Link tới chúng là kiểu `uuid` của MariaDB (§2.3). Ở mọi nhánh UNION (nguồn
+  gộp của cổng — §7.1 điểm 2 (b) — và các hàm dòng thô dưới đây), nhánh lưu trữ đổi các cột ấy về chữ bằng `CAST(<cột> AS CHAR(36)) COLLATE utf8mb4_unicode_ci`:
+  để nguyên thì cột kết quả mang kiểu `uuid` và mọi mã không phải UUID của nhánh sổ thật (`HD-0042`, `DH-0042`, tên Link lõi…) thành NULL, không lỗi, không
+  cảnh báo; thiếu `COLLATE` thì lỗi 1271 trộn collation (kết nối của Frappe chạy `utf8mb4_general_ci`, cột bảng `utf8mb4_unicode_ci`); ép nhánh varchar
+  không cứu được (đo chỉ đọc trên poc.local, MariaDB 10.11.14). Bộ test của cổng và báo cáo có một ca gộp hai nguồn kiểm điều này.
+  Hàm dòng thô của RPC / báo cáo **UNION** phần lưu trữ với phần ERPNext cho kỳ chạm trước ngày cắt và giữ đúng cách lọc của hàm nppsale tương ứng:
+  (a) hàm **SECURITY INVOKER** — `bao_cao_so_ban`, `bao_cao_cong_no`, `bao_cao_ton_kho` (mig 204 / 256), `dashboard_*`, `finance_*` (không khai SECURITY DEFINER —
+  mig 192 / 228 / 243): mỗi bảng lưu trữ áp **vế lọc chép từ RLS của bảng gốc** (ghi ở từng DocType dưới) với người đang gọi; (b) hàm **SECURITY DEFINER** —
+  RLS không áp, nên phần lưu trữ **không** áp vế lọc của bảng gốc với người gọi mà giữ đúng luật lọc riêng của hàm: `hang_khach_da_lay` (mig 246) — NVBH đọc
+  mọi HĐ ghi sổ / phiếu trả đã trừ của khách đang phân công cho mình, bất kể NV đứng tên HĐ (NV nhận bàn giao phải thấy hàng khách đã lấy 12 tháng — CLAUDE.md
+  "Bàn giao khách"; áp `sales_invoices_select` / "Sales see own returns" lên `NPP LS Hoa Don` / `NPP LS Phieu Tra` thì mất phần HĐ đứng tên NV cũ), hàng lọc
+  theo công ty được làm; chủ / QL / KT chọn NV hoặc danh sách khách, vai khác `KHONG_DU_QUYEN`; `compute_payroll_run` (mig 096, kéo theo `payroll_returns_for`
+  gọi bên trong) — chỉ chủ / QL / KT gọi (`FORBIDDEN_ROLE`), đọc cả NPP. `my_sales_target` (mig 196) chỉ đọc `NPP Cau Hinh Luong.muc_doanh_so_a`
+  (`hr_salary_config.kpi_target_revenue`), không đọc chứng từ nên không UNION. Vế lọc **khách** của cổng cũng gộp lưu trữ dù chọn gì ở §7.1 điểm 2:
+  `khach_toi_da_ban()` của `customer_select` = khách có đơn đứng tên người gọi ở Sales Order **∪** `NPP LS Don Hang` (§6.1 `customers`). Đọc chứng từ cũ theo
+  mã / đường dẫn cũ: §7.1 điểm 2.
 - **Chỉ mục**: các cột ghi "chỉ mục" dưới đây (ngày, trạng thái, khách, NV, mặt hàng, Link về đầu phiếu, mã chứng từ) — đúng bộ lọc của các hàm
   dòng thô (như chỉ mục mig 204).
 
@@ -2495,7 +2577,7 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
 #### Computed/Auto fields · Vòng đời · Vế lọc
 - Computed: chép nguyên lúc nhập (§4.8.0).
 - Vòng đời: không submit — chỉ đọc; không tạo / sửa / xoá sau khi nhập (§4.8.0).
-- Vế lọc khi đọc (chép RLS bảng gốc): `sales_invoices_select` (mig 124): chủ / QL / KT / kho ∨ `sales_user_id` = mình ∨ đơn (LS) có `sales_user_id` = mình.
+- Vế lọc khi đọc (chép RLS bảng gốc): `sales_invoices_select` (mig 124): chủ / QL / KT / kho ∨ `sales_user_id` = mình ∨ đơn (LS) có `sales_user_id` = mình. Không áp ở hai hàm SECURITY DEFINER `hang_khach_da_lay` (lọc theo khách đang phân công) và `compute_payroll_run` (cả NPP) — §4.8.0 (b).
 
 ---
 
@@ -2527,7 +2609,7 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
 #### Computed/Auto fields · Vòng đời · Vế lọc
 - Computed: chép nguyên lúc nhập (§4.8.0).
 - Vòng đời: không submit — chỉ đọc; không tạo / sửa / xoá sau khi nhập (§4.8.0).
-- Vế lọc khi đọc (chép RLS bảng gốc): `sales_invoice_lines_select` (mig 124): chỉ kiểm cùng NPP — hàm dòng thô luôn nối qua đầu HĐ đã lọc.
+- Vế lọc khi đọc (chép RLS bảng gốc): `sales_invoice_lines_select` (mig 124): theo dòng cha — chỉ dòng của HĐ (`NPP LS Hoa Don`) người ấy đọc được theo vế `sales_invoices_select` ở trên (chính sách là `EXISTS (sales_invoices …)`, câu con chịu RLS của `sales_invoices`), không phải mọi dòng cùng NPP (lọc "cùng NPP" thì NVBH đọc được giá / SL trên HĐ của NV khác); hàm dòng thô và nguồn gộp của cổng (§7.1 điểm 2) luôn nối qua đầu HĐ đã lọc (hàm SECURITY DEFINER: theo luật riêng của hàm — §4.8.0 (b)).
 
 ---
 
@@ -2571,7 +2653,7 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
 #### Computed/Auto fields · Vòng đời · Vế lọc
 - Computed: chép nguyên lúc nhập (§4.8.0).
 - Vòng đời: không submit — chỉ đọc; không tạo / sửa / xoá sau khi nhập (§4.8.0).
-- Vế lọc khi đọc (chép RLS bảng gốc): "Admin roles can view all returns" (002): chủ / QL / KT / kho; "Sales see own returns" (198): NVBH — `requested_by` = mình ∨ `sales_user_id` = mình ∨ HĐ gắn có `sales_user_id` = mình ∨ đơn gắn có `sales_user_id` = mình.
+- Vế lọc khi đọc (chép RLS bảng gốc): "Admin roles can view all returns" (002): chủ / QL / KT / kho; "Sales see own returns" (198): NVBH — `requested_by` = mình ∨ `sales_user_id` = mình ∨ HĐ gắn có `sales_user_id` = mình ∨ đơn gắn có `sales_user_id` = mình. Không áp ở hai hàm SECURITY DEFINER `hang_khach_da_lay` và `compute_payroll_run` / `payroll_returns_for` — §4.8.0 (b).
 
 ---
 
@@ -2659,7 +2741,7 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
 #### Computed/Auto fields · Vòng đời · Vế lọc
 - Computed: chép nguyên lúc nhập (§4.8.0).
 - Vòng đời: không submit — chỉ đọc; không tạo / sửa / xoá sau khi nhập (§4.8.0).
-- Vế lọc khi đọc (chép RLS bảng gốc): "Org members can view payments" (092): mọi vai trừ NVBH, cùng NPP; "Sales see own order payments" (092): NVBH — khoản nợ có `order_id` mà đơn có `sales_user_id` = mình.
+- Vế lọc khi đọc (chép RLS bảng gốc): "Org members can view payments" (092): vai ≠ NVBH **và** khoản nợ (`receivable_id`) người ấy đọc được — chính sách là `EXISTS (receivables …)`, câu con chịu RLS của `receivables`, tức vế của `NPP LS Cong No` ở trên — nên thực tế chỉ chủ / QL / KT, kho **không** thấy; "Sales see own order payments" (092): NVBH — khoản nợ đọc được (`NPP LS Cong No.sales_user_id` = mình) **và** đơn của khoản nợ (`order_id`) có `sales_user_id` = mình (nợ đã chuyển hẳn cho NV khác — mig 246 — thì NV đứng tên đơn cũng không thấy khoản thu). Như dòng `payments` ở §6.1.
 
 ---
 
@@ -2976,7 +3058,7 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
 | supplier_id | Nhà cung cấp | Link | Supplier |  | ✓ | ✓ | `supplier_id` (mig 006); ánh xạ id cũ → bản ghi mới qua `npp_id_cu`; chỉ mục |
 | status | Trạng thái | Data |  |  | ✓ | ✓ | `status` (mig 016); draft / posted / cancelled — Data; chỉ mục |
 | posted_at | Ghi sổ lúc | Datetime |  |  | ✓ |  | `posted_at` (mig 016); chỉ mục |
-| ref_order_ids | Đơn liên quan (id cũ) | JSON |  |  |  |  | `ref_order_ids` (mig 017) |
+| ref_order_ids | Đơn liên quan (id cũ) | JSON |  |  |  |  | `ref_order_ids` (mig 017) jsonb mảng uuid cũ — công cụ nhập ghi chuỗi `json.dumps(...)` (gán `list` vào trường JSON thì lưu ném lỗi — luật ở §4.7 `NPP Thuong Thang.thuong_kpi`) |
 | issue_reason | Lý do xuất lẻ | Data |  |  |  |  | `issue_reason` (mig 144) |
 | warehouse_zone | Vùng kho | Data |  |  |  |  | `warehouse_zone` (mig 144) |
 | dest_warehouse_zone | Vùng kho đích | Data |  |  |  |  | `dest_warehouse_zone` (mig 148) |
@@ -3008,7 +3090,7 @@ hôm nay. Dữ liệu không nhập (nằm trong bản dump Supabase cuối — 
 | quantity | Số lượng | Float | precision 6 |  | ✓ |  | `quantity` (mig 001); numeric từ mig 228; kiểm kê = chênh lệch CÓ DẤU |
 | notes | Ghi chú | Small Text |  |  |  |  | `notes` (mig 001) |
 | unit_cost | Giá vốn / ĐV cơ sở | Currency | precision 6 |  |  |  | `unit_cost` (mig 016); giá vốn mỗi ĐƠN VỊ CƠ SỞ (precision 6) |
-| qty_in_base_uom | SL đơn vị cơ sở | Float | precision 6 |  |  |  | `qty_in_base_uom` (mig 039); trống ở dòng cũ (trước mig 039) → công cụ nhập điền \|`quantity`\| × `conversion_factor_snapshot` (≤ 0 → 1) — đúng luật đọc của `bao_cao_so_ban` / `soLuongCoSoDongKho`; Float bị ép NOT NULL nên không để trống |
+| qty_in_base_uom | SL đơn vị cơ sở | Float | precision 6 |  |  |  | `qty_in_base_uom` numeric(18,6) (mig 039); NOT NULL từ mig 039 (dòng cũ đã được điền = `quantity` × `conversion_factor_snapshot` ngay trong mig 039) nên sổ thật không có dòng trống — nhập nguyên giá trị; luật lùi chỉ là phòng hờ (gặp NULL): \|`quantity`\| × `conversion_factor_snapshot` (≤ 0 → 1) — đúng luật đọc của `bao_cao_so_ban` / `soLuongCoSoDongKho` |
 | qty_in_transaction_uom | SL đơn vị giao dịch | Float | precision 6 |  |  |  | `qty_in_transaction_uom` (mig 039) |
 | transaction_uom | Đơn vị giao dịch | Data |  |  |  |  | `transaction_uom` (mig 039) |
 | conversion_factor_snapshot | Hệ số (chụp) | Float | precision 6 |  |  |  | `conversion_factor_snapshot` (mig 039) |
@@ -3138,8 +3220,8 @@ thấy được), `duyet_anh_diem_ban` (khoá / mở bộ ảnh + vị trí; m�
 | suppliers | Supplier | npp_han_muc | Hạn mức nợ | Currency |  | npp_co_han_muc | `credit_limit`; depends_on `npp_co_han_muc` — hạn mức của app, không phải hạn mức tín dụng của lõi |
 | suppliers | Supplier | npp_danh_gia | Đánh giá | Float |  | npp_han_muc | `rating` |
 | suppliers | Supplier | npp_da_xac_minh | Đã xác minh | Check |  | npp_danh_gia | `is_verified` |
-| suppliers | Supplier | npp_ghi_chu | Ghi chú | Small Text |  | supplier_details | `notes` |
-| suppliers | Supplier | npp_tim_kd | Khoá tìm | Small Text |  | npp_ghi_chu | `tim_kd` = khoá tìm (`name`, `code`, `phone`, `tax_code`) — mig 177 / 205; RO; hook `before_save`; Small Text không chỉ mục (§2.8) |
+| suppliers | Supplier | supplier_details | (lõi) | Text |  | — | dùng `supplier_details` (lõi — "General information about your Supplier"; Supplier không submit) ← `notes`; không đẻ `npp_ghi_chu` |
+| suppliers | Supplier | npp_tim_kd | Khoá tìm | Small Text |  | supplier_details | `tim_kd` = khoá tìm (`name`, `code`, `phone`, `tax_code`) — mig 177 / 205; RO; hook `before_save`; Small Text không chỉ mục (§2.8) |
 | suppliers | Supplier | npp_id_cu | Mã cũ (nppsale) | Data |  | npp_tim_kd | `suppliers.id` cũ; read_only, unique, no_copy, chỉ mục, hidden; chỉ công cụ nhập ghi; ánh xạ `supplier_id` của phiếu nhập / trả NCC / nợ NCC / phiếu chi NCC / phiếu kho lưu trữ |
 
 ### 5.3 Item ← `products`, `product_units` (module `NPP Ban Hang`)
@@ -3164,20 +3246,23 @@ thấy được), `duyet_anh_diem_ban` (khoá / mở bộ ảnh + vị trí; m�
 | products | Item | allow_negative_stock | (lõi) | Check |  | — | dùng — **mới theo CFD-05 B**: chỉ mặt hàng không lô cần bán vượt tồn |
 | products | Item | disabled | (lõi) | Check |  | — | **không dùng** (luôn 0 — 3.11: chặn cả tờ ghi có / Sửa HĐ / kiểm kê có mặt hàng ấy) |
 | products | Item | standard_rate | (lõi) | Currency |  | — | **không dùng** cho `sell_price`: lõi tự lập Item Price vào bảng giá mặc định khi insert (`item.py:185–199`) — sai thứ tự bậc giá — và dùng nó làm giá vốn dự phòng (`stock_ledger.py:2566`) |
-| products | Item | npp_gia_ban | Giá bán (đơn vị cơ sở) | Currency |  | standard_rate | `sell_price` — bậc 3 của bộ tra giá; bậc 4 (đơn vị khác) = `npp_gia_ban` × hệ số (`unitPriceFor`) |
+| products | Item | npp_gia_ban | Giá bán (đơn vị cơ sở) | Currency |  | standard_rate | `sell_price` — bậc 3 của bộ tra giá; bậc 4 (đơn vị khác có hệ số) = giá **đơn vị cơ sở tra lại qua ba bậc** (bảng nhóm → `Gia chuan` → `npp_gia_ban`) × hệ số (`unitPriceFor` / `_gia_bang_don_vi`) |
 | products | Item | npp_thue_suat | Thuế suất mặc định | Float | precision 4 | stock_uom | `vat_rate` (tỉ lệ 0..1, mặc định 0 — mig 110); method chọn Item Tax Template `VAT n%` cho dòng mới; `Item.taxes` để trống (3.11) |
 | products | Item | npp_ngung_ban | Ngừng bán | Check |  | disabled | `status` (`inactive` = 1); idx; ẩn khỏi màn bán / đặt lại đơn, vẫn nhận trả |
 | products | Item | npp_vi_tri_ke | Vị trí kệ | Data |  | brand | `shelf_location` (soạn hàng nhặt theo kệ) |
-| products | Item | npp_ton_toi_da | Tồn tối đa | Float |  | safety_stock | `max_stock` (lõi không có trường tương đương — Item Reorder là theo kho, nghĩa khác) |
-| products | Item | npp_ban_truc_tiep | Bán trực tiếp | Check | default 1 | is_sales_item | `direct_sale` |
+| products | Item | npp_ton_toi_da | Tồn tối đa | Float |  | safety_stock | `max_stock` (lõi không có trường tương đương — Item Reorder là theo kho, nghĩa khác); nppsale cho NULL = không đặt trần (form hiện 999999999, nhập Excel ≥ 999999999 → NULL) mà Float của Frappe luôn NOT NULL DEFAULT 0 → cổng đổi 0 ↔ null (tồn tối đa 0 không có nghĩa — cùng cách toạ độ, §2.7) |
+| products | Item | npp_ban_truc_tiep | Bán trực tiếp | Check |  | is_sales_item | `direct_sale`; default 1 (thuộc tính `default` của Custom Field, không phải Options — mig 023 `DEFAULT true`: mặt hàng tạo qua cổng / nhập Excel không gửi cột vẫn là "bán trực tiếp") |
 | products | Item | npp_theo_doi_serial | Theo dõi serial (ghi nhận) | Check |  | has_serial_no | `track_serial` — **chỉ lưu** như nppsale; KHÔNG bật `has_serial_no` (bật là lõi đòi số serial mọi chứng từ) |
 | products | Item | npp_tim_kd | Khoá tìm | Small Text |  | item_name | `tim_kd` (sku, name, barcode — mig 177); RO; hook `before_save`; Small Text không chỉ mục (§2.8) |
 | products | Item | npp_id_cu | Mã cũ (nppsale) | Data |  | npp_tim_kd | `products.id` cũ; read_only, unique, no_copy, chỉ mục; chỉ công cụ nhập ghi (dòng chuyển sang). Dùng: ánh xạ `product_id` của dòng lưu trữ và `product_id` trong JSON `NPP Thuong Thang.thuong_dau_thung`; chuyển hướng link cũ. Cùng vai `Customer.npp_id_cu` (§2.3); hidden |
 | product_units | Item (UOM Conversion Detail) | uoms.uom / uoms.conversion_factor | (lõi) | Link / Float | UOM | — | dùng: `unit_name` / `conversion` (nppsale số nguyên, lõi số thực); dòng `stock_uom` hệ số 1 do lõi tự thêm — cổng không trả |
 
-Hook trên Item / Item Price / Customer Group (hàm chung `tang_phien_danh_muc()` — `NPP Phien Danh Muc`, §4.1): tăng số phiên danh mục (`danh_muc_ban_phien.phien` / `phien_khach`, mig 209 / 254 — cùng khoá
-`dungLaiSanPham` / `dungLaiKhach`). Bộ tra giá 4 bậc (luật thuần, chép `unitPriceFor`): (1) Item Price bảng nhóm của khách + đúng đơn vị; (2) Item Price `Gia chuan`
-+ đúng đơn vị; (3) đơn vị cơ sở → `npp_gia_ban`; (4) đơn vị khác → `npp_gia_ban` × hệ số; trùng trong một bậc → giá thấp nhất; 0 = chưa có giá.
+Hook (`NPP Phien Danh Muc`, §4.1): Item / Item Price (chỉ dòng bán — bỏ `Gia nhap`) / Price List bán → `tang_phien_danh_muc()` (`danh_muc_ban_phien.phien` — như
+trigger mig 209 trên `products` / `product_units` / `price_lists`, khoá `dungLaiSanPham`); Customer Group → `tang_phien_khach()` (`phien_khach` — mig 254, khoá
+`dungLaiKhach`), **thêm** `tang_phien_danh_muc()` khi đổi tên / đổi `default_price_list` (cổng suy `price_lists.group_id` từ nhóm — §4.1; mã chưa làm — §7.2).
+Bộ tra giá 4 bậc (luật thuần, chép `unitPriceFor` / `_gia_bang_don_vi` — `nppsale.rpc.don_hang._gia_bang`): (1) Item Price bảng nhóm của khách + đúng đơn vị;
+(2) Item Price `Gia chuan` + đúng đơn vị; (3) đơn vị cơ sở → `npp_gia_ban`; (4) đơn vị khác có hệ số → giá đơn vị cơ sở tra lại qua (1)–(3) × hệ số; trùng trong
+một bậc → giá thấp nhất; 0 = chưa có giá.
 
 ### 5.4 Item Price · Price List · Customer Group ← `price_lists`, `purchase_price_lists`, `customer_groups` (dùng nguyên, không thêm trường)
 
@@ -3207,23 +3292,25 @@ docstatus 0 (giữ mã). Sửa đơn tại chỗ, **không đổi mã**; `npp_la
 | sales_orders | Sales Order | transaction_date | (lõi) | Date |  | — | dùng: `order_date` (mặc định hôm nay giờ VN — mig 226) |
 | sales_orders | Sales Order | delivery_date + skip_delivery_note | (lõi) | Date + Check |  | — | dùng: `expected_delivery` (để trống được). Method đặt `skip_delivery_note = 1` → lõi bỏ `validate_delivery_date` (`sales_order.py:446`), không bắt điền ngày giao (thay cách "tự điền ngày đặt" của 6.5); trạng thái lõi coi như đã giao (`status_updater.py:67–79`) — đo ở P3 |
 | sales_orders | Sales Order | payment_terms_template | (lõi) | Link | Payment Terms Template | — | dùng: `payment_terms` (`COD`, `NET7`…`NET60` — tên template = mã nppsale) |
-| sales_orders | Sales Order | net_total / total_taxes_and_charges / grand_total | (lõi) | Currency |  | — | dùng (cổng tính): `subtotal` = `net_total − npp_giam_gia_don`; `vat` = `total_taxes_and_charges`; `total` = `grand_total − npp_giam_gia_don` (method đặt `disable_rounded_total = 1`); `discount` (cột di sản) = 0 |
+| sales_orders | Sales Order | net_total / total_taxes_and_charges / grand_total | (lõi) | Currency |  | — | dùng (cổng tính): `subtotal` = `net_total − npp_giam_gia_don`; `vat` = `total_taxes_and_charges`; `total` = max(0, `grand_total − npp_giam_gia_don − npp_tru_hang_tra`) — số khách phải trả lúc lên đơn sau khi trừ hàng trả kèm, như `total` nppsale lưu (method đặt `disable_rounded_total = 1`); `discount` (cột di sản) = 0. Lệch có chủ đích: nppsale lưu nguyên văn tiền màn gửi, bản Frappe tính từ dòng — hai bên trùng khi đầu đơn được lưu sau lệnh đổi dòng (`applyOrderEdit` luôn làm vậy) |
 | sales_orders | Sales Order | owner / creation / modified | (lõi) |  |  | — | dùng: `created_by` (mig 178) / `created_at` / `updated_at` |
 | sales_orders | Sales Order | selling_price_list · ignore_pricing_rule · set_warehouse · taxes_and_charges | (lõi) |  |  | — | (không có ở nppsale) method đặt: bảng giá nhóm của khách hoặc `Gia chuan`; `ignore_pricing_rule = 1`; kho bán; mẫu "VAT theo mặt hàng" (3.11, PoC 2) |
-| sales_orders | Sales Order | npp_trang_thai | Trạng thái NPP | Select | `draft`↵`submitted`↵`completed`↵`cancelled` | order_type | `status` (`partially_invoiced` / `closed` di sản → `completed`, mig 217); AOS; idx; RO — chỉ method; đổi bằng `save/submit/cancel` (không `db_set`) để Version ghi lịch sử |
-| sales_orders | Sales Order | npp_nhan_vien | Người đứng tên | Link | NPP Nhan Vien | customer_name | `sales_user_id`; reqd; idx; chỉ chủ / quản lý gán người khác (mig 153 / 155) |
+| sales_orders | Sales Order | npp_trang_thai | Trạng thái NPP | Select | `draft`↵`submitted`↵`completed`↵`cancelled` | order_type | `status` (`partially_invoiced` / `closed` di sản → `completed`, mig 217); AOS; idx; RO — chỉ method; đổi bằng `save/submit/cancel` của method (không `db_set`), mỗi lần đổi method ghi một dòng `NPP Nhat Ky Don` (`ghi_nhat_ky_don` — Phụ lục A; Huỷ HĐ ghi hai dòng `completed → submitted`, `submitted → cancelled` như nppsale dù SO chỉ đổi một lần), không suy lịch sử từ Version |
+| sales_orders | Sales Order | npp_nhan_vien | Người đứng tên | Link | NPP Nhan Vien | customer_name | `sales_user_id`; reqd; idx; trống lúc tạo → người lập, lúc sửa để trống → giữ người cũ (mig 153 / 155); chỉ chủ / quản lý gán người khác (`DON_HO_KHONG_DUOC_PHEP`); người được gán phải là NV cùng NPP (`NHAN_VIEN_KHONG_HOP_LE`) vai `sales` / `manager` / `owner` (`NHAN_VIEN_KHONG_BAN_HANG` — link_filters `vai`); chỉ kiểm khi cột đổi (đơn cũ của người nay đổi vai vẫn sửa được) |
 | sales_orders | Sales Order | npp_tim_kd | Khoá tìm | Data |  | npp_nhan_vien | `tim_kd` (order_code); RO; idx |
 | sales_orders | Sales Order | npp_client_request_id | Mã gửi offline | Data |  | amended_from | `client_request_id` (mig 089); **unique** (rỗng lưu NULL — `document.py:2602–2605`); no_copy; RO |
-| sales_orders | Sales Order | npp_lan_sua | Lần sửa | Int |  | transaction_date | `edit_no` (mig 130); RO; method tăng khi đổi khách / điều khoản / ngày giao / tiền / giảm đơn / ghi chú |
-| sales_orders | Sales Order | npp_ly_do_canh_bao | Cảnh báo khi gửi | Small Text |  | npp_lan_sua | `approval_reason` (mig 013) — câu cảnh báo ngưỡng / hạn mức (không còn bước duyệt) |
+| sales_orders | Sales Order | npp_lan_sua | Lần sửa | Int |  | transaction_date | `edit_no` (mig 130); RO; **AOS** — `trg_sales_orders_bump_edit` đếm ở MỌI trạng thái: đơn đã xuất (SO docstatus 1) sửa ghi chú ở màn chi tiết đơn vẫn tăng lần sửa, thiếu cờ này thì lõi chặn cả lần lưu ghi chú; method tăng khi đổi khách / điều khoản / ngày giao / tiền / giảm đơn / ghi chú (kể cả lần lưu đầu đơn sau khi dòng đổi — `npp_dong_doi`) |
+| sales_orders | Sales Order | npp_ly_do_canh_bao | Cảnh báo khi gửi | Small Text |  | npp_lan_sua | `approval_reason` (mig 013) — câu cảnh báo ngưỡng / hạn mức (không còn bước duyệt); **AOS** (cùng nhóm trường sửa được sau ghi sổ của `sua_dau_don`: ghi chú, ngày giao, câu cảnh báo, lần sửa, trường huỷ) |
 | sales_orders | Sales Order | npp_ghi_chu | Ghi chú | Small Text |  | delivery_date | `notes`; **AOS** — đơn đã xuất vẫn sửa ghi chú ở màn chi tiết đơn |
 | sales_orders | Sales Order | npp_giam_gia_don | Giảm giá cả đơn | Currency |  | discount_amount | nppsale không có cột (giảm = Σ `line_total` − `subtotal`, mig 183/226); phải lưu tường minh vì SO của lõi **không có** `is_cash_or_non_trade_discount` — giảm đơn của lõi hạ nền thuế; `discount_amount` lõi để 0 |
-| sales_orders | Sales Order | npp_ly_do_huy | Lý do huỷ | Small Text |  | npp_ghi_chu | `cancel_reason` (mig 119); AOS |
-| sales_orders | Sales Order | npp_huy_luc | Huỷ lúc | Datetime |  | npp_ly_do_huy | `cancelled_at`; AOS; RO |
-| sales_orders | Sales Order | npp_huy_boi | Người huỷ | Link | NPP Nhan Vien | npp_huy_luc | `cancelled_by`; AOS; RO |
-| sales_order_lines | Sales Order Item | item_code / uom / conversion_factor / qty | (lõi) |  |  | — | dùng: `product_id` / `unit_name` (rỗng → đơn vị cơ sở) / `conversion_factor` (chụp lúc lập; `post_invoice` cập nhật theo danh mục trước khi ghi sổ — mig 174, bàn bạc 6.3) / `quantity` (> 0) |
-| sales_order_lines | Sales Order Item | rate / price_list_rate / amount | (lõi) | Currency |  | — | dùng: `unit_price` (đơn giá **sau** giảm, app tính theo luật POS / `/sell` — PoC 2) / giá bảng (app gửi mọi dòng) / `line_total` |
-| sales_order_lines | Sales Order Item | item_tax_template · delivered_qty · additional_notes · idx | (lõi) |  |  | — | dùng: thuế dòng / `invoiced_qty` (lõi cập nhật khi HĐ `update_stock` ghi sổ; dòng HĐ khác đơn vị không nối được — cổng cộng thêm phần ấy quy đổi, như `_da_xuat_cua_dong_don`, bàn bạc 6.3) / `note` (mig 029) / thứ tự; `batch_id` di sản → null |
+| sales_orders | Sales Order | npp_ly_do_huy | Lý do huỷ | Small Text |  | npp_ghi_chu | `cancel_reason` (mig 119); AOS; no_copy |
+| sales_orders | Sales Order | npp_huy_luc | Huỷ lúc | Datetime |  | npp_ly_do_huy | `cancelled_at`; AOS; RO; no_copy |
+| sales_orders | Sales Order | npp_huy_boi | Người huỷ | Link | NPP Nhan Vien | npp_huy_luc | `cancelled_by`; AOS; RO; no_copy |
+| sales_orders | Sales Order | npp_tru_hang_tra | Trừ hàng trả lúc lên đơn | Currency |  | npp_giam_gia_don | **mới** (nppsale không có cột: màn chi tiết đơn suy "Trừ hàng trả" = `subtotal` + `vat` − `total`) — hàng trả kèm đơn đã trừ vào số khách phải trả lúc lên đơn = max(0, round(`subtotal` + `vat` − `total`)) màn gửi lên (`create_order_with_lines`; lần lưu đầu đơn có `total`); RO; no_copy; không tính lại khi phiếu trả đổi |
+| sales_orders | Sales Order | npp_dong_doi | Dòng đã đổi, đầu đơn chưa lưu | Check |  | npp_tru_hang_tra | **mới**; hidden; RO; no_copy — `applyOrderEdit` ghi dòng trước, đầu đơn sau; bản Frappe tính lại tiền đơn ngay khi lưu dòng nên lần lưu đầu đơn kế tiếp không thấy `subtotal` / `vat` đổi: lệnh thêm / sửa (đổi tiền) / xoá dòng đặt 1, lần lưu đầu đơn có tiền đếm một lần sửa rồi đặt 0 — giữ đúng `edit_no` của `trg_sales_orders_bump_edit` (mig 130) |
+| sales_order_lines | Sales Order Item | item_code / uom / conversion_factor / qty | (lõi) |  |  | — | dùng: `product_id` / `unit_name` (rỗng → đơn vị cơ sở) / `conversion_factor` (chụp lúc lập và giữ nguyên như nppsale — `post_invoice` tra hệ số danh mục cho **dòng HĐ** (mig 174), không sửa dòng SO; dòng HĐ khác đơn vị / hệ số với dòng SO nối qua `npp_dong_don` — §5.6, §7.3 dòng 13) / `quantity` (> 0) |
+| sales_order_lines | Sales Order Item | rate / price_list_rate / amount | (lõi) | Currency |  | — | dùng: `unit_price` (đơn giá **sau** giảm, app tính theo luật POS / `/sell` — PoC 2) / giá bảng (app gửi mọi dòng, kèm `discount_amount` = giá bảng − đơn giá khi đơn giá thấp hơn để lõi khỏi tính lại; dòng đơn giá 0 — giảm 100 %, được vì giảm dòng kẹp trong [0, tiền dòng] và chủ NPP / kế toán không trần giảm — gửi `discount_amount` = giá bảng theo luật dòng 0 đ của PoC 2.(2), không thì lõi đặt lại `rate` = giá bảng: `taxes_and_totals.py:233–238`) / `line_total` |
+| sales_order_lines | Sales Order Item | item_tax_template · delivered_qty · additional_notes · idx | (lõi) |  |  | — | dùng: thuế dòng / `invoiced_qty` — cổng tính Σ(SL × hệ số dòng HĐ) / hệ số dòng đơn trên dòng HĐ **ghi sổ** nối dòng đơn qua `so_detail` **hoặc** `npp_dong_don` (dòng đổi đơn vị lúc xuất — §5.6), đúng `_da_xuat_cua_dong_don` (mig 179, bàn bạc 6.3) và cùng luật với `get_invoiceable_lines`; `delivered_qty` lõi tự cập nhật chỉ phần nối `so_detail` nên không đọc / `note` (mig 029) / thứ tự; `batch_id` di sản → null |
 | sales_order_lines | Sales Order Item | npp_giam_dong | Giảm dòng (ghi nhớ) | Currency |  | discount_amount | `line_discount` = max(0, round(SL × (giá bảng − đơn giá))) hoặc khoản giảm; **chỉ ghi nhớ**; lõi xoá `discount_percentage` và tự ghi `discount_amount` / `margin_*` khi đơn giá app gửi khác cách lõi tính (PoC 2) nên không đọc trường lõi |
 | sales_order_lines | Sales Order Item | npp_thue_suat | Thuế suất | Float | precision 4 | item_tax_template | `vat_rate` chụp (mig 183; NULL "theo SP" không còn — method điền); RO; đặt cùng `item_tax_template` |
 
@@ -3233,7 +3320,8 @@ Một DocType lõi mang hai loại tờ: **HĐ bán** (`is_return = 0`, dãy `HD
 (`is_return = 1`, **không** `return_against`, dãy `HDT-.####`). HĐ luôn `update_stock = 1` từ kho bán, gói lô do app lập (FIFO theo ngày nhập — PoC 1c), lập và
 ghi sổ trong **một** method (không có HĐ nháp). Tờ đầu kỳ H3 (`is_opening = Yes`) giữ mã HĐ cũ bằng `insert(set_name=…)` (PoC 10); dãy `HD-` bắt đầu sau số lớn nhất đã nhập. Tờ nợ đầu kỳ lập ở màn Nợ đầu kỳ mang dãy `DK-.####` (một dòng **không mã hàng**, `item_name` "Nợ đầu kỳ", SL 1, `income_account` =
 Temporary Opening, không thuế, `update_stock = 0` — như Opening Invoice Creation Tool dựng). **Không** có trường MISA nào trên Sales Invoice (bàn bạc 3.4
-ghi "mã lỗi MISA" — bỏ): Sửa HĐ = huỷ + amend chép mọi trường (skill `einvoice-misa-sync`, Gotcha #2) nên tờ `-1` sẽ mang RefID / số HĐĐT của tờ huỷ; khoá
+ghi "mã lỗi MISA" — bỏ): amend của lõi (Desk, `copy_doc`) chép mọi trường không `no_copy` (skill `einvoice-misa-sync`, Gotcha #2) nên tờ `-1` lập theo đường ấy
+sẽ mang RefID / số HĐĐT của tờ huỷ (`reissue_invoice` dựng tờ mới từ tải trọng, chỉ đặt `amended_from` — `npp_giao_tu_nv` dưới); khoá
 `LOCKED_EINVOICE` đọc `NPP HDDT` theo `hoa_don_ban` (§4.6.0).
 
 | Bảng nppsale | DocType lõi | fieldname | Label | Type | Options | insert_after | Notes |
@@ -3244,7 +3332,8 @@ ghi "mã lỗi MISA" — bỏ): Sửa HĐ = huỷ + amend chép mọi trường 
 | sales_invoices | Sales Invoice | docstatus | (lõi) |  |  | — | dùng: `status` — 1 = `posted`, 2 = `cancelled` (không có nháp) |
 | sales_invoices | Sales Invoice | net_total / total_taxes_and_charges / grand_total | (lõi) | Currency |  | — | dùng: `subtotal` = `net_total − discount_amount`; `vat`; `total` = `grand_total` (method đặt `disable_rounded_total = 1`; precision 0 → khớp `post_invoice` từng đồng ở SL nguyên — PoC 2) |
 | sales_invoices | Sales Invoice | discount_amount · apply_discount_on · is_cash_or_non_trade_discount · additional_discount_account | (lõi) |  | Grand Total · 1 | — | dùng: giảm giá cả đơn **sau thuế, không hạ nền thuế** (mig 183) — số tuyệt đối do app tính (% của lõi tính trên tổng gồm VAT) |
-| sales_invoices | Sales Invoice | payment_terms_template / due_date | (lõi) | Link / Date |  | — | dùng: `payment_terms` / `due_date` (= ngày HĐ + NETn) |
+| sales_invoices | Sales Invoice | selling_price_list · ignore_pricing_rule · taxes_and_charges · taxes | (lõi) |  |  | — | (không có ở nppsale) method đặt trên **mọi** tờ — HĐ (bảng giá của SO), tờ ghi có `HDT-` (không lập từ SO), tờ đầu kỳ `DK-`: bảng giá nhóm của khách hoặc `Gia chuan`; `ignore_pricing_rule = 1`; mẫu "VAT theo mặt hàng" và tự điền bảng thuế (tờ `DK-`: không thuế) — không để lõi lấy bảng giá mặc định của Selling Settings (`new_doc` điền sẵn, thông tin khách chỉ lấp chỗ trống — `selling_controller.py:184`; Pricing Rule áp được thì lõi đè `rate` app gửi — `taxes_and_totals.py:219–238`; PoC 2.(2), 3.11) |
+| sales_invoices | Sales Invoice | payment_terms_template / due_date | (lõi) | Link / Date |  | — | dùng: `payment_terms` / `due_date` — cổng đọc IFNULL(`npp_han_thanh_toan`, `due_date`) (hạn thật; lõi `due_date` có thể bị đẩy lên ngày ghi sổ — xem `npp_han_thanh_toan`); HĐ thường = ngày HĐ + NETn |
 | sales_invoices | Sales Invoice | amended_from | (lõi) | Link | Sales Invoice | — | dùng: `replaced_from`; `replaced_by` = `name` của tờ có `amended_from` = tờ này (cổng tính) |
 | sales_invoices | Sales Invoice | owner / creation / modified | (lõi) |  |  | — | dùng: `posted_by` / `posted_at` / `updated_at` |
 | sales_invoices | Sales Invoice | update_stock · set_warehouse | (lõi) |  |  | — | `stock_entry_id` = chính `name` (SI là chứng từ kho — thẻ kho theo chứng từ gốc, bàn bạc 6.2) |
@@ -3252,26 +3341,27 @@ ghi "mã lỗi MISA" — bỏ): Sửa HĐ = huỷ + amend chép mọi trường 
 | sales_invoices | Sales Invoice | is_opening | (lõi) | Select |  | — | tờ đầu kỳ H3; báo cáo app và nguồn `sales_invoices` của cổng loại `is_opening = Yes` (nợ đầu kỳ đọc ở `NPP Cong No`) |
 | sales_invoices | Sales Invoice | remarks | (lõi) | Small Text |  | — | **không dùng** cho `notes`: lõi tự điền "No Remarks" / "Against Customer Order…" (`sales_invoice.py:1270`) và `no_copy` |
 | sales_invoices | Sales Invoice | npp_don_hang | Đơn hàng | Link | Sales Order | customer_name | `order_id`; RO; idx; **một đơn một HĐ ghi sổ** (mig 217): method khoá dòng SO `FOR UPDATE` rồi kiểm — MariaDB không có chỉ mục một phần như `uq_sales_invoices_mot_don_mot_hd` |
-| sales_invoices | Sales Invoice | npp_nhan_vien | Người đứng tên | Link | NPP Nhan Vien | npp_don_hang | `sales_user_id`; **AOS** (`assign_doc_seller` — CFD-02); idx; tờ ghi có mang người của phiếu trả |
+| sales_invoices | Sales Invoice | npp_nhan_vien | Người đứng tên | Link | NPP Nhan Vien | npp_don_hang | `sales_user_id`; **AOS** (`assign_doc_seller` — CFD-02: chỉ chủ / quản lý — `ASSIGN_FORBIDDEN`; người được gán phải là NV **đang hoạt động** cùng NPP vai `sales` / `manager` / `owner` — `ASSIGN_BAD_USER`, link_filters `vai` + `dang_hoat_dong`; đổi người HĐ kéo theo dòng nợ (người giữ nợ theo luật ở §4.3 `NPP Cong No`) và mọi phiếu trả gắn HĐ — trigger `_hoa_don_doi_nguoi`, mig 194; phiếu trả gắn HĐ không gán riêng — `RETURN_SELLER_FOLLOWS_INVOICE`); idx; tờ ghi có mang người của phiếu trả |
 | sales_invoices | Sales Invoice | npp_tim_kd | Khoá tìm | Data |  | npp_nhan_vien | `tim_kd` (invoice_code); RO; idx |
-| sales_invoices | Sales Invoice | npp_ghi_chu | Ghi chú | Small Text |  | npp_qua_han_tay | `notes`; **AOS** (màn Nợ đầu kỳ sửa ghi chú khoản đã ghi sổ — CFD-02) |
-| sales_invoices | Sales Invoice | npp_soan_luc | Đã soạn lúc | Datetime |  | npp_ghi_chu | `soan_luc` (mig 224); **AOS**; RO |
-| sales_invoices | Sales Invoice | npp_soan_boi | Người soạn | Link | NPP Nhan Vien | npp_soan_luc | `soan_boi`; **AOS**; RO |
-| sales_invoices | Sales Invoice | npp_ly_do_huy | Lý do huỷ | Small Text |  | amended_from | `cancel_reason`; **AOS**; bắt buộc khi huỷ (`REASON_REQUIRED`); method đặt trước `cancel()` |
-| sales_invoices | Sales Invoice | npp_huy_luc | Huỷ lúc | Datetime |  | npp_ly_do_huy | `cancelled_at`; AOS; RO (không suy từ `modified`: lõi cập nhật nợ / trạng thái tờ bằng `frappe.db.set_value` — `accounts/utils.py:2213` — làm đổi `modified` / `modified_by`) |
-| sales_invoices | Sales Invoice | npp_huy_boi | Người huỷ | Link | NPP Nhan Vien | npp_huy_luc | `cancelled_by`; AOS; RO |
+| sales_invoices | Sales Invoice | npp_ghi_chu | Ghi chú | Small Text |  | remarks | `notes`; **AOS** (màn Nợ đầu kỳ sửa ghi chú khoản đã ghi sổ — CFD-02) |
+| sales_invoices | Sales Invoice | npp_soan_luc | Đã soạn lúc | Datetime |  | npp_ghi_chu | `soan_luc` (mig 224); **AOS**; RO; **no_copy** — tờ `-n` của Sửa HĐ là HĐ mới "chưa soạn" như nppsale (`post_invoice` chèn dòng HĐ mới, `soan_luc` NULL; lọc "chưa soạn" = `soan_luc IS NULL`) |
+| sales_invoices | Sales Invoice | npp_soan_boi | Người soạn | Link | NPP Nhan Vien | npp_soan_luc | `soan_boi`; **AOS**; RO; **no_copy** |
+| sales_invoices | Sales Invoice | npp_ly_do_huy | Lý do huỷ | Small Text |  | amended_from | `cancel_reason`; **AOS**; **no_copy** (tờ amend `HD-…-n` / `HDT-…-n` / `DK-…-n` không mang lý do huỷ của tờ cũ); bắt buộc khi huỷ (`REASON_REQUIRED`); method đặt trước `cancel()` |
+| sales_invoices | Sales Invoice | npp_huy_luc | Huỷ lúc | Datetime |  | npp_ly_do_huy | `cancelled_at`; AOS; RO; **no_copy** (không suy từ `modified`: lõi cập nhật nợ / trạng thái tờ bằng `frappe.db.set_value` — `accounts/utils.py:2213` — làm đổi `modified` / `modified_by`) |
+| sales_invoices | Sales Invoice | npp_huy_boi | Người huỷ | Link | NPP Nhan Vien | npp_huy_luc | `cancelled_by`; AOS; RO; **no_copy** |
 | (tờ ghi có) | Sales Invoice | npp_hoa_don_goc | HĐ gắn | Link | Sales Invoice | return_against | thay `return_against` (CFD-03): `returns.invoice_id` của phiếu; **AOS** (CFD-02); depends_on `is_return`; idx. Là Link nên lõi chặn huỷ HĐ gốc khi tờ ghi có còn ghi sổ (`check_no_back_links_exist`) — khớp thứ tự "huỷ tờ ghi có trước" |
 | (tờ ghi có) | Sales Invoice | npp_phieu_tra | Phiếu trả | Link | NPP Phieu Tra | npp_hoa_don_goc | **AOS**; depends_on `is_return`; idx; giữ trên cả tờ đã huỷ (vết lịch sử của phiếu) |
-| receivables | Sales Invoice | is_opening · outstanding_amount · grand_total | (lõi) |  |  | — | dùng: `opening_balance` = `is_opening = Yes`; số nợ / còn nợ đi qua Payment Ledger (§4.3.0). Tờ đầu kỳ: một dòng **không mã hàng**, `item_name` "Nợ đầu kỳ", SL 1, `income_account` = Temporary Opening, không thuế, `update_stock = 0` — đúng cách Opening Invoice Creation Tool dựng (`opening_invoice_creation_tool.py:224–275`) |
+| receivables | Sales Invoice | is_opening · outstanding_amount · grand_total | (lõi) |  |  | — | dùng: `opening_balance` = tờ dãy `DK-` (`NPP Cong No.loai = dau_ky` — §4.3, §6.1); tờ `is_opening = Yes` mang **mã HĐ cũ** của H3 vẫn là nợ theo HĐ (`loai = hoa_don`, `opening_balance` = false — nppsale: dòng đầu kỳ không gắn HĐ, mỗi khách một dòng, mig 102); số nợ / còn nợ đi qua Payment Ledger (§4.3.0). Tờ đầu kỳ: một dòng **không mã hàng**, `item_name` "Nợ đầu kỳ", SL 1, `income_account` = Temporary Opening, không thuế, `update_stock = 0` — đúng cách Opening Invoice Creation Tool dựng (`opening_invoice_creation_tool.py:224–275`) |
 | receivables | Sales Invoice | npp_nv_giu_no | NV giữ nợ | Link | NPP Nhan Vien | npp_tim_kd | `sales_user_id` của khoản nợ; **AOS**; RO; idx — luật đổi người ở §4.3 (`NPP Cong No`); khác NV đứng tên HĐ sau bàn giao / nghỉ việc |
-| receivables | Sales Invoice | npp_giao_tu_nv | Nợ giao từ NV | Link | NPP Nhan Vien | npp_nv_giu_no | `giao_tu_nv` (mig 246); **AOS**; RO; Sửa HĐ chép sang tờ mới (amend chép trường không `no_copy`) |
+| receivables | Sales Invoice | npp_giao_tu_nv | Nợ giao từ NV | Link | NPP Nhan Vien | npp_nv_giu_no | `giao_tu_nv` (mig 246); **AOS**; RO; Sửa HĐ chép sang tờ mới — `reissue_invoice` chép tường minh cùng `npp_nhan_vien` / `npp_nv_giu_no` / `npp_ve_npp_luc` (tờ mới dựng từ tải trọng như `post_invoice`, chỉ đặt `amended_from`; nppsale cũng chép tường minh từ dòng nợ cũ — mig 227 / 246) |
 | receivables | Sales Invoice | npp_ve_npp_luc | Nợ về NPP lúc | Datetime |  | npp_giao_tu_nv | `ve_npp_luc` (mig 223); **AOS**; RO |
 | receivables | Sales Invoice | npp_han_thanh_toan | Hạn nợ | Date |  | due_date | `due_date` của khoản nợ; **AOS**. Lõi bắt `due_date` ≥ `posting_date` (`accounts/party.py:753–762`, gọi ở `accounts_controller.py:1165`) — tờ đầu kỳ nợ quá hạn có hạn cũ hơn ngày ghi, nên method đặt lõi `due_date` = max(ngày ghi, hạn) và giữ hạn thật ở đây; HĐ thường hai số bằng nhau |
 | receivables | Sales Invoice | npp_qua_han_tay | Đánh dấu quá hạn | Check |  | npp_han_thanh_toan | `status = 'overdue'` đặt tay (mig 214) / do huỷ phiếu thu (mig 120); **AOS** |
 | sales_invoice_lines | Sales Invoice Item | item_code / uom / conversion_factor / qty | (lõi) |  |  | — | dùng: `product_id` / `unit_name` / `conversion_factor` **chụp** (HĐ mới tra danh mục — mig 174; Sửa HĐ: cùng mặt hàng + đơn vị với tờ cũ giữ hệ số tờ cũ, thay cờ `npp.he_so_tu_hd` — mig 247) / `quantity` (tờ ghi có: âm) |
-| sales_invoice_lines | Sales Invoice Item | rate / price_list_rate / discount_amount / amount | (lõi) | Currency |  | — | dùng: `unit_price` = **đơn giá dòng SO, không tính lại theo SL HĐ** kể cả xuất thiếu (dòng gõ giảm mới / thêm tay mới tính ở màn — PoC 2) / giá bảng mọi dòng / **dòng hàng đổi 0 đ: `rate` 0 + `price_list_rate` = giá bảng + `discount_amount` = giá bảng** (không gửi %, không để thiếu giá bảng — PoC 2) / `line_total` (SL lẻ: lõi làm tròn tiền dòng — câu 19 a, Q3) |
-| sales_invoice_lines | Sales Invoice Item | sales_order + so_detail · item_tax_template · serial_and_batch_bundle · incoming_rate · idx | (lõi) |  |  | — | dùng: `order_line_id` (dòng khác đơn vị / thêm tay / hàng đổi: không nối) / thuế dòng / lô do app gán (một dòng một gói, không tách dòng) / giá vốn nhập lại của tờ ghi có có kho (app luôn đặt) / `sort_order`. Không có `created_at` (như nppsale) |
+| sales_invoice_lines | Sales Invoice Item | rate / price_list_rate / discount_amount / amount | (lõi) | Currency |  | — | dùng: `unit_price` = **đơn giá dòng SO, không tính lại theo SL HĐ** kể cả xuất thiếu (dòng gõ giảm mới / thêm tay mới tính ở màn — PoC 2) / giá bảng mọi dòng / **mọi dòng đơn giá 0 — hàng đổi và dòng giảm 100 % của đơn: `rate` 0 + `price_list_rate` = giá bảng + `discount_amount` = giá bảng** (không gửi %, không để thiếu giá bảng — PoC 2; mã gửi `discount_amount` = giá bảng − đơn giá cho mọi dòng thấp hơn giá bảng) / `line_total` (SL lẻ: lõi làm tròn tiền dòng — câu 19 a, Q3) |
+| sales_invoice_lines | Sales Invoice Item | sales_order + so_detail · item_tax_template · serial_and_batch_bundle · incoming_rate · idx | (lõi) |  |  | — | dùng: `order_line_id` (chỉ dòng cùng `uom` + `conversion_factor` với dòng SO — lõi so hai cột này ở `validate_with_previous_doc`, `sales_invoice.py:1189–1193`; dòng khác đơn vị / khác hệ số giữ móc ở `npp_dong_don`; thêm tay / hàng đổi: không nối) / thuế dòng / lô do app gán (một dòng một gói, không tách dòng) / giá vốn nhập lại của tờ ghi có có kho (app luôn đặt) / `sort_order`. Không có `created_at` (như nppsale) |
 | sales_invoice_lines | Sales Invoice Item | npp_giam_dong | Giảm dòng (ghi nhớ) | Currency |  | discount_amount | `line_discount` (in cột CK); xuất thiếu chia theo tỉ lệ SL; không đọc `discount_amount` / `margin_*` của lõi |
+| sales_invoice_lines | Sales Invoice Item | npp_dong_don | Dòng đơn (khác đơn vị) | Data |  | so_detail | **mới** — `order_line_id` của dòng HĐ đổi đơn vị (hoặc hệ số) so với dòng đơn (chủ nhà 23/09/2026: "đơn đặt 2 thùng, xuất 30 hộp" — mig 179), lõi không cho `so_detail` khi khác; RO; no_copy; idx; `invoiced_qty` của dòng đơn cộng cả các dòng này (§5.5); cổng trả `order_line_id` = `so_detail` hoặc trường này |
 | sales_invoice_lines | Sales Invoice Item | npp_thue_suat | Thuế suất | Float | precision 4 | item_tax_template | `vat_rate` chụp; RO — báo cáo dòng thô đọc thẳng, khỏi giải `item_tax_rate` (JSON theo tài khoản) |
 | sales_invoice_lines | Sales Invoice Item | npp_hang_doi | Hàng đổi | Check |  | is_free_item | `is_exchange` — báo cáo / giá gần nhất / hàng đã lấy bỏ dòng này |
 | sales_invoice_lines | Sales Invoice Item | npp_ghi_chu | Ghi chú dòng | Small Text |  | description | `note` (SI Item không có trường ghi chú; `description` là mô tả hàng, in ra) |
@@ -3288,10 +3378,15 @@ ghi "mã lỗi MISA" — bỏ): Sửa HĐ = huỷ + amend chép mọi trường 
 | supplier_payments | Payment Entry | npp_ly_do_huy | Lý do huỷ | Small Text |  | npp_ghi_chu | `cancel_reason` (`huy_phieu_chi_ncc`); **AOS**; đặt trước `cancel()` |
 | supplier_payments | Payment Entry | npp_huy_luc | Huỷ lúc | Datetime |  | npp_ly_do_huy | `cancelled_at`; **AOS**; RO |
 | supplier_payments | Payment Entry | npp_huy_boi | Người huỷ | Link | NPP Nhan Vien | npp_huy_luc | `cancelled_by`; **AOS**; RO |
+| payable_payments | Payment Entry | npp_xac_nhan_boi | Người xác nhận (trả trước) | Link | NPP Nhan Vien | npp_huy_boi | **mới** — `verified_by` của dòng `payable_payments` dựng từ phần chưa phân bổ của PE `phieu_chi_ncc` (dòng trên khoản `tra_truoc` — §6.1); **AOS**; tham chiếu mới lập khi dồn trả trước chép sang `Payment Entry Reference.npp_xac_nhan_*` (như mig 242 chép `verified_by` / `verified_at`) |
+| payable_payments | Payment Entry | npp_xac_nhan_luc | Xác nhận lúc (trả trước) | Datetime |  | npp_xac_nhan_boi | **mới** — `verified_at` của dòng ấy; **AOS** |
 | payable_payments | Payment Entry Reference | npp_xac_nhan_boi | Người xác nhận | Link | NPP Nhan Vien | allocated_amount | `verified_by` — lời ghi duy nhất được phép trên `payable_payments` (mig 227); **AOS** |
 | payable_payments | Payment Entry Reference | npp_xac_nhan_luc | Xác nhận lúc | Datetime |  | npp_xac_nhan_boi | `verified_at`; **AOS** |
 
-`paid_by` / `created_by` → `owner`; `paid_at` / `created_at` → `creation` (nppsale `now()`).
+`paid_by` / `created_by` → `owner`; `created_at` → `creation` (nppsale `now()`). `paid_at` theo luật `v_luc` của `chi_tra_ncc` (mig 242 — dòng tiền kiểu nppsale lọc
+theo cột này): PE `phieu_chi_ncc` → `creation` khi `posting_date` là ngày của `creation` (giờ VN), không thì 12:00 giờ VN của `posting_date` (phiếu chi ghi lùi
+ngày tính vào đúng ngày chi); mọi phần của một phiếu chi — kể cả phần dồn sang khoản nợ mới về sau — mang cùng lúc chi ấy (`_don_tra_truoc_ncc` giữ `paid_at`
+của dòng trả trước), không lấy `creation` của dòng tham chiếu; PE `ghi_tra_ncc` / JE `bu_tru_ncc` → `creation` (`record_payable_payment` ghi `now()`).
 
 ### 5.8 Journal Entry / Journal Entry Account ← cấn trừ dư có, bù trừ NCC, phiếu chi, sửa giá phiếu nhập đã bán (module `NPP Tien`)
 
@@ -3317,7 +3412,7 @@ tự dồn trả trước (§6.4, `complete_purchase_invoice`).
 | Bảng nppsale | DocType lõi | fieldname | Label | Type | Options | insert_after | Notes |
 |---|---|---|---|---|---|---|---|
 | purchase_invoices | Purchase Invoice | name / naming_series | (lõi) | Select | `PN-.####`↵`PTNCC-.####`↵`DKN-.####`↵`NTN-.####` | — | dùng: `id`, `receipt_code` / `return_code` (= `name`), `return_seq` tách từ `name`; Property Setter đổi options + default `PN-.####`; P8 đặt số bắt đầu sau số lớn nhất của nppsale |
-| purchase_invoices | Purchase Invoice | supplier · bill_no · bill_date · posting_date · set_warehouse · docstatus · amended_from | (lõi) |  |  | — | dùng: `supplier_id` · `invoice_number` (**AOS** bằng Property Setter — màn công nợ NCC sửa số HĐ của mọi khoản, `payables/[id]/page.tsx:156`) · `invoice_date` (ngày HĐ đầu vào) · ngày ghi sổ = ngày hoàn thành (`complete_purchase_invoice` ghi kho lúc hoàn thành — CFD-12: ≤ hôm nay) / `return_date` của trả NCC · `warehouse_zone` (kho nhận / kho xuất trả) · `status` (0 = `draft`, 1 = `completed`, 2 = `cancelled`) · khôi phục / sửa = amend `-1` (CFD-01) |
+| purchase_invoices | Purchase Invoice | supplier · bill_no · bill_date · posting_date · set_warehouse · docstatus · amended_from | (lõi) |  |  | — | dùng: `supplier_id` · `invoice_number` (**AOS** bằng Property Setter — màn công nợ NCC sửa số HĐ của mọi khoản, `payables/[id]/page.tsx:156`) · `invoice_date` (ngày HĐ đầu vào) · ngày ghi sổ = ngày hoàn thành (`complete_purchase_invoice` ghi kho lúc hoàn thành — CFD-12: ≤ hôm nay) / `return_date` của trả NCC — ngày ghi sổ khác lúc bấm (trả NCC lùi ngày, tờ `DKN-` / `NTN-` mang ngày cũ) thì method đặt thêm `set_posting_time = 1` (lõi): cờ tắt thì `validate` của PI đè `posting_date` / `posting_time` bằng giờ hiện tại (`validate_posting_time` — `erpnext/utilities/transaction_base.py:29–37`; như §5.6 đã ghi cho HĐ bán) · `warehouse_zone` (kho nhận / kho xuất trả) · `status` (0 = `draft`, 1 = `completed`, 2 = `cancelled`) · khôi phục / sửa = amend `-1` (CFD-01) |
 | purchase_invoices | Purchase Invoice | total · total_taxes_and_charges · grand_total · outstanding_amount | (lõi) | Currency |  | — | dùng: `subtotal` = `total` (Σ tiền dòng sau giảm dòng); `vat` = Σ các dòng thuế VAT (**không** đọc `total_taxes_and_charges` — đã trừ dòng giảm, PoC 3); `total` = `grand_total`. nppsale **không làm tròn** tiền phiếu nhập (VAT có số lẻ — mig 145), sổ mới làm tròn về đồng (precision 0) — lệch < 1 đ / phiếu (§7.2) |
 | purchase_invoices | Purchase Invoice | npp_loai | Loại tờ NPP | Select | `phieu_nhap`↵`tra_ncc`↵`dau_ky`↵`lap_tay` | is_return | **mới**; RO; idx — nguồn `purchase_invoices` / `supplier_returns` / loại dòng công nợ NCC lọc theo trường này |
 | purchase_invoices · supplier_returns | Purchase Invoice | npp_giam_dau_phieu | Giảm đầu phiếu | Currency |  | discount_amount | `discount` (trừ **sau** thuế, không vào giá vốn — mig 145 / 146); method dựng dòng thuế Actual + Deduct đúng số này; `discount_amount` / `apply_discount_on` của lõi để trống |
@@ -3332,10 +3427,11 @@ tự dồn trả trước (§6.4, `complete_purchase_invoice`).
 | purchase_invoices | Purchase Invoice | npp_huy_boi | Người huỷ | Link | NPP Nhan Vien | npp_huy_luc | `cancelled_by`; **AOS**; RO |
 | payables | Purchase Invoice | npp_han_thanh_toan | Hạn nợ | Date |  | due_date | `payables.due_date` — màn công nợ NCC sửa hạn của **mọi** khoản (`payables/[id]/page.tsx:156`, trigger mig 227 không chặn); **AOS**; lõi `due_date` giữ ≥ ngày HĐ NCC (`party.py:753`) |
 | payables | Purchase Invoice | npp_qua_han_tay | Đánh dấu quá hạn | Check |  | npp_han_thanh_toan | `payables.status = 'overdue'` đặt tay (chỉ khi còn nợ — trigger mig 227); **AOS** |
-| payables | Purchase Invoice | npp_phieu_kho | Phiếu nhập kho | Link | Stock Entry | bill_date | `payables.stock_entry_id` của khoản lập tay gắn một phiếu nhập kho (`payables/new`); RO |
+| payables | Purchase Invoice | npp_phieu_kho_loai | Loại phiếu kho | Link | DocType | bill_date | **mới** — Stock Entry hoặc Purchase Invoice: nguồn của `stock_entry_id` (cổng `stock_entries` gộp cả PI — §6.1); RO |
+| payables | Purchase Invoice | npp_phieu_kho | Phiếu nhập kho | Dynamic Link | npp_phieu_kho_loai | npp_phieu_kho_loai | `payables.stock_entry_id` của khoản lập tay gắn một phiếu nhập kho (`payables/new` chọn từ `stock_entries` `type = import` của NCC — gồm cả `IN-…` lẫn `PN-…`, nên Link cố định `Stock Entry` sẽ từ chối tên `PN-…`); RO |
 | supplier_returns | Purchase Invoice | npp_ma_cu | Mã cũ | Data |  | npp_loai | `return_code_cu` (mã `TH-…` trước khi đánh lại `PTNCC-` — mig 240); RO; chỉ dữ liệu chuyển sang |
 | purchase_invoices · supplier_returns | Purchase Invoice | npp_tim_kd | Khoá tìm | Data |  | npp_ma_cu | **mới khi gộp**: khoá tìm của `name` (mã phiếu) — nguồn gộp `stock_entries` của cổng đưa phiếu nhập / trả NCC vào danh sách phiếu kho mà ô tìm hỏi `tim_kd` (`BANG_TIM_KD_TINH`, §2.8); RO; idx; hook `before_save` |
-| purchase_invoices | Purchase Invoice | npp_sua_gia | Giá đã sửa | JSON |  | npp_huy_boi | **mới**; **AOS**; RO — giá trị hiện hành sau `sua_phieu_nhap` trên phiếu **đã bán** (CFD-06: chỉ sửa giá): `{dòng: {don_gia, giam_dong, thue_suat, thanh_tien}, dau_phieu: {giam, thue_go_tay, tien_hang, thue, tong}, lan_sua: [{luc, nguoi, lcv, but_toan}]}`; cổng phủ lên dòng / đầu phiếu khi có; tờ lõi giữ giá gốc, chênh nằm ở LCV + bút toán `DCN-` |
+| purchase_invoices | Purchase Invoice | npp_sua_gia | Giá đã sửa | JSON |  | npp_huy_boi | **mới**; **AOS**; RO — giá trị hiện hành sau `sua_phieu_nhap` trên phiếu **đã bán** (CFD-06: chỉ sửa giá): `{dòng: {don_gia, giam_dong, thue_suat, thanh_tien}, dau_phieu: {giam, thue_go_tay, tien_hang, thue, tong}, lan_sua: [{luc, nguoi, lcv: [một hoặc hai LCV `SGN-` — §5.10], but_toan}]}`; cổng phủ lên dòng / đầu phiếu khi có; tờ lõi giữ giá gốc, chênh nằm ở LCV + bút toán `DCN-` |
 | purchase_invoice_lines | Purchase Invoice Item | item_code · uom · conversion_factor · qty · price_list_rate · rate · amount · item_tax_template · warehouse · serial_and_batch_bundle · idx | (lõi) |  |  | — | dùng: `product_id` · `unit_name` · `conversion_factor` · `quantity` (trả NCC: SL âm, cổng trả dương) · `unit_price` (giá trước giảm dòng) · đơn giá sau giảm do app tính = (SL × giá − giảm dòng) / SL · tiền dòng chưa thuế · thuế dòng · kho của dòng (lô gần hạn → kho cận date ngay lúc nhập — mig 028) · gói lô Inward / Outward do app lập · `sort_order`. Lô mỗi dòng phiếu nhập: Batch `<PN>-NNN`, hạn = ngày ghi sổ + `shelf_life_in_days` khi mặt hàng có hạn, `npp_ngay_nhap` = giờ ghi sổ, giá vốn lô = tiền dòng sau giảm / SL cơ sở (mig 145) |
 | purchase_invoice_lines | Purchase Invoice Item | npp_giam_dong | Giảm dòng | Currency |  | discount_amount | `line_discount` — **trừ thật** (khác dòng bán chỉ ghi nhớ); giữ số đồng của cả dòng (lõi `discount_amount` là mỗi đơn vị, có thể lẻ) |
 | purchase_invoice_lines | Purchase Invoice Item | npp_thue_suat | Thuế suất | Float | precision 4 | item_tax_template | `vat_rate` (tỉ lệ — mig 141); đặt cùng `item_tax_template` |
@@ -3348,7 +3444,7 @@ tự dồn trả trước (§6.4, `complete_purchase_invoice`).
 
 | Bảng nppsale | DocType lõi | fieldname | Label | Type | Options | insert_after | Notes |
 |---|---|---|---|---|---|---|---|
-| purchase_invoices | Landed Cost Voucher | naming_series · purchase_receipts · items · taxes · distribute_charges_based_on | (lõi) |  | `SGN-.####` · Purchase Invoice · · `tk_trung_gian_sua_gia_nhap` · Distribute Manually | — | dùng: chênh tiền hàng (chưa thuế) từng dòng của phiếu nhập đã bán, âm hoặc dương; tài khoản của dòng chi phí = tài khoản **trung gian** (PoC 4: LCV không đụng công nợ NCC, tài khoản chi phí sẽ lệch đúng khoản chênh nếu không có bút toán kèm) |
+| purchase_invoices | Landed Cost Voucher | naming_series · purchase_receipts · items · taxes · distribute_charges_based_on | (lõi) |  | `SGN-.####` · Purchase Invoice · · `tk_trung_gian_sua_gia_nhap` · Distribute Manually | — | dùng: chênh tiền hàng (chưa thuế) từng dòng của phiếu nhập đã bán — **mỗi LCV một chiều**: lõi v16 bắt `applicable_charges` mọi dòng cùng dấu với `total_taxes_and_charges` và tổng ≠ 0 (`validate_charges_follow_total_sign`, "Total … for all items is zero" — kiểm lúc `on_submit`, `landed_cost_voucher.py:354–368`, `:404–417`, `:445–446`), nên lượt sửa vừa tăng giá dòng này vừa giảm dòng khác lập **hai** LCV `SGN-` (một tổng dương cho các dòng tăng, một tổng âm cho các dòng giảm; chênh ròng 0 cũng tách hai), `npp_sua_gia.lan_sua[].lcv` ghi danh sách, bút toán `DCN-` vẫn một tờ; tài khoản của dòng chi phí = tài khoản **trung gian** (PoC 4: LCV không đụng công nợ NCC, tài khoản chi phí sẽ lệch đúng khoản chênh nếu không có bút toán kèm) |
 | purchase_invoices | Landed Cost Voucher | npp_phieu_nhap | Phiếu nhập | Link | Purchase Invoice | posting_date | **mới**; RO; idx — tra nhanh các lần sửa giá của một phiếu |
 | purchase_invoices | Landed Cost Voucher | npp_but_toan | Bút toán điều chỉnh nợ | Link | Journal Entry | npp_phieu_nhap | **mới**; RO — JE `DCN-` lập cùng: Phải trả NCC (tham chiếu PN) ↔ tài khoản trung gian (chênh tiền hàng) ↔ thuế GTGT đầu vào (chênh VAT) |
 
@@ -3356,14 +3452,15 @@ tự dồn trả trước (§6.4, `complete_purchase_invoice`).
 
 | Bảng nppsale | DocType lõi | fieldname | Label | Type | Options | insert_after | Notes |
 |---|---|---|---|---|---|---|---|
-| stock_entries | Stock Entry | naming_series · stock_entry_type / purpose · posting_date + posting_time · from_warehouse · to_warehouse · supplier · is_opening · docstatus | (lõi) |  | `IN-.YYYY.MM.DD.-.####`↵`XKL-.####`↵`CKL-.####`↵`DCK-.####`↵`NL-.####` | — | dùng: `entry_code` (`IN-YYYYMMDD-NNNN` giữ dáng mã nhập kho nppsale; `XKL-` / `CKL-` thay mã base36 trình duyệt sinh; `DCK-` điều chỉnh kiểm kê; `NL-` nhập lại hàng trả — §4.3) · `type` (Receipt → `import`, Issue → `export`, Transfer → `transfer`) · `posted_at` (lùi ngày được cho tồn đầu kỳ — CFD-12) · `warehouse_zone` · `dest_warehouse_zone` · `supplier_id` · tồn đầu kỳ (`is_opening = Yes`, tài khoản Temporary Opening) · `status` |
-| stock_entries | Stock Entry | npp_loai | Loại phiếu NPP | Select | `nhap_kho`↵`ton_dau_ky`↵`xuat_le`↵`chuyen_kho`↵`chuyen_date_tu_dong`↵`dieu_chinh_kiem_ke`↵`nhap_lai_tra` | stock_entry_type | **mới**; RO; idx — cổng bỏ phiếu `dieu_chinh_kiem_ke` khỏi nguồn `stock_entries` (đi theo `NPP Kiem Ke`) |
+| stock_entries | Stock Entry | naming_series · stock_entry_type / purpose · posting_date + posting_time · from_warehouse · to_warehouse · supplier · is_opening · docstatus | (lõi) |  | `IN-.YYYY.MM.DD.-.####`↵`XKL-.####`↵`CKL-.####`↵`DCK-.####`↵`NL-.####` | — | dùng: `entry_code` (`IN-YYYYMMDD-NNNN` giữ dáng mã nhập kho nppsale; `XKL-` / `CKL-` thay mã base36 trình duyệt sinh; `DCK-` điều chỉnh kiểm kê; `NL-` nhập lại hàng trả — §4.3) · `type` (Receipt → `import`, Issue → `export`, Transfer → `transfer`) · `posted_at` (lùi ngày được cho tồn đầu kỳ — CFD-12; lùi ngày phải kèm `set_posting_time = 1` của lõi — cờ tắt thì `validate` của Stock Entry đè ngày giờ ghi sổ bằng giờ hiện tại, `stock_entry.py:336` → `validate_posting_time`) · `warehouse_zone` · `dest_warehouse_zone` · `supplier_id` · tồn đầu kỳ (`is_opening = Yes`, tài khoản Temporary Opening) · `status` |
+| stock_entries | Stock Entry | npp_loai | Loại phiếu NPP | Select | `nhap_kho`↵`ton_dau_ky`↵`xuat_le`↵`chuyen_kho`↵`chuyen_date_tu_dong`↵`dieu_chinh_kiem_ke`↵`nhap_lai_tra` | stock_entry_type | **mới**; RO; idx — cổng bỏ phiếu `dieu_chinh_kiem_ke` khỏi nguồn `stock_entries` (đi theo `NPP Kiem Ke`). Tài khoản chênh lệch (`expense_account` từng dòng) method đặt theo loại: `nhap_kho` → `tk_nhap_kho_khong_hd`, `ton_dau_ky` → `tk_tam_dau_ky`, `xuat_le` → `tk_xuat_le`, `dieu_chinh_kiem_ke` → tài khoản danh mục `COGS_ADJ` (hụt) / `tk_thua_kiem_ke` (thừa), `chuyen_kho` / `chuyen_date_tu_dong` → để lõi điền (chuyển kho không phát sinh chênh lệch), `nhap_lai_tra` → `Company.default_expense_account` (giá vốn hàng bán — cùng vế Có giá vốn mà tờ ghi có có kho của lõi ghi; `NPP Cai Dat` chưa có trường riêng); các loại khác không để trống — trống thì `validate_item` của lõi lặng lẽ điền `Company.stock_adjustment_account` (`stock_entry.py:3334–3337`) |
 | stock_entries | Stock Entry | npp_ly_do_xuat | Lý do xuất | Data |  | npp_loai | `issue_reason` (mig 144 — `damaged` / `gift` / `transfer` / `other` hoặc chữ tự do) |
 | stock_entries | Stock Entry | npp_ghi_chu | Ghi chú | Small Text |  | remarks | `notes`; **AOS**; huỷ phiếu nối "Huỷ phiếu: <lý do>" (mig 139) — `remarks` của lõi `no_copy` |
 | stock_entries | Stock Entry | npp_kiem_ke | Phiếu kiểm kê | Link | NPP Kiem Ke | npp_ly_do_xuat | **mới**; RO; idx — phiếu `DCK-`; thẻ kho hiện mã phiếu kiểm kê thay mã `DCK-` |
-| stock_entries | Stock Entry | npp_tim_kd | Khoá tìm | Data |  | npp_phieu_tra | `tim_kd` (`entry_code` — mig 249); RO; idx |
 | (stock_entries của phiếu trả) | Stock Entry | npp_phieu_tra | Phiếu trả | Link | NPP Phieu Tra | npp_kiem_ke | phiếu nhập lại hàng trả (tự sinh; tự lập chỉ hàng đổi); idx; dãy `NL-.####` (bàn bạc 6.6 — options ở §5.11). **Không dùng** `sales_invoice_no` của lõi: là Link tới HĐ nên Sửa HĐ chọn "giữ phiếu nhập" sẽ bị lõi chặn huỷ tờ cũ |
-| stock_entry_lines | Stock Entry Detail | item_code · uom · conversion_factor · qty · transfer_qty · basic_rate · valuation_rate · serial_and_batch_bundle · expense_account | (lõi) |  |  | — | dùng: `product_id` · `unit_name` / `transaction_uom` · `conversion_factor_snapshot` · `qty_in_transaction_uom` · `qty_in_base_uom` · `unit_cost` (mỗi đơn vị cơ sở) · lô (gói lô do app lập) · tài khoản chênh lệch theo loại phiếu (`NPP Cai Dat`, §4.1) |
+| stock_entries | Stock Entry | npp_tim_kd | Khoá tìm | Data |  | npp_phieu_tra | `tim_kd` (`entry_code` — mig 249); RO; idx |
+| stock_entry_lines | Stock Entry Detail | item_code · uom · conversion_factor · qty · transfer_qty · basic_rate · valuation_rate · serial_and_batch_bundle · expense_account | (lõi) |  |  | — | dùng: `product_id` · `unit_name` / `transaction_uom` · `conversion_factor_snapshot` · `qty_in_transaction_uom` · `qty_in_base_uom` · `unit_cost` (mỗi đơn vị cơ sở) · lô (gói lô do app lập) · tài khoản chênh lệch theo `npp_loai` của phiếu (bảng ánh xạ ở dòng `npp_loai` trên — `NPP Cai Dat` §4.1, danh mục `COGS_ADJ`, `Company.default_expense_account`) |
+| stock_entry_lines | Stock Entry Detail | npp_ghi_chu | Ghi chú dòng | Small Text |  | description | **mới** — `notes`: màn Xuất kho lẻ ghi ghi chú từng dòng (`stock-issue/page.tsx:253`), màn chi tiết phiếu đọc lại (`entries/[id]/page.tsx:133`); SED không có trường ghi chú (`description` là mô tả hàng, `validate_item` tự điền) |
 
 ### 5.12 Batch ← `batches` (module `NPP Kho Mua`)
 
@@ -3386,7 +3483,7 @@ tự dồn trả trước (§6.4, `complete_purchase_invoice`).
 | users | User | first_name | (lõi) | Data | | — | dùng: `full_name` (đồng bộ một chiều từ `NPP Nhan Vien.ho_ten`) |
 | users | User | mobile_no | (lõi) | Data | | — | dùng: SĐT **chuẩn hoá** (`normalize_phone`) để đăng nhập bằng SĐT (`allow_login_using_mobile_number`, lõi so nguyên văn — 3.6); unique của lõi = `idx_users_phone_unique` |
 | users | User | enabled | (lõi) | Check | | — | dùng: `is_active` (đồng bộ từ `NPP Nhan Vien.dang_hoat_dong`; tắt → `clear_sessions(user, force=True)`) |
-| users | User | roles · user_type | (lõi) | Table · Select | Has Role | — | dùng: `role` → Role `NPP Chu` / `NPP Quan Ly` / `NPP Ke Toan` / `NPP NVBH` / `NPP Thu Kho` (desk_access = 0 → Website User) |
+| users | User | roles · user_type | (lõi) | Table · Link | Has Role · User Type | — | dùng: `role` → Role `NPP Chu` / `NPP Quan Ly` / `NPP Ke Toan` / `NPP NVBH` / `NPP Thu Kho` (desk_access = 0 → Website User). `user_type` ở v16 là Link tới DocType `User Type` (default `System User`; `oldfieldtype` còn ghi Select — `frappe/core/doctype/user/user.json:514–522`), lõi tự đặt theo vai, không phải danh sách cố định |
 | users | User | send_welcome_email | (lõi) | Check | | — | luôn 0 khi tạo (email kỹ thuật không nhận thư — 3.11) |
 
 Mọi cột riêng của nppsale (vai, cờ giảm giá / sửa giá + trần, nghỉ việc, QR, công ty được làm, khoá tìm) ở `NPP Nhan Vien` (§4.1) — không thêm trường lên User.
@@ -3395,16 +3492,17 @@ Mọi cột riêng của nppsale (vai, cờ giảm giá / sửa giá + trần, n
 
 | Bảng nppsale | DocType lõi | fieldname | Label | Type | Options | insert_after | Notes |
 |---|---|---|---|---|---|---|---|
-| Storage `customer-photos` | File | npp_duong_dan | Đường dẫn kho (nppsale) | Data | length 500 | file_url | `<bucket>/<path>` như Storage (`customer-photos/<org>/<khách>/<ô>-<ms>.jpg`); unique; read_only. Cổng Storage tra file theo trường này; `is_private = 1`, `attached_to_doctype = Customer`, `attached_to_name` = khách |
+| Storage `customer-photos` | File | npp_duong_dan | Đường dẫn kho (nppsale) | Data | length 500 | file_url | `<bucket>/<path>` như Storage (`customer-photos/<org>/<khách>/<ô>-<ms>.jpg`); unique; read_only. Cổng Storage tra file theo trường này; `is_private = 1`, `attached_to_doctype = Customer`, `attached_to_name` = khách. Ảnh đã có ở bucket public Supabase chép sang ở P8, đoạn khách đổi sang mã mới (§6.2) |
 
 ### 5.15 DocType lõi dùng nguyên, không thêm trường
 - **Company** (thực thể sổ sách, `NPP Cai Dat.cong_ty`; `tax_id` nhận `ma_so_thue` một chiều), **Warehouse** (`Kho ban - <viết tắt>`, `Kho can date - <viết
   tắt>`), **UOM** (đơn vị của nppsale, `g` / `kg`… do setup tạo), **Brand** (method tự tạo khi chưa có), **Item Barcode** / **Item Default** / **UOM Conversion
   Detail** (bảng con của Item — §5.3), **Item Tax Template** `VAT 0/5/8/10% - <viết tắt>` (đủ tài khoản đầu ra **và** đầu vào — PoC mục 3 điểm 5), **Payment
   Terms Template** (tên = mã nppsale `COD`, `NET7`, `NET15`, `NET30`, `NET45`, `NET60` — setup tạo), **Mode of Payment** (Tiền mặt · Chuyển khoản · Ví
-  điện tử ↔ 111 · 112 · 113), **Account** (mẫu TT200 do app ship — câu 9), **Role** (5 vai NPP — fixtures), **Error Log** (`/api/client-error`), **Version**
-  (nhật ký đơn — §6.1), **Serial and Batch Bundle / Entry**, **Bin**, **Stock Ledger Entry**, **Payment Ledger Entry**, **Repost Item Valuation** (đọc, không ghi
-  tay).
+  điện tử ↔ 111 · 112 · 113), **Account** (mẫu TT200 do app ship — câu 9), **Role** (5 vai NPP — `nppsale.thiet_lap.vai` tạo ở after_install / after_migrate,
+  §2.2), **Error Log** (`/api/client-error`), **Version** (vết sửa tay trên Desk; nhật ký đơn ở `NPP Nhat Ky Don` — Phụ lục A), **Serial and Batch Bundle /
+  Entry** (gói lô **do app lập** qua method ở mọi chứng từ có lô — PoC mục 0 điểm 1, 9, 11, §5.16; người dùng không lập tay), **Bin** (đọc + khoá `FOR UPDATE`
+  trước khi dựng HĐ — PoC 1b, 1d), **Stock Ledger Entry**, **Payment Ledger Entry**, **Repost Item Valuation** (đọc, không ghi tay).
 - **Không dùng**: Pricing Rule / Promotional Scheme (`ignore_pricing_rule = 1`), Customer Credit Limit (hạn mức của lõi để trống ba cấp — 3.11), Stock
   Reconciliation (CFD-09), Sales Person / Sales Team, Notification Log (`NPP Thong Bao`), Delivery Note, Purchase Order / Receipt, Pick List, POS Invoice.
 
@@ -3460,22 +3558,22 @@ Mọi cột riêng của nppsale (vai, cờ giảm giá / sửa giá + trần, n
 | Bảng nppsale · số lời gọi | Nguồn | Khoá id | Cột đáng chú ý (đổi tên / tính) | Ghi thẳng từ trình duyệt | Vế lọc RLS (chính sách đang chạy) |
 |---|---|---|---|---|---|
 | **A. Hệ thống — tổ chức, người dùng, quyền, cài đặt, thông báo, khoá** | | | | | |
-| `organizations` · 13 | Single `NPP Cai Dat` (một dòng ảo) | `id` = `org_id` (hằng) | `name`←`ten_npp`; `slug`←`ma_npp`; `settings` = `{address, phone, tax_code, email, setup_completed_at}` từ trường riêng ∪ `cai_dat_khac`; `allow_oversell`←`cho_ban_vuot_ton`; `created_at`←`creation`; `completed_edit_days` = 1 (không port) | UPDATE: chủ NPP — `name`, `slug`, `allow_oversell`, `settings` (tách theo cột). INSERT / DELETE: cấm | SELECT "Users can view their own org" (`id = user_org_id()`) → mọi vai. UPDATE "Owners can update their org" (owner) |
+| `organizations` · 13 | Single `NPP Cai Dat` (một dòng ảo) | `id` = `org_id` (hằng) | `name`←`ten_npp`; `slug`←`ma_npp`; `settings` = `{address, phone, tax_code, email, setup_completed_at}` từ trường riêng ∪ `cai_dat_khac`; `allow_oversell`←`cho_ban_vuot_ton`; `created_at` = null (Single không giữ `creation` — §4.1 `NPP Cai Dat`); `completed_edit_days` = 1 (không port) | UPDATE: chủ NPP — `name`, `slug`, `allow_oversell`, `settings` (tách theo cột). INSERT / DELETE: cấm | SELECT "Users can view their own org" (`id = user_org_id()`) → mọi vai. UPDATE "Owners can update their org" (owner) |
 | `users` · 61 | `NPP Nhan Vien` (+ `User`) | `name` = `User.name` = email kỹ thuật (§2.5); `id_cu` = UUID cũ | `full_name`←`ho_ten`; `role`←`vai`; `phone`←`sdt`; `is_active`←`dang_hoat_dong`; `left_at/left_by`←`nghi_viec_luc/boi`; `allow_price_edit`←`cho_sua_gia`; `price_edit_max_increase_pct`←`tran_tang_gia`; `allow_discount`←`cho_giam_gia`; `discount_max_type`←`kieu_tran_giam`; `discount_max_value` = `co_tran_giam ? tran_giam : null`; `tim_kd` (cùng tên); `created_at`←`creation`. Không trả `qr_*`, không có `email`. Đích nhúng của mọi `…:users!<bảng>_<cột>_fkey(...)` | UPDATE: chủ NPP — các cột trên (`role` cấm `driver` — ROLE_RETIRED; `phone` trùng số chuẩn hoá → lỗi như `idx_users_phone_unique`; `is_active = false` → tắt `User` + xoá phiên; kiểm giảm giá như CHECK mig 185; "khôi phục" đặt `left_at/left_by` null). INSERT: chỉ method `nguoi_dung.tao`. DELETE: chỉ method `nguoi_dung.xoa`. Nghỉ việc: RPC `cho_nhan_vien_nghi` | SELECT "Users view own org" (`org = mình OR id = mình`) → mọi vai thấy mọi NV (kể cả đã khoá / nghỉ). INSERT / UPDATE / DELETE "Owner insert/update/delete users" (owner) + trigger `trg_block_driver_role` |
 | `user_suppliers` · 8 | bảng con `NPP Nhan Vien Cong Ty` | khoá ghép `(user_id, supplier_id)` | `user_id`←`parent`; `supplier_id`←`nha_cung_cap`; `created_at`←`creation`; `org_id` hằng | INSERT / DELETE: chủ NPP, quản lý (cổng sửa dòng con rồi lưu `NPP Nhan Vien`) | SELECT "Org members view user_suppliers" → mọi vai. ALL "Owner/Manager manage user_suppliers" |
-| `qr_login_tokens` · 6 | trường `qr_token` / `qr_token_bam` / `qr_cap_luc` của `NPP Nhan Vien` | — | — | **Cấm** qua cổng. Chỉ method `nppsale.api.qr.*` (chủ NPP: `lay`, `phat`, `thu_hoi`, `ds_link`; khách: `dang_nhap` có rate limit) | RLS bật, **không chính sách nào** + `REVOKE ALL … FROM anon, authenticated` (mig 088) → trình duyệt không chạm được, chỉ service role |
+| `qr_login_tokens` · 6 | trường `qr_token` / `qr_token_bam` / `qr_cap_luc` của `NPP Nhan Vien` | — | — | **Cấm** qua cổng. Chỉ `nppsale.api.qr.*` (chủ NPP: `lay`, `phat`, `thu_hoi`, `ds_link` — xử lý route cũ qua `nppsale.api.tuyen.goi`) và renderer đăng nhập QR `nppsale.portal.qr.DangNhapQR` (khách; 10 lượt / phút / IP — §4.1 `NPP Nhan Vien`) | RLS bật, **không chính sách nào** + `REVOKE ALL … FROM anon, authenticated` (mig 088) → trình duyệt không chạm được, chỉ service role |
 | `role_permissions` · 4 | `NPP Quyen Vai` | `name` = `vai:mo_dun:hanh_dong` (cột `id` cũ không màn nào đọc) | `role`←`vai`; `module`←`mo_dun`; `action`←`hanh_dong`; `allowed`←`duoc_phep`; `updated_at`←`modified`; `updated_by`←`modified_by`; `org_id` hằng | UPSERT (`onConflict: org_id,role,module,action`): chủ NPP; kiểm mô-đun regex + 6 hành động (CHECK cũ) | SELECT `role_permissions_select` → mọi vai. ALL `role_permissions_owner_write` (owner) |
 | `user_permission_overrides` · 5 | `NPP Quyen Rieng` | `name` = `nhan_vien:khoa_quyen` | `user_id`←`nhan_vien`; `permission_key`←`khoa_quyen`; `granted`←`duoc_phep`; `created_at/updated_at`←`creation/modified`; `org_id` hằng | UPSERT (`onConflict: user_id,permission_key`), DELETE theo `user_id` (+ `in permission_key`): chủ NPP, quản lý — quản lý không đụng dòng của chủ NPP | SELECT `org_iso_upo_select` → mọi vai. ALL `org_iso_upo_write` (owner / manager; NV đích cùng NPP; manager chỉ với NV không phải owner) |
-| `pricing_rules` · 2 | `NPP Cai Dat` | `org_id` (khoá chính cũ) = hằng; cổng thêm `id` = hằng | `date_warehouse_threshold_days`←`nguong_kho_date_ngay`; `updated_at`←`modified`; `updated_by`←`modified_by`; cột sàn / trần cũ đã DROP (mig 074). Màn `/setup` xin cột `id` mà bảng cũ không có (42703 → ô ngưỡng luôn hiện 30); cổng trả `id` nên màn hiện đúng số đã lưu — khác nhẹ, có lợi | UPSERT (`onConflict: org_id`): chủ NPP, quản lý; kiểm 0..365 | SELECT `pricing_rules_select` → mọi vai. INSERT / UPDATE `pricing_rules_insert/update` (owner / manager) |
-| `approval_rules` · 4 | `NPP Cai Dat` | `id` = hằng | `auto_approve_max`←`tu_duyet_toi_da`; `manager_approve_max`←`quan_ly_duyet_toi_da`; `customer_debt_max`←`no_khach_toi_da`; `customer_overdue_max`←`no_qua_han_toi_da`; `rep_portfolio_debt_max`←`no_danh_muc_nv_toi_da`; `enforce_credit_limit`←`kiem_han_muc`; `notes`←`ghi_chu_canh_bao`; `is_active`←`bat_canh_bao`; `created_at/updated_at/updated_by` từ Single | INSERT (màn chưa thấy dòng) = UPDATE: chủ NPP, quản lý | SELECT `approval_rules_select` (owner / manager / accountant) — NVBH, thủ kho đọc ra rỗng → `evaluateApproval` dùng ngưỡng mặc định (y như nppsale; §7.1 điểm 6). INSERT / UPDATE (owner / manager) |
+| `pricing_rules` · 2 | `NPP Cai Dat` | `org_id` (khoá chính cũ) = hằng; cổng thêm `id` = hằng | `date_warehouse_threshold_days`←`nguong_kho_date_ngay`; `updated_at` / `updated_by` = null (Single không giữ mốc riêng cho nhóm này — §4.1 `NPP Cai Dat`); cột sàn / trần cũ đã DROP (mig 074). Màn `/setup` xin cột `id` mà bảng cũ không có (42703 → ô ngưỡng luôn hiện 30); cổng trả `id` nên màn hiện đúng số đã lưu — khác nhẹ, có lợi | UPSERT (`onConflict: org_id`): chủ NPP, quản lý; kiểm 0..365 | SELECT `pricing_rules_select` → mọi vai. INSERT / UPDATE `pricing_rules_insert/update` (owner / manager) |
+| `approval_rules` · 4 | `NPP Cai Dat` | `id` = hằng | `auto_approve_max`←`tu_duyet_toi_da`; `manager_approve_max`←`quan_ly_duyet_toi_da`; `customer_debt_max`←`no_khach_toi_da`; `customer_overdue_max`←`no_qua_han_toi_da`; `rep_portfolio_debt_max`←`no_danh_muc_nv_toi_da`; `enforce_credit_limit`←`kiem_han_muc`; `notes`←`ghi_chu_canh_bao`; `is_active`←`bat_canh_bao`; `created_at` / `updated_at` / `updated_by` = null (§4.1 `NPP Cai Dat`) | INSERT (màn chưa thấy dòng) = UPDATE: chủ NPP, quản lý | SELECT `approval_rules_select` (owner / manager / accountant) — NVBH, thủ kho đọc ra rỗng → `evaluateApproval` dùng ngưỡng mặc định (y như nppsale; §7.1 điểm 6). INSERT / UPDATE (owner / manager) |
 | `danh_muc_ban_phien` · 1 | `NPP Phien Danh Muc` (dòng `1`) | `id` = 1 ↔ `name` `1` | `phien`, `luc`, `phien_khach`, `luc_khach` (giữ tên) | **Cấm** (`REVOKE INSERT, UPDATE, DELETE`, mig 209) — chỉ hook / method tăng | SELECT `danh_muc_ban_phien_doc` (`true`) → mọi người đăng nhập |
 | `notifications` · 13 | `NPP Thong Bao` | `name` (UUID = id cũ) | `user_id`←`nguoi_nhan`; `type`←`loai`; `title`←`tieu_de`; `body`←`noi_dung`; `link_url`←`duong_dan`; `is_read`←`da_doc`; `read_at`←`doc_luc`; `metadata`←`du_lieu`; `created_at`←`creation`; `org_id` hằng | INSERT: mọi vai, người nhận phải là NV của NPP (`visit_logged`, `payment_received` từ màn). UPDATE: dòng của mình, cột `is_read`, `read_at`. DELETE: dòng của mình | SELECT `notifications_select_own` + "Users see own notifications" (`user_id = mình`). UPDATE / DELETE `notifications_update_own` / `_delete_own`. INSERT `notifications_insert_org` (org) |
 | `entity_locks` · 0 (RPC + realtime) | `NPP Khoa Chung Tu` | `name` = `loai_chung_tu:chung_tu` | `entity_type`←`loai_chung_tu`; `entity_id`←`chung_tu`; `locked_by`←`nguoi_khoa`; `locked_at`←`khoa_luc`; `last_heartbeat_at`←`nhip_cuoi`; `org_id` hằng | **Cấm**. Chỉ RPC `acquire_entity_lock` / `heartbeat_entity_lock` / `release_entity_lock` | SELECT `entity_locks_select` → mọi vai. ALL `entity_locks_no_direct_writes` (`false`) |
 | `workflow_sessions` · 6 | **không port** | — | — | Cổng: đọc trả `[]` (`maybeSingle` → null), ghi trả thành công không lưu — để `useWorkflowSession` (`/inventory/entries/[id]`) và `PendingWorkWidget` (dashboard) không vỡ; portal gỡ dần | (cũ) `ws_select`: của mình hoặc owner / manager; `ws_write`: của mình |
 | `reports_config` · 0 | **không port** | — | — | — (không mã nào gọi) | (cũ) đọc: org; ghi: owner |
 | **B. Khách hàng — khách, tuyến, phân công, ghé thăm, ảnh, bàn giao** | | | | | |
-| `customers` · 49 | `Customer` + Custom Field §5.1 | `name` (`KH-.#####`); `npp_id_cu` = UUID cũ (§2.3, §7.1 điểm 1) | `store_name`←`customer_name`; `tax_code`←`tax_id`; `group_id`←`customer_group`; `payment_terms`←`payment_terms`; `created_at`←`creation`; `created_by`←`owner`; còn lại ← `npp_*` (§5.1); toạ độ 0 ⇒ null. Quan hệ: `group:customer_groups` (`customer_group`); ngược `nv_chinh:customer_assignments` (`!inner` / `!left` + phép loại `nv_chinh=is.null`); là đích của mọi `customer:customers(...)` (70 chỗ) và `customers!inner(channel)` (lọc / đếm theo tuyến) | INSERT: owner / manager / sales — SĐT chuẩn hoá, chèn trong phiên người gọi (`owner` = `created_by`), trùng số → `23505` + chữ `customers_org_id_phone` (portal dò trùng trước bằng `search_customer_dupes`). UPDATE: owner / manager / sales trên dòng mình thấy — không được: `photo_approved_*` (`DUYET_QUA_NUT`, chỉ RPC), toạ độ khi đã duyệt mà thiếu `customers.approve` (`VI_TRI_DA_DUYET`), `tim_kd` (cổng tính), `*_reminder_sent_at` (việc đêm). DELETE: owner — xoá dây chuyền phân công / lịch tuyến / ảnh (+ file) / yêu cầu ảnh (như `ON DELETE CASCADE`), chặn khi có đơn / HĐ / phiếu trả / công nợ / ghé thăm (như FK `NO ACTION`) | SELECT `customer_select` (mig 154 + vá 260): `org AND (vai ∈ owner/manager/accountant OR user_has_permission(mình,'customer.view_all') OR phân công active của mình OR created_by = mình OR id ∈ khach_toi_da_ban())` — `khach_toi_da_ban()` = khách có **đơn** (mọi trạng thái) đứng tên mình; 3 chính sách cũ (036 / 037) là tập con. INSERT / UPDATE "Owner/Manager/Sales can create/update customers" (vai owner / manager / sales; UPDATE chỉ trên dòng SELECT thấy). DELETE "Owner can delete customers" |
-| `customer_groups` · 2 | `Customer Group` (lõi) | `name` (= tên nhóm) | `name`←`customer_group_name`; `description` = null; `created_at`←`creation`; bảng giá nhóm = `default_price_list` (`Gia nhom <tên>`); `org_id` hằng | Không có màn ghi (nppsale cũng không — nhóm gieo lúc cài); khi cần: method tạo nhóm + bảng giá nhóm (owner / manager); đổi tên nhóm = `rename_doc` (khách, bảng giá theo); tên trùng không dấu / hoa thường → lõi từ chối (§2.9) | SELECT "Org members can view customer groups" → mọi vai. ALL "Owner/Manager can manage customer groups" |
+| `customers` · 49 | `Customer` + Custom Field §5.1 | `name` (`KH-.#####`); `npp_id_cu` = UUID cũ (§2.3, §7.1 điểm 1) | `store_name`←`customer_name`; `tax_code`←`tax_id`; `group_id`←`customer_group`; `payment_terms`←`payment_terms`; `created_at`←`creation`; `created_by`←`owner`; còn lại ← `npp_*` (§5.1); toạ độ 0 ⇒ null. Quan hệ: `group:customer_groups` (`customer_group`); ngược `nv_chinh:customer_assignments` (`!inner` / `!left` + phép loại `nv_chinh=is.null`); là đích của mọi `customer:customers(...)` (70 chỗ) và `customers!inner(channel)` (lọc / đếm theo tuyến) | INSERT: owner / manager / sales — SĐT chuẩn hoá, chèn trong phiên người gọi (`owner` = `created_by`), trùng số → `23505` + chữ `customers_org_id_phone` (portal dò trùng trước bằng `search_customer_dupes`). UPDATE: owner / manager / sales trên dòng mình thấy — không được: `photo_approved_*` (`DUYET_QUA_NUT`, chỉ RPC), toạ độ khi đã duyệt mà thiếu `customers.approve` (`VI_TRI_DA_DUYET`), `tim_kd` (cổng tính), `*_reminder_sent_at` (việc đêm). DELETE: owner — xoá dây chuyền phân công / lịch tuyến / ảnh (+ file) / yêu cầu ảnh (như `ON DELETE CASCADE`), chặn khi có đơn / HĐ / phiếu trả / công nợ / ghé thăm (như FK `NO ACTION`) | SELECT `customer_select` (mig 154 + vá 260): `org AND (vai ∈ owner/manager/accountant OR user_has_permission(mình,'customer.view_all') OR phân công active của mình OR created_by = mình OR id ∈ khach_toi_da_ban())` — `khach_toi_da_ban()` = khách có **đơn** (mọi trạng thái) đứng tên mình = DISTINCT `customer` của Sales Order có `npp_nhan_vien` = mình (mọi `docstatus` / `npp_trang_thai`) **∪ DISTINCT `customer_id` của `NPP LS Don Hang` có `sales_user_id` = mình** (đơn trước ngày cắt chỉ còn ở lưu trữ — §2.3, §4.8.0; bỏ vế này thì sau cắt chuyển NVBH mất khách chỉ có đơn cũ, kể cả khách đã chuyển hẳn mà HĐ / nợ tờ đầu kỳ còn đứng tên mình — đúng trường hợp bàn bạc 3.5 nêu); guard `xin_doi_anh_diem_ban` (`user_sells_to_customer` — mig 244) dùng cùng tập. Ba chính sách SELECT cũ (036 / 037) đã DROP ở mig 042 — `customer_select` là chính sách SELECT duy nhất. INSERT / UPDATE "Owner/Manager/Sales can create/update customers" (vai owner / manager / sales; UPDATE chỉ trên dòng SELECT thấy). DELETE "Owner can delete customers" |
+| `customer_groups` · 2 | `Customer Group` (lõi) | `name` (= tên nhóm) | `name`←`customer_group_name`; `description` = null; `created_at`←`creation`; bảng giá nhóm = `default_price_list` (`Gia nhom <tên>`); `org_id` hằng | Không có màn ghi (nppsale cũng không — nhóm gieo lúc cài); khi cần: method tạo nhóm + bảng giá nhóm (owner / manager); đổi tên nhóm = `rename_doc` (khách, bảng giá theo) — đổi tên / đổi `default_price_list` tăng cả `phien` lẫn `phien_khach` (§4.1 `NPP Phien Danh Muc`); tên trùng không dấu / hoa thường → lõi từ chối (§2.9) | SELECT "Org members can view customer groups" → mọi vai. ALL "Owner/Manager can manage customer groups" |
 | `customer_assignments` · 10 | `NPP Phan Cong Khach` | `name` (UUID = id cũ) | `customer_id`←`khach`; `user_id`←`nhan_vien`; `role`←`vai_tro`; `assigned_at`←`ngay_phan_cong`; `status`←`trang_thai`. Quan hệ `user:users`, `customer:customers` (`!inner`, lọc `customer.org_id`) | INSERT / DELETE: owner / manager. NVBH tự nhận: RPC `claim_customer_for_me`. Hàng loạt: RPC `ban_giao_khach`, `cho_nhan_vien_nghi`; giao nợ: RPC `giao_cong_no_npp` | SELECT "View assignments in org" (`user_id = mình OR customer_org_id(customer_id) = org`) → mọi vai thấy mọi phân công. ALL "Owner/Manager manage assignments" |
 | `sales_routes` · 17 | `NPP Tuyen` | `name` (UUID = id cũ) | `code`←`ma_tuyen`; `name`←`ten_tuyen`; `description`←`mo_ta`; `is_active`←`dang_dung`; `sort_order`←`thu_tu`; `created_at/updated_at`←`creation/modified`; `org_id` hằng | INSERT / UPDATE / DELETE: owner / manager (đổi mã / xoá: màn tự sửa `customers.channel` như hôm nay) | SELECT `sales_routes_select` → mọi vai. INSERT / UPDATE / DELETE `sales_routes_*` (owner / manager) |
 | `pjp_routes` · 7 | `NPP Lich Tuyen` | `name` (UUID) | `sales_user_id`←`nhan_vien`; `day_of_week`←`thu` (0 = Thứ Hai); `customer_id`←`khach`; `visit_order`←`thu_tu_ghe`; `is_active`←`dang_dung`; `created_at`←`creation`; quan hệ `customer:customers`, `sales_user:users` | INSERT / DELETE (xoá cả ngày rồi chèn lại): owner / manager | SELECT "View own PJP" (của mình OR owner / manager). ALL "Manager manage PJP" (owner / manager) |
@@ -3484,68 +3582,68 @@ Mọi cột riêng của nppsale (vai, cờ giảm giá / sửa giá + trần, n
 | `customer_photo_requests` · 3 | `NPP Yeu Cau Anh Diem Ban` | `name` (UUID) | `kind`←`loai`; `photo_id`←`anh`; `slot`←`o_anh`; `photo_url`←`anh_url`; `taken_at`←`chup_luc`; `gps_*`; `pin_lat/lng`←`vi_do_ghim/kinh_do_ghim`; `status`←`trang_thai`; `requested_by/at`←`nguoi_xin/xin_luc`; `decided_by/at`←`nguoi_duyet/duyet_luc`; `decision_note`←`ghi_chu_duyet`; quan hệ `requester:users!customer_photo_requests_requested_by_fkey`. Không trả `khoa_cho` | **Cấm** (`REVOKE INSERT, UPDATE, DELETE`, mig 244). Chỉ RPC `xin_doi_anh_diem_ban`, `duyet_yeu_cau_anh_diem_ban`, `huy_yeu_cau_anh_diem_ban`, `duyet_anh_diem_ban` | SELECT "View customer photo requests" (org + khách thấy được) |
 | `ban_giao_khach_log` · 1 | `NPP Ban Giao Khach` | `name` (UUID = id cũ) | giữ tên cột: `nguon`, `tu_nv`, `den_nv`, `kieu`, `bo_loc`, `khach` (mảng id), `ket_qua`, `tao_boi`, `tao_luc` | **Cấm** (`REVOKE`, mig 246). Chỉ RPC `ban_giao_khach` (`p_thuc_hien = true`) | SELECT `ban_giao_khach_log_select` (owner / manager) |
 | **C. Sản phẩm và giá** | | | | | |
-| `products` · 33 | Item (+ Item Barcode, Item Default) | `name` = SKU | ánh xạ ở §5.3; `status` = `npp_ngung_ban ? 'inactive' : 'active'`; `allow_price_edit` / `price_edit_max_type` / `price_edit_max` (di sản mig 025/091 — quyền sửa giá nay theo người) → hằng `false / 'percent' / 0`; `cost_price` ẩn nếu thiếu `inventory.cost`; lồng: `units:product_units`, `price_lists`, `supplier:suppliers!products_primary_supplier_id_fkey` | **Cho** owner/manager (policy "Owner/Manager can manage products": insert/update/delete — form, nhập Excel, bật / tắt bán) → luật ghi Item: SKU khoá khi có chứng từ, mã vạch trùng → chặn (CFD-10), `stock_uom` khoá khi có giao dịch, `has_batch_no` chỉ lúc tạo; xoá bị lõi chặn khi còn liên kết (như FK nppsale) → dịch lỗi tiếng Việt | "View products (sales scoped by supplier)" (mig 081): vai ≠ sales OR NCC chính trống OR NCC chính ∈ công ty được làm của tôi |
+| `products` · 33 | Item (+ Item Barcode, Item Default) | `name` = SKU | ánh xạ ở §5.3; `status` = `npp_ngung_ban ? 'inactive' : 'active'`; `allow_price_edit` / `price_edit_max_type` / `price_edit_max` (di sản mig 025/091 — quyền sửa giá nay theo người) → hằng `false / 'percent' / 0`; `cost_price` ẩn nếu thiếu `inventory.cost`; lồng: `units:product_units`, `price_lists`, `supplier:suppliers!products_primary_supplier_id_fkey` | **Cho** owner/manager (policy "Owner/Manager can manage products": insert/update/delete — form, nhập Excel, bật / tắt bán) → luật ghi Item: `sku` gửi kèm mà **không đổi** giá trị → bỏ qua (form Sửa sản phẩm luôn gửi cả `sku`), đổi giá trị chỉ khi mặt hàng chưa có chứng từ (đổi tên Item — câu 18; trùng SKU khác → 23505), có rồi → `SKU_KHOA` (P0001, mã mới); mã vạch trùng → chặn (CFD-10), `stock_uom` khoá khi có giao dịch, `has_batch_no` chỉ lúc tạo (cột mới của cổng, câu 14 B — đọc được, nhận ở insert, mặc định bật); `cost_price` gửi lên bởi người không được xem giá vốn → bỏ qua (form vẫn gửi lại số đã nạp — ghi theo là xoá giá vốn thật); xoá bị lõi chặn khi còn liên kết (như FK nppsale) → dịch lỗi tiếng Việt | "View products (sales scoped by supplier)" (mig 081): vai ≠ sales OR NCC chính trống OR NCC chính ∈ công ty được làm của tôi |
 | `product_units` · 9 | Item.`uoms` (UOM Conversion Detail) | `name` dòng con | `product_id` = parent; `unit_name` = `uom`; `conversion` = `conversion_factor`; bỏ dòng `stock_uom` | **Cho** owner/manager ("Owner/Manager can manage product units") → nạp Item, sửa bảng con, `save()` | "Org members can view product units": theo dòng cha (mặt hàng nhìn thấy được) |
 | `price_lists` · 1 | Item Price (`Gia chuan`, `Gia nhom *`, selling) | `name` Item Price | `group_id` = Customer Group có `default_price_list` = `price_list` (`Gia chuan` → NULL); `unit_name` = `uom`; `price` = `price_list_rate`; `effective_*` = `valid_*`; lồng: `product:products`, `group:customer_groups` | nppsale **không có màn ghi** (chỉ seed / SQL); RLS cho owner/manager → cổng cho cùng luật; sửa qua Desk (System Manager) hoặc nhập P8 — giá trùng ở sổ cũ gộp về giá thấp nhất (luật "trùng → thấp nhất") | "Org members can view price lists": theo dòng cha (mặt hàng nhìn thấy được) |
 | `purchase_price_lists` · 1 | Item Price trên `Gia nhap` (buying) | `name` Item Price | `product_id` = `item_code`; `unit_name` = `uom`; `price` = `price_list_rate`; `effective_date` = `valid_from`; `source_invoice_id` = `reference` (mã PN); `updated_by/at` = `modified_by/modified` | **Cấm** — RPC `luu_gia_nhap` (owner/manager/accountant/warehouse — `KHONG_DU_QUYEN_GIA_NHAP`) + hook sau ghi sổ phiếu nhập: một giá mỗi (mặt hàng, đơn vị) = `unit_price` của dòng cuối, ngày = ngày HĐ NCC, chỉ ghi đè khi giá đang có không mới hơn (mig 234) | `gia_nhap_doc` (mig 234): owner/manager/accountant/warehouse |
 | **D. Bán hàng — đơn, hoá đơn, phiếu trả, soạn hàng, khuyến mãi, hoa hồng** | | | | | |
-| `sales_orders` · 62 | Sales Order | `name` `DH-####` (`order_code` = `name`, không đổi khi sửa — CFD-01) | ánh xạ §5.5; `submitted_at` = lần đầu `npp_trang_thai` → `submitted` (Version) hoặc `creation` nếu tạo thẳng; `completed_at` = `creation` HĐ có `npp_don_hang` = đơn; `approved_*`, `closed_*`, `current_workflow_stage`, `merged_into` → null (di sản); lồng: `customer:customers(!inner)`, `sales_user:users!sales_orders_sales_user_id_fkey`, `creator:users!sales_orders_created_by_fkey`, `lines:sales_order_lines`, `returns`; tổng `total.sum()` gộp máy chủ | **Cho**, nhưng cổng thực thi bằng method cùng luật trigger: insert → `tao_don` (idempotent `npp_client_request_id`); update đầu đơn → chuyển trạng thái `draft`↔`submitted`, → `cancelled` qua `cancel_order`, mọi chuyển liên quan `completed` → `USE_RPC` (mig 124); tăng `npp_lan_sua`; guard người đứng tên (153/155); quyền giảm đơn (226: `npp_giam_gia_don` suy = Σ dòng − `subtotal` gửi lên, chỉ kiểm khi tăng); `vat` / `total` gửi lên bỏ qua; đơn đã xuất chỉ sửa ghi chú; delete → `xoa_don` (dọn phiếu trả chưa hoàn thành, chặn khi có phiếu hoàn thành) | `sales_order_select` (mig 161): (`npp_trang_thai` ≠ draft OR người đứng tên = tôi — nháp kín kể cả chủ NPP) AND (vai ∈ owner/manager/accountant/warehouse OR quyền `customer.view_all` OR người đứng tên = tôi OR khách thuộc phân công của tôi); nhánh `driver` bỏ. Ghi: create owner/manager/sales (mig 036); update owner/manager/warehouse mọi đơn, sales đơn của mình ở draft/submitted (mig 119); delete owner/manager đơn draft/cancelled chưa từng hoàn thành, sales đơn draft của mình |
-| `sales_order_lines` · 30 | Sales Order Item | `name` dòng con | ánh xạ §5.5; `invoiced_qty` = `delivered_qty` + phần dòng HĐ không nối quy đổi; `batch_id` → null; lồng: `product:products(!inner)`, `order:sales_orders(!inner)` | **Cho** (owner/manager/warehouse khi đơn chưa xuất; sales đơn của mình ở draft/submitted) → cổng sửa bảng con trong `sua_don` bằng `doc.save()` (Version ghi nhật ký): `ORDER_LOCKED` khi đơn đã xuất / huỷ (mig 172), SL > 0, giá ≥ 0, quyền giảm dòng + trần / sàn giá (mig 229), đơn vị rỗng → cơ sở (175), `invoiced_qty` không ghi được | "Users can view order lines of visible orders": theo dòng cha |
-| `order_status_history` · 1 | SQL dựng sẵn trên `tabVersion` (`ref_doctype = 'Sales Order'`, đổi `npp_trang_thai`) + dòng `draft → submitted` lúc tạo cho đơn gửi thẳng (thay trigger `_don_moi_lich_su`, mig 226) | `Version.name` (dòng tạo: `<đơn>:tao`) | `order_id` = `docname`; `from_status` / `to_status` = giá trị cũ / mới; `changed_by` = `Version.owner`; `changed_at` = `Version.creation`; `notes` = null; lồng `changer:users!order_status_history_changed_by_fkey` | **Cấm** (nppsale: chỉ trigger) | "View history of visible orders" (mig 033): theo đơn nhìn thấy được |
-| `order_activity_log` · 1 | dựng sẵn (Python) trên Version của Sales Order — bảng con `items` | `<Version.name>:<i>` | `action`: `added` → `add_line`, `removed` → `remove_line`, `row_changed` → `edit_line`; `changes` = {cột nppsale: {from, to}} (qty→`quantity`, rate→`unit_price`, uom→`unit_name`, amount→`line_total`, item_code→`product_id`); `actor_id` = `Version.owner`; `workflow_stage` = null; hành động `invoice_posted / invoice_cancelled / order_closed` (mig 124) không còn — màn chỉ hiện ba loại dòng | **Cấm** (`oal_no_direct_writes`) | `org_iso_oal` (mig 052): mọi người trong NPP — rộng hơn đơn; đề xuất cổng siết theo đơn nhìn thấy được (màn chỉ đọc nhật ký của đơn đang mở, không đổi hành vi) |
+| `sales_orders` · 62 | Sales Order | `name` `DH-####` (`order_code` = `name`, không đổi khi sửa — CFD-01) | ánh xạ §5.5; `submitted_at` = lần đầu `npp_trang_thai` → `submitted` (MIN `luc` của `NPP Nhat Ky Don` `loai = trang_thai`, `den_trang_thai = submitted` — đơn gửi thẳng có dòng ấy từ lúc tạo; giữ cả khi đơn gửi về nháp — `check_order_status_transition` / `_don_moi_moc_gui` chỉ đặt khi đang trống); `completed_at` / `completed_by` = `creation` / `owner` của HĐ ghi sổ **mới nhất** của đơn, **chỉ khi** `npp_trang_thai = completed` (`_wf2b_sync_order_status` xoá hai cột khi đơn rời completed — mig 125 / 217; Sửa HĐ → mốc của tờ mới; mig 124 đổi nghĩa `completed_by` thành "người ghi sổ hoá đơn cuối cùng"), đơn khác → null; `approved_*`, `closed_*`, `current_workflow_stage`, `merged_into` → null (di sản); lồng: `customer:customers(!inner)`, `sales_user:users!sales_orders_sales_user_id_fkey`, `creator:users!sales_orders_created_by_fkey`, `lines:sales_order_lines`, `returns`; tổng `total.sum()` gộp máy chủ | **Cho**, nhưng cổng thực thi bằng method cùng luật trigger (`nppsale.rpc.sua_don`): insert → từ chối 42501 (tạo đơn chỉ qua RPC `create_order_with_lines`, idempotent `npp_client_request_id`; ba lệnh ghi thẳng `createOrderRecordsLegacy` của nppsale chỉ chạy khi máy chủ thiếu hàm / thiếu cột — `lib/orders/create.ts:117–144`); update đầu đơn → chuyển trạng thái `draft`↔`submitted`, → `cancelled` (ghi thẳng `status` — bài vàng `huy_bang_cap_nhat` — hoặc RPC `cancel_order`; mốc huỷ = bây giờ khi trống), mọi chuyển liên quan `completed` → `USE_RPC` (mig 124); tăng `npp_lan_sua` (kể cả lần lưu đầu đơn sau khi dòng đổi — `npp_dong_doi`); guard người đứng tên (153/155); quyền giảm đơn (226: `npp_giam_gia_don` suy = Σ dòng − `subtotal` gửi lên, chỉ kiểm khi tăng); `vat` gửi lên không ghi (lõi tính) nhưng `total` gửi lên → `npp_tru_hang_tra` = max(0, round(`subtotal` + `vat` − `total`)) (§5.5); đơn đã xuất (SO docstatus 1) chỉ sửa ghi chú / ngày giao / câu cảnh báo (+ đếm lần sửa, trường huỷ) — đổi khác → `DON_DA_XUAT` (mã mới: lõi cấm đổi trường không AOS sau ghi sổ; màn nppsale chỉ gửi `notes`); delete → `xoa_don` (dọn phiếu trả chưa hoàn thành, chặn khi có phiếu hoàn thành) | `sales_order_select` (mig 161): (`npp_trang_thai` ≠ draft OR người đứng tên = tôi — nháp kín kể cả chủ NPP) AND (vai ∈ owner/manager/accountant/warehouse OR quyền `customer.view_all` OR người đứng tên = tôi OR khách thuộc phân công của tôi); nhánh `driver` bỏ. Ghi: create owner/manager/sales (mig 036); update owner/manager/warehouse mọi đơn, sales đơn của mình ở draft/submitted (mig 119); delete owner/manager đơn draft/cancelled chưa từng hoàn thành, sales đơn draft của mình |
+| `sales_order_lines` · 30 | Sales Order Item | `name` dòng con | ánh xạ §5.5; `invoiced_qty` = Σ(SL × hệ số HĐ) / hệ số dòng đơn của dòng HĐ **ghi sổ** nối qua `so_detail` hoặc `npp_dong_don` (dòng khác đơn vị — §5.6; như `_da_xuat_cua_dong_don`, mig 179); `batch_id` → null; **không có `created_at`** (ngoại lệ luật chung §6.0, như `sales_invoice_lines` / `return_lines` — mig 001 không có cột, không ALTER nào thêm; `lib/xuat-excel/mot-phieu.ts:95` đang chọn cột này → trên sổ thật lỗi 42703: §7.1 điểm 6 (v)); lồng: `product:products(!inner)`, `order:sales_orders(!inner)` | **Cho** (owner/manager/warehouse khi đơn chưa xuất; sales đơn của mình ở draft/submitted) → cổng sửa bảng con trong `sua_don` bằng `doc.save()` (nhật ký dòng: `ghi_nhat_ky_don` `add_line` / `edit_line` / `remove_line`; thêm / xoá dòng và sửa dòng đổi tiền đặt `npp_dong_doi` = 1): `ORDER_LOCKED` khi đơn đã xuất (mig 124), `ORDER_CANCELLED` khi đơn đã huỷ — chỉ chặn thêm / sửa dòng, không chặn xoá (xoá đơn huỷ kéo dòng theo — mig 172); SL > 0 / giá ≥ 0 / giảm ≥ 0 (`BAD_PAYLOAD`), quyền giảm dòng + trần giá (`DISCOUNT_NOT_ALLOWED` / `DISCOUNT_OVER_LIMIT` / `PRICE_OVER_CEILING`, mig 226 / 229), đơn vị rỗng → cơ sở (`UNIT_MISSING`, mig 175), ghi tay `invoiced_qty` → `DON_KHOA` (mig 214); xoá dòng còn dòng HĐ **ghi sổ** trỏ tới → 23503 (tờ đã huỷ nhả móc nối — mig 162) | "Users can view order lines of visible orders": theo dòng cha |
+| `order_status_history` · 1 | `NPP Nhat Ky Don` `loai = 'trang_thai'` (Phụ lục A) — method ghi đúng chỗ trigger cũ, kể cả dòng `draft → submitted` lúc tạo đơn gửi thẳng (thay trigger `_don_moi_lich_su`, mig 226) | `name` (UUID) | `order_id`←`don`; `from_status`←`tu_trang_thai`; `to_status`←`den_trang_thai`; `changed_by`←`nguoi`; `changed_at`←`luc`; `notes`←`ghi_chu`; lồng `changer:users!order_status_history_changed_by_fkey` | **Cấm** (nppsale: chỉ trigger) — chèn trả lỗi RLS 42501; chỉ `ghi_nhat_ky_don(...)` của method ghi | "View history of visible orders" (mig 033): theo đơn nhìn thấy được |
+| `order_activity_log` · 1 | `NPP Nhat Ky Don` `loai = 'dong'` (Phụ lục A) | `name` (UUID) | `order_id`←`don`; `order_line_id`←`dong_don`; `action`←`hanh_dong` (`add_line` / `edit_line` / `remove_line` từ `create_order_with_lines` / `sua_don`; `invoice_posted` / `invoice_cancelled` / `cancel_after_complete` từ `post_invoice` / huỷ HĐ — đúng chỗ RPC nppsale ghi, mig 125 / 217); `workflow_stage`←`giai_doan` (dòng hàng: `draft` — mặc định `current_workflow_stage`, mig 044; sự kiện HĐ: trạng thái đơn sau sự kiện); `changes`←`thay_doi` (khuôn trigger mig 114: `add_line` / `remove_line` = ảnh cả dòng `{product_id, unit_name, quantity, unit_price, line_total}`; `edit_line` = `{cột: {from, to}}` cho cột đổi trong `product_id`, `unit_name`, `quantity`, `unit_price`, `line_discount` (= `npp_giam_dong`), `line_total`; `invoice_posted` = `{invoice_id, invoice_code, entry_id}`, `invoice_cancelled` = `{invoice_id, invoice_code, import_entry_id, reason}`, `cancel_after_complete` = `{reason, invoice_code}` — màn `orders/[id]` đọc mọi dòng không lọc `action`, dòng khác thêm / bỏ hiện nhãn "Sửa dòng" kèm stage + người); `actor_id`←`nguoi`; `created_at`←`luc`; `org_id` hằng | **Cấm** (`oal_no_direct_writes`) — chỉ `ghi_nhat_ky_don(...)` | `org_iso_oal` (mig 052): mọi người trong NPP — rộng hơn đơn; đề xuất cổng siết theo đơn nhìn thấy được (màn chỉ đọc nhật ký của đơn đang mở, không đổi hành vi) |
 | `giam_don_goc` · 0 | **không port** | — | ảnh chụp giảm đơn cho trigger mig 226; `sua_don` so thẳng `npp_giam_gia_don` cũ / mới trong một lượt | **Cấm** (nội bộ) | RLS bật, không chính sách |
 | `merged_orders` · 1 | **không port** (cổng trả rỗng) | — | gộp đơn M1 di sản | **Cấm** → `LEGACY_FLOW_REMOVED` (câu "chức năng đã gỡ"; giao diện đã khoá nút ghi — cờ `LEGACY_FLOW_WRITES_LOCKED`) | (chép) "Org members can view merged orders"; "Owner/Manager can manage merged orders" (mig 163) |
 | `sales_invoices` · 44 | Sales Invoice WHERE `is_return = 0` AND `is_opening = 'No'` AND `docstatus` ∈ (1, 2) | `name` `HD-####[-n]` | ánh xạ §5.6; `status` từ `docstatus`; `subtotal` = `net_total − discount_amount`; `stock_entry_id` = `name`; `replaced_by` tính; lồng: `customer:customers(!inner)`, `sales_user:users!sales_invoices_sales_user_id_fkey`, `creator:users!sales_invoices_posted_by_fkey`, `order:sales_orders(!inner)`, `lines:sales_invoice_lines`; đếm gộp `status, count()` và đếm theo tuyến phía máy chủ | **Cấm** (không chính sách ghi; chỉ RPC `post_invoice`, `reissue_invoice`, `cancel_invoice`, `assign_doc_seller`, `danh_dau_soan_hang`, `hoan_tat_luot_soan`) | `sales_invoices_select` (mig 124): vai ∈ owner/manager/accountant/warehouse OR người đứng tên = tôi OR đơn của HĐ có người đứng tên = tôi |
-| `sales_invoice_lines` · 14 | Sales Invoice Item (của HĐ thuộc nguồn trên) | `name` dòng con | ánh xạ §5.6; `order_line_id` = `so_detail`; `sort_order` = `idx`; không có `created_at`; lồng: `product:products(!inner)`, `invoice:sales_invoices(!inner)` | **Cấm** | `sales_invoice_lines_select`: theo dòng cha |
+| `sales_invoice_lines` · 14 | Sales Invoice Item (của HĐ thuộc nguồn trên) | `name` dòng con | ánh xạ §5.6; `order_line_id` = `so_detail` (dòng khác đơn vị: `npp_dong_don` — §5.6), tờ đã huỷ (docstatus 2) trả NULL (mig 162: tờ huỷ nhả móc nối để bỏ / sửa dòng đơn được); `sort_order` = `idx`; không có `created_at`; lồng: `product:products(!inner)`, `invoice:sales_invoices(!inner)` | **Cấm** | `sales_invoice_lines_select`: theo dòng cha |
 | `v_hoa_don_con_lai` · 1 | SQL dựng sẵn: nguồn `sales_invoices` + `con_lai` = `grand_total` − Σ max(0, `NPP Phieu Tra.tien_tra`) của phiếu có `hoa_don` = HĐ AND ((`tu_sinh` AND `trang_thai` ∈ submitted, completed) OR (NOT `tu_sinh` AND `trang_thai` = completed)) — truy vấn con theo từng tờ (luật mig 257, không LEFT JOIN nhóm sẵn) | như `sales_invoices` | mọi cột của `sales_invoices` + `con_lai`; hỗ trợ `con_lai.sum()` và đếm theo tuyến gộp máy chủ (`gopMayChu`) | **Cấm** | như `sales_invoices` (`security_invoker`) |
-| `returns` · 67 | `NPP Phieu Tra` | `name` `PT-####` | ánh xạ ở §4.3 (`return_code` = `name`, `credit_with_invoice` = `tu_sinh`, `status` = `trang_thai`, `credit_note_amount` = `tien_tra`, `revenue_date` = `ngay_tru_doanh_so`, `destination_zone` = `sale`/`date` theo `kho_nhan`, `requested_by` = `owner`); `approved_by`, `photo_url`, `applied_receipt_id` → null; lồng: `customer:customers`, `seller:users!returns_sales_user_id_fkey`, `requester:users!returns_requested_by_fkey`, `approver:users!returns_approved_by_fkey` (null), `invoice:sales_invoices(!inner)`, `order:sales_orders`, `lines:return_lines`; đếm gộp `reason, count()` | **Cho có giới hạn** (chép mig 165/166/191/214/227): insert chỉ ở `draft` (owner/manager/sales); phiếu đã qua Nháp chỉ đổi `ghi_chu / ly_do / ngay_tra / nhan_vien` — đổi `ngay_tra` của phiếu tự lập đã hoàn thành → method lập lại tờ ghi có, đổi `nhan_vien` → như `assign_doc_seller`; `trang_thai`, `tu_sinh`, tiền, mốc chỉ qua RPC (`PHIEU_TRA_KHOA`); phiếu tự sinh khoá trừ ghi chú / người (`RETURN_FOLLOWS_INVOICE`); delete chỉ `draft` (owner/manager; sales phiếu của mình) | "Admin roles can view all returns" (mig 002): owner/manager/accountant/warehouse; "Sales see own returns" (mig 198): sales thấy phiếu `owner` = tôi OR `nhan_vien` = tôi OR HĐ gắn của tôi OR đơn của tôi. Ghi: "Sales can create returns" owner/manager/sales; "Owner/Manager can approve returns" (update); "Sales can update/delete own draft returns" (mig 165); "Owner/Manager can delete draft returns" (mig 166) |
-| `return_lines` · 17 | `NPP Phieu Tra Dong` | `name` dòng con | ánh xạ ở §4.3; `line_total` = `thanh_tien` (máy chủ tính, bỏ số gửi lên); lồng: `product:products` | **Cho** khi phiếu cha `draft` và không tự sinh (owner/manager/sales; sales phiếu của mình) — cổng sửa bảng con trong một `save()` phiếu cha; trần giá trả (mig 230), giá ≥ 0, thuế 0..1, tiền tính lại | "Users can view return lines": theo dòng cha; "Authorized roles can manage return lines": owner/manager/sales |
+| `returns` · 67 | `NPP Phieu Tra` | `name` `PT-####` | ánh xạ ở §4.3 (`return_code` = `name`, `credit_with_invoice` = `tu_sinh`, `status` = `trang_thai`, `credit_note_amount` = `tien_tra`, `revenue_date` = `ngay_tru_doanh_so`, `destination_zone` = `sale`/`date` theo `kho_nhan`, `requested_by` = `owner`, `updated_at` = `sua_luc` (trống → `creation`) — không `modified`, §4.3); `approved_by`, `photo_url`, `applied_receipt_id` → null; lồng: `customer:customers`, `seller:users!returns_sales_user_id_fkey`, `requester:users!returns_requested_by_fkey`, `approver:users!returns_approved_by_fkey` (null), `invoice:sales_invoices(!inner)`, `order:sales_orders`, `lines:return_lines`; đếm gộp `reason, count()` | **Cho có giới hạn** (chép mig 165/166/191/214/227): insert chỉ ở `draft` (owner/manager/sales); phiếu đã qua Nháp chỉ đổi `ghi_chu / ly_do / ngay_tra / nhan_vien` — đổi `ngay_tra` của phiếu tự lập đã hoàn thành → method lập lại tờ ghi có, đổi `nhan_vien` → như `assign_doc_seller`; `trang_thai`, `tu_sinh`, tiền, mốc chỉ qua RPC (`PHIEU_TRA_KHOA`); phiếu tự sinh: khoá trạng thái / khách / HĐ / đơn / tiền / dòng hàng và cấm xoá (`RETURN_FOLLOWS_INVOICE`, mig 191), vẫn đổi được ghi chú, lý do, **ngày phiếu** (chỉ đổi ngày của phiếu — công nợ / doanh số vẫn theo ngày HĐ: `giaiThichDoiNgay`, chủ nhà 08/10/2026) và người (đi theo người đứng tên HĐ — mig 194); delete chỉ `draft` (owner/manager; sales phiếu của mình) | "Admin roles can view all returns" (mig 002): owner/manager/accountant/warehouse; "Sales see own returns" (mig 198): sales thấy phiếu `owner` = tôi OR `nhan_vien` = tôi OR HĐ gắn của tôi OR đơn của tôi. Ghi: "Sales can create returns" owner/manager/sales; "Owner/Manager can approve returns" (update); "Sales can update/delete own draft returns" (mig 165); "Owner/Manager can delete draft returns" (mig 166) |
+| `return_lines` · 17 | `NPP Phieu Tra Dong` | `name` dòng con | ánh xạ ở §4.3; `line_total` = `thanh_tien` (máy chủ tính, bỏ số gửi lên); **không có `created_at`** (mig 001 — `lib/xuat-excel/mot-phieu.ts:92` đang chọn cột này: §7.1 điểm 6 (v)); lồng: `product:products` | **Cho** khi phiếu cha `draft` và không tự sinh (owner/manager/sales; sales phiếu của mình) — cổng sửa bảng con trong một `save()` phiếu cha; trần giá trả (mig 230), giá ≥ 0, thuế 0..1, tiền tính lại | "Users can view return lines": theo dòng cha; "Authorized roles can manage return lines": owner/manager/sales |
 | `luot_soan` · 4 | `NPP Luot Soan` (+ `NPP Luot Soan Hoa Don`) | `name` `SH-…` (§2.4) | `invoice_ids` = [`hoa_don` theo `idx`]; `tien_do` JSON; `created_by` = `owner`; `ma` = `name` | **Cấm** (RPC `tao_luot_soan`, `cap_nhat_luot_soan`, `hoan_tat_luot_soan`, `huy_luot_soan`) | `luot_soan_doc` (mig 225): owner/manager/warehouse/accountant |
 | `promotions` · 7 | `NPP Khuyen Mai` | `name` (UUID = id cũ) | `name` (nppsale) = `ten`; `type` = `loai`; `rules` = `quy_tac`; `priority` = `uu_tien`; `target_groups` = [`nhom_khach`]; `starts_at/ends_at` = `tu_ngay/den_ngay`; `is_active` = `dang_dung` | **Cho** owner/manager (CRUD `/promotions`) | "Org members can view promotions": mọi người; "Owner/Manager can manage promotions" |
 | `commission_policies` · 6 | `NPP Chinh Sach Hoa Hong` | `name` (UUID = id cũ) | `name` = `ten`; `type` = `loai`; `tiers` = `bac`; `applies_to` = `ap_dung`; `effective_*` = `tu_ngay/den_ngay`; `is_active` = `dang_dung` | **Cho** owner (CRUD `/commissions/policies`) | "Org members can view commission policies": mọi người; "Owner can manage commission policies": owner |
 | `commission_wallets` · 1 | `NPP Vi Hoa Hong` | `name` `<ky>:<nhan_vien>` | `user_id` = `nhan_vien`; `period` = `ky`; `earned/paid` = `da_dat/da_chi`; `balance` = `so_du`; lồng `user:users` | **Cho** owner/accountant theo RLS (nppsale không có màn / RPC ghi) | "Users can view own wallet": `nhan_vien` = tôi; "Owner/Accountant can view all wallets" + "… can manage wallets": owner/accountant |
 | **E. Tiền — công nợ khách, phiếu thu, chi phí** | | | | | |
-| `receivables` · 45 | `NPP Cong No` | `name` (UUID) | ánh xạ `NPP Cong No` (§4.3); `invoice_id` = `hoa_don` khi `loai = hoa_don` (đầu kỳ → null); `return_id` = `phieu_tra`; `order_id` = `don_hang`; `opening_balance` = (`loai = dau_ky`); `paid` = `da_thu`; `created_at` = `tao_luc`. Lồng: `customer:customers(*)`, `sales_user:users!receivables_sales_user_id_fkey`, `order:sales_orders(order_code, total, order_date)`, `invoice:sales_invoices(id, invoice_code, invoice_date)`; được lồng từ `payments` / `cash_receipt_lines` (`receivable:receivables(!inner)`); `count` exact / `head` | **Chỉ nợ đầu kỳ** (chép `_khoa_ghi_thang_cong_no`, mig 214), vai owner/accountant: **insert** `opening_balance = true`, không HĐ / đơn / phiếu trả, `paid = 0` → method `ghi_no_dau_ky` lập tờ `DK-` (`npp_nv_giu_no` = NV gửi lên, `npp_han_thanh_toan` = hạn gửi lên, `npp_ghi_chu` = `note`), ghi sổ, chiếu dòng, trả dòng; **update** dòng đầu kỳ: `amount` khi `da_thu = 0` → huỷ + amend `DK-0012-1` (đã thu → `CONG_NO_KHOA` — CFD-01 "khoá khi đã thu"), `due_date` / `note` → trường AOS (không huỷ); mọi dòng: `status` `overdue` ↔ `npp_qua_han_tay` của nguồn; **delete** dòng đầu kỳ chưa thu → huỷ tờ `DK-`. Còn lại (số nợ / đã thu / HĐ / khách đổi; luồng cũ `ensureReceivableForOrder`, `recomputeReceivableForOrder` ghi theo `order_id`) → `CONG_NO_KHOA` | "Admin roles can view all receivables" (mig 002): vai ∈ owner/manager/accountant; "Sales see own receivables" (mig 002): sales AND NV giữ nợ = tôi. Thủ kho: không chính sách → không dòng nào. Ghi: "Authorized roles can create receivables" (mig 166) và "Accountant/Owner can update receivables" (mig 002): owner/accountant; "Accountant can delete opening receivables" (mig 102): owner/accountant AND nợ đầu kỳ |
-| `payments` · 11 | SQL dựng sẵn: `NPP Phieu Thu Dong` ⨝ `NPP Phieu Thu` (`trang_thai <> 'voided'`) | `name` dòng con | `receivable_id` = `cong_no`; `collected_by` = `nguoi_thu` của phiếu; `amount` = `so_tien`; `method` = `hinh_thuc` của phiếu (dòng `payment`) / `credit_applied` / `return_credit`; `collected_at` = `creation` phiếu; `verified_by/at` = `xac_nhan_*`. Lồng: `collector:users!payments_collected_by_fkey(full_name, role)`, `verifier:users!payments_verified_by_fkey`, `receivable:receivables(!inner)` (lọc `receivable.customer_id`) | **Chỉ** `update({verified_by, verified_at})` (mig 214), vai owner/accountant ("Accountant can verify payments") → ghi `xac_nhan_*` của dòng; còn lại → `THU_TIEN_KHOA` | "Org members can view payments" (mig 092): vai ≠ sales; "Sales see own order payments" (mig 092): sales AND khoản nợ có đơn (`don_hang`) đứng tên tôi (`npp_nhan_vien` của Sales Order) |
+| `receivables` · 45 | `NPP Cong No` | `name` (UUID) | ánh xạ `NPP Cong No` (§4.3); `invoice_id` = `hoa_don` khi `loai = hoa_don` (đầu kỳ → null); `return_id` = `phieu_tra`; `order_id` = `don_hang`; `opening_balance` = (`loai = dau_ky`); `paid` = `da_thu`; `created_at` = `tao_luc`. Lồng: `customer:customers(*)`, `sales_user:users!receivables_sales_user_id_fkey`, `order:sales_orders(order_code, total, order_date)`, `invoice:sales_invoices(id, invoice_code, invoice_date)`; được lồng từ `payments` / `cash_receipt_lines` (`receivable:receivables(!inner)`); `count` exact / `head` | **Chỉ nợ đầu kỳ** (chép `_khoa_ghi_thang_cong_no`, mig 214), vai owner/accountant: **insert** `opening_balance = true`, không HĐ / đơn / phiếu trả, `paid = 0`, khách **chưa có** dòng `dau_ky` còn hiệu lực — mỗi khách đúng MỘT dòng nợ đầu kỳ (`uq_receivables_opening`, mig 102; màn nhập Excel nhờ nó mà nhập lại / chạy chồng không nhân đôi — `opening-balance/io.ts:116–119`): trùng → lỗi `23505` nêu tên chỉ mục ấy (dòng vào `failures`); method khoá dòng Customer `FOR UPDATE` rồi kiểm, `NPP Cong No.khoa_cho` = `dau_ky:<khách>` làm lưới (§4.3, §2.9) → method `ghi_no_dau_ky` lập tờ `DK-` (`npp_nv_giu_no` = NV gửi lên, `npp_han_thanh_toan` = hạn gửi lên, `npp_ghi_chu` = `note`), ghi sổ, chiếu dòng, trả dòng; **update** dòng đầu kỳ: `amount` khi `da_thu = 0` → huỷ + amend `DK-0012-1` (đã thu → `CONG_NO_KHOA` — CFD-01 "khoá khi đã thu"), `due_date` / `note` → trường AOS (không huỷ); mọi dòng: `status` `overdue` ↔ `npp_qua_han_tay` của nguồn; **delete** dòng đầu kỳ chưa thu → huỷ tờ `DK-`. Còn lại (số nợ / đã thu / HĐ / khách đổi; luồng cũ `ensureReceivableForOrder`, `recomputeReceivableForOrder` ghi theo `order_id`) → `CONG_NO_KHOA` | "Admin roles can view all receivables" (mig 002): vai ∈ owner/manager/accountant; "Sales see own receivables" (mig 002): sales AND NV giữ nợ = tôi. Thủ kho: không chính sách → không dòng nào. Ghi: "Authorized roles can create receivables" (mig 166) và "Accountant/Owner can update receivables" (mig 002): owner/accountant; "Accountant can delete opening receivables" (mig 102): owner/accountant AND nợ đầu kỳ |
+| `payments` · 11 | SQL dựng sẵn: `NPP Phieu Thu Dong` ⨝ `NPP Phieu Thu` (`trang_thai <> 'voided'`) | `name` dòng con | `receivable_id` = `cong_no`; `collected_by` = `nguoi_thu` của phiếu; `amount` = `so_tien`; `method` = `hinh_thuc` của phiếu (dòng `payment`) / `credit_applied` / `return_credit`; `collected_at` = `creation` phiếu; `verified_by/at` = `xac_nhan_*`. Lồng: `collector:users!payments_collected_by_fkey(full_name, role)`, `verifier:users!payments_verified_by_fkey`, `receivable:receivables(!inner)` (lọc `receivable.customer_id`) | **Chỉ** `update({verified_by, verified_at})` (mig 214), vai owner/accountant ("Accountant can verify payments") → ghi `xac_nhan_*` của dòng; còn lại → `THU_TIEN_KHOA` | "Org members can view payments" (mig 092): vai ≠ sales AND khoản nợ (`cong_no`) thấy được theo RLS `receivables` — câu con `EXISTS (receivables …)` của chính sách chịu RLS bảng nó đọc (mig 163: "Nó có lọc thật"); thực chất owner / manager / accountant thấy mọi dòng, **thủ kho không thấy dòng nào** (`receivables` không có chính sách cho thủ kho). "Sales see own order payments" (mig 092): sales AND khoản nợ có đơn (`don_hang`) đứng tên tôi (`npp_nhan_vien` của Sales Order) AND khoản nợ thấy được theo "Sales see own receivables" (`NPP Cong No.nhan_vien` = tôi — sau bàn giao chuyển hẳn, mig 246, NV cũ không còn đọc khoản thu của nợ đã giao dù đơn vẫn mang tên mình). Bộ thử so tập dòng có ca thủ kho (0 dòng) và ca nợ đã chuyển hẳn sang NV khác |
 | `cash_receipts` · 12 | `NPP Phieu Thu` | `name` `PTH-…` | `receipt_code` = `name`; `receipt_date` = `ngay_thu`; `source_type` / `source_id` = `nguon` / `nguon_id`; `submitted_amount` = `expected_amount` = `tien_thu`; `status` = `trang_thai`; `received_*` = `nhan_*`; `voided_*` / `void_reason` = `huy_*` / `ly_do_huy`; `notes` = `ghi_chu`; `created_by` = `owner`; `tim_kd` (cùng tên); `total_amount` (màn chuyến giao cũ đọc — nppsale không có cột) → null. Lồng: `collector:users!cash_receipts_collected_by_fkey`, `creator:users!cash_receipts_created_by_fkey`, `receiver:users!cash_receipts_received_by_fkey`; được lồng từ dòng (`receipt:cash_receipts(status, receipt_code)`) | **Chỉ** update `status` `pending` → `received` + `received_by` / `received_at` + `notes` (mig 214) → trường của phiếu, không chạm sổ; insert / delete / đổi khác → `PHIEU_THU_KHOA` (lập: RPC `create_cash_receipt`; huỷ: `void_cash_receipt`). Màn chuyến giao (`deliveries/*/settle`, `stock-out/collect`) đã chặn | `cash_receipts_select_admin` (mig 034): owner/manager/accountant; `cash_receipts_select_own` (mig 034): sales/warehouse AND `nguoi_thu` = tôi. Ghi (chép, trigger vẫn chặn phần tiền): `cash_receipts_insert` owner/manager/accountant/warehouse; `cash_receipts_update` owner/manager/accountant; `cash_receipts_delete` owner/manager |
-| `cash_receipt_lines` · 7 | `NPP Phieu Thu Dong` (mọi phiếu, kể cả đã huỷ) | `name` dòng con | `receipt_id` = `parent`; `receivable_id` = `cong_no`; `invoice_id` = `hoa_don`; `order_id` = `don_hang`; `return_id` = `phieu_tra`; `payment_id` = `name` khi phiếu chưa huỷ, null khi đã huỷ (nppsale gỡ `payment_id` rồi xoá `payments`); `amount` = `so_tien`; `kind` = `loai`; `notes` = `ghi_chu`. Lồng: `invoice:sales_invoices(id, invoice_code, customer:customers(store_name))`, `receivable:receivables(customer:customers(store_name, phone))`, `order:sales_orders(order_code, customer:customers(…))`, `receipt:cash_receipts(status, receipt_code)` | **Cấm** — `THU_TIEN_KHOA` (trigger `trg_khoa_ghi_thang_dong_phieu_thu`, mig 214) | `cash_receipt_lines_select` (mig 020): mọi người trong NPP (chỉ kiểm phiếu cha cùng NPP, **không** theo vai — rộng hơn phiếu thu). Đề xuất cổng siết theo phiếu cha nhìn thấy được; màn chỉ đọc dòng của phiếu đang mở / đang liệt kê nên không đổi hành vi |
+| `cash_receipt_lines` · 7 | `NPP Phieu Thu Dong` (mọi phiếu, kể cả đã huỷ) | `name` dòng con | `receipt_id` = `parent`; `receivable_id` = `cong_no`; `invoice_id` = `hoa_don`; `order_id` = `don_hang`; `return_id` = `phieu_tra`; `payment_id` = `name` khi phiếu chưa huỷ, null khi đã huỷ (nppsale gỡ `payment_id` rồi xoá `payments`); `amount` = `so_tien`; `kind` = `loai`; `notes` = `ghi_chu`. Lồng: `invoice:sales_invoices(id, invoice_code, customer:customers(store_name))`, `receivable:receivables(customer:customers(store_name, phone))`, `order:sales_orders(order_code, customer:customers(…))`, `receipt:cash_receipts(status, receipt_code)` | **Cấm** — `THU_TIEN_KHOA` (trigger `trg_khoa_ghi_thang_dong_phieu_thu`, mig 214) | `cash_receipt_lines_select` (mig 020): theo dòng cha — câu con `EXISTS (cash_receipts …)` chịu RLS của `cash_receipts` (mig 163: "Nó có lọc thật"). Chính sách đang chạy: owner / manager / accountant thấy mọi dòng; sales / thủ kho chỉ thấy dòng của phiếu có `nguoi_thu` = tôi (`cash_receipts_select_own`, mig 034). Cổng chép đúng tập phiếu cha ấy (chép, không phải siết), kể cả lời đọc theo `invoice_id` của POS (`invoice-screen.tsx:277–279`, `pos/hoa-don/[id]/page.tsx:147–149`): NVBH chỉ thấy phần thu của phiếu mình lập |
 | `cash_collections` · 0 | **không port** (cổng trả rỗng) | — | — | **Cấm** → `LEGACY_FLOW_REMOVED` (câu "chức năng đã gỡ"; giao diện đã khoá nút ghi — cờ `LEGACY_FLOW_WRITES_LOCKED`) | (chép) "View cash collections" (mig 009): tài xế của dòng OR owner/manager/accountant |
 | `expense_categories` · 2 | `NPP Danh Muc Chi Phi` | `name` (UUID) | `code` = `ma`; `name` = `ten`; `bucket` = `nhom`; `is_active` = `dang_dung`; `org_id` hằng. Được lồng từ `expenses` (`category:expense_categories(name, bucket)`, 6 chỗ) | nppsale không có màn ghi (chỉ seed mig 016); chính sách cho owner/manager/accountant ghi → cổng cho đúng ba vai insert / update / delete (xoá danh mục đã dùng → lõi chặn liên kết, dịch tiếng Việt) | `expense_categories_all` (mig 016): đọc — mọi người trong NPP; ghi `WITH CHECK` owner/manager/accountant. (Vế xoá của chính sách chỉ kiểm NPP — mọi vai xoá được; cổng siết về ba vai, không màn nào xoá) |
 | `expenses` · 8 | `NPP Phieu Chi` | `name` `PC-####` | `expense_date` = `ngay_chi`; `amount` = `so_tien`; `category_id` = `danh_muc`; `description` = `dien_giai`; `reference_code` = `so_tham_chieu`; `source_type` / `source_id` = `nguon_loai` / `kiem_ke`; `is_paid` / `paid_at` / `payment_method` = `da_tra` / `tra_luc` / `hinh_thuc`; `created_by` = `owner`; `updated_at` = `modified`. Lồng: `category:expense_categories(name, bucket)` | **Cho** (nppsale ghi thẳng, không RPC): insert / update owner/manager/accountant, delete owner/manager → method `luu_phieu_chi` / `xoa_phieu_chi` (lập / huỷ / lập lại bút toán `BTC-` cùng giao dịch); phiếu nguồn `stocktake`: chỉ `description` / `reference_code` (§7.1 điểm 18) | `expenses_select` / `expenses_insert` / `expenses_update` (mig 016): owner/manager/accountant; `expenses_delete` (mig 016): owner/manager |
 | **F. Mua hàng — NCC, phiếu nhập, trả NCC, công nợ NCC** | | | | | |
-| `suppliers` · 38 | Supplier | `name` `NCC-####` | ánh xạ §5.2; `code` = `npp_ma`; `is_active` = NOT `npp_ngung_hop_tac`; `credit_limit` = `npp_han_muc` khi `npp_co_han_muc` (không thì null); `tim_kd` = `npp_tim_kd`; `org_id` hằng. Lồng: `supplier:suppliers(name, code)` (16 chỗ), `supplier:suppliers!products_primary_supplier_id_fkey` (từ `products` — Item Default) | **Cho** owner/manager/warehouse: insert / update → lưu Supplier (`npp_ma` duy nhất — trùng → lỗi tiếng Việt; `npp_tim_kd` tính đè); **delete** → `NCC_XOA_QUA_RPC` (trigger `_ncc_xoa_qua_rpc`, mig 233) — chỉ RPC `xoa_nha_cung_cap` (chủ NPP; NCC có chứng từ → `NCC_CO_CHUNG_TU`); gộp → RPC `gop_nha_cung_cap` (`rename_doc(..., merge=True)` của Frappe — bàn bạc 4.1) | "Authenticated can view suppliers" (mig 092): mọi người trong NPP; "Owner/Manager can manage suppliers" (mig 163): owner/manager/warehouse |
+| `suppliers` · 38 | Supplier | `name` `NCC-####` | ánh xạ §5.2; `code` = `npp_ma`; `notes` = `supplier_details` (lõi); `is_active` = NOT `npp_ngung_hop_tac`; `credit_limit` = `npp_han_muc` khi `npp_co_han_muc` (không thì null); `tim_kd` = `npp_tim_kd`; `org_id` hằng. Lồng: `supplier:suppliers(name, code)` (16 chỗ), `supplier:suppliers!products_primary_supplier_id_fkey` (từ `products` — Item Default) | **Cho** owner/manager/warehouse: insert / update → lưu Supplier (`npp_ma` duy nhất — trùng → lỗi tiếng Việt; `npp_tim_kd` tính đè); **delete** → `NCC_XOA_QUA_RPC` (trigger `_ncc_xoa_qua_rpc`, mig 233) — chỉ RPC `xoa_nha_cung_cap` (chủ NPP; NCC có chứng từ → `NCC_CO_CHUNG_TU`); gộp → RPC `gop_nha_cung_cap` (`rename_doc(..., merge=True, ignore_permissions=True)` của Frappe sau khi method tự kiểm vai — bàn bạc 4.1; không cờ ấy lõi đòi người gọi quyền ghi cả hai NCC và quyền xoá NCC cũ — `frappe/model/rename_doc.py:209`, `:377–383` — vai NPP không có ở lớp Frappe, §2.10) | "Authenticated can view suppliers" (mig 092): mọi người trong NPP; "Owner/Manager can manage suppliers" (mig 163): owner/manager/warehouse |
 | `purchase_invoices` · 14 | Purchase Invoice WHERE `npp_loai = 'phieu_nhap'` | `name` `PN-####[-n]` | ánh xạ §5.9; `status` từ docstatus; `subtotal` = `total`; `vat` = Σ dòng VAT; `discount` = `npp_giam_dau_phieu`; `vat_override` = `npp_thue_go_tay` khi `npp_co_thue_go_tay`; `total` = `grand_total`; `stock_entry_id` = `name` (đã hoàn thành); `payable_id` = dòng `NPP Cong No NCC`; `completed_at` = `npp_hoan_thanh_luc`; `po_id` → null; phiếu có `npp_sua_gia` → phủ số đã sửa. Lồng: `supplier:suppliers(name, code)`, `lines:purchase_invoice_lines`; lọc `.in("payable_id")` → tra ngược qua `NPP Cong No NCC.chung_tu` | **Cho có giới hạn**, vai owner/manager/accountant/warehouse: phiếu **nháp** (docstatus 0) — insert (số `PN-` cấp ngay — câu 18) / update đầu phiếu (`supplier_id`, `invoice_number`, `invoice_date`, `warehouse_zone`, `discount`, `vat_override`, `notes`) / delete → method lưu nháp (dựng lại bảng thuế: dòng VAT theo mặt hàng, dòng Actual thuế gõ tay, dòng Actual + Deduct giảm đầu phiếu); đổi `status` → `USE_RPC` (`complete_purchase_invoice`, `cancel_purchase_invoice`); phiếu đã hoàn thành → chỉ `notes` (AOS), còn lại qua RPC `sua_phieu_nhap`. nppsale cho các vai này ghi **mọi** cột kể cả `status` (RLS `FOR ALL`, không trigger) — cổng siết theo luật "trạng thái chứng từ chỉ đổi qua RPC" (CLAUDE.md) | "Financial roles view purchase invoices" (mig 034): owner/manager/accountant; "Manage purchase invoices" (mig 163, `FOR ALL` nên gồm cả đọc): owner/manager/accountant/warehouse → đọc và ghi: 4 vai; sales không thấy |
 | `purchase_invoice_lines` · 6 | Purchase Invoice Item của nguồn trên | `name` dòng con | ánh xạ §5.9; `invoice_id` = `parent`; `unit_price` = `price_list_rate`; `line_discount` = `npp_giam_dong`; `vat_rate` = `npp_thue_suat`; `line_total` = tiền sau giảm + VAT dòng (như trình duyệt đang ghi); `sort_order` = `idx`; `notes` = `npp_ghi_chu`; phủ `npp_sua_gia` khi có. Lồng: `product:products(name, sku, base_unit)` | **Cho** khi phiếu cha **nháp** (4 vai) — cổng sửa bảng con trong một lần lưu phiếu cha (xoá hết rồi chèn lại như `saveReceiptLines`); phiếu đã hoàn thành → `USE_RPC` | "View pinv lines" (mig 065) + "Manage pinv lines" (mig 163): theo dòng cha (4 vai) |
 | `supplier_returns` · 13 | Purchase Invoice WHERE `npp_loai = 'tra_ncc'` | `name` `PTNCC-####[-n]` | ánh xạ §5.9; `return_date` = `posting_date`; `reason` = `npp_ly_do`; `return_code_cu` = `npp_ma_cu`; `return_seq` tách từ `name`; tiền đổi dấu (lõi âm → nppsale dương); `warehouse_zone` = `set_warehouse` (mặc định kho cận date); `stock_entry_id` = `name`; `payable_credit_id` = dòng `NPP Cong No NCC` (âm); `completed_*` = `npp_hoan_thanh_*`. Lồng: `supplier:suppliers(id, name, code)`, `lines:supplier_return_lines` | **Cho có giới hạn** như phiếu nhập: nháp ghi được (số `PTNCC-` cấp lúc lập — trigger `_danh_so_tra_ncc` mig 240); đổi trạng thái → `USE_RPC` (`complete_supplier_return`, `cancel_supplier_return`, `khoi_phuc_phieu_tra_ncc`); "sửa phiếu đã xuất" = huỷ + amend `PTNCC-0042-1` (CFD-01) | "View supplier returns" (mig 068): **mọi người** trong NPP (kể cả sales); "Manage supplier returns" (mig 068): owner/manager/accountant/warehouse |
 | `supplier_return_lines` · 4 | Purchase Invoice Item của nguồn trên | `name` dòng con | như `purchase_invoice_lines`, `quantity` đổi dấu. Lồng: `product:products(id, name, sku, base_unit)` | **Cho** khi phiếu cha nháp (4 vai) | "View supplier return lines" (mig 068): theo dòng cha; "Manage supplier return lines" (mig 163): 4 vai + theo dòng cha |
-| `payables` · 13 | `NPP Cong No NCC` | `name` (UUID) | ánh xạ `NPP Cong No NCC` (§4.4); `tim_kd` cùng tên (bổ sung khi gộp); `stock_entry_id` = `phieu_kho`; `invoice_number` = `so_hd_ncc`; `opening_balance` = (`loai = dau_ky`); `paid` = `da_tra`; `notes` = `ghi_chu`; `created_at` = `tao_luc`. Lồng: `supplier:suppliers(name, code, phone, address, payment_terms)`; được lồng từ `stock_entries` (`debt:payables!inner(status)`) và `payable_payments` (`payable:payables(id, invoice_number, opening_balance, created_at, supplier:suppliers(name))`) | Chép `_khoa_ghi_thang_no_ncc` (mig 227), vai owner/accountant: **insert** khoản chưa trả (`paid = 0`, `status` open/overdue) → `opening_balance = true`: tờ `DKN-` (`is_opening`); `false`: tờ `NTN-` (`stock_entry_id` → `npp_phieu_kho`); ghi sổ, chiếu dòng, dồn trả trước của NCC (mig 242); **update** mọi khoản: `invoice_number` (`bill_no` AOS), `due_date` (`npp_han_thanh_toan`), `notes` (`npp_ghi_chu`); `amount` chỉ khoản đầu kỳ / lập tay **không** gắn phiếu kho và chưa trả → huỷ + amend; `status` phải khớp số đã trả (luật mig 227: `overdue` khi còn nợ → `npp_qua_han_tay` = 1; về `open` khi chưa trả đồng nào → bỏ dấu); **delete** khoản chưa trả, không phiếu chi → huỷ tờ `DKN-` / `NTN-`; khoản của phiếu nhập / trả NCC → `NO_NCC_KHOA` (§7.1 điểm 17). `paid` / `supplier_id` / `stock_entry_id` / `opening_balance` / `created_at` đổi → `NO_NCC_KHOA` | "Financial roles view payables" (mig 034): owner/manager/accountant; "Manage payables" (mig 163): owner/accountant |
-| `payable_payments` · 7 | SQL dựng sẵn UNION ALL: Payment Entry Reference (PE Pay docstatus 1, `npp_loai` ∈ `phieu_chi_ncc`, `ghi_tra_ncc`) + Journal Entry Account dòng Nợ Phải trả tham chiếu PI (JE `bu_tru_ncc` docstatus 1) | `name` dòng con | `payable_id` = dòng `NPP Cong No NCC` của PI được tham chiếu; `amount` = `allocated_amount` / `debit`; `method` = Mode of Payment → `cash` / `transfer` (JE → `offset`); `paid_by` = `owner` → NV; `paid_at` = `creation`; `verified_*` = `npp_xac_nhan_*` của dòng; `notes` = `npp_ghi_chu` của PE / `user_remark` của JE; `supplier_payment_id` = PE khi `npp_loai = phieu_chi_ncc`. Lồng: `payer:users!payable_payments_paid_by_fkey(full_name, role)`, `payable:payables(…)` | **Chỉ** `update({verified_by, verified_at})` (mig 227), vai owner/accountant → `npp_xac_nhan_*`; còn lại → `CHI_NCC_KHOA` (ghi trả qua RPC `record_payable_payment`, phiếu chi qua `chi_tra_ncc`) | "Financial roles view payable payments" (mig 034): owner/manager/accountant; "Manage payable payments" (mig 163): owner/accountant |
+| `payables` · 13 | `NPP Cong No NCC` | `name` (UUID) | ánh xạ `NPP Cong No NCC` (§4.4); `tim_kd` cùng tên (bổ sung khi gộp); `stock_entry_id` = `phieu_kho`; `invoice_number` = `so_hd_ncc`; `opening_balance` = (`loai = dau_ky`); `paid` = `da_tra`; `notes` = `ghi_chu`; `created_at` = `tao_luc`. Lồng: `supplier:suppliers(name, code, phone, address, payment_terms)`; được lồng từ `stock_entries` (`debt:payables!inner(status)`) và `payable_payments` (`payable:payables(id, invoice_number, opening_balance, created_at, supplier:suppliers(name))`) | Chép `_khoa_ghi_thang_no_ncc` (mig 227), vai owner/accountant: **insert** khoản chưa trả (`paid = 0`, `status` open/overdue) → `opening_balance = true`: tờ `DKN-` (`is_opening`) — **mỗi NCC tối đa một tờ `DKN-` docstatus 1** (chép `uq_payables_opening`, mig 102; màn Nợ đầu kỳ nhờ nó mà nhập lại / chạy chồng không nhân đôi — `opening-balance/io.ts:115–118`): method khoá dòng Supplier `FOR UPDATE` rồi kiểm, `NPP Cong No NCC.khoa_cho` = `dau_ky:<NCC>` làm lưới (§4.4, §2.9); đã có tờ → lỗi `23505` nêu tên chỉ mục ấy (dòng vào `failures`); `false`: tờ `NTN-` (`stock_entry_id` → `npp_phieu_kho` + `npp_phieu_kho_loai` theo nguồn của id ở cổng `stock_entries`: Stock Entry `IN-…` hay Purchase Invoice `PN-…`); ghi sổ, chiếu dòng, dồn trả trước của NCC (mig 242); **update** mọi khoản: `invoice_number` (`bill_no` AOS), `due_date` (`npp_han_thanh_toan`), `notes` (`npp_ghi_chu`); `amount` chỉ đổi được ở khoản **đầu kỳ** không gắn phiếu kho (luật mig 227: `opening_balance` AND `stock_entry_id IS NULL`) và chưa trả (đã trả → `NO_NCC_KHOA` — khoá khi đã trả, CFD-01) → huỷ + amend; khoản lập tay `NTN-` đổi `amount` → `NO_NCC_KHOA` (màn `/payables/[id]` chỉ sửa số HĐ, hạn, ghi chú — `payables/[id]/page.tsx:150–161`); `status` phải khớp số đã trả (luật mig 227: `overdue` khi còn nợ → `npp_qua_han_tay` = 1; về `open` khi chưa trả đồng nào → bỏ dấu); **delete** khoản chưa trả, không phiếu chi → huỷ tờ `DKN-` / `NTN-`; khoản của phiếu nhập / trả NCC → `NO_NCC_KHOA` (§7.1 điểm 17). `paid` / `supplier_id` / `stock_entry_id` / `opening_balance` / `created_at` đổi → `NO_NCC_KHOA` | "Financial roles view payables" (mig 034): owner/manager/accountant; "Manage payables" (mig 163): owner/accountant |
+| `payable_payments` · 7 | SQL dựng sẵn UNION ALL: Payment Entry Reference (PE Pay docstatus 1, `npp_loai` ∈ `phieu_chi_ncc`, `ghi_tra_ncc`) + Journal Entry Account dòng Nợ Phải trả tham chiếu PI (JE `bu_tru_ncc` docstatus 1) + **phần chưa phân bổ** của PE `phieu_chi_ncc` docstatus 1 (`unallocated_amount` > 0) dựng thành một dòng — như `chi_tra_ncc` / `_don_tra_truoc_ncc` (mig 242): cả số tiền phiếu chi vào dòng trên khoản trả trước, phần chưa dồn hết nằm lại ở đó, nên tổng các dòng của một phiếu chi = `paid_amount` (màn chi tiết phiếu chi `docPhanTruPhieuChi` đọc theo `supplier_payment_id` có phần "Tiền trả trước"; `finance_cash_flow`, `finance_balance_sheet`, `napPhieuChi` cộng các dòng của phiếu chi theo `paid_at` — thiếu dòng này là chi trả NCC hụt đúng phần trả trước) | `name` dòng con; dòng phần chưa phân bổ: `<PE>::tra_truoc` | `payable_id` = dòng `NPP Cong No NCC` của PI được tham chiếu (dòng phần chưa phân bổ: dòng `tra_truoc` của PE); `amount` = `allocated_amount` / `debit` / `unallocated_amount`; `method` = Mode of Payment → `cash` / `transfer` (JE → `offset`); `paid_by` = `owner` → NV; `paid_at` theo luật `v_luc` (mig 242 — §5.7): PE `phieu_chi_ncc` → `creation` khi `posting_date` là ngày tạo (giờ VN), không thì 12:00 giờ VN của `posting_date`, phần dồn sang khoản nợ mới giữ lúc chi của phiếu (không lấy `creation` của dòng tham chiếu mới); PE `ghi_tra_ncc` / JE `bu_tru_ncc` → `creation` (`record_payable_payment` ghi `now()`); `verified_*` = `npp_xac_nhan_*` của dòng (dòng phần chưa phân bổ: `npp_xac_nhan_*` cấp PE — §5.7); `notes` = `npp_ghi_chu` của PE / `user_remark` của JE; `supplier_payment_id` = PE khi `npp_loai = phieu_chi_ncc`. Lồng: `payer:users!payable_payments_paid_by_fkey(full_name, role)`, `payable:payables(…)` | **Chỉ** `update({verified_by, verified_at})` (mig 227), vai owner/accountant → `npp_xac_nhan_*` của dòng tham chiếu (dòng `<PE>::tra_truoc` → `npp_xac_nhan_*` cấp PE); còn lại → `CHI_NCC_KHOA` (ghi trả qua RPC `record_payable_payment`, phiếu chi qua `chi_tra_ncc`) | "Financial roles view payable payments" (mig 034): owner/manager/accountant; "Manage payable payments" (mig 163): owner/accountant |
 | `supplier_payments` · 5 | Payment Entry WHERE `payment_type = 'Pay'` AND `npp_loai = 'phieu_chi_ncc'` | `name` `PCNCC-####` | `code` = `name`; `seq` tách từ `name`; `supplier_id` = `party`; `paid_date` = `posting_date`; `amount` = `paid_amount`; `method` = Mode of Payment → `cash` / `transfer`; `reference_code` = `reference_no`; `notes` = `npp_ghi_chu`; `status` = docstatus 1 → `posted`, 2 → `cancelled`; `prepay_payable_id` = dòng `tra_truoc` của `NPP Cong No NCC` (null khi đã dồn hết — như `ON DELETE SET NULL`); `created_by` = `owner`; `cancelled_*` / `cancel_reason` = `npp_huy_*` / `npp_ly_do_huy`. Lồng: `supplier:suppliers(name)` | **Cấm** (không chính sách ghi — chỉ RPC `chi_tra_ncc`, `huy_phieu_chi_ncc`) | `phieu_chi_ncc_doc` (mig 242): owner/manager/accountant |
 | `purchase_orders` · 0 | **không port** (cổng trả rỗng; giao diện không còn lời gọi nào) | — | đơn mua đời đầu (mig 012) | **Cấm** → `LEGACY_FLOW_REMOVED` (câu "chức năng đã gỡ"; giao diện đã khoá nút ghi — cờ `LEGACY_FLOW_WRITES_LOCKED`) | (chép) "Ops roles view POs" (mig 034): owner/manager/warehouse/accountant; "Manage POs" (mig 163): owner/manager/warehouse |
 | `purchase_order_lines` · 1 | **không port** (cổng trả rỗng — một chỗ còn đọc ở báo cáo NCC, nhận rỗng như sổ chưa có đơn mua) | — | — | **Cấm** → `LEGACY_FLOW_REMOVED` (câu "chức năng đã gỡ"; giao diện đã khoá nút ghi — cờ `LEGACY_FLOW_WRITES_LOCKED`) | (chép) "Ops roles view PO lines" (mig 034) / "Manage PO lines" (mig 163): theo dòng cha |
 | **G. Kho — lô, phiếu kho, thẻ kho** | | | | | |
-| `batches` · 36 | SQL dựng sẵn: (Batch × kho NPP) có gói lô chưa huỷ + (Batch × `npp_kho_tao`) cho lô chưa phát sinh + dòng **lô ảo** (mặt hàng không lô × kho) từ Bin | `<lô>::sale` / `<lô>::date`; lô ảo `~<SKU>::<vùng>` | `product_id` = `item`; `batch_code` = `name` (lô ảo `—`); `manufactured_at`; `expires_at` = `expiry_date` (trống → `2099-12-31`); `location` = `npp_vi_tri`; `qty_initial` = Σ SL nhập vào kho ấy; `qty_on_hand` = Σ SL gói lô tại kho (đơn vị cơ sở; lô ảo = `Bin.actual_qty`, âm được); `unit_cost` = giá vốn lô (§2.11; lô rỗng → `npp_gia_von_lo_rong`; lô ảo → `Bin.valuation_rate`); `status` = `available` (Batch tắt → `disabled`); `warehouse_zone` từ kho; `zone_moved_*` = `npp_chuyen_vung_*`; `received_at` = `npp_ngay_nhap`; `tim_kd`. Lồng: `product:products(*)`, `product:products(shelf_life_days)`; được lồng từ dòng phiếu kho (`batch:batches(…)`). Lọc `.gt("qty_on_hand", 0)`, `.eq("warehouse_zone")`, `.lte/.gte("expires_at")`, sắp `expires_at` | Chép trigger `_trg_khoa_ghi_thang_lo` (mig 170), vai owner/warehouse: **insert** chỉ lô **rỗng** (`qty` = 0) → Batch (`npp_kho_tao`, `npp_gia_von_lo_rong`; có tồn → `SO_KHO_KHOA`); **update**: `batch_code` → `doi_ma_lo` (`rename_doc` ép, kiểm vai — PoC 8; ảnh hưởng cả hai vùng của lô), `expires_at` → `expiry_date` + luật kho date (trong ngưỡng mà lô có tồn ở kho bán → phiếu `CKL-` ngay, như trigger `BEFORE UPDATE OF expires_at` mig 028), `location` → `npp_vi_tri`, `warehouse_zone` → phiếu chuyển kho `CKL-` toàn bộ tồn của dòng (vào kho bán mà lô gần hạn → `HANG_GAN_HAN` như mig 148), `unit_cost` khi tồn 0 → `npp_gia_von_lo_rong`; đổi `qty_*` / `product_id` → `SO_KHO_KHOA`; **delete** khi tồn 0 và chưa có sổ kho → xoá Batch (có sổ → `SO_KHO_KHOA`); mọi lời ghi lên lô ảo → `SO_KHO_KHOA` | "Org members can view batches" (mig 002): mọi người trong NPP; "Owner/Warehouse can manage batches" (mig 002): owner/warehouse. `unit_cost` theo luật ẩn giá vốn chung của cổng (ẩn với người thiếu `inventory.cost` — như `products.cost_price`, §6.1; nppsale chỉ ẩn ở giao diện) |
-| `stock_entries` · 28 | SQL dựng sẵn UNION ALL: (1) Stock Entry (trừ `npp_loai = dieu_chinh_kiem_ke`); (2) `NPP Kiem Ke` → `type = 'stocktake'`; (3) Sales Invoice `update_stock = 1` (HĐ → `export`, tờ ghi có có kho → `import`); (4) Purchase Invoice `update_stock = 1` (PN → `import`, PTNCC → `export`) | `name` chứng từ | `entry_code` = `name`; `type` theo nguồn / `purpose`; `status` từ docstatus (`NPP Kiem Ke`: `trang_thai`); `posted_at` = `posting_date` + `posting_time` (`NPP Kiem Ke`: `duyet_luc`); `supplier_id` = `supplier`; `ref_order_ids` = [`npp_don_hang` của HĐ] / []; `created_by` = `owner`; `notes` = `npp_ghi_chu` (HĐ / PI: `npp_ghi_chu` của tờ); `warehouse_zone` = kho nguồn (xuất / chuyển) hoặc kho nhận (nhập); `dest_warehouse_zone` = `to_warehouse` (chuyển); `issue_reason` = `npp_ly_do_xuat`; `tim_kd` = `npp_tim_kd` (Stock Entry / Sales Invoice / Purchase Invoice) ∥ `tim_kd` (`NPP Kiem Ke`). Lồng: `creator:users!stock_entries_created_by_fkey(*)` (8 chỗ), `debt:payables!inner(status)` → `NPP Cong No NCC` theo `phieu_kho`; được lồng từ dòng (`entry:stock_entries(!inner)`) | Chép `_trg_khoa_ghi_thang_phieu_kho` (mig 170), vai owner/warehouse: **insert** chỉ phiếu **nháp** → `export` / `transfer` / `import`: Stock Entry nháp (`XKL-` / `CKL-` / `IN-`); `stocktake`: `NPP Kiem Ke` nháp; **update** `notes` (mọi phiếu kho tay) → `npp_ghi_chu`; nháp → `cancelled` → xoá nháp (Frappe không cho nháp sang docstatus 2; `NPP Kiem Ke` thì `cancelled`); **delete** nháp; ghi sổ / huỷ → RPC (`post_stock_issue`, `post_stock_transfer`, `post_stock_adjustment`, `reject_stock_adjustment`, `cancel_stock_entry`); dòng nguồn HĐ / PI → **cấm** (đổi ở chứng từ gốc); còn lại → `SO_KHO_KHOA` | "Org members can view stock entries" (mig 002): mọi người trong NPP (kể cả phiếu xuất của HĐ người khác — như nppsale); "Owner/Warehouse can manage stock entries" (mig 002): owner/warehouse |
-| `stock_entry_lines` · 17 | SQL dựng sẵn UNION ALL: Stock Entry Detail (trừ `DCK-`), `NPP Kiem Ke Dong`, Sales Invoice Item (HĐ / tờ ghi có có kho), Purchase Invoice Item (PN / PTNCC); lọc `batch_id = X` → một dòng mỗi `Serial and Batch Entry` của lô X | `name` dòng (lọc theo lô: `<dòng>:<dòng gói lô>`) | `entry_id` = `parent`; `product_id` = `item_code`; `batch_id` = `<lô>::<vùng>` khi gói lô của dòng có đúng một lô (kiểm kê: `lo` + `kho`; lô ảo cho hàng không lô), không thì null; `unit_name` = `transaction_uom` = `uom`; `quantity` = `qty_in_transaction_uom` = SL giao dịch (dương; kiểm kê: có dấu); `qty_in_base_uom` = SL cơ sở (`transfer_qty` / `stock_qty`); `conversion_factor_snapshot` = `conversion_factor`; `unit_cost` = giá vốn mỗi đơn vị cơ sở (SE: `valuation_rate`; HĐ: `incoming_rate`; PI: `valuation_rate`; kiểm kê: `gia_von`); `notes` = `npp_ghi_chu` (kiểm kê: `ghi_chu`). Lồng: `product:products(*)`, `batch:batches(…)`, `entry:stock_entries(entry_code, type, created_at, creator:…)` (lọc `entry.status`) | **Cho** khi phiếu cha là phiếu kho tay / kiểm kê **nháp** (owner/warehouse) — một lệnh cho cả bộ dòng như màn kiểm kê đang gửi; còn lại → `SO_KHO_KHOA` (`_trg_khoa_ghi_thang_dong_kho`) | "Org members can view stock entry lines" / "Owner/Warehouse can manage stock entry lines" (mig 002): theo dòng cha |
+| `batches` · 36 | SQL dựng sẵn: (Batch × kho NPP) có gói lô chưa huỷ + (Batch × `npp_kho_tao`) cho lô chưa phát sinh + dòng **lô ảo** (mặt hàng không lô × kho) từ Bin | `<lô>::sale` / `<lô>::date`; lô ảo `~<SKU>::<vùng>` | `product_id` = `item`; `batch_code` = `name` (lô ảo `—`); `manufactured_at`; `expires_at` = `expiry_date` (trống → `2099-12-31`); `location` = `npp_vi_tri`; `qty_initial` = Σ SL nhập vào kho ấy; `qty_on_hand` = Σ SL gói lô tại kho (đơn vị cơ sở; lô ảo = `Bin.actual_qty`, âm được); `unit_cost` = giá vốn lô (§2.11; lô rỗng → `npp_gia_von_lo_rong`; lô ảo → `Bin.valuation_rate`); `status` = `available` (Batch tắt → `disabled`); `warehouse_zone` từ kho; `zone_moved_*` = `npp_chuyen_vung_*`; `received_at` = `npp_ngay_nhap`; `tim_kd`. Lồng: `product:products(*)`, `product:products(shelf_life_days)`; được lồng từ dòng phiếu kho (`batch:batches(…)`). Lọc `.gt("qty_on_hand", 0)`, `.eq("warehouse_zone")`, `.lte/.gte("expires_at")`, sắp `expires_at` | Chép trigger `_trg_khoa_ghi_thang_lo` (mig 170), vai owner/warehouse: **insert** chỉ lô **rỗng** (`qty` = 0) → Batch (`npp_kho_tao`, `npp_gia_von_lo_rong`; có tồn → `SO_KHO_KHOA`); **update**: `batch_code` → `doi_ma_lo` (method kiểm vai rồi `rename_doc` ép kèm `ignore_permissions=True` — PoC 8, §4.4.0; ảnh hưởng cả hai vùng của lô), `expires_at` → `expiry_date` + luật kho date (trong ngưỡng mà lô có tồn ở kho bán → phiếu `CKL-` ngay, như trigger `BEFORE UPDATE OF expires_at` mig 028), `location` → `npp_vi_tri`, `warehouse_zone` → phiếu chuyển kho `CKL-` toàn bộ tồn của dòng (vào kho bán mà lô gần hạn → `HANG_GAN_HAN` như mig 148), `unit_cost` khi tồn 0 → `npp_gia_von_lo_rong`; đổi `qty_*` / `product_id` → `SO_KHO_KHOA`; **delete** khi tồn 0 và chưa có sổ kho → xoá Batch (có sổ → `SO_KHO_KHOA`); mọi lời ghi lên lô ảo → `SO_KHO_KHOA` | "Org members can view batches" (mig 002): mọi người trong NPP; "Owner/Warehouse can manage batches" (mig 002): owner/warehouse. `unit_cost` theo luật ẩn giá vốn chung của cổng (ẩn với người thiếu `inventory.cost` — như `products.cost_price`, §6.1; nppsale chỉ ẩn ở giao diện) |
+| `stock_entries` · 28 | SQL dựng sẵn UNION ALL: (1) Stock Entry (trừ `npp_loai = dieu_chinh_kiem_ke`); (2) `NPP Kiem Ke` → `type = 'stocktake'`; (3) Sales Invoice `update_stock = 1` (HĐ → `export`, tờ ghi có có kho → `import`); (4) Purchase Invoice `update_stock = 1` **`docstatus` ∈ {1, 2}** (PN → `import`, PTNCC → `export`; tờ nháp không có phiếu kho — nppsale chỉ lập `stock_entries` của PN / PTNCC lúc hoàn thành, `complete_purchase_invoice` / `complete_supplier_return` chèn `status = 'posted'`; số `PN-` cấp ngay lúc lập nháp nên thiếu vế này thì phiếu nhập nháp hiện thành phiếu kho "nháp" ở màn Phiếu kho / thẻ kho, kèm dòng hàng và giá vốn, cho cả NVBH — vai không đọc được `purchase_invoices`) | `name` chứng từ | `entry_code` = `name`; `type` theo nguồn / `purpose`; `status` từ docstatus (`NPP Kiem Ke`: `trang_thai`); `posted_at` = `posting_date` + `posting_time` (`NPP Kiem Ke`: `duyet_luc`); `supplier_id` = `supplier`; `ref_order_ids` = [`npp_don_hang` của HĐ] / []; `created_by` = `owner`; `notes` = `npp_ghi_chu` (HĐ / PI: `npp_ghi_chu` của tờ); `warehouse_zone` = kho nguồn (xuất / chuyển) hoặc kho nhận (nhập); `dest_warehouse_zone` = `to_warehouse` (chuyển); `issue_reason` = `npp_ly_do_xuat`; `tim_kd` = `npp_tim_kd` (Stock Entry / Sales Invoice / Purchase Invoice) ∥ `tim_kd` (`NPP Kiem Ke`). Lồng: `creator:users!stock_entries_created_by_fkey(*)` (8 chỗ), `debt:payables!inner(status)` → `NPP Cong No NCC` theo `phieu_kho`; được lồng từ dòng (`entry:stock_entries(!inner)`) | Chép `_trg_khoa_ghi_thang_phieu_kho` (mig 170), vai owner/warehouse: **insert** chỉ phiếu **nháp** → `export` / `transfer` / `import`: Stock Entry nháp (`XKL-` / `CKL-` / `IN-`); `stocktake`: `NPP Kiem Ke` nháp; **update** `notes` (mọi phiếu kho tay) → `npp_ghi_chu`; nháp → `cancelled` → xoá nháp (Frappe không cho nháp sang docstatus 2; `NPP Kiem Ke` thì `cancelled`); **delete** nháp; ghi sổ / huỷ → RPC (`post_stock_issue`, `post_stock_transfer`, `post_stock_adjustment`, `reject_stock_adjustment`, `cancel_stock_entry`); dòng nguồn HĐ / PI → **cấm** (đổi ở chứng từ gốc); còn lại → `SO_KHO_KHOA` | "Org members can view stock entries" (mig 002): mọi người trong NPP (kể cả phiếu xuất của HĐ người khác — như nppsale); "Owner/Warehouse can manage stock entries" (mig 002): owner/warehouse |
+| `stock_entry_lines` · 17 | SQL dựng sẵn UNION ALL: Stock Entry Detail (trừ `DCK-`), `NPP Kiem Ke Dong`, Sales Invoice Item (HĐ / tờ ghi có có kho), Purchase Invoice Item (PN / PTNCC, tờ `docstatus` ∈ {1, 2} — cùng điều kiện nguồn (4) của `stock_entries`); lọc `batch_id = X` → một dòng mỗi `Serial and Batch Entry` của lô X | `name` dòng (lọc theo lô: `<dòng>:<dòng gói lô>`) | `entry_id` = `parent`; `product_id` = `item_code`; `batch_id` = `<lô>::<vùng>` khi gói lô của dòng có đúng một lô (kiểm kê: `lo` + `kho`; lô ảo cho hàng không lô), không thì null; `unit_name` = `transaction_uom` = `uom`; `quantity` = `qty_in_transaction_uom` = SL giao dịch (dương; kiểm kê: có dấu); `qty_in_base_uom` = SL cơ sở (`transfer_qty` / `stock_qty`); `conversion_factor_snapshot` = `conversion_factor`; `unit_cost` = giá vốn mỗi đơn vị cơ sở (SE: `valuation_rate`; HĐ: `incoming_rate`; PI: `valuation_rate`; kiểm kê: `gia_von`); `notes` = `npp_ghi_chu` (kiểm kê: `ghi_chu`). Lồng: `product:products(*)`, `batch:batches(…)`, `entry:stock_entries(entry_code, type, created_at, creator:…)` (lọc `entry.status`) | **Cho** khi phiếu cha là phiếu kho tay / kiểm kê **nháp** (owner/warehouse) — một lệnh cho cả bộ dòng như màn kiểm kê đang gửi; còn lại → `SO_KHO_KHOA` (`_trg_khoa_ghi_thang_dong_kho`) | "Org members can view stock entry lines" / "Owner/Warehouse can manage stock entry lines" (mig 002): theo dòng cha |
 | `stock_line_consumptions` · 0 | **không port** | — | vết lấy lô = gói lô của chứng từ (lõi tự hoàn đúng lô khi huỷ) | **Cấm** | (chép) "Org members can view stock line consumptions" (mig 119): theo dòng cha |
 | `swap_stock_movements` · 3 | **không port** (cổng trả rỗng) | — | — | **Cấm** → `LEGACY_FLOW_REMOVED` (câu "chức năng đã gỡ"; giao diện đã khoá nút ghi — cờ `LEGACY_FLOW_WRITES_LOCKED`) | (chép) `org_iso_swap` (mig 049): mọi người trong NPP |
-| `v_stock_movements` · 1 | SQL dựng sẵn trên Stock Ledger Entry (`is_cancelled = 0`) — chuyển kho tự ra hai dòng (nguồn −, đích +) | `SLE.name` | `product_id` = `item_code`; `warehouse_zone` từ kho; `posted_at` = `posting_datetime`; `created_at` = `creation`; `entry_type` theo chứng từ (`DCK-` → `stocktake`; HĐ: SL âm → `export`, dương → `import`; PI ngược lại); `entry_status` = `posted`; `entry_code` / `entry_id` = `voucher_no` (`DCK-` → mã `NPP Kiem Ke`); `transaction_uom` = ĐV cơ sở; `qty_in_transaction_uom` = `qty_in_base_uom` = abs(`actual_qty`); `conversion_factor` = 1; `unit_cost` = `incoming_rate` (nhập) / abs(`stock_value_difference` / `actual_qty`) (xuất); `signed_qty_in_base_uom` = `actual_qty`; `ref_order_ids` = [`npp_don_hang`] | **Cấm** (view) | `security_invoker` (mig 092 / 228) → như `stock_entries` / `batches`: mọi người trong NPP. Khác nhẹ (bàn bạc 6.2): chứng từ đã huỷ biến khỏi thẻ kho (nppsale hiện cặp xuất + "đảo"); chuyển kho date tự động hiện thành phiếu `CKL-` |
+| `v_stock_movements` · 1 | SQL dựng sẵn trên Stock Ledger Entry (`is_cancelled = 0`) — chuyển kho tự ra hai dòng (nguồn −, đích +) | `SLE.name` | `product_id` = `item_code`; `warehouse_zone` từ kho; `posted_at` = `posting_datetime`; `created_at` = `creation`; `entry_type` theo chứng từ (`DCK-` → `stocktake`; Stock Entry khác theo `purpose`; HĐ và PI cùng một luật theo dấu `actual_qty`: âm → `export` (HĐ, PTNCC), dương → `import` (tờ ghi có có kho, PN) — sổ kho của PI cùng dấu với HĐ: `actual_qty = flt(pr_qty)`, `buying_controller.py:1043–1046`); `entry_status` = `posted`; `entry_code` / `entry_id` = `voucher_no` (`DCK-` → mã `NPP Kiem Ke`); `transaction_uom` = ĐV cơ sở; `qty_in_transaction_uom` = `qty_in_base_uom` = abs(`actual_qty`); `conversion_factor` = 1; `unit_cost` = `incoming_rate` (nhập) / abs(`stock_value_difference` / `actual_qty`) (xuất); `signed_qty_in_base_uom` = `actual_qty`; `ref_order_ids` = [`npp_don_hang`] | **Cấm** (view) | `security_invoker` (mig 092 / 228) → như `stock_entries` / `batches`: mọi người trong NPP. Khác nhẹ (bàn bạc 6.2): chứng từ đã huỷ biến khỏi thẻ kho (nppsale hiện cặp xuất + "đảo"); chuyển kho date tự động hiện thành phiếu `CKL-` |
 | `v_stock_balance_by_zone` · 1 | SQL dựng sẵn trên Bin của hai kho NPP (`actual_qty` > 0) | `<SKU>::<vùng>` | `product_id`, `warehouse_zone`, `qty_in_base_uom` = `actual_qty`, `value` = `stock_value` | **Cấm** (view) | `security_invoker`: mọi người trong NPP |
 | `v_uom_audit` · 0 | **không port** | — | view soát quy đổi (mig 228), không màn nào gọi | **Cấm** | — |
 | **H. HĐĐT MISA** | | | | | |
-| `invoices` · 39 | DocType `NPP HDDT` | `name` (UUID; dòng chuyển sang = id cũ) | `sales_invoice_id` = `hoa_don_ban` ∥ `hoa_don_ban_ls`; `order_id` = `don_hang` ∥ `don_hang_ls`; `invoice_number` ↔ `so_hd_go_tay`; `customer_name` / `_address` / `_tax_code` ↔ `nguoi_mua` / `dia_chi_nguoi_mua` / `mst_nguoi_mua`; `subtotal` / `vat` / `total` ↔ `tien_hang` / `tien_thue` / `tong_tien`; `status` ↔ `trang_thai`; `issued_at` ↔ `phat_hanh_luc`; `tim_kd` cùng tên (ô tìm, mig 249); `misa_*` cùng tên, chỉ đọc | **INSERT** (chủ, KT): `order_id`, `sales_invoice_id`, `invoice_number`, `customer_name` / `_address` / `_tax_code`, `subtotal` / `vat` / `total`, `status` = draft — có HĐ bán (gửi kèm hoặc HĐ ghi sổ của đơn) thì người mua + tiền lấy từ HĐ, bỏ số trình duyệt gửi (§7.1 điểm 19). **UPDATE** (chủ, KT): khi `status` = draft và chưa có `misa_ref_id`: `customer_*`, `subtotal` / `vat` / `total`, `invoice_number`; `status` draft → issued (ghi `issued_at`) / → cancelled, issued → cancelled. **DELETE** (chủ, KT theo RLS; màn chỉ cho chủ): `status` = draft và chưa có `misa_ref_id`. **Cấm** mọi cột `misa_*` (chỉ method phát hành / làm mới / đồng bộ / đối soát) | "Admin roles can view all invoices" (mig 084, SELECT): chủ / QL / KT xem hết. "Sales see own invoices" (mig 084, SELECT): NVBH thấy dòng có `order_id` mà đơn có NV được gán = mình (`Sales Order.npp_nhan_vien`; dòng lưu trữ: `NPP LS Don Hang.sales_user_id`). Kho: không thấy. "Owner/Accountant can manage invoices" (mig 002, ALL): ghi chủ / KT |
-| `company_einvoice_config` · 13 | Single `NPP MISA Cau Hinh` | ảo: `'NPP MISA Cau Hinh'`; chưa lưu lần nào → 0 dòng | `api_base` ↔ `dia_chi_api`, `token_path` / `publish_path` ↔ `duong_lay_token` / `duong_phat_hanh`, `tax_code` / `seller_*` ↔ `mst_nguoi_ban` / `ten_` / `dia_chi_nguoi_ban`, `is_active` ↔ `dang_dung`, `sandbox` ↔ `moi_truong_thu`, `invoice_type` ↔ `loai_hd`, `sign_type` ↔ `kieu_ky`, `misa_*` cùng tên; `username_enc` / `password_enc` (↔ `tai_khoan` / `mat_khau`, Password) **không bao giờ** trả — trả `null` | **Cấm** (lưu qua `nppsale.api.misa.cau_hinh` — chủ / KT; `misa_is_invoice_with_code` do Thử kết nối ghi) | "View einvoice config" (mig 072, SELECT): chủ / KT / QL. "Manage einvoice config" (mig 072, ALL): chủ / KT |
-| `einvoice_logs` · 3 | DocType `NPP MISA Log` | `name` (UUID) | `invoice_id` ↔ `hddt`, `order_id` ↔ `don_hang`, `attempt_at` ↔ `goi_luc`, `status` ↔ `ket_qua`, `request_payload` / `response_payload` ↔ `gui_di` / `nhan_ve`, `error_message` ↔ `loi`; `nguon` mới (nppsale ở `request_payload.source`) | **Cấm** (chỉ method ghi; không màn nào đọc — 3 chỗ gọi đều ở route API) | "View einvoice logs" (mig 072, SELECT): chủ / KT / QL. "Manage einvoice logs" (mig 072, ALL): chủ / KT / QL |
+| `invoices` · 39 | DocType `NPP HDDT` | `name` (UUID; dòng chuyển sang = id cũ) | `sales_invoice_id` = `hoa_don_ban` ∥ `CAST(hoa_don_ban_ls AS CHAR(36)) COLLATE utf8mb4_unicode_ci`; `order_id` = `don_hang` ∥ `CAST(don_hang_ls AS CHAR(36)) COLLATE utf8mb4_unicode_ci` (nhánh `uuid` phải ép về chữ: `COALESCE` / `IFNULL` / `CASE` giữa cột varchar và cột `uuid` ra kiểu `uuid`, mã HĐ / đơn sổ thật thành NULL kèm Warning 1292 — đo trên poc.local; bộ lọc `.eq("sales_invoice_id", x)` so từng cột riêng — `hoa_don_ban = x OR hoa_don_ban_ls = x`); `invoice_number` ↔ `so_hd_go_tay`; `customer_name` / `_address` / `_tax_code` ↔ `nguoi_mua` / `dia_chi_nguoi_mua` / `mst_nguoi_mua`; `subtotal` / `vat` / `total` ↔ `tien_hang` / `tien_thue` / `tong_tien`; `status` ↔ `trang_thai`; `issued_at` ↔ `phat_hanh_luc`; `tim_kd` cùng tên (ô tìm, mig 249); `misa_*` cùng tên, chỉ đọc | **INSERT** (chủ, KT): `order_id`, `sales_invoice_id`, `invoice_number`, `customer_name` / `_address` / `_tax_code`, `subtotal` / `vat` / `total`, `status` = draft — có HĐ bán (gửi kèm hoặc HĐ ghi sổ của đơn) thì người mua + tiền lấy từ HĐ, bỏ số trình duyệt gửi (§7.1 điểm 19). **UPDATE** (chủ, KT): khi `status` = draft và chưa có `misa_ref_id`: `customer_*`, `subtotal` / `vat` / `total`, `invoice_number`; `status` draft → issued (ghi `issued_at`) / → cancelled, issued → cancelled. **DELETE** (chủ, KT theo RLS; màn chỉ cho chủ): `status` = draft và chưa có `misa_ref_id`. **Cấm** mọi cột `misa_*` (chỉ method phát hành / làm mới / đồng bộ / đối soát) | "Admin roles can view all invoices" (mig 084, SELECT): chủ / QL / KT xem hết. "Sales see own invoices" (mig 084, SELECT): NVBH thấy dòng có `order_id` mà đơn có NV được gán = mình (`Sales Order.npp_nhan_vien`; dòng lưu trữ: `NPP LS Don Hang.sales_user_id`). Kho: không thấy. "Owner/Accountant can manage invoices" (mig 002, ALL): ghi chủ / KT |
+| `company_einvoice_config` · 13 | Single `NPP MISA Cau Hinh` | ảo: `'NPP MISA Cau Hinh'`; chưa lưu lần nào → 0 dòng | `api_base` ↔ `dia_chi_api`, `token_path` / `publish_path` ↔ `duong_lay_token` / `duong_phat_hanh`, `tax_code` / `seller_*` ↔ `mst_nguoi_ban` / `ten_` / `dia_chi_nguoi_ban`, `is_active` ↔ `dang_dung`, `sandbox` ↔ `moi_truong_thu`, `invoice_type` ↔ `loai_hd`, `sign_type` ↔ `kieu_ky`, `misa_*` cùng tên; `username_enc` / `password_enc` (↔ `tai_khoan` / `mat_khau`, Password) **không bao giờ** trả — trả `null` | **Cấm** (lưu qua `nppsale.api.misa.cau_hinh` — chủ / KT; Thử kết nối ghi `misa_is_invoice_with_code`, `publish_path`, mã CompanyID / OrgUnitID / UserID, mẫu đang dùng và tài khoản vừa gõ — §4.6 `NPP MISA Cau Hinh`) | "View einvoice config" (mig 072, SELECT): chủ / KT / QL. "Manage einvoice config" (mig 072, ALL): chủ / KT |
+| `einvoice_logs` · 3 | DocType `NPP MISA Log` | `name` (UUID) | `invoice_id` ↔ `hddt`, `order_id` ↔ `don_hang`, `attempt_at` ↔ `goi_luc`, `status` ↔ `ket_qua`, `request_payload` / `response_payload` ↔ `gui_di` / `nhan_ve`, `error_message` ↔ `loi`; `nguon` mới (nppsale: chỉ log đồng bộ có `request_payload.source = 'sync'`, log phát hành không có — nhập thành `publish`) | **Cấm** (chỉ method ghi; không màn nào đọc — 3 chỗ gọi đều ở route API) | "View einvoice logs" (mig 072, SELECT): chủ / KT / QL. "Manage einvoice logs" (mig 072, ALL): chủ / KT / QL |
 | `misa_invoice_snapshots` · 10 | DocType `NPP MISA Snapshot` | `name` (UUID); khoá tự nhiên `ref_id` (unique) | `inv_series` / `inv_no` / `inv_date` ↔ `ky_hieu` / `so_hddt` / `ngay_phat_hanh`, `match_*` ↔ `cach_khop` / `do_tin` / `ket_qua_khop` / `ghi_chu_khop`, `invoice_id` ↔ `hddt`… (Notes); `inv_no_norm` / `inv_series_norm` ↔ `so_hddt_chuan` / `ky_hieu_chuan` tính ở validate (Postgres: generated); `publish_status` / `einvoice_status` là Data → cổng trả số nguyên hoặc null | **Cấm** (kéo + khớp là việc nền; `link` / `unlink` / `create` qua `nppsale.api.misa.doi_soat` — chủ / KT / QL) | "View misa snapshots" (mig 100, SELECT): chủ / KT / QL. "Manage misa snapshots" (mig 100, ALL): chủ / KT / QL |
 | **I. Nhân sự** | | | | | |
 | `hr_attendance` · 3 | DocType `NPP Cham Cong` | `name` (UUID); khoá upsert (`user_id`, `work_date`) ↔ (`nhan_vien`, `ngay`) | `status` ↔ `trang_thai`, `check_in` / `check_out` ↔ `gio_vao` / `gio_ra`, `notes` ↔ `ghi_chu` | **INSERT / UPDATE / DELETE / UPSERT** (chủ, QL): `user_id`, `work_date`, `status`, `check_in`, `check_out`, `notes` | "View attendance" (mig 197, SELECT): dòng của mình, hoặc chủ / QL / KT. "Manage attendance" (mig 163, ALL): chủ / QL |
-| `hr_salary_config` · 6 | Single `NPP Cau Hinh Luong` | ảo: `'NPP Cau Hinh Luong'`; chưa lưu → 0 dòng; `.eq("is_active", true)` lọc trên dòng ảo | `name` ↔ `ten_cau_hinh`; còn lại theo Notes (`base_salary` ↔ `luong_co_ban`, `kpi_target_revenue` ↔ `muc_doanh_so_a`, `target_tiers` ↔ `bac_thuong_pct_a`…) | **INSERT / UPDATE** (chủ): mọi cột cấu hình (INSERT = lưu Single lần đầu — wizard `/setup`); **DELETE** cấm | "View salary config" (mig 197, SELECT): chủ / QL / KT. "Manage salary config" (mig 163, ALL): chủ |
-| `hr_monthly_bonus` · 4 | DocType `NPP Thuong Thang` | `name` = `period` (↔ `ky`) | `tiers` ↔ `bac_doanh_so`, `per_unit_bonuses` ↔ `thuong_dau_thung`, `order_milestone_tiers` ↔ `thuong_moc_so_don`, `kpi_metrics` ↔ `thuong_kpi`, `notes` ↔ `ghi_chu` | **INSERT / UPDATE** (chủ): `period` (chỉ khi tạo), `tiers`, `per_unit_bonuses`, `order_milestone_tiers`, `kpi_metrics`, `notes`; **DELETE** (chủ) | "View monthly bonus" (mig 197, SELECT): chủ / QL / KT. "Manage monthly bonus" (mig 163, ALL): chủ |
+| `hr_salary_config` · 6 | Single `NPP Cau Hinh Luong` | ảo: `'NPP Cau Hinh Luong'`; chưa lưu → 0 dòng; `.eq("is_active", true)` lọc trên dòng ảo | `name` ↔ `ten_cau_hinh`; còn lại theo Notes (`base_salary` ↔ `luong_co_ban`, `kpi_target_revenue` ↔ `muc_doanh_so_a`, `target_tiers` ↔ `bac_thuong_pct_a`…); `target_tiers` / `bypass_attendance_roles` là mảng JSON — cổng ghi `json.dumps`, đọc `json.loads` (§4.7 `NPP Thuong Thang.thuong_kpi`) | **INSERT / UPDATE** (chủ): mọi cột cấu hình (INSERT = lưu Single lần đầu — wizard `/setup`); **DELETE** cấm | "View salary config" (mig 197, SELECT): chủ / QL / KT. "Manage salary config" (mig 163, ALL): chủ |
+| `hr_monthly_bonus` · 4 | DocType `NPP Thuong Thang` | `name` = `period` (↔ `ky`) | `tiers` ↔ `bac_doanh_so`, `per_unit_bonuses` ↔ `thuong_dau_thung`, `order_milestone_tiers` ↔ `thuong_moc_so_don`, `kpi_metrics` ↔ `thuong_kpi`, `notes` ↔ `ghi_chu`; bốn cột đầu là mảng JSON — cổng ghi `json.dumps`, đọc `json.loads` (§4.7 `NPP Thuong Thang.thuong_kpi`) | **INSERT / UPDATE** (chủ): `period` (chỉ khi tạo), `tiers`, `per_unit_bonuses`, `order_milestone_tiers`, `kpi_metrics`, `notes`; **DELETE** (chủ) | "View monthly bonus" (mig 197, SELECT): chủ / QL / KT. "Manage monthly bonus" (mig 163, ALL): chủ |
 | `salary_kpi_tiers` · 4 | DocType `NPP Bac KPI` | `name` (UUID) | `user_id` ↔ `nhan_vien`, `month` ↔ `thang`, `min_revenue` ↔ `doanh_so_toi_thieu`, `bonus_type` / `bonus_value` ↔ `kieu_thuong` / `gia_tri_thuong` (Float, không Currency), `order_index` ↔ `thu_tu` | **INSERT / UPDATE / DELETE** (chủ, KT): `user_id`, `month`, `min_revenue`, `bonus_type`, `bonus_value`, `order_index` | "org_iso_kpi_select" (mig 043, SELECT): mọi vai cùng NPP — **kể cả NVBH** (mig 197 chưa khoá bảng này; §7.1 điểm 22). "org_iso_kpi_write" (mig 043, ALL): chủ / KT |
 | `salary_order_count_bonus_configs` · 4 | DocType `NPP Thuong So Don` | `name` (UUID) | `user_id` ↔ `nhan_vien`, `period` ↔ `chu_ky`, `min_order_count` ↔ `so_hd_toi_thieu` (đếm HĐ ghi sổ — câu 7), `min_order_value` ↔ `gia_tri_hd_toi_thieu`, `bonus_per_order` ↔ `thuong_moi_hd`, `effective_from` / `_to` ↔ `hieu_luc_tu` / `_den` | **INSERT / UPDATE / DELETE** (chủ, KT): `user_id`, `period`, `min_order_count`, `min_order_value`, `bonus_per_order`, `effective_from`, `effective_to` | "org_iso_ocbc_select" (mig 043, SELECT): mọi vai cùng NPP — kể cả NVBH (§7.1 điểm 22). "org_iso_ocbc_write" (mig 043, ALL): chủ / KT |
 | `monthly_activity_bonuses` · 4 | DocType `NPP Thuong Hoat Dong` | `name` (UUID); khoá upsert (`user_id`, `month`) ↔ (`nhan_vien`, `thang`) | `amount` ↔ `so_tien`, `note` ↔ `ghi_chu`; `created_by` ↔ `owner` — máy chủ đặt, bỏ giá trị gửi lên | **INSERT / UPSERT / UPDATE / DELETE** (chủ, KT): `user_id`, `month`, `amount`, `note` | "org_iso_mab_select" (mig 043, SELECT): chủ / KT / QL, hoặc dòng của mình. "org_iso_mab_write" (mig 043, ALL): chủ / KT |
 | `payroll_runs` · 5 | DocType `NPP Ky Luong` | `name` = `KL-YYYY-MM` | `month` ↔ `thang`; `status` ↔ `trang_thai` = docstatus (0 → draft, 1 → locked); `computed_at` / `locked_at` / `locked_by` ↔ `tinh_luc` / `khoa_luc` / `nguoi_khoa` | **INSERT** (chủ, QL, KT): `month` (luôn tạo draft; `ensurePayrollRun`). **UPDATE / DELETE** cấm (tính = RPC `compute_payroll_run`, khoá = RPC `lock_payroll_run`) | "org_iso_pr" (mig 173, ALL): chủ / QL / KT. NVBH không đọc bảng — phiếu của mình qua RPC `my_payslips` (mig 201: dòng của mình, kỳ đã khoá) |
-| `payroll_run_items` · 2 | bảng con `NPP Ky Luong Dong` | `name` của dòng con; `payroll_run_id` ↔ `parent` | theo Notes (`net_salary` ↔ `thuc_nhan` chỉ đọc — validate tính; `computed_breakdown` ↔ `chi_tiet_tinh` chỉ đọc; `manual_adjustment` ↔ `dieu_chinh_tay`, `social_insurance` ↔ `bhxh`…); `updated_at` ↔ `modified` của dòng | **UPDATE** (chủ, QL, KT) khi kỳ còn draft: `manual_adjustment`, `notes`, `social_insurance` (lưu qua kỳ cha → validate tính lại thực nhận; kỳ khoá → `PAYROLL_RUN_LOCKED`). **INSERT / DELETE** cấm (chỉ `compute_payroll_run`) | "org_iso_pri" (mig 173, ALL): qua kỳ cha — chủ / QL / KT |
+| `payroll_run_items` · 2 | bảng con `NPP Ky Luong Dong` | `name` của dòng con; `payroll_run_id` ↔ `parent` | theo Notes (`net_salary` ↔ `thuc_nhan` chỉ đọc — validate tính; `computed_breakdown` ↔ `chi_tiet_tinh` chỉ đọc; `manual_adjustment` ↔ `dieu_chinh_tay`, `social_insurance` ↔ `bhxh`…); `updated_at` ↔ `modified` của dòng — lõi chép `modified` / `creation` của **kỳ cha** xuống mọi dòng con mỗi lần lưu (`frappe/model/document.py:1049–1055`), nên `created_at` / `updated_at` là mốc của kỳ: `.order("created_at")` của màn kỳ lương (`hr/payroll/runs/page.tsx:144`) xếp theo `idx` | **UPDATE** (chủ, QL, KT) khi kỳ còn draft: `manual_adjustment`, `notes`, `social_insurance` (lưu qua kỳ cha → validate tính lại thực nhận; kỳ khoá → `PAYROLL_RUN_LOCKED`); `updated_at` trình duyệt gửi kèm (`setManualAdjustment` — `lib/payroll/run.ts:134–138`) nhận rồi bỏ, không coi là ghi cột cấm. **INSERT / DELETE** cấm (chỉ `compute_payroll_run`) | "org_iso_pri" (mig 173, ALL): qua kỳ cha — chủ / QL / KT |
 | `hr_payroll` · 3 | không port — nguồn rỗng | — | — | **Cấm** → `LEGACY_FLOW_REMOVED` (câu: "Bảng lương đời đầu đã bỏ — dùng Bảng lương theo kỳ") | (cũ: "View own payroll" / "Manage payroll", mig 163) — không áp; màn `/hr/payroll/[id]` không có trong router |
 | **J. Chuyến giao (không port — §6.5)** | | | | | |
 | `deliveries` · 19 | không port — nguồn rỗng (§6.5) | — | — | **Cấm** → `LEGACY_FLOW_REMOVED` | (cũ: chủ / QL / kho, tài xế của mình — mig 002) — không áp |
@@ -3558,7 +3656,7 @@ Mọi cột riêng của nppsale (vai, cờ giảm giá / sửa giá + trần, n
 
 | Bucket | Nguồn | Khoá | Cách cổng trả URL | Ghi từ trình duyệt | Quyền |
 |---|---|---|---|---|---|
-| `customer-photos` | `File` riêng tư + `File.npp_duong_dan` | đường dẫn `<org>/<khách>/<ô>-<ms>.jpg` | `getPublicUrl(path)` trả `/storage/v1/object/public/customer-photos/<path>` (tính được ngay, không gọi mạng — như Supabase); route của app (`website_route_rules` → renderer) phục vụ file sau khi kiểm đăng nhập + khách thấy được. Giữ đúng khuôn để `photoStoragePath`, luật `FILE_SAI` của `xin_doi_anh_diem_ban` chạy nguyên | `upload`: owner / manager / sales, khách thấy được, đúng khuôn đường dẫn, `upsert: false`. `remove` từ trình duyệt: không làm gì (như nppsale sau mig 207 — xoá chỉ qua `/api/customers/photo-cleanup` → method) | nppsale: bucket **public** (ai có link cũng mở). Bản mới: phải đăng nhập và thấy khách (§7.1 điểm 5) |
+| `customer-photos` | `File` riêng tư + `File.npp_duong_dan` | đường dẫn `<org>/<khách>/<ô>-<ms>.jpg` | `getPublicUrl(path)` trả `/storage/v1/object/public/customer-photos/<path>` (tính được ngay, không gọi mạng — như Supabase); renderer `nppsale.portal.kho_anh.KhoAnh` (hook `page_renderer` — nhận mọi đường dẫn `/storage/v1/object/public/…`, không qua `website_route_rules`) phục vụ file sau khi kiểm NV đang hoạt động (không → 401) + khách thấy được (không → 404), `Cache-Control: private`. Giữ đúng khuôn để `photoStoragePath`, luật `FILE_SAI` của `xin_doi_anh_diem_ban` chạy nguyên. **Ảnh đã có** (P8 — H2 chuyển cả ảnh, bàn bạc mục 8; nppsale chỉ đọc 3–6 tháng rồi tắt): `photo_url` cũ là URL tuyệt đối của bucket public (`https://<dự án>.supabase.co/storage/v1/object/public/customer-photos/<org>/<uuid khách cũ>/<ô>-<ms>.jpg` — `customer-photo-capture.tsx:261, 267`). Công cụ chuyển dữ liệu tải từng object đang được trỏ tới (ảnh của `customer_photos` + ảnh mới của yêu cầu `pending`; object mồ côi không chép) về `File` riêng tư (`attached_to_name` = khách mới qua `npp_id_cu`), đổi đoạn khách sang mã mới (`<org>/KH-…/<ô>-<ms>.jpg`; `<org>` giữ vì `org_id` = `organizations.id` cũ) làm `npp_duong_dan`, và viết lại `anh_url` của `NPP Anh Diem Ban` / `NPP Yeu Cau Anh Diem Ban` thành `/storage/v1/object/public/customer-photos/<đường dẫn mới>` — mọi ảnh một khuôn nên `tach_duong` (`nppsale/api/tep.py`), renderer và `don_file` không phải nhận đoạn khách UUID cũ. Thiếu bước này thì màn vẫn mở ảnh thẳng từ bucket public cũ (vượt §7.1 điểm 5), dọn file / duyệt yêu cầu không tìm thấy `File`, tắt Supabase là mất mọi ảnh điểm bán đã duyệt | `upload`: owner / manager / sales, khách thấy được, đúng khuôn đường dẫn, `upsert: false`. `remove` từ trình duyệt: không làm gì (như nppsale sau mig 207 — xoá chỉ qua `/api/customers/photo-cleanup` → method) | nppsale: bucket **public** (ai có link cũng mở). Bản mới: phải đăng nhập và thấy khách (§7.1 điểm 5) |
 | `visit-photos` | không nhận ảnh mới | — | ảnh cũ (`visit_logs.photo_url`): chép sang `File` riêng tư lúc chuyển dữ liệu nếu giữ, `anh_cu` trỏ đường dẫn mới | — | — |
 | `pod-photos` | không port (chuyến giao, A13) | — | — | — | — |
 
@@ -3566,10 +3664,17 @@ Mọi cột riêng của nppsale (vai, cờ giảm giá / sửa giá + trần, n
 
 | Kênh nppsale | Thay bằng | Ai nhận |
 |---|---|---|
-| `notifications` — INSERT / UPDATE, lọc `user_id=eq.<mình>` (`notification-bell.tsx:115–130`) | `publish_realtime("npp_cong", {bang, su_kien, moi}, user=<User của người nhận>, after_commit=True)` từ hook `NPP Thong Bao` | phòng `user:<email>` — Website User vào phòng này (`realtime/handlers.js:5`) |
-| `entity_locks` — mọi sự kiện, lọc `entity_id=eq.<id>` (`use-entity-lock.ts:135–160`) | `publish_realtime("npp_cong", {bang, su_kien, moi \| cu}, doctype="NPP Khoa Chung Tu")` từ hook `NPP Khoa Chung Tu`; portal `doctype_subscribe` | phòng `doctype:NPP Khoa Chung Tu` (lõi kiểm quyền đọc trước khi cho vào); portal lọc `entity_type` / `entity_id` như hôm nay |
+| `notifications` — INSERT / UPDATE, lọc `user_id=eq.<mình>` (`notification-bell.tsx:115–130`) | `publish_realtime("npp_cong", {bang, su_kien, id}, user=<email người nhận>, after_commit=True)` từ hook `NPP Thong Bao` (§4.1) — gói chỉ mang `id`: portal đọc lại dòng qua cổng (đúng vế lọc) rồi phát `payload.new` / `payload.old` như hôm nay | phòng `user:<email>` — Website User vào phòng này (`realtime/handlers.js:5`) |
+| `entity_locks` — mọi sự kiện, lọc `entity_id=eq.<id>` (`use-entity-lock.ts:135–160`; người chờ chỉ giành lại khi nhận DELETE) | `publish_realtime("npp_cong", {bang, su_kien: "UPSERT" \| "DELETE", entity_type, entity_id, locked_by}, user=<từng NV đang hoạt động>, after_commit=True)` từ hook `NPP Khoa Chung Tu` (`on_change` / `on_trash`) **và** từ các đường xoá bằng SQL (`release_stale_entity_locks`, dọn lười trong `acquire` / `heartbeat` — đọc dòng quá hạn trước rồi phát từng dòng; §4.1). Không truyền `doctype=` trơn: thiếu `docname` thì lõi gửi vào phòng `all` mà chỉ System User vào (`frappe/realtime/__init__.py:65–78`, `realtime/handlers.js:8–10`) — NV NPP không bao giờ nhận | phòng `user:<email>` của mọi NV đang làm (= `entity_locks_select`: mọi vai thấy mọi khoá; NV nghỉ / bị khoá không nhận); portal lọc `entity_type` / `entity_id` như hôm nay. Cách khác `publish_to_doctype` + `doctype_subscribe` cần DocPerm đọc `NPP Khoa Chung Tu` cho vai NPP (§4.1) |
 
-Không mở được socket thì hạ cấp như bản bàn bạc 3.7: chuông hỏi định kỳ, khoá dựa nhịp 60 giây.
+Không mở được socket thì hạ cấp (bàn bạc 3.7). **Hiện trạng mã (15/11/2026)**: portal **chưa nối socket** — `channel()` (`portal/src/thay/lib/supabase/cong/thoi-gian-thuc.ts`,
+gắn ở `cong/index.ts:36`) chạy đường hạ cấp làm mặc định: mỗi (bảng, bộ lọc `eq`) một vòng hỏi qua cổng — `entity_locks` 8 giây, `notifications` 30 giây — so ảnh
+chụp trước / sau để phát INSERT / UPDATE / DELETE kèm `payload.new` / `payload.old` đủ cột như Supabase, tab ẩn thì ngừng (bài `portal/tests/thoi-gian-thuc.test.ts`);
+vòng hỏi thấy cả khoá bị dọn bằng câu xoá thẳng. Máy chủ đã phát đúng hai gói ở bảng trên (`npp_thong_bao.py`, `npp_khoa_chung_tu.py`), **trừ** câu xoá
+thẳng `release_stale_entity_locks` (lịch mỗi phút + dọn lười trong `acquire_entity_lock` / `heartbeat_entity_lock` — `rpc/khoa_chung_tu.py`) chưa phát gì. Khi
+nối socket: (1) hàm ấy phải đọc dòng quá hạn rồi phát `DELETE` từng dòng (thiếu thì người chờ khoá treo ở "người khác đang sửa" tới khi tự bấm thử lại);
+(2) portal dựng `payload.new` / `payload.old` từ gói (khoá: `entity_type` / `entity_id` / `locked_by`; chuông: đọc lại dòng theo `id`); (3) vòng hỏi giữ làm
+đường lùi khi không mở được socket.
 
 ### 6.4 RPC và route API (tên, tham số, dạng trả về, chuỗi mã lỗi giữ nguyên — luật chi tiết ở tệp 05)
 
@@ -3588,17 +3693,22 @@ Không mở được socket thì hạ cấp như bản bàn bạc 3.7: chuông h
 | `lookup_email_by_identifier`, `normalize_phone` | bỏ — Frappe đăng nhập thẳng bằng `mobile_no` (luật chuẩn hoá ở `nppsale/luat`) | — |
 | `POST /api/admin/users`, `DELETE /api/admin/users/[id]` | `nppsale.api.nguoi_dung.tao` / `.xoa` | POST |
 | `GET/POST/DELETE /api/admin/users/[id]/qr`, `GET /api/admin/users/qr-links` | `nppsale.api.qr.lay` / `.phat` / `.thu_hoi` / `.ds_link` | GET / POST |
-| `GET /qr-login?t=` | `nppsale.api.qr.dang_nhap` (allow_guest, rate limit) phục vụ ở `/nppsale/qr-login` | GET |
+| `GET /qr-login?t=` | renderer `nppsale.portal.qr.DangNhapQR` (hook `page_renderer`, không phải method) ở `/nppsale/qr-login` — 10 lượt / phút / IP đếm bằng cache; lỗi → 302 `/nppsale/login?qr=invalid\|inactive\|server` (§4.1 `NPP Nhan Vien`) | GET |
 | `POST /api/customers/photo-cleanup` | `nppsale.api.anh.don_file` | POST |
 | `/api/customers/photo-reminders`, `/route-reminders`, `/api/cron/daily` | `nppsale.lich.nhac_anh` (thứ Hai), `nppsale.lich.nhac_tuyen` (hạ nhiệt 3 ngày) trong `scheduler_events` 01:00 VN; mỗi việc độc lập | lịch |
-| `/api/do-nap`, `/api/client-error` | `nppsale.api.do_nap.ghi` (→ `NPP Do Nap`), `nppsale.api.loi_trinh_duyet.ghi` (allow_guest + rate limit → `Error Log`) | POST |
+| `/api/do-nap`, `/api/client-error` | `nppsale.api.do_nap.ghi` (→ `NPP Do Nap`), `nppsale.api.loi_trinh_duyet.ghi` (→ `Error Log`) — cả hai phải đăng nhập, không `allow_guest` (route nppsale trả 401 cho khách); `client-error`: thân cắt 8 KB, 30 lượt / phút / người (§4.1) | POST |
 | `release_stale_entity_locks` | cùng tên — `scheduler_events.cron "* * * * *"` | lịch |
 
 **Bán hàng** — `create_order_with_lines` (SO + phiếu trả nháp kèm, idempotent theo `npp_client_request_id`) · `cancel_order` · `close_order` (ném
-`ORDER_CLOSE_REMOVED`) · `get_invoiceable_lines` (GET) · `post_invoice` (khoá dòng SO, khoá `Bin` theo thứ tự tên — CFD-05; ghi sổ SO → HĐ có kho + gói lô FIFO
-ngày nhập → tờ ghi có tự sinh → đóng SO; thử lại khi lô âm / bế tắc) · `cancel_invoice` · `reissue_invoice` · `assign_doc_seller` · `committed_stock_by_product`
-(GET) · `danh_dau_soan_hang` · `tao_luot_soan` · `cap_nhat_luot_soan` · `hoan_tat_luot_soan` · `huy_luot_soan` · `create_return_with_lines` · `save_pos_return` ·
-`complete_return` (2 và 3 tham số) · `cancel_return`.
+`ORDER_CLOSE_REMOVED`) · `get_invoiceable_lines` (GET) · `post_invoice` (bước `chuan_bi` đọc người gọi + cài đặt rồi COMMIT; **câu đầu** giao dịch: khoá `Bin`
+mọi mặt hàng của tải trọng ở kho bán + kho cận date theo thứ tự tên — CFD-05, PoC 1d: MariaDB REPEATABLE READ lập ảnh chụp ở câu đọc thường đầu tiên, đọc /
+khoá SO trước thì ảnh chụp có trước khoá, đọc tồn cũ → lô âm / bế tắc — rồi mới khoá dòng SO `FOR UPDATE` và đọc đơn; ghi sổ SO → HĐ có kho + gói lô FIFO
+ngày nhập → tờ ghi có tự sinh → đóng SO; thử lại khi lô âm / bế tắc) · `cancel_invoice` · `reissue_invoice` (cả hai cũng khoá `Bin` trước — hàng của tờ +
+tải trọng) · `assign_doc_seller` (luật ở §5.6 `npp_nhan_vien`) · `committed_stock_by_product` (chỉ đọc — portal hôm nay gọi **POST** kèm `count: "exact"` rồi
+`.select("product_id, committed_base").order("product_id").range()` phân trang qua `fetchAllForAggregate`: `use-committed-stock.tsx:58–69`; cổng RPC nhận cả
+POST lẫn GET và áp `select / order / range / count` lên tập kết quả như PostgREST — `nppsale/cong/sau_ham.py`; lớp phủ `src/thay` có thể thêm `{ get: true }`
+theo luật "hàm chỉ đọc gọi GET" của nppsale, CLAUDE.md 29/10/2026) · `danh_dau_soan_hang` · `tao_luot_soan` · `cap_nhat_luot_soan` · `hoan_tat_luot_soan` ·
+`huy_luot_soan` · `create_return_with_lines` · `save_pos_return` · `complete_return` (2 và 3 tham số) · `cancel_return`.
 
 **Tiền + Kho + Mua**
 
@@ -3620,7 +3730,7 @@ ngày nhập → tờ ghi có tự sinh → đóng SO; thử lại khi lô âm /
   `/inventory/stock-out` đã chặn từ 22/09/2026) → giữ tên, trả `LEGACY_FLOW_REMOVED` (như các màn luồng cũ).
 - **Báo cáo đọc các nguồn trên** (viết ở P6): `finance_pnl`, `finance_cash_flow`, `finance_balance_sheet`, `dashboard_summary` (phần nợ mở / quá hạn).
 
-**HĐĐT** — `nppsale.api.misa.*` + hai việc theo lịch (§4.6.9). **Nhân sự** — `compute_payroll_run` (chủ / QL / KT — `FORBIDDEN_ROLE`, kỳ khoá →
+**HĐĐT** — `nppsale.api.misa.*` + một việc theo lịch (đồng bộ rồi kéo snapshot trong cùng việc — §4.6.9). **Nhân sự** — `compute_payroll_run` (chủ / QL / KT — `FORBIDDEN_ROLE`, kỳ khoá →
 `PAYROLL_RUN_LOCKED`), `lock_payroll_run` (= submit `NPP Ky Luong`), `my_payslips` (GET — dòng của mình ở kỳ đã khoá, mig 201), `my_sales_target` (GET — mig
 196), `payroll_returns_for` (hàm phụ — hàng trả trừ doanh số lương, mig 192). **Báo cáo một lượt** (viết ở P6, UNION lưu trữ — §4.8.0): `bao_cao_so_ban`,
 `bao_cao_cong_no`, `bao_cao_ton_kho`, `hang_khach_da_lay`, `dashboard_*`, `finance_*`. Không phải bảng nhưng cùng đi qua `nppsale.api.tuyen.goi`:
@@ -3637,7 +3747,17 @@ pull-snapshots) → `scheduler_events` (không qua HTTP).
 `BAD_STATUS`, `BAD_TYPE`, `BAD_ZONE`, `ENTRY_NOT_FOUND`, `BAD_PAYLOAD`, `TRUNG_KHO`, `THIEU_KHO_DICH`, `NO_IMPORT_TO_REVERSE`, `NO_EXPORT_TO_REVERSE`,
 `GIA_NHAP_SAI`, `GIA_NHAP_AM`, `KHONG_DU_QUYEN_GIA_NHAP`, `NCC_CO_CHUNG_TU`, `NCC_XOA_QUA_RPC`, `GOP_NCC_TRUNG`, `KHONG_DU_QUYEN_XOA_NCC`, `PHIEU_KHONG_TON_TAI`,
 `PHIEU_KHONG_CON_NHAP`, `PHIEU_KHONG_CO_HANG`, `ROLE_RETIRED`, `ANH_DA_DUYET`, `VI_TRI_DA_DUYET`, `DUYET_QUA_NUT`, `CHUA_DUYET`, `FILE_SAI`,
-`PAYROLL_RUN_LOCKED`; mã mới: `LEGACY_FLOW_REMOVED` (ghi vào bảng không port — §6.6).
+`PAYROLL_RUN_LOCKED`; **bán hàng** (portal dịch theo đúng chuỗi — `lib/errors.ts` `CONSTRAINT_VI` (mẫu `RETURN_PRICE_OVER_CEILING` phải khớp trước
+`PRICE_OVER_CEILING`), `explainInvoiceError` (`lib/orders/post-invoice.ts`), `explainReturnError` (`lib/returns/complete-return.ts`), `loiLuotSoan`
+(`lib/orders/luot-soan.ts`); khác chuỗi là rơi xuống nhánh "nguyên văn"): `DISCOUNT_NOT_ALLOWED`, `DISCOUNT_OVER_LIMIT`, `PRICE_OVER_CEILING`,
+`RETURN_PRICE_OVER_CEILING`, `ORDER_NOT_FOUND`, `ORDER_CANCELLED`, `BAD_LINE`, `UNIT_MISSING`, `DON_KHOA`, `DON_HO_KHONG_DUOC_PHEP`,
+`PHIEU_TRA_HO_KHONG_DUOC_PHEP`, `NHAN_VIEN_KHONG_HOP_LE`, `NHAN_VIEN_KHONG_BAN_HANG`, `ASSIGN_FORBIDDEN`, `ASSIGN_BAD_USER`, `ASSIGN_BAD_KIND`,
+`DOC_NOT_FOUND`, `RETURN_SELLER_FOLLOWS_INVOICE`, `INVOICE_NOT_FOUND`, `ORG_MISMATCH`, `ORDER_NOT_COMPLETED`, `RETURN_NOT_FOUND`, `RETURN_NOT_SUBMITTED`,
+`RETURN_NOT_CANCELLABLE`, `RETURN_FOLLOWS_ORDER`, `RETURN_CREDIT_USED`, `RETURN_LOCKED`, `RETURN_COMPLETED`, `CUSTOMER_NOT_FOUND`, `NGAY_NHAP_CHI_TU_SINH`,
+`NGAY_NHAP_TUONG_LAI`, `NGAY_NHAP_TRUOC_HOA_DON`, `CHUA_CHON_HOA_DON`, `KHONG_TIM_THAY_LUOT`, `LUOT_DA_DONG`; mã mới: `LEGACY_FLOW_REMOVED` (ghi vào bảng
+không port — §6.6), `DON_DA_XUAT` (sửa đầu đơn đã xuất ngoài ghi chú / ngày giao / câu cảnh báo — §6.1 `sales_orders`), `REISSUE_QUA_RPC_RIENG` (`post_invoice`
+nhận `reissue_of` từ trình duyệt — Sửa HĐ chỉ qua `reissue_invoice`), `SKU_KHOA` (đổi SKU của mặt hàng đã có chứng từ — câu 18, §6.1 `products`). Mã tạm của
+P3, bỏ khi dựng xong phiếu trả / tiền thu: `RETURNS_CHUA_HO_TRO`, `REISSUE_TIEN_THU_CHUA_HO_TRO`.
 
 ### 6.5 Chuyến giao — chỗ gọi còn lại và cổng trả gì
 
@@ -3677,7 +3797,7 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
 | `deliveries`, `delivery_lines`, `driver_handovers`, `driver_handover_items`, `driver_handover_failed_orders`; RPC `confirm_driver_handover` | Chuyến giao bỏ (24/09/2026) — §6.5 |
 | `organizations.completed_edit_days` | 6.15 — cổng trả hằng 1 |
 | `organizations.slug` làm khoá | Một site một NPP; chỉ giữ làm chữ (`ma_npp`) |
-| Cột di sản của chứng từ | `returns.approved_by` / `photo_url` / `applied_receipt_id` / `return_seq` (tách từ `name`); `sales_orders.discount` (= 0), `approved_*`, `closed_*`, `current_workflow_stage`, `merged_into`; `sales_order_lines.batch_id`; `purchase_invoice_lines.po_id`; `cash_receipts.total_amount` → null / hằng |
+| Cột di sản của chứng từ | `returns.approved_by` / `photo_url` / `applied_receipt_id` / `return_seq` (tách từ `name`); `sales_orders.discount` (= 0), `approved_*`, `closed_*`, `current_workflow_stage`, `merged_into`; `sales_order_lines.batch_id`; `purchase_invoices.po_id` (mig 012 — màn báo cáo NCC còn chọn cột này: `reports/suppliers/page.tsx:155`); `cash_receipts.total_amount` → null / hằng |
 | Vai `driver` trong ma trận quyền | Đã ngưng (mig 122); NV cũ giữ vai để có lịch sử, không gán mới (`ROLE_RETIRED`) |
 | Bucket `pod-photos`, ảnh mới vào `visit-photos` | Chuyến giao bỏ (24/09/2026); đi tuyến không chụp ảnh (12/10/2026) |
 | `post_stock_export` (màn `/inventory/stock-out`) | Màn đã chặn từ 22/09/2026 — giữ tên, trả `LEGACY_FLOW_REMOVED` |
@@ -3695,7 +3815,8 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
    nhân viên = email kỹ thuật `0909123456@nppsale.local`), DocType riêng không số đặt tên UUID giữ id cũ. Đường dẫn thành `/nppsale/orders/DH-0042`,
    `/nppsale/products/SP001` — dễ đọc. Cái giá: sửa `laTrangDanhSach` (`src/lib/nav/mobile-chrome.ts:143` — hôm nay nhận trang chi tiết bằng đoạn UUID; sai thì
    trang chi tiết trên điện thoại hiện ☰ thay vì ←) để nhận cả mã chứng từ, SKU và email (đoạn có `@`), kèm test; khuôn đường dẫn ảnh `ORG_PHOTO_PATH`
-   (`src/lib/customers/photos.ts:186`) — bản Python nhận mã khách mới; SKU không được chứa `/` hay `|` (P8 kiểm); link cũ `/customers/<uuid>`,
+   (`src/lib/customers/photos.ts:186`) không phải phủ — route dùng nó đã thành Python (`tach_duong`, nhận mã khách mới — §2.3), ảnh cũ đổi đoạn khách sang mã
+   mới lúc chuyển (§6.2); SKU không được chứa `/` hay `|` (P8 kiểm); link cũ `/customers/<uuid>`,
    `/settings/users/<uuid>` (Zalo, `notifications.link_url`) chuyển qua `npp_id_cu` / `id_cu` ở `index.py`; link chứng từ cũ chỉ sống qua lưu trữ (điểm 2);
    trang chi tiết lô `id` ghép `<lô>::<vùng>` kiểm ở P4. *Cách khác*: cổng giữ UUID cho cả bảng lõi (mỗi DocType lõi thêm trường UUID, cổng dịch mọi khoá
    ngoại ở mọi câu đọc / lọc / nhúng) — không đụng portal nhưng mọi truy vấn thêm một bước dịch. Em nghiêng về phương án đầu.
@@ -3705,7 +3826,8 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
    những tuần đầu. Bản này cũng mở rộng lưu trữ từ năm loại chứng từ mục 8 bản bàn bạc kể (HĐ, phiếu trả, phiếu thu, phiếu nhập kèm dòng) lên **20 bảng**
    (thêm đơn, công nợ / khoản thu, NCC, phiếu kho, chi phí — các báo cáo giữ ở câu 6 đọc chúng). *Đề xuất*: (a) đồng ý 20 bảng; (b) nguồn cổng của
    `sales_invoices`, `sales_invoice_lines`, `returns`, `return_lines`, `sales_orders`, `sales_order_lines`, `cash_receipts`, `cash_receipt_lines` = UNION ALL sổ
-   thật + `NPP LS *` ở chế độ **chỉ đọc** (cột `luu_tru = true`, giữ UUID cũ làm `id` của dòng lưu trữ; tên cột 1–1 nên phép gộp gần như đồng nhất), mọi đường
+   thật + `NPP LS *` ở chế độ **chỉ đọc** (cột `luu_tru = true`, giữ UUID cũ làm `id` của dòng lưu trữ; tên cột 1–1, nhưng `name` và Link của `NPP LS *` là kiểu `uuid` nên nhánh lưu trữ ép về chữ bằng `CAST(… AS
+   CHAR(36)) COLLATE utf8mb4_unicode_ci` — để nguyên thì mã sổ thật thành NULL, §4.8.0), mọi đường
    ghi / RPC từ chối dòng lưu trữ — các chỗ kể trên và link cũ tự chạy, không viết method riêng; (c) các bảng lưu trữ còn lại chỉ cho báo cáo (hàm dòng thô).
 
 **Hệ thống + Khách hàng**
@@ -3719,28 +3841,35 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
    chuyển hướng tên miền ở mục 8 bản bàn bạc — NV không phải quét lại; không chép thì phát QR mới cho mọi người ngày cắt. *Đề xuất*: chép.
 5. **Ảnh điểm bán thành riêng tư.** Hôm nay bucket `customer-photos` là public — ai có link là mở được (kể cả gửi ra ngoài). Bản mới phải đăng nhập và thấy
    khách mới xem được (§6.2). *Đề xuất*: giữ riêng tư.
-6. **Bốn chỗ lệch có sẵn của nppsale — em bê nguyên, hỏi anh có sửa luôn không** (mỗi chỗ một dòng + test): (i) thẻ "Tuyến hôm nay" ở danh sách khách lấy
+6. **Năm chỗ lệch có sẵn của nppsale — em bê nguyên, hỏi anh có sửa luôn không** (mỗi chỗ một dòng + test): (i) thẻ "Tuyến hôm nay" ở danh sách khách lấy
    `getDay()` (0 = Chủ nhật — `customers/page.tsx:191`) trong khi lịch tuyến lưu 0 = Thứ Hai (`sales/pjp/page.tsx:61–66`) → thứ Hai đếm theo lịch thứ Ba;
    (ii) ghé thăm từ chi tiết khách ghi `visit_date` theo **ngày UTC** (`visit-checkin-dialog.tsx` — `now.toISOString().slice(0, 10)`) → ghé lúc 00:00–07:00 giờ
    VN ghi sang hôm trước; (iii) NVBH và thủ kho không đọc được `approval_rules` (`approval_rules_select` chỉ owner / manager / accountant) → đơn của họ luôn xét
    theo ngưỡng mặc định 20 / 50 triệu, không theo ngưỡng NPP đặt; (iv) vai `warehouse` không có trong vế vai của `customer_select` — thủ kho chỉ thấy khách mình
-   được phân công / tự tạo / có đơn đứng tên, hoặc khi được cấp `customer.view_all`. *Đề xuất*: sửa (i), (ii), (iii); giữ (iv) (ghi lại để anh biết).
+   được phân công / tự tạo / có đơn đứng tên, hoặc khi được cấp `customer.view_all`; (v) Xuất Excel một đơn / một phiếu trả (`lib/xuat-excel/mot-phieu.ts:92, 95`)
+   chọn `created_at` của `return_lines` / `sales_order_lines` — hai bảng không có cột này (mig 001, không ALTER nào thêm) → trên sổ thật PostgREST trả 42703,
+   nút Excel của một đơn / một phiếu trả hỏng (cùng loại lỗi `loadLastPrices` ở CLAUDE.md 03/11/2026). *Đề xuất*: sửa (i), (ii), (iii), (v) — (v) ở lớp phủ
+   `src/thay`: hai câu chọn dùng `sort_order` (cột cổng thêm = `idx`, mã đã trả) thay `created_at` — Excel chạy và dòng đúng thứ tự chứng từ; cổng không trả
+   `created_at` cho hai bảng (như nppsale); giữ (iv) (ghi lại để anh biết).
 7. **SĐT khách khi chuyển dữ liệu.** nppsale so UNIQUE nguyên văn (số cũ lưu thô như `0911.111.111` vẫn có thể còn) và chỉ nhận **một** khách SĐT rỗng; bản mới
    chuẩn hoá mọi số → hai khách trùng sau chuẩn hoá phải gộp trước ngày cắt (công cụ chuyển dữ liệu báo danh sách, như mã vạch trùng); khách không SĐT thì nhận
    nhiều (Frappe đổi chuỗi rỗng của trường unique thành NULL — `frappe/model/document.py:2603–2606`). *Đề xuất*: chấp nhận, anh duyệt danh sách gộp.
-8. **Nhật ký trạng thái / dòng đơn: `Version` hay DocType riêng.** Bản này theo bàn bạc 4.2: `order_status_history` / `order_activity_log` dựng từ `Version`
-   của Sales Order (§6.1) — method đổi `npp_trang_thai` phải đi `save / submit / cancel` (không `db_set`) để Version ghi lại; dòng "nháp → gửi" lúc tạo đơn gửi
-   thẳng do cổng dựng (thay trigger `_don_moi_lich_su`, mig 226); `notes` của lịch sử trạng thái thành null. Phần Hệ thống đề xuất DocType riêng
-   `NPP Nhat Ky Don` (Phụ lục A) do method ghi đúng chỗ trigger cũ: Version chỉ sinh khi method dùng `doc.save()`, diff lẫn cột tổng tiền và phải dịch tên cột
-   lõi về cột nppsale. *Đề xuất*: giữ Version (ít DocType, đúng bàn bạc); nếu P3 thấy thiếu dòng hoặc dịch cột rắc rối thì chuyển sang `NPP Nhat Ky Don` (đã
-   dựng sẵn ở Phụ lục A, Q4 có chỗ "nhật ký" trong `NPP He Thong`).
+8. **Nhật ký trạng thái / dòng đơn: DocType riêng `NPP Nhat Ky Don` thay `Version`.** Bàn bạc 4.2 ghi dựng `order_status_history` / `order_activity_log` từ
+   `Version` của Sales Order. Mã P3 đã dựng `NPP Nhat Ky Don` (Phụ lục A; Q4 có chỗ "nhật ký" trong `NPP He Thong`): `create_order_with_lines`, `sua_don` /
+   `cancel_order`, `post_invoice` / huỷ HĐ gọi `ghi_nhat_ky_don(...)` đúng chỗ trigger cũ ghi — kể cả dòng "nháp → gửi" lúc tạo đơn gửi thẳng (mig 226), `notes`
+   của lịch sử trạng thái và các dòng `invoice_posted` / `invoice_cancelled` / `cancel_after_complete` nppsale vẫn ghi; bài vàng `test_tao_don` / `test_sua_don` /
+   `test_xuat_hang` so lịch sử với Postgres của nppsale (§6.1). Vì sao không `Version`: chỉ sinh khi method dùng `doc.save()`, diff lẫn cột tổng tiền, phải dịch
+   tên cột lõi về cột nppsale, và không có các dòng hành động của HĐ. *Đề xuất*: giữ `NPP Nhat Ky Don` (đã dựng, có bài vàng); anh duyệt chỗ khác bàn bạc này
+   (§7.3 dòng 12).
 
 **Bán hàng**
 
-9. **Mã lượt soạn.** Bản này theo bàn bạc 6.6: `NPP Luot Soan` đặt tên `SH-.DD.MM.-.##` → mã người dùng thấy đổi từ `SH-11/11-01` thành `SH-1111-01`, và vì dãy
-   Frappe đếm theo tiền tố ngày-tháng (không có năm) nên **cùng ngày năm sau không về 01** mà đếm tiếp số của năm trước — khác luật nppsale "NN = số lượt tạo
-   trong ngày + 1" (mig 225). Phần Bán hàng đề xuất `name` băm + trường `ma` do method đặt đúng mẫu `SH-dd/mm-NN`. *Đề xuất*: dùng cách `name` băm + `ma`
-   (giữ y mã người dùng thấy, đếm lại mỗi ngày đúng như nppsale); trường `ma` đã có sẵn trong DocType nên chỉ đổi dòng Naming.
+9. **Mã lượt soạn.** Bản này đặt tên `NPP Luot Soan` bằng dãy `SH-.DD./.MM.-.##` (bàn bạc 6.6 ghi `SH-.DD.MM.-.##` vì tưởng dãy Frappe không nhận `/`; lõi
+   nhận — `frappe/model/naming.py:24`) nên mã người dùng thấy giữ đúng `SH-11/11-01`. Nhưng dãy Frappe đếm theo tiền tố ngày-tháng (khoá đếm `SH-11/11-`, không có
+   năm) nên **cùng ngày năm sau không về 01** mà đếm tiếp số của năm trước — khác luật nppsale "NN = số lượt tạo trong ngày + 1" (mig 225); muốn đếm lại thì
+   `name` không thể là mã (sang năm trùng `name`). Phần Bán hàng đề xuất `name` băm + trường `ma` do method đặt đúng mẫu `SH-dd/mm-NN`. *Đề xuất*: dùng
+   cách `name` băm + `ma` (mã người dùng thấy như nhau ở cả hai cách; cách này đếm lại mỗi ngày đúng như nppsale); trường `ma` đã có sẵn trong DocType nên chỉ
+   đổi dòng Naming.
 10. **Tiền phiếu trả: nppsale làm tròn từng dòng gồm VAT, tờ ghi có của lõi làm tròn VAT một lần.** `credit_note_amount` = Σ round(SL × giá × (1 + VAT)) theo dòng
     (mig 152), đơn giá trả có thể 2 số lẻ (mig 181); tờ ghi có của lõi làm tròn đơn giá về đồng (precision 0) và VAT một lần ở dòng thuế → phiếu nhiều dòng lệch
     1–2 đ (PoC chưa đo — mục 4 của báo cáo PoC; câu 19 nói "xử lý cùng lúc khi làm phiếu trả"). *Đề xuất (a)*: giữ số nppsale cho `tien_tra` (màn, in, nợ theo
@@ -3774,7 +3903,7 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
 16. **Tài khoản kế toán cho bút toán app tự lập** (nối câu 9 và CFD-11 — các trường `tk_*` của `NPP Cai Dat`, §4.1): hao hụt kiểm kê (theo danh mục `COGS_ADJ` —
     632?), thừa kiểm kê (711?), xuất lẻ hỏng / biếu (632 như cách nppsale tính vào giá vốn, hay 811 / 641?), nhập kho không công nợ (Stock Adjustment của lõi hay
     3388?), tài khoản trung gian sửa giá nhập, chi phí phải trả (335 / 3388), nợ NCC lập tay, giảm đầu phiếu nhập (711 hay 632 — CFD-11 đã hẹn), giảm giá cả đơn
-    bán. *Đề xuất*: em dựng bảng mặc định theo TT200 ở P2 trong mẫu hệ thống tài khoản, anh / kế toán duyệt một lần.
+    bán, nhập lại hàng trả `NL-` (632 — `Company.default_expense_account`, cùng vế Có giá vốn của tờ ghi có có kho; §5.11 dòng `npp_loai`). *Đề xuất*: em dựng bảng mặc định theo TT200 ở P2 trong mẫu hệ thống tài khoản, anh / kế toán duyệt một lần.
 17. **Xoá công nợ NCC của phiếu nhập.** nppsale cho chủ NPP xoá dòng nợ chưa trả của bất kỳ khoản nào (`payables/[id]`, trigger mig 227 chỉ chặn khoản đã trả) —
     xoá nợ của một phiếu nhập mà kho vẫn còn hàng. Sổ mới không tách được nợ khỏi phiếu nhập. *Đề xuất*: nút Xoá chỉ cho nợ đầu kỳ / lập tay chưa trả; nợ của
     phiếu nhập / trả NCC thì báo "huỷ phiếu nhập / trả NCC" (`NO_NCC_KHOA`).
@@ -3819,19 +3948,27 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
 ### 7.2 Kiểm kỹ thuật cần đo (không phải câu hỏi — P2 / P3 / P4)
 
 1. **Kiểu `uuid` của DocType đặt tên UUID** (§2.3): Link, danh sách, báo cáo, cổng, `frappe.get_list` lọc theo Link uuid — thử ở P2 trước khi dựng DocType thật; hỏng
-   thì lùi về `hash` + `id_cu`.
+   thì lùi về `hash` + `id_cu`. Thêm: (a) Link chỉ thành cột `uuid` nếu DocType đích đã có lúc bảng nguồn được tạo (`schema.py:419–428`), thứ tự tạo theo
+   `modules.txt` + `os.listdir` không sắp, và `bench migrate` không nâng `varchar(140)` lên `uuid` (`schema.py:262–286`; DocType không đổi hash còn bị bỏ qua —
+   `frappe/modules/import_file.py:138–152`) → `nppsale.thiet_lap` (after_install + after_migrate) `ALTER TABLE … MODIFY <cột> uuid` mọi Link tới DocType UUID còn là
+   varchar (`''` → NULL trước) + test đọc `information_schema.columns` khẳng định kiểu từng cột (§4.8.0); (b) mọi UNION / `COALESCE` / `IFNULL` / `CASE` trộn cột
+   `uuid` với varchar ép nhánh `uuid` bằng `CAST(… AS CHAR(36)) COLLATE utf8mb4_unicode_ci` — để nguyên thì mã không phải UUID thành NULL (§4.8.0, §6.1 `invoices`);
+   bộ test cổng / báo cáo có ca gộp hai nguồn.
 2. **JE tham chiếu Payment Entry** (dùng tiền thừa làm dư có): v16 có `Payment Entry` trong `reference_type` của Journal Entry Account; đo Payment Ledger trừ đúng
    phần chưa phân bổ của PE nguồn và phép chiếu ra đúng. Không đạt → đường lõi `reconcile_against_document` (gắn thêm tham chiếu vào PE nguồn) và ghi dòng
    `credit_applied` như cũ.
 3. **Giảm dòng phiếu nhập không chia hết SL**: Property Setter precision 4 cho `rate` / `net_rate` / `discount_amount` của Purchase Invoice Item giữ `amount` = tiền
    dòng nppsale sau làm tròn; tiền phiếu nhập nppsale **không làm tròn** (VAT số lẻ — mig 145), sổ mới làm tròn về đồng → so `total` / nợ NCC từng phiếu, chênh
    phải < 1 đ (cùng tinh thần (a) của câu 19 / Q3).
-4. **LCV dương** (PoC mới đo LCV âm) + bút toán `DCN-` loại `Debit Note` trên phiếu đã trả đủ (nợ âm) + số việc Repost (CFD-07).
+4. **LCV dương** (PoC mới đo LCV âm) + bút toán `DCN-` loại `Debit Note` trên phiếu đã trả đủ (nợ âm) + số việc Repost (CFD-07) + lượt sửa hai chiều (dòng
+   tăng, dòng giảm, chênh ròng 0) ra **hai** LCV `SGN-` một chiều dùng chung một `DCN-` (§5.10 — lõi từ chối LCV trộn dấu / tổng 0 lúc `on_submit`).
 5. **PE `insert(set_name=…)` cùng tên `NPP Phieu Thu`**; `reconcile_against_document` giữ tên PE khi Sửa HĐ; hai tham chiếu cùng HĐ trong một PE.
 6. **Material Transfer giữ giá vốn lô** (`use_batchwise_valuation`) khi chuyển một phần lô sang kho cận date; Material Receipt `is_opening = Yes` vào Temporary
    Opening.
 7. **Xoá dòng chiếu** công nợ bằng câu xoá thẳng khi còn dòng `NPP Phieu Thu Dong` (phiếu đã huỷ) trỏ tới — không để `frappe.delete_doc` chặn.
-8. **Dồn trả trước NCC**: `reconcile_against_document` trên PE `PCNCC-` vào PI mới, thứ tự cũ nhất trước như `_don_tra_truoc_ncc` (mig 242).
+8. **Dồn trả trước NCC**: `reconcile_against_document` trên PE `PCNCC-` vào PI mới, thứ tự cũ nhất trước như `_don_tra_truoc_ncc` (mig 242); tham chiếu mới chép
+   `npp_xac_nhan_*` cấp PE; sau mỗi lượt lập / dồn / huỷ PI, Σ dòng `payable_payments` của phiếu chi (kể cả dòng `<PE>::tra_truoc`) = `paid_amount` và `paid_at`
+   mọi dòng = lúc chi của phiếu (§5.7, §6.1).
 9. **Sales Order `skip_delivery_note = 1`** (thay "tự điền ngày giao" của 6.5): lõi bỏ `validate_delivery_date` và coi đơn như đã giao (`status_updater.py:67–79`)
    — đo trạng thái SO sau Xuất hàng / xuất thiếu / huỷ HĐ ở P3.
 10. **Phiếu trả tự lập chỉ có hàng đổi**: lõi có nhận tờ ghi có 0 đ hay không (không nhận → Stock Entry `NL-` thay tờ ghi có, như phiếu tự sinh) — đo ở P3; tiền
@@ -3840,6 +3977,45 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
     `stock_entries` / `v_hoa_don_con_lai` / UNION lưu trữ của cổng — đo ở P2 / P3 khi có công cụ nhập H3.
 12. **`navigator.sendBeacon` của đo nạp**: không gắn được header CSRF → lớp phủ `src/thay/lib/pos/bao-nap.ts` đưa `csrf_token` vào thân JSON (lõi nhận
     `form_dict.csrf_token` — `frappe/auth.py:94`); thử ở P2 cùng khung portal.
+
+- **Mã cần đổi — `NPP Do Nap`** (§4.1, Phụ lục B điểm 6): DocType trong mã mới 5 trường (`man`, `nhan`, `ms`, `noi_dung`, `nguoi` —
+  `npp_he_thong/doctype/npp_do_nap/npp_do_nap.json`), controller trống → tách cột theo §4.1 (`tu_mo_trang`, `loi`, `dong`, `ttfb_ms`, `dcl_ms`, `so_cau`, `cham`,
+  `mang_*`, `user_agent`), giới hạn 60 lượt / phút / người, `clear_old_logs` + hook `default_log_clearing_doctypes = {"NPP Do Nap": 30}` (`hooks.py:336` còn để chú
+  thích — thiếu thì Log Settings không dọn, bảng phình mãi), gói thiếu `man` vẫn ghi như route nppsale (`src/app/api/do-nap/route.ts` chỉ trả 400 khi JSON hỏng /
+  không phải object; `api/do_nap.py:23–24` đang trả 400).
+- **Mã cần đổi — Customer Group tăng `phien`** (§4.1 `NPP Phien Danh Muc`, §6.1 `customer_groups`): doc_events `Customer Group` (`hooks.py:194–198`) chỉ gọi
+  `tang_phien_khach()` — thêm `after_rename` và `on_update` khi `default_price_list` đổi gọi `tang_phien_danh_muc()`. Cổng suy `price_lists.group_id` từ Customer
+  Group, nên đổi tên / đổi bảng giá nhóm mà không tăng `phien` thì máy NVBH giữ bảng giá đã nhớ theo nhóm cũ, `unitPriceFor` không khớp `pl.group_id` và rơi về giá
+  chung tới lần đổi danh mục hàng kế tiếp.
+- **Mã cần đổi — `NPP Cong No.khoa_cho`** (§4.3, §6.1 `receivables`): DocType trong mã chưa có trường (`npp_ban_hang/doctype/npp_cong_no/npp_cong_no.json`) —
+  thêm Data unique; hàm chiếu (`su_kien/cong_no.chieu_hoa_don`) đặt `dau_ky:<khách>` cho dòng tờ `DK-`, trống với loại khác; `ghi_no_dau_ky` (P3d) khoá dòng
+  Customer `FOR UPDATE` và kiểm khách chưa có dòng `dau_ky` trước khi lập tờ — thiếu thì nhập Excel nợ đầu kỳ hai lần (hoặc hai người cùng nhập) ra hai tờ `DK-`.
+- **Mã cần đổi — `created_at` của dòng đơn / dòng trả** (§6.1, §7.1 điểm 6 (v)): cổng `sales_order_lines` đang trả `created_at` = `creation` (nppsale không có
+  cột — `cong/bang/don_hang.py`), `return_lines` thì không — thống nhất theo quyết định ở điểm 6 (v).
+- **Mã cần đổi — `Sales Invoice.npp_ghi_chu`** (§5.6, Phụ lục B điểm 15): `insert_after` = `remarks` (`thiet_lap/truong_tuy_bien.json` đang `npp_qua_han_tay` —
+  neo vào Custom Field khai sau nó trong bảng; Frappe vẫn xếp đúng theo chuỗi `insert_after` lúc dựng meta — `frappe/model/meta.py:1040–1063` — nên chỉ là sửa
+  cho đúng quy ước đầu §5).
+- **Mã cần đổi — `Supplier.npp_ghi_chu` → `supplier_details`** (§5.2, §6.1 `suppliers`): cổng `nppsale/cong/bang/nha_cung_cap.py:19` (`_ANH_XA`) và `:60` (cột
+  đọc) đổi `notes` ↔ `supplier_details`; sinh lại `thiet_lap/truong_tuy_bien.json` (Supplier bỏ `npp_ghi_chu`, `npp_tim_kd` sau `supplier_details`); một patch
+  (`nppsale/patches/v0_1/…`) chép `npp_ghi_chu` sang `supplier_details` (khi ô lõi còn trống) rồi xoá Custom Field `Supplier-npp_ghi_chu` trên site đã cài —
+  `create_custom_fields(update=True)` không xoá trường nào (`thiet_lap/truong_tuy_bien.py`).
+- **Mã cần đổi — `rename_doc` thiếu `ignore_permissions`** (§4.4.0, §6.1 `suppliers` / `batches`, §2.10): `nppsale/cong/bang/san_pham.py:152` (`_doi_sku`, đổi
+  SKU mặt hàng chưa có chứng từ) gọi `frappe.rename_doc("Item", …, force=True)` không kèm `ignore_permissions=True` — vai NPP chỉ có `read` / `select` trên Item
+  (`thiet_lap/quyen_san.py`), nên chủ / quản lý đổi SKU vấp "You need write permission on Item … to rename" (`frappe/model/rename_doc.py:377`); bài
+  `test_cong_san_pham.test_tao_doc_don_vi_gia_va_pham_vi_nvbh` gọi cổng khi phiên còn là Administrator nên không bắt được — chạy lời đổi SKU dưới
+  `frappe.set_user(self.chu.user)`. `doi_ma_lo` / `gop_nha_cung_cap` (chưa dựng) theo cùng luật.
+- **Mã cần đổi — tài khoản chênh lệch của phiếu `NL-`** (§5.11 dòng `npp_loai`): `nppsale/rpc/phieu_tra.py:636` (`_lap_phieu_nhap`) dựng dòng Stock Entry
+  (`:650`) không đặt `expense_account` → lõi điền `Company.stock_adjustment_account`; đặt `Company.default_expense_account` (giá vốn hàng bán) cho mọi dòng để
+  sổ cái của phiếu nhập lại khớp vế Có giá vốn của tờ ghi có có kho; bài thử phiếu trả tự sinh kiểm tài khoản của bút toán phiếu `NL-`.
+- **Mã cần đổi (khi dựng phiếu thu — P3d) — huỷ tờ ghi có đang được cấn trừ** (§4.5 `NPP Phieu Thu`): `nppsale/rpc/phieu_tra.py:1013` (`_huy_to_ghi_co`) huỷ
+  thẳng tờ `HDT-`; khi đã có JE `CTR-` tham chiếu tờ ấy, lõi không chặn mà gỡ tham chiếu (JE treo, HĐ được đắp giữ phần đã trừ) — thêm bước huỷ JE `CTR-` đang
+  tham chiếu tờ trước khi huỷ rồi lập lại JE với dư có còn lại; bài thử "phiếu trả nguồn dư có bị huỷ / sửa" kiểm nợ HĐ được đắp tăng lại, không chờ lỗi của lõi.
+- **Mã cần đổi — cột Link tới DocType UUID** (§2.3, §4.8.0, điểm 1 ở trên): `nppsale/thiet_lap/__init__.py` (`_chay_het`, chạy ở `after_install` + `after_migrate`)
+  chưa có bước nào sửa kiểu cột — thêm một bước: mọi Link (DocField và Custom Field) có DocType đích `autoname = UUID` mà `information_schema.columns.column_type`
+  còn `varchar(140)` → đổi `''` → NULL rồi `ALTER TABLE … MODIFY <cột> uuid`. Cột đang có trong mã: `NPP Yeu Cau Anh Diem Ban.anh` (→ `NPP Anh Diem Ban`, cùng
+  module `NPP Khach Hang`) — trên poc.local đang là `uuid` (bảng được tạo khi `NPP Anh Diem Ban` đã có), cài mới thì tuỳ thứ tự `os.listdir`; về sau
+  `NPP HDDT.hoa_don_ban_ls` / `don_hang_ls`, `NPP MISA Log.hddt`, `NPP MISA Snapshot.hddt` và các Link giữa 20 `NPP LS *`. Kèm bài test đọc
+  `information_schema.columns` khẳng định kiểu.
 
 ### 7.3 Chỗ blueprint khác bản bàn bạc (anh duyệt cùng tệp này)
 
@@ -3855,35 +4031,36 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
 | 8 | Lưu trữ H3: HĐ / dòng HĐ / phiếu trả / phiếu thu / phiếu nhập (mục 8) | 20 bảng (thêm đơn, công nợ, NCC, phiếu kho, chi phí) | báo cáo giữ ở câu 6 đọc chúng — §7.1 điểm 2 |
 | 9 | Đơn vị cơ sở sửa tự do (nppsale) — chưa có trong CFD-10 | khoá khi đã có chứng từ | lõi chặn — §7.1 điểm 12 |
 | 10 | HĐĐT ghi RefID sau khi MISA trả OK (nppsale) | ghi RefID **trước** khi gọi MISA | sửa Gotcha #1 (hết giờ là mất khoá nối) — §4.6 |
-| 11 | Mã lượt soạn `SH-.DD.MM.-.##` (6.6) | giữ theo bàn bạc | đề xuất đổi — §7.1 điểm 9 |
-| 12 | `Version` cho nhật ký đơn (4.2) | giữ theo bàn bạc | phương án dự phòng Phụ lục A — §7.1 điểm 8 |
+| 11 | Mã lượt soạn `SH-.DD.MM.-.##` — "dãy Frappe không nhận `/`" (6.6) | `SH-.DD./.MM.-.##` (lõi nhận `/` — mã người dùng thấy giữ `SH-dd/mm-NN`) | dãy theo ngày-tháng vẫn đếm nối tiếp qua năm — đề xuất `name` băm + `ma` — §7.1 điểm 9 |
+| 12 | `Version` cho nhật ký đơn (4.2) | DocType `NPP Nhat Ky Don` (Phụ lục A — mã P3 đã dựng, bài vàng so lịch sử với nppsale) | Version chỉ sinh khi `doc.save()`, lẫn cột tổng tiền, phải dịch tên cột, không có dòng hành động của HĐ — §7.1 điểm 8 |
+| 13 | Đổi đơn vị lúc xuất: `xuat_hang` cập nhật hệ số dòng SO theo danh mục trước khi ghi sổ; đổi đơn vị so với đơn thì dòng mất nối, báo cáo cộng theo mã hàng (6.3) | Dòng SO giữ đơn vị + hệ số lúc lập (như nppsale); dòng HĐ khác đơn vị / hệ số không nối `so_detail` mà giữ móc ở `Sales Invoice Item.npp_dong_don`; `invoiced_qty` / `order_line_id` của cổng tính cả các dòng ấy | lõi chỉ cho `so_detail` khi trùng `uom` + `conversion_factor` (`sales_invoice.py:1189–1193`); nppsale giữ `order_line_id` bất kể đơn vị và "đã xuất" quy đổi (mig 179, chủ nhà 23/09/2026) — §5.5, §5.6 |
 
 ---
 
-## Phụ lục A — Phương án dự phòng: `NPP Nhat Ky Don` (không nằm trong bản chốt)
+## Phụ lục A — `NPP Nhat Ky Don` (nhật ký đơn — đã dựng)
 
-Bản chốt dựng `order_status_history` / `order_activity_log` từ `Version` của Sales Order (bàn bạc 4.2, §6.1). DocType dưới đây do phần Hệ thống soạn, giữ nguyên
-để chuyển sang nếu P3 thấy `Version` thiếu dòng hoặc dịch cột rắc rối (§7.1 điểm 8); khi ấy sổ cổng hai bảng trên đổi nguồn sang DocType này (cấm ghi thẳng,
-vế lọc theo đơn nhìn thấy được), method đổi trạng thái / sửa dòng đơn gọi `ghi_nhat_ky_don(...)`, và module `NPP He Thong` thành 11 DocType.
+Nguồn của `order_status_history` / `order_activity_log` trong sổ cổng (§6.1 — cấm ghi thẳng; vế lọc như hai dòng ấy). Bàn bạc 4.2 ghi dựng từ `Version` của Sales
+Order; mã P3 đã dựng DocType này (§7.1 điểm 8, §7.3 dòng 12) — method tạo / sửa / huỷ đơn, Xuất hàng, huỷ HĐ gọi `ghi_nhat_ky_don(...)`; module `NPP He Thong`
+có 11 DocType (§1).
 
 ### DocType: NPP Nhat Ky Don (npp_nhat_ky_don)
 - **Module**: NPP He Thong (Q4: "nhật ký") · **Naming**: `autoname: UUID` · **Is Submittable**: No · **Is Single**: No · **Is Child Table**: No
 - **Track Changes**: No (bản thân là nhật ký) · **Title Field**: — · **Search Fields**: `don,loai`
 - **Thay cho bảng nppsale**: `order_status_history` (loai = `trang_thai`), `order_activity_log` (loai = `dong`) — trùng phạm vi A4,
-  xem §7.1 điểm 8
+  xem §7.1 điểm 8; sổ cổng hai bảng ở §6.1
 
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| don | Đơn hàng | Link | Sales Order | ✓ | ✓ | ✓ | `order_id`; chỉ mục `(don, luc)` |
+| don | Đơn hàng | Link | Sales Order | ✓ | ✓ | ✓ | `order_id`; chỉ mục `(don, luc)`; nppsale `ON DELETE CASCADE` (mig 008 / 052) → `xoa_don` xoá các dòng nhật ký của đơn **trước** `frappe.delete_doc('Sales Order', …)`, vì Link của Frappe chặn xoá khi còn dòng trỏ tới (mọi đơn có dòng hàng đều có nhật ký `add_line` — trigger mig 114) — mã đã làm (`nppsale/rpc/sua_don.py:433–434`) |
 | loai | Loại | Select | `trang_thai`↵`dong` | ✓ | ✓ | ✓ | bảng nppsale nguồn |
 | tu_trang_thai | Từ trạng thái | Data | | | ✓ | | `from_status` (mã nppsale `draft / submitted / completed / cancelled`) |
 | den_trang_thai | Sang trạng thái | Data | | | ✓ | | `to_status` |
 | ghi_chu | Ghi chú | Small Text | | | | | `order_status_history.notes` |
-| hanh_dong | Hành động | Select | ↵`add_line`↵`edit_line`↵`remove_line`↵`edit_after_complete`↵`cancel_after_complete`↵`invoice_posted`↵`invoice_cancelled`↵`order_closed` |  | ✓ |  | `order_activity_log.action` (CHECK mig 124; ba giá trị cuối là lịch sử) |
+| hanh_dong | Hành động | Select | ↵`add_line`↵`edit_line`↵`remove_line`↵`edit_after_complete`↵`cancel_after_complete`↵`invoice_posted`↵`invoice_cancelled`↵`order_closed` |  | ✓ |  | `order_activity_log.action` (CHECK mig 124): `add_line` / `edit_line` / `remove_line` (tạo / sửa đơn), `invoice_posted` / `invoice_cancelled` (Xuất hàng / huỷ HĐ — mig 125), `cancel_after_complete` (huỷ HĐ kéo huỷ đơn — mig 217) vẫn ghi; `edit_after_complete`, `order_closed` chỉ còn ở dữ liệu cũ |
 | dong_don | Dòng đơn | Data | | | | | `order_line_id` — `id` cổng của dòng đơn (`name` băm của Sales Order Item) |
 | giai_doan | Giai đoạn | Data | | | | | `workflow_stage` (di sản, màn vẫn in "Stage …") |
-| thay_doi | Thay đổi | JSON | | | | | `changes` dạng `{cột: {from, to}}` |
+| thay_doi | Thay đổi | JSON | | | | | `changes` — khuôn trigger mig 114: thêm / bỏ dòng = ảnh cả dòng (`product_id, unit_name, quantity, unit_price, line_total`); sửa dòng = `{cột: {from, to}}` (cả `line_discount`); sự kiện HĐ = khoá của RPC (§6.1 `order_activity_log`) |
 | nguoi | Người làm | Link | NPP Nhan Vien | | ✓ | | `changed_by` / `actor_id` (null = "Hệ thống") |
 | luc | Lúc | Datetime | | ✓ | ✓ | | `changed_at` / `created_at`, default now |
 
@@ -3891,9 +4068,11 @@ vế lọc theo đơn nhìn thấy được), method đổi trạng thái / sử
 Links to Sales Order, NPP Nhan Vien.
 
 #### Computed/Auto fields
-Không trigger: method bán hàng (`sua_don`, gửi đơn, `xuat_hang`, huỷ đơn / HĐ) gọi `ghi_nhat_ky_don(...)` đúng chỗ trigger
-`trg_log_order_status` / `trg_log_sales_order_line` từng ghi. Không dựng từ `Version`: Version chỉ sinh khi method dùng
-`doc.save()`, diff gồm cả cột tổng tiền, và khác khuôn `changes` màn đang đọc (`orders/[id]/page.tsx:2725–2770`).
+Không trigger: method bán hàng (`create_order_with_lines`, `sua_don` / `cancel_order`, `post_invoice`, huỷ HĐ) gọi `ghi_nhat_ky_don(...)` đúng chỗ trigger
+`trg_log_order_status` / `trg_log_sales_order_line` và RPC nppsale từng ghi (Administrator / việc nền → `nguoi` trống = "Hệ thống"). Không dựng từ `Version`:
+Version chỉ sinh khi method dùng `doc.save()`, diff gồm cả cột tổng tiền, và khác khuôn `changes` màn đang đọc (`orders/[id]/page.tsx:2725–2770`). Xoá đơn
+(`xoa_don`) xoá các dòng nhật ký của đơn trước `delete_doc` (nppsale `ON DELETE CASCADE` — mig 008 / 052); thiếu bước này thì `check_if_doc_is_linked` chặn
+(`don` là Link bắt buộc).
 
 #### Submission / vòng đời
 Không submit; chỉ chèn; không cấp quyền sửa / xoá.
@@ -3911,17 +4090,17 @@ thật của nppsale, và ghi lý do.
 | 2 | Fieldname khoá tìm trên DocType riêng | Hệ thống, Tiền-Kho, HĐĐT: `khoa_tim`; Bán hàng: `tim_kd` | **`tim_kd`** (bàn bạc 6.7: "khoá tìm `tim_kd` giữ nguyên"); DocType lõi giữ `npp_tim_kd`. Đổi ở `NPP Nhan Vien`, `NPP Phieu Thu`, `NPP Kiem Ke`, `NPP HDDT` |
 | 3 | Kiểu cột khoá tìm | Hệ thống: Small Text cho khoá ghép có tên / địa chỉ; Bán hàng, Tiền-Kho: Data + idx cả cho Item, Supplier, phiếu thu | **Một luật** (§2.8): khoá có tên / địa chỉ / ghi chú → Small Text (Item, Supplier, `NPP Phieu Thu` đổi từ Data — tên hàng / tên NCC / ghi chú dễ quá 140 ký tự của Data); khoá chỉ từ mã → Data + idx |
 | 4 | Khoá tìm còn thiếu | `payables`, `stock_entries` nằm trong `BANG_TIM_KD_TINH` nhưng `NPP Cong No NCC` và Purchase Invoice (một nguồn của `stock_entries`) không có trường | **Thêm** `NPP Cong No NCC.tim_kd` và `Purchase Invoice.npp_tim_kd` |
-| 5 | `NPP Khoa Chung Tu` (hai phần cùng khai) | Hệ thống: `loai_chung_tu` / `chung_tu`, `doctype_subscribe`, dọn 5 phút; Bán hàng: `loai` / `ma_chung_tu`, phòng theo chứng từ, dọn mỗi phút | Bản **Hệ thống** (Q4 xếp khoá chứng từ vào `NPP He Thong`) + từ Bán hàng: dọn **mỗi phút** (đúng pg_cron mig 053), dạng trả về `ok, holder_id, holder_name, locked_at`, `entity_type` chuỗi tự do |
+| 5 | `NPP Khoa Chung Tu` (hai phần cùng khai) | Hệ thống: `loai_chung_tu` / `chung_tu`, `doctype_subscribe`, dọn 5 phút; Bán hàng: `loai` / `ma_chung_tu`, phòng theo chứng từ, dọn mỗi phút | Bản **Hệ thống** (Q4 xếp khoá chứng từ vào `NPP He Thong`) + từ Bán hàng: dọn **mỗi phút** (đúng pg_cron mig 053), dạng trả về `ok, holder_id, holder_name, locked_at`, `entity_type` chuỗi tự do. Realtime: phòng `user:` của từng NV đang làm thay `doctype_subscribe` (thiếu `docname` thì lõi đẩy vào phòng `all` của System User — §4.1, §6.3) |
 | 6 | `NPP Do Nap` (hai phần cùng khai) | Hệ thống: 5 trường, cả gói trong JSON; HĐĐT-Khác: 16 trường tách cột, chặn `man` theo khuôn | Bản **tách cột** + thêm `noi_dung` (cả gói) của Hệ thống; **bỏ** chặn `man` theo khuôn (route nppsale ghi mọi gói) |
-| 7 | Nhật ký trạng thái / dòng đơn | Hệ thống: DocType `NPP Nhat Ky Don`; Bán hàng: SQL trên `Version` | **`Version`** (bàn bạc 4.2); `NPP Nhat Ky Don` → Phụ lục A, §7.1 điểm 8 |
-| 8 | Mã lượt soạn | Bảng dãy số của Hệ thống: `SH-.DD.MM.-.##`; DocType của Bán hàng: `name` băm + `ma` = `SH-dd/mm-NN` | **`SH-.DD.MM.-.##`** (bàn bạc 6.6); `ma` giữ (= `name`); đề xuất đổi ở §7.1 điểm 9 (dãy theo ngày-tháng đếm nối tiếp qua năm) |
+| 7 | Nhật ký trạng thái / dòng đơn | Hệ thống: DocType `NPP Nhat Ky Don`; Bán hàng: SQL trên `Version` | **`NPP Nhat Ky Don`** (Phụ lục A) — mã P3 đã dựng, bài vàng so lịch sử với Postgres nppsale; khác bàn bạc 4.2 (`Version`) — §7.1 điểm 8, §7.3 dòng 12 |
+| 8 | Mã lượt soạn | Bảng dãy số của Hệ thống: `SH-.DD.MM.-.##`; DocType của Bán hàng: `name` băm + `ma` = `SH-dd/mm-NN` | **`SH-.DD./.MM.-.##`** (bàn bạc 6.6 ghi `SH-.DD.MM.-.##` vì tưởng dãy Frappe không nhận `/` — lõi nhận, mã người dùng thấy giữ `SH-dd/mm-NN`); `ma` giữ (= `name`); đề xuất đổi ở §7.1 điểm 9 (dãy theo ngày-tháng đếm nối tiếp qua năm) |
 | 9 | Đặt tên DocType riêng không số | Hệ thống / Tiền-Kho / HĐĐT: `UUID` giữ id cũ; Bán hàng: `hash` cho `NPP Khuyen Mai`, `NPP Chinh Sach Hoa Hong` | **`UUID`** (§2.3) |
 | 10 | Tên trường `NPP Cai Dat` | Hệ thống: `tu_duyet_toi_da`, `quan_ly_duyet_toi_da`, `nguong_kho_date_ngay`…; Bán hàng đề xuất `nguong_soat_ky`, `nguong_chu_xem`, `so_ngay_can_date` cho cùng cột | Tên của **Hệ thống** (phần định nghĩa Single); **thêm** 21 trường + 4 khối mà Bán hàng / Tiền-Kho / Lưu trữ cần (kho, bảng giá, mẫu thuế, hình thức thanh toán, 11 tài khoản, `ngay_cat_chuyen`) |
 | 11 | Tài khoản mặc định của danh mục chi phí | Tiền-Kho: "mặc định theo nhóm" nhưng chỉ đề xuất một trường | `NPP Danh Muc Chi Phi.tai_khoan` trống → `NPP Cai Dat.tk_chi_phi_mac_dinh` |
-| 12 | Precision giá vốn mỗi đơn vị cơ sở | Tiền-Kho: 4; Lưu trữ: 6 | **6** = `numeric(18,6)` của nppsale (`NPP Kiem Ke Dong.gia_von`, `Batch.npp_gia_von_lo_rong`) |
+| 12 | Precision giá vốn mỗi đơn vị cơ sở | Tiền-Kho: 4; Lưu trữ: 6 | **6** (`NPP Kiem Ke Dong.gia_von`, `Batch.npp_gia_von_lo_rong`) — nppsale lưu giá vốn bằng `numeric` không giới hạn số lẻ (`stock_entry_lines.unit_cost`, `batches.unit_cost` mig 016; `stock_line_consumptions.unit_cost` mig 119); `numeric(18,6)` chỉ có ở `fifo_layers` / `fifo_consumptions` đã DROP mig 107 — 6 số lẻ là lựa chọn của bản Frappe (SL × giá vốn vẫn khớp tới đồng), không phải chép kiểu cột; bộ so số P8 so với dung sai 1e-6 (§2.7) |
 | 13 | Mã lỗi khi ghi vào bảng không port | Bán hàng / Tiền-Kho: câu "chức năng đã gỡ" kèm tên cờ giao diện `LEGACY_FLOW_WRITES_LOCKED`; HĐĐT: `LEGACY_FLOW_REMOVED`, `LEGACY_REMOVED` | **Một mã `LEGACY_FLOW_REMOVED`** + câu tiếng Việt theo bảng (§6.6) |
-| 14 | Dòng sổ cổng trùng | `pricing_rules`, `approval_rules`, `customer_groups`, `entity_locks` (Hệ thống ↔ Bán hàng); `order_status_history`, `order_activity_log` (Hệ thống ↔ Bán hàng); `purchase_price_lists` (Bán hàng ↔ Tiền-Kho); `swap_stock_movements`, `cash_collections` (Tiền-Kho ↔ HĐĐT) | Một dòng mỗi bảng: bản Hệ thống cho 4 bảng đầu (+ chi tiết của Bán hàng), bản Bán hàng cho 2 bảng nhật ký (`Version`), bản Tiền-Kho cho 3 bảng sau; `cash_collections` **đăng ký** nguồn rỗng (HĐĐT ghi "không đăng ký") để mọi bảng không port cùng một cách trả |
-| 15 | `insert_after` trùng chỗ | SI: `npp_tim_kd` và `npp_nv_giu_no` cùng sau `npp_nhan_vien`, `npp_ghi_chu` và `npp_han_thanh_toan` cùng sau `due_date`; Stock Entry: `npp_phieu_tra` và `npp_loai` cùng sau `stock_entry_type`; Item / Supplier `npp_id_cu` "(cuối form)" | SI `npp_nv_giu_no` → sau `npp_tim_kd`, `npp_ghi_chu` → sau `npp_qua_han_tay`; Stock Entry `npp_phieu_tra` → sau `npp_kiem_ke`, `npp_tim_kd` → sau `npp_phieu_tra`; Item / Supplier `npp_id_cu` → sau `npp_tim_kd` (ẩn) |
+| 14 | Dòng sổ cổng trùng | `pricing_rules`, `approval_rules`, `customer_groups`, `entity_locks` (Hệ thống ↔ Bán hàng); `order_status_history`, `order_activity_log` (Hệ thống ↔ Bán hàng); `purchase_price_lists` (Bán hàng ↔ Tiền-Kho); `swap_stock_movements`, `cash_collections` (Tiền-Kho ↔ HĐĐT) | Một dòng mỗi bảng: bản Hệ thống cho 4 bảng đầu (+ chi tiết của Bán hàng), 2 bảng nhật ký theo `NPP Nhat Ky Don` (dòng 7), bản Tiền-Kho cho 3 bảng sau; `cash_collections` **đăng ký** nguồn rỗng (HĐĐT ghi "không đăng ký") để mọi bảng không port cùng một cách trả |
+| 15 | `insert_after` trùng chỗ | SI: `npp_tim_kd` và `npp_nv_giu_no` cùng sau `npp_nhan_vien`, `npp_ghi_chu` và `npp_han_thanh_toan` cùng sau `due_date`; Stock Entry: `npp_phieu_tra` và `npp_loai` cùng sau `stock_entry_type`; Item / Supplier `npp_id_cu` "(cuối form)" | SI `npp_nv_giu_no` → sau `npp_tim_kd`, `npp_ghi_chu` → sau `remarks` (như Payment Entry / Purchase Invoice / Stock Entry — neo vào trường lõi; quy ước đầu §5: `insert_after` là trường lõi hoặc Custom Field đứng **trước** trong bảng); Stock Entry `npp_phieu_tra` → sau `npp_kiem_ke`, `npp_tim_kd` → sau `npp_phieu_tra`; Item / Supplier `npp_id_cu` → sau `npp_tim_kd` (ẩn) |
 | 16 | `Sales Invoice.npp_ghi_chu` | Bán hàng: không AOS; Tiền-Kho: màn Nợ đầu kỳ sửa ghi chú khoản đã ghi sổ | **AOS** (CFD-02 có "ghi chú" trong nhóm trường mềm) |
 | 17 | `Sales Invoice.naming_series` | Bán hàng: `HD-` / `HDT-`; Tiền-Kho: thêm `DK-` | Một bộ options `HD-.####`↵`HDT-.####`↵`DK-.####` |
 | 18 | Module fixture của Custom Field | Bán hàng: mọi trường của mình vào `NPP Ban Hang` (kể cả Stock Entry); Tiền-Kho: Stock Entry vào `NPP Kho Mua` | **Một module mỗi DocType lõi** (§2.2) — Stock Entry cả `npp_phieu_tra` vào `NPP Kho Mua` |
