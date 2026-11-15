@@ -64,8 +64,9 @@ def dam_bao():
 		cd = frappe.get_single("NPP Cai Dat")
 		doi = False
 		if not cd.get("org_id"):
-			cd.org_id = str(uuid.uuid4())
-			doi = True
+			# Single không bao giờ là bản mới → save() chạy validate_set_only_once với org_id (set_only_once): ghi thẳng giá trị đầu
+			frappe.db.set_single_value("NPP Cai Dat", "org_id", str(uuid.uuid4()))
+			cd = frappe.get_single("NPP Cai Dat")
 		if not cd.get("cong_ty"):
 			cong_ty = frappe.defaults.get_global_default("company") or frappe.db.get_value("Company", {}, "name")
 			if cong_ty:
@@ -79,7 +80,7 @@ def dam_bao():
 			cd.save(ignore_permissions=True)
 	if _co("NPP Phien Danh Muc") and not frappe.db.exists("NPP Phien Danh Muc", "1"):
 		frappe.get_doc({"doctype": "NPP Phien Danh Muc", "name": "1", "phien": 1, "phien_khach": 1}).insert(ignore_permissions=True)
-	if _co("NPP Quyen Vai"):
+	if _co("NPP Quyen Vai") and not frappe.db.count("NPP Quyen Vai"):  # gieo một lần (= _gieo_quyen_mac_dinh lúc lập đơn vị) — chủ đã sửa thì giữ
 		for vai, mo_dun, hanh_dong in DONG_VAI_GIEO_SAN:
 			ten = f"{vai}:{mo_dun}:{hanh_dong}"
 			if not frappe.db.exists("NPP Quyen Vai", ten):

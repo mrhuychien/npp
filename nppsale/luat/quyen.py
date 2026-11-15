@@ -31,14 +31,14 @@ def co_quyen(vai: str | None, khoa: str, quyen_rieng: dict[str, bool] | None, do
 	return bool((dong_vai or {}).get((vai, t[0], t[1]), False))
 
 
-# Bộ dòng quyền vai gieo sẵn cho NPP (mig 166 `_gieo_quyen_mac_dinh`) — các ô RPC kiểm mà giao diện mặc định cho vai ấy.
+# Bộ dòng quyền vai gieo sẵn cho NPP — `_gieo_quyen_mac_dinh` bản mig 202 (chủ nhà 26/09/2026: "NV bán hàng chỉ cần Module bán hàng …
+# Còn lại bỏ hết" — bỏ ("sales", "receivables", "create") của mig 166: NVBH không lập phiếu thu). Gieo MỘT lần khi lập đơn vị.
 DONG_VAI_GIEO_SAN: list[tuple[str, str, str]] = [
 	("manager", "orders", "approve"),
 	("manager", "orders", "update"),
 	("manager", "returns", "approve"),
 	("manager", "inventory", "approve"),
 	("sales", "orders", "update"),
-	("sales", "receivables", "create"),
 	("accountant", "receivables", "create"),
 	("accountant", "receivables", "update"),
 ]

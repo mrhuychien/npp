@@ -56,6 +56,17 @@ class TestCongKhachHang(IntegrationTestCase):
 		self.a = _nv("0916000702", "sales")
 		self.b = _nv("0916000703", "sales")
 
+	def test_khach_khong_nhom_giu_trong(self):
+		"""Form khách gửi `group_id: null` = khách KHÔNG nhóm (bảng giá chung) — cổng không được tự gán nhóm (trước đây gán nhóm lá tạo gần
+		nhất → khách nhận bảng giá nhóm ấy). Lõi v16 cho customer_group trống."""
+		from nppsale.rpc.don_hang import _bang_gia_nhom
+
+		k = _them_khach(self.chu, "Tap hoa khong nhom", "0916000799", group_id=None)
+		self.assertFalse(frappe.db.get_value("Customer", k, "customer_group"))
+		self.assertIsNone(_bang_gia_nhom(k))  # đơn lấy bảng giá chung
+		r = doc({"bang": "customers", "select": "id, group_id", "loc": [{"op": "eq", "cot": "id", "gt": k}]}, self.chu)["data"][0]
+		self.assertIsNone(r["group_id"])
+
 	def test_nvbh_chi_thay_khach_minh(self):
 		k_a = _them_khach(self.a, "Tạp hoá A", "0987 000 001")  # A tạo → A thấy (created_by)
 		k_chu = _them_khach(self.chu, "Tạp hoá Chủ", "0987000002")

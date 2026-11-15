@@ -135,6 +135,26 @@ class TestNhanVienNghi(IntegrationTestCase):
 		self.assertEqual(ket["error"]["message"], "NGHI_CHU_NPP: không cho Chủ NPP nghỉ việc")
 		self.assertIsNone(frappe.db.get_value("NPP Nhan Vien", nv, "nghi_viec_luc"))
 
+	def test_xoa_nv_dat_rong_truong_set_null(self):
+		"""NV chưa có chứng từ chặn xoá nhưng có tên ở các trường nppsale khai ON DELETE SET NULL (người duyệt ảnh của khách, người xin /
+		duyệt yêu cầu ảnh, người trong nhật ký bàn giao) → xoá được, các trường ấy về rỗng (trước đây LinkExistsError → 409)."""
+		from nppsale.api.nguoi_dung import xoa
+
+		nv = self.ma["u:sales_giam"]
+		k = self.ma["C1"]
+		frappe.db.set_value("Customer", k, "npp_duyet_anh_boi", nv)
+		log = frappe.get_doc({"doctype": "NPP Ban Giao Khach", "nguon": "chua_ai", "den_nv": nv, "kieu": "chung", "khach": "[]",
+			"ket_qua": "{}", "tao_boi": self.ma["u:owner"]}).insert(ignore_permissions=True).name
+		frappe.set_user(self.ma["u:owner"])
+		try:
+			ma, kq = xoa(frappe._dict(tham={"id": nv}))
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(ma, 200, kq)
+		self.assertFalse(frappe.db.exists("NPP Nhan Vien", nv))
+		self.assertIsNone(frappe.db.get_value("Customer", k, "npp_duyet_anh_boi"))
+		self.assertIsNone(frappe.db.get_value("NPP Ban Giao Khach", log, "den_nv"))
+
 	def test_xoa_nv_co_chung_tu_bi_chan(self):
 		"""Màn xoá NV hỏi cùng bộ đếm: đã có chứng từ → 409 CO_CHUNG_TU (không xoá), như route xoá của nppsale (mig 223)."""
 		from nppsale.api.nguoi_dung import xoa

@@ -67,10 +67,9 @@ def _xoa_kem_khach(ten: str):
 
 
 def _ep_them_khach(d, g, nc):
+	"""group_id null = khách KHÔNG nhóm (bảng giá chung — luật giá nppsale): để trống customer_group (lõi v16 cho trống,
+	validate_customer_group trả về khi trống). Không tự gán nhóm mặc định / nhóm mới nhất — sẽ đổi bảng giá của khách."""
 	d.setdefault("customer_type", "Company")
-	if not d.get("customer_group"):
-		d["customer_group"] = frappe.db.get_single_value("Selling Settings", "customer_group") or frappe.db.get_value(
-			"Customer Group", {"is_group": 0}, "name")
 
 
 _ANH_XA_KHACH = {

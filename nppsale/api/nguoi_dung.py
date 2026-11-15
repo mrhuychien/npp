@@ -66,7 +66,11 @@ def tao(yc: YeuCauCu):
 # Bản ghi trỏ tới NV mà nppsale khai ON DELETE CASCADE → xoá theo; SET NULL → đặt rỗng (DocType nào chưa có thì bỏ qua).
 _XOA_THEO = [("NPP Quyen Rieng", "nhan_vien"), ("NPP Thong Bao", "nguoi_nhan"), ("NPP Khoa Chung Tu", "nguoi_khoa"),
 	("NPP Phan Cong Khach", "nhan_vien"), ("NPP Lich Tuyen", "nhan_vien")]
-_DAT_RONG = [("NPP Nhat Ky Don", "nguoi"), ("NPP Do Nap", "nguoi"), ("NPP Nhan Vien", "nghi_viec_boi")]
+_DAT_RONG = [("NPP Nhat Ky Don", "nguoi"), ("NPP Do Nap", "nguoi"), ("NPP Nhan Vien", "nghi_viec_boi"),
+	("Customer", "npp_duyet_anh_boi"),  # customers.photo_approved_by
+	("NPP Yeu Cau Anh Diem Ban", "nguoi_xin"), ("NPP Yeu Cau Anh Diem Ban", "nguoi_duyet"),  # customer_photo_requests
+	("NPP Ban Giao Khach", "tu_nv"), ("NPP Ban Giao Khach", "den_nv"), ("NPP Ban Giao Khach", "tao_boi"),  # ban_giao_khach_log
+	("Sales Invoice", "npp_soan_boi")]  # sales_invoices.soan_boi
 
 
 @tuyen("DELETE", r"^/api/admin/users/(?P<id>[^/]+)$")

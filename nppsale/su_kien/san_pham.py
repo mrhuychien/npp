@@ -23,6 +23,13 @@ def thay_doi_hang(doc, method=None, *a, **k):
 	tang_phien_danh_muc()
 
 
+def thay_doi_gia_ban(doc, method=None, *a, **k):
+	"""Item Price / Price List: chỉ dòng BÁN tăng số phiên danh mục (trg_phien_danh_muc_ban — mig 209: products, price_lists,
+	product_units; KHÔNG purchase_price_lists). Giá nhập tự cập nhật mỗi lần phiếu nhập hoàn thành — tăng ở đó là mọi máy NVBH tải lại."""
+	if doc.get("selling"):
+		tang_phien_danh_muc()
+
+
 def bang_gia_nhom(ten_nhom: str) -> str:
 	return f"Gia nhom {ten_nhom}"[:140]
 

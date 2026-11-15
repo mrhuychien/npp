@@ -181,13 +181,15 @@ doc_events = {
 		"after_rename": "nppsale.su_kien.san_pham.thay_doi_hang",
 	},
 	"Item Price": {
-		"after_insert": "nppsale.su_kien.san_pham.thay_doi_hang",
-		"on_update": "nppsale.su_kien.san_pham.thay_doi_hang",
-		"on_trash": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"after_insert": "nppsale.su_kien.san_pham.thay_doi_gia_ban",
+		"on_update": "nppsale.su_kien.san_pham.thay_doi_gia_ban",
+		"on_trash": "nppsale.su_kien.san_pham.thay_doi_gia_ban",
 	},
 	"Price List": {
-		"on_update": "nppsale.su_kien.san_pham.thay_doi_hang",
-		"on_trash": "nppsale.su_kien.san_pham.thay_doi_hang",
+		"after_insert": "nppsale.su_kien.san_pham.thay_doi_gia_ban",
+		"on_update": "nppsale.su_kien.san_pham.thay_doi_gia_ban",
+		"on_trash": "nppsale.su_kien.san_pham.thay_doi_gia_ban",
+		"after_rename": "nppsale.su_kien.san_pham.thay_doi_gia_ban",
 	},
 	"Customer Group": {
 		"after_insert": ["nppsale.su_kien.khach_hang.thay_doi", "nppsale.su_kien.san_pham.nhom_khach_moi"],
@@ -221,7 +223,7 @@ doc_events = {
 scheduler_events = {
 	"cron": {
 		# Dọn khoá chứng từ quá 10 phút không nhịp (nppsale: pg_cron mỗi phút + dọn lười trong acquire / heartbeat)
-		"*/5 * * * *": ["nppsale.rpc.khoa_chung_tu.release_stale_entity_locks"],
+		"* * * * *": ["nppsale.rpc.khoa_chung_tu.release_stale_entity_locks"],
 		# cron hằng ngày của nppsale (18:00 UTC = 01:00 giờ VN — giờ hệ thống của site): nhắc khách chưa có tuyến mỗi ngày,
 		# nhắc ảnh điểm bán thứ Hai
 		"0 1 * * *": ["nppsale.lich.nhac_khach.nhac_khach_chua_tuyen"],

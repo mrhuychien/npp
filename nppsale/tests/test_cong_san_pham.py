@@ -50,6 +50,18 @@ class TestCongSanPham(IntegrationTestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_phien_danh_muc_chi_theo_gia_ban(self):
+		"""Số phiên danh mục bán (mig 209) chỉ tăng theo giá BÁN: giá nhập (Gia nhap — tự cập nhật mỗi phiếu nhập) không làm mọi máy NVBH
+		tải lại danh mục."""
+		a = self._sp("SPT-PH-01")
+		dam = frappe.db.get_value("Price List", {"buying": 1, "enabled": 1}, "name") or "Gia nhap"
+		phien = doc_phien()["phien"]
+		frappe.get_doc({"doctype": "Item Price", "item_code": a, "price_list": dam, "price_list_rate": 7000}).insert(ignore_permissions=True)
+		self.assertEqual(doc_phien()["phien"], phien)
+		frappe.get_doc({"doctype": "Item Price", "item_code": a, "price_list": "Gia chuan", "uom": "Lon thử",
+			"price_list_rate": 11000}).insert(ignore_permissions=True)
+		self.assertGreater(doc_phien()["phien"], phien)
+
 	def test_ten_dai_khoa_tim_qua_140(self):
 		"""Khoá tìm = SKU + tên + mã vạch, mỗi từ thêm bản viết liền — dài gấp đôi tên; Data 140 ký tự làm lõi từ chối lưu mặt hàng tên dài."""
 		ten = "Nước tăng lực Red Bull Thái Lan lon 250ml thùng 24 lon chính hãng nhập khẩu"
