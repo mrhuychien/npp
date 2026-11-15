@@ -383,6 +383,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -536,6 +550,14 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        40,
+        40.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -687,6 +709,14 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Thung",
+        2,
+        2.0
        ]
       ],
       "cancel_reason": null,
@@ -870,6 +900,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        1.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -1026,6 +1070,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": null,
@@ -1204,6 +1262,14 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -1211,6 +1277,328 @@
      "ton_lo": {
       "L1-CU": 28.0,
       "L4-DAU": 8.0,
+      "L3-CAN-DATE": 20.0,
+      "L5-DAU-DATE": 6.0,
+      "L2-MOI-HAN-SOM": 50.0
+     },
+     "tra_ve": [
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
+      }
+     ],
+     "thong_bao": {
+      "order_completed": 1
+     },
+     "tra_ve_huy": []
+    }
+   }
+  },
+  {
+   "ma": "xuat_doi_don_vi",
+   "buoc": [
+    {
+     "buoc": "tao",
+     "nguoi": "sales_a",
+     "p": {
+      "client_request_id": "762f190a-69c1-56a3-a8ef-9418aa3997f0",
+      "order": {
+       "order_code": "TAM-1",
+       "customer_id": "@C1",
+       "payment_terms": "COD",
+       "expected_delivery": null,
+       "notes": null,
+       "status": "submitted",
+       "approval_reason": null,
+       "sales_user_id": null,
+       "subtotal": 228000,
+       "vat": 18240,
+       "total": 246240
+      },
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 24,
+        "unit_price": 9500,
+        "line_discount": 0,
+        "line_total": 228000,
+        "conversion_factor": 1,
+        "vat_rate": 0.08
+       }
+      ],
+      "returns": null,
+      "return_lines": []
+     }
+    },
+    {
+     "buoc": "xuat",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {
+        "unit_name": "Thung",
+        "quantity": 1,
+        "unit_price": 228000,
+        "conversion_factor": 24
+       }
+      ]
+     ],
+     "p": {}
+    }
+   ],
+   "cho_ban_vuot_ton": false,
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": [
+      {
+       "lo": [
+        [
+         "VTD-P1",
+         "L1-CU",
+         24.0
+        ]
+       ],
+       "ma": "HD-0001",
+       "han": "@hom_nay",
+       "vat": 18240,
+       "dong": [
+        {
+         "dv": "Thung",
+         "hs": 24.0,
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 228000,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 228000,
+         "noi_don": true
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 246240,
+       "status": "posted",
+       "cong_no": [
+        {
+         "nv": "sales_a",
+         "han": "@hom_nay",
+         "da_thu": 0,
+         "status": "open",
+         "so_tien": 246240
+        }
+       ],
+       "ghi_chu": null,
+       "huy_boi": null,
+       "subtotal": 228000,
+       "huy_ly_do": null,
+       "co_huy_luc": false,
+       "dieu_khoan": "COD",
+       "sales_user": "sales_a"
+      }
+     ],
+     "don": {
+      "status": "completed",
+      "lich_su": [
+       [
+        "draft",
+        "submitted"
+       ],
+       [
+        "submitted",
+        "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        24,
+        24.0
+       ]
+      ],
+      "cancel_reason": null,
+      "co_cancelled_at": false,
+      "co_completed_at": true
+     },
+     "ton_lo": {
+      "L1-CU": 6.0,
+      "L4-DAU": 10.0,
+      "L3-CAN-DATE": 20.0,
+      "L5-DAU-DATE": 6.0,
+      "L2-MOI-HAN-SOM": 50.0
+     },
+     "tra_ve": [
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
+      }
+     ],
+     "thong_bao": {
+      "order_completed": 1
+     },
+     "tra_ve_huy": []
+    }
+   }
+  },
+  {
+   "ma": "xuat_doi_don_vi_mot_phan",
+   "buoc": [
+    {
+     "buoc": "tao",
+     "nguoi": "sales_a",
+     "p": {
+      "client_request_id": "2baa2913-0792-536b-9b75-062baabd4ff9",
+      "order": {
+       "order_code": "TAM-1",
+       "customer_id": "@C1",
+       "payment_terms": "COD",
+       "expected_delivery": null,
+       "notes": null,
+       "status": "submitted",
+       "approval_reason": null,
+       "sales_user_id": null,
+       "subtotal": 285000,
+       "vat": 22800,
+       "total": 307800
+      },
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 30,
+        "unit_price": 9500,
+        "line_discount": 0,
+        "line_total": 285000,
+        "conversion_factor": 1,
+        "vat_rate": 0.08
+       }
+      ],
+      "returns": null,
+      "return_lines": []
+     }
+    },
+    {
+     "buoc": "xuat",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {
+        "unit_name": "Thung",
+        "quantity": 1,
+        "unit_price": 228000,
+        "conversion_factor": 24
+       }
+      ]
+     ],
+     "p": {}
+    }
+   ],
+   "cho_ban_vuot_ton": false,
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": [
+      {
+       "lo": [
+        [
+         "VTD-P1",
+         "L1-CU",
+         24.0
+        ]
+       ],
+       "ma": "HD-0001",
+       "han": "@hom_nay",
+       "vat": 18240,
+       "dong": [
+        {
+         "dv": "Thung",
+         "hs": 24.0,
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 228000,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 228000,
+         "noi_don": true
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 246240,
+       "status": "posted",
+       "cong_no": [
+        {
+         "nv": "sales_a",
+         "han": "@hom_nay",
+         "da_thu": 0,
+         "status": "open",
+         "so_tien": 246240
+        }
+       ],
+       "ghi_chu": null,
+       "huy_boi": null,
+       "subtotal": 228000,
+       "huy_ly_do": null,
+       "co_huy_luc": false,
+       "dieu_khoan": "COD",
+       "sales_user": "sales_a"
+      }
+     ],
+     "don": {
+      "status": "completed",
+      "lich_su": [
+       [
+        "draft",
+        "submitted"
+       ],
+       [
+        "submitted",
+        "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        30,
+        24.0
+       ]
+      ],
+      "cancel_reason": null,
+      "co_cancelled_at": false,
+      "co_completed_at": true
+     },
+     "ton_lo": {
+      "L1-CU": 6.0,
+      "L4-DAU": 10.0,
       "L3-CAN-DATE": 20.0,
       "L5-DAU-DATE": 6.0,
       "L2-MOI-HAN-SOM": 50.0
@@ -1352,6 +1740,14 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Loc",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -1504,6 +1900,14 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -1604,6 +2008,14 @@
         "submitted"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        90,
+        0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": false
@@ -1692,6 +2104,14 @@
         "submitted"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P2",
+        "Chai",
+        12,
+        0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": false
@@ -1778,6 +2198,14 @@
        [
         "draft",
         "submitted"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P3",
+        "Goi",
+        1,
+        0
        ]
       ],
       "cancel_reason": null,
@@ -1919,6 +2347,14 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        90,
+        90.0
        ]
       ],
       "cancel_reason": null,
@@ -2102,6 +2538,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -2250,6 +2700,14 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
        ]
       ],
       "cancel_reason": null,
@@ -2431,6 +2889,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -2616,6 +3088,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -2799,6 +3285,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -2913,6 +3413,20 @@
         "submitted"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": false
@@ -3015,6 +3529,20 @@
         "submitted"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": false
@@ -3115,6 +3643,20 @@
        [
         "draft",
         "submitted"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": null,
@@ -3284,6 +3826,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -3393,6 +3949,20 @@
      "don": {
       "status": "draft",
       "lich_su": null,
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": false
@@ -3580,6 +4150,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -3692,6 +4276,20 @@
         "submitted"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": false
@@ -3791,6 +4389,20 @@
        [
         "draft",
         "submitted"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": null,
@@ -3968,6 +4580,20 @@
         "cancelled"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
+       ]
+      ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001: Khach tra lai hang",
       "co_cancelled_at": true,
       "co_completed_at": false
@@ -4133,6 +4759,14 @@
        [
         "submitted",
         "cancelled"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        40,
+        0
        ]
       ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001: Sai gia",
@@ -4307,6 +4941,20 @@
        [
         "submitted",
         "cancelled"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001: Khach tra lai hang",
@@ -4504,6 +5152,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -4691,6 +5353,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -4888,6 +5564,20 @@
        [
         "submitted",
         "cancelled"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001: Khach tra lai hang",
@@ -5101,6 +5791,20 @@
        [
         "submitted",
         "cancelled"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001: Khach tra lai hang",
@@ -5370,6 +6074,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        3.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -5616,6 +6334,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": null,
@@ -5871,6 +6603,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": null,
@@ -6146,6 +6892,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -6416,6 +7176,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -6690,6 +7464,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -6970,6 +7758,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -7202,6 +8004,14 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Thung",
+        1,
+        2.0
        ]
       ],
       "cancel_reason": null,
@@ -7511,6 +8321,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -7771,6 +8595,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Loc",
+        1,
+        0.6666666666666666
+       ],
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -7800,6 +8638,238 @@
        "order_status": "completed",
        "receivable_id": true,
        "near_expiry_skipped": 2
+      }
+     ],
+     "thong_bao": {
+      "order_completed": 2,
+      "invoice_cancelled": 1
+     },
+     "tra_ve_huy": []
+    }
+   }
+  },
+  {
+   "ma": "sua_hd_doi_don_vi_giu_noi",
+   "buoc": [
+    {
+     "buoc": "tao",
+     "nguoi": "sales_a",
+     "p": {
+      "client_request_id": "a7a4d458-bbc9-5306-a54c-5043f86d3c49",
+      "order": {
+       "order_code": "TAM-1",
+       "customer_id": "@C1",
+       "payment_terms": "COD",
+       "expected_delivery": null,
+       "notes": null,
+       "status": "submitted",
+       "approval_reason": null,
+       "sales_user_id": null,
+       "subtotal": 228000,
+       "vat": 18240,
+       "total": 246240
+      },
+      "lines": [
+       {
+        "product_id": "@P1",
+        "unit_name": "Lon",
+        "quantity": 24,
+        "unit_price": 9500,
+        "line_discount": 0,
+        "line_total": 228000,
+        "conversion_factor": 1,
+        "vat_rate": 0.08
+       }
+      ],
+      "returns": null,
+      "return_lines": []
+     }
+    },
+    {
+     "buoc": "xuat",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {
+        "unit_name": "Thung",
+        "quantity": 1,
+        "unit_price": 228000,
+        "conversion_factor": 24
+       }
+      ]
+     ],
+     "p": {}
+    },
+    {
+     "buoc": "sua",
+     "nguoi": "owner",
+     "dong": [
+      [
+       0,
+       {
+        "unit_price": 225000
+       }
+      ]
+     ],
+     "p": {}
+    }
+   ],
+   "cho_ban_vuot_ton": false,
+   "mong": {
+    "buoc": [
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     },
+     {
+      "ok": true
+     }
+    ],
+    "ct": {
+     "hd": [
+      {
+       "lo": [
+        [
+         "VTD-P1",
+         "L1-CU",
+         0.0
+        ]
+       ],
+       "ma": "HD-0001",
+       "han": "@hom_nay",
+       "vat": 18240,
+       "dong": [
+        {
+         "dv": "Thung",
+         "hs": 24.0,
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 228000,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 228000,
+         "noi_don": false
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 246240,
+       "status": "cancelled",
+       "cong_no": null,
+       "ghi_chu": null,
+       "huy_boi": "owner",
+       "subtotal": 228000,
+       "huy_ly_do": "Lập lại hóa đơn HD-0001",
+       "co_huy_luc": true,
+       "dieu_khoan": "COD",
+       "sales_user": "sales_a"
+      },
+      {
+       "lo": [
+        [
+         "VTD-P1",
+         "L1-CU",
+         24.0
+        ]
+       ],
+       "ma": "HD-0001-1",
+       "han": "@hom_nay",
+       "vat": 18000,
+       "dong": [
+        {
+         "dv": "Thung",
+         "hs": 24.0,
+         "sl": 1,
+         "sp": "VTD-P1",
+         "doi": false,
+         "gia": 225000,
+         "giam": 0,
+         "thue": 0.08,
+         "tien": 225000,
+         "noi_don": true
+        }
+       ],
+       "ngay": "@hom_nay",
+       "total": 243000,
+       "status": "posted",
+       "cong_no": [
+        {
+         "nv": "sales_a",
+         "han": "@hom_nay",
+         "da_thu": 0,
+         "status": "open",
+         "so_tien": 243000
+        }
+       ],
+       "ghi_chu": null,
+       "huy_boi": null,
+       "subtotal": 225000,
+       "huy_ly_do": null,
+       "co_huy_luc": false,
+       "dieu_khoan": "COD",
+       "sales_user": "sales_a"
+      }
+     ],
+     "don": {
+      "status": "completed",
+      "lich_su": [
+       [
+        "draft",
+        "submitted"
+       ],
+       [
+        "submitted",
+        "completed"
+       ],
+       [
+        "completed",
+        "submitted"
+       ],
+       [
+        "submitted",
+        "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        24,
+        24.0
+       ]
+      ],
+      "cancel_reason": null,
+      "co_cancelled_at": false,
+      "co_completed_at": true
+     },
+     "ton_lo": {
+      "L1-CU": 6.0,
+      "L4-DAU": 10.0,
+      "L3-CAN-DATE": 20.0,
+      "L5-DAU-DATE": 6.0,
+      "L2-MOI-HAN-SOM": 50.0
+     },
+     "tra_ve": [
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
+      },
+      {
+       "entry_id": true,
+       "short_qty": 0,
+       "invoice_id": true,
+       "invoice_code": "HD-0001-1",
+       "order_status": "completed",
+       "receivable_id": true,
+       "near_expiry_skipped": 1
       }
      ],
      "thong_bao": {
@@ -8124,6 +9194,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        1.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -8404,6 +9488,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        2.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -8613,6 +9711,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -8818,6 +9930,20 @@
        [
         "submitted",
         "cancelled"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001: Khach tra lai hang",
@@ -9029,6 +10155,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -9228,6 +10368,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -9499,6 +10653,20 @@
         "cancelled"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
+       ]
+      ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001-1: Khach doi y",
       "co_cancelled_at": true,
       "co_completed_at": false
@@ -9702,6 +10870,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -9890,6 +11072,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -10076,6 +11272,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -10268,6 +11478,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -10456,6 +11680,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -10648,6 +11886,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -10836,6 +12088,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -11028,6 +12294,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -11216,6 +12496,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -11412,6 +12706,20 @@
        [
         "submitted",
         "cancelled"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        0
        ]
       ],
       "cancel_reason": "Huỷ theo hóa đơn HD-0001: Khach tra lai hang",
@@ -11614,6 +12922,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -11884,6 +13206,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -12079,6 +13415,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,
@@ -12350,6 +13700,20 @@
         "completed"
        ]
       ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        3.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
+       ]
+      ],
       "cancel_reason": null,
       "co_cancelled_at": false,
       "co_completed_at": true
@@ -12554,6 +13918,20 @@
        [
         "submitted",
         "completed"
+       ]
+      ],
+      "dong_don": [
+       [
+        "VTD-P1",
+        "Lon",
+        2,
+        2.0
+       ],
+       [
+        "VTD-P2",
+        "Chai",
+        1,
+        1.0
        ]
       ],
       "cancel_reason": null,

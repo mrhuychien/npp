@@ -249,7 +249,7 @@ def xoa_dong(ids: list[str], nc) -> list[str]:
 		xoa.append((so, next(x for x in so.items if x.name == ten)))
 	for _so_xoa, r in xoa:
 		if frappe.db.sql("""SELECT 1 FROM `tabSales Invoice Item` i JOIN `tabSales Invoice` s ON s.`name` = i.`parent`
-				WHERE i.`so_detail` = %s AND s.`docstatus` = 1 LIMIT 1""", r.name):
+				WHERE (i.`so_detail` = %(d)s OR i.`npp_dong_don` = %(d)s) AND s.`docstatus` = 1 LIMIT 1""", {"d": r.name}):
 			raise LoiCong("23503", 'update or delete on table "sales_order_lines" violates foreign key constraint '
 				'"sales_invoice_lines_order_line_id_fkey" on table "sales_invoice_lines"',
 				f'Key (id)=({r.name}) is still referenced from table "sales_invoice_lines".', http=409)
@@ -454,7 +454,7 @@ def cancel_order(p_order_id=None, p_reason=None):
 	_kiem_chuyen(tt, "cancelled")
 	so.npp_trang_thai = "cancelled"
 	so.npp_huy_luc = now_datetime()
-	so.npp_huy_boi = nc.user if frappe.db.exists("User", nc.user) else None
+	so.npp_huy_boi = nc.user if frappe.db.exists("NPP Nhan Vien", nc.user) else None  # Link NPP Nhan Vien (Administrator / việc nền: trống)
 	so.npp_ly_do_huy = _chu(p_reason)
 	_luu(so, rong_duoc=True)
 	ghi_nhat_ky_don(ten, "trang_thai", tu_trang_thai=tt, den_trang_thai="cancelled")

@@ -113,6 +113,11 @@ def tinh_huong() -> list[dict]:
 	th("xuat_bo_dong", don("sales_a", A, "xuat_bo_dong"), xuat("owner", [(0, {})]))
 	th("xuat_dong_them", don("sales_a", A[:1], "xuat_dong_them"), xuat("owner", [(0, {}), (None, {"product_id": "@P2", "unit_name": "Chai",
 		"quantity": 2, "unit_price": 5000, "vat_rate": 0.1, "conversion_factor": 1})]))
+	# đổi đơn vị lúc xuất (mig 179): dòng HĐ khác đơn vị vẫn nối dòng đơn, "đã xuất" quy đổi theo hệ số
+	th("xuat_doi_don_vi", don("sales_a", [dong(sl=24, gia=9500)], "xuat_doi_dv"), xuat("owner", [(0, {"unit_name": "Thung", "quantity": 1,
+		"unit_price": 228000, "conversion_factor": 24})]))
+	th("xuat_doi_don_vi_mot_phan", don("sales_a", [dong(sl=30, gia=9500)], "xuat_doi_dv_1p"), xuat("owner", [(0, {"unit_name": "Thung",
+		"quantity": 1, "unit_price": 228000, "conversion_factor": 24})]))
 	th("xuat_he_so_sai_duoc_chuan", don("sales_a", [dong(dv="Loc", hs=6, sl=1, gia=57000)], "xuat_he_so_sai"),
 		xuat("owner", [(0, {"conversion_factor": 4})]))
 	th("xuat_don_vi_co_so_he_so_sai", don("sales_a", [dong(sl=2, gia=9500)], "xuat_co_so_he_so_sai"),
@@ -170,6 +175,8 @@ def tinh_huong() -> list[dict]:
 			"vat_rate": 0.08, "conversion_factor": 6})]))
 	th("sua_hd_dong_don_doi_he_so", don("sales_a", [dong(sl=2, gia=9500), dong(dv="Loc", hs=6, sl=1, gia=57000)], "sua_dong_don_hs"),
 		xuat("owner", [(0, {})]), doi_he_so("P1", "Loc", 4), sua("owner", [(0, {}), (None, {"@dong_don": 1})]))
+	th("sua_hd_doi_don_vi_giu_noi", don("sales_a", [dong(sl=24, gia=9500)], "sua_doi_dv"), xuat("owner", [(0, {"unit_name": "Thung",
+		"quantity": 1, "unit_price": 228000, "conversion_factor": 24})]), sua("owner", [(0, {"unit_price": 225000})]))
 	th("sua_hd_hai_lan", don("sales_a", A, "sua_2"), X2, sua("owner", [(0, {"quantity": 3}), (1, {})]),
 		sua("owner", [(0, {"quantity": 1}), (1, {})]))
 	th("sua_hd_quan_ly", don("sales_a", A, "sua_ql"), X2, sua("manager", [(0, {}), (1, {"quantity": 2})]))
@@ -285,6 +292,9 @@ BEGIN
       'tra_ve', v_ds_hd, 'tra_ve_huy', v_ds_huy,
       'don', (SELECT jsonb_build_object('status', so.status, 'co_completed_at', so.completed_at IS NOT NULL, 'cancel_reason', so.cancel_reason,
           'co_cancelled_at', so.cancelled_at IS NOT NULL,
+          'dong_don', (SELECT jsonb_agg(jsonb_build_array((SELECT p.sku FROM products p WHERE p.id = l.product_id), l.unit_name, l.quantity,
+              l.invoiced_qty) ORDER BY (SELECT p.sku FROM products p WHERE p.id = l.product_id), l.unit_name, l.quantity)
+            FROM sales_order_lines l WHERE l.order_id = so.id),
           'lich_su', (SELECT jsonb_agg(jsonb_build_array(h.from_status, h.to_status) ORDER BY h.changed_at, h.ctid)
             FROM order_status_history h WHERE h.order_id = so.id)) FROM sales_orders so WHERE so.id = v_don),
       'thong_bao', (SELECT jsonb_object_agg(x.type, x.n) FROM (SELECT n.type, count(*) AS n FROM notifications n

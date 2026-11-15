@@ -36,6 +36,12 @@ from nppsale.thiet_lap.ban_hang import cai_dat_ban, mau_thue_dong
 from . import rpc
 from .don_hang import _bang_gia_nhom, _chu, _dam_bao_uom, _gia_bang, _so
 
+# _da_xuat_cua_dong_don (mig 179): Σ SL × hệ số của dòng HĐ ghi sổ nối dòng đơn (so_detail, hoặc npp_dong_don khi đổi đơn vị lúc xuất)
+# ÷ hệ số dòng đơn. Dùng chung cho get_invoiceable_lines và cổng sales_order_lines.invoiced_qty.
+DA_XUAT_SQL = ("(SELECT COALESCE(SUM(hi.`qty` * COALESCE(NULLIF(hi.`conversion_factor`, 0), 1)), 0) / "
+	"COALESCE(NULLIF({t}.`conversion_factor`, 0), 1) FROM `tabSales Invoice Item` hi WHERE hi.`parenttype` = 'Sales Invoice' "
+	"AND hi.`docstatus` = 1 AND (hi.`so_detail` = {t}.`name` OR hi.`npp_dong_don` = {t}.`name`))")
+
 
 def _ton_kho_ban(hang: list[str], kho: str | None) -> dict:
 	"""Σ tồn của mặt hàng trong kho bán (đơn vị kho) — = Σ batches.qty_on_hand vùng 'sale' của nppsale."""
@@ -54,8 +60,8 @@ def get_invoiceable_lines(p_order_id=None):
 	if not nc.bo_qua_rls and not nc.vai:
 		raise NppLoi("ORG_MISMATCH")
 	dong = frappe.db.sql(
-		"""
-		SELECT d.`name`, d.`item_code`, i.`item_name`, d.`uom`, d.`conversion_factor`, d.`qty`, d.`delivered_qty`, d.`rate`,
+		f"""
+		SELECT d.`name`, d.`item_code`, i.`item_name`, d.`uom`, d.`conversion_factor`, d.`qty`, {DA_XUAT_SQL.format(t="d")} AS `delivered_qty`, d.`rate`,
 			i.`npp_gia_ban`, d.`npp_giam_dong`, d.`npp_thue_suat`, i.`npp_thue_suat` AS `thue_sp`, d.`additional_notes`
 		FROM `tabSales Order Item` d
 		LEFT JOIN `tabItem` i ON i.`name` = d.`item_code`
@@ -285,15 +291,7 @@ def _xuat(nc, cd, p: dict, *, hd_cu: str | None = None, giu: dict | None = None)
 			"oli": _chu(x.get("order_line_id"))})
 	# ---- xuất kho (FIFO lô kho bán; thiếu → INSUFFICIENT_STOCK)
 	phan, thieu, can_han = _phan_bo_kho(dong, cd)
-	# ---- dòng nối đơn phải cùng đơn vị + hệ số với dòng SO (lõi so ở validate_with_previous_doc): đơn nháp → sửa dòng rồi ghi sổ đơn
-	# (mig 174); đơn đã ghi sổ (Sửa HĐ, dòng không có trên tờ cũ mà danh mục đã đổi hệ số) → chép hệ số mới vào dòng SO
-	for d in dong:
-		r = dong_don.get(d["oli"]) if d["oli"] else None
-		if r is not None and r.uom == d["dv"] and abs(float(r.conversion_factor or 1) - float(d["hs"])) > 1e-9:
-			r.conversion_factor = d["hs"]
-			if so.docstatus == 1:
-				frappe.db.set_value("Sales Order Item", r.name, {"conversion_factor": d["hs"], "stock_qty": flt(r.qty) * flt(d["hs"])},
-					update_modified=False)
+	# ---- ghi sổ đơn (Sales Order nháp → submit; Sửa HĐ: đơn đã ghi sổ)
 	so.flags.ignore_permissions = True
 	if so.docstatus == 0:
 		so.submit()
@@ -325,7 +323,9 @@ def _xuat(nc, cd, p: dict, *, hd_cu: str | None = None, giu: dict | None = None)
 			"additional_discount_account": cd.tk_giam_gia_don})
 	for i, d in enumerate(dong):
 		r_don = dong_don.get(d["oli"]) if d["oli"] else None
-		noi = r_don is not None and r_don.uom == d["dv"]
+		# lõi chỉ cho so_detail khi dòng HĐ cùng đơn vị + hệ số với dòng SO (validate_with_previous_doc). Khác (đổi đơn vị lúc xuất, hoặc
+		# danh mục đổi hệ số sau khi lên đơn) → không nối so_detail, giữ móc ở npp_dong_don (mig 179); dòng SO giữ nguyên hệ số như nppsale
+		noi = r_don is not None and r_don.uom == d["dv"] and abs(flt(r_don.conversion_factor or 1) - flt(d["hs"])) < 1e-9
 		_dam_bao_uom(d["dv"])
 		if noi:
 			plr = float(r_don.price_list_rate or 0)
@@ -338,6 +338,8 @@ def _xuat(nc, cd, p: dict, *, hd_cu: str | None = None, giu: dict | None = None)
 			"warehouse": cd.kho_ban, "item_tax_template": mau_thue_dong(d["thue"], cd.cong_ty), "npp_thue_suat": d["thue"],
 			"npp_giam_dong": float(d["giam"]), "npp_hang_doi": 1 if d["doi"] else 0, "npp_ghi_chu": d["ghi_chu"],
 			"sales_order": so.name if noi else None, "so_detail": r_don.name if noi else None,
+			# đổi đơn vị lúc xuất (mig 179): lõi không cho so_detail khác đơn vị / hệ số → giữ móc dòng đơn ở trường riêng
+			"npp_dong_don": r_don.name if r_don is not None and not noi else None,
 		})
 		if phan.get(i):
 			_goi_lo(si, r, phan[i], cd)

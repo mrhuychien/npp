@@ -141,7 +141,7 @@ class TestXuatHang(IntegrationTestCase):
 
 	def _dong_sua(self, hd: str, dong_x: list) -> list:
 		"""Tải trọng màn Sửa HĐ: dòng của TỜ ĐANG HIỆU LỰC (như bộ sinh đọc sales_invoice_lines theo sort_order) + phần đè."""
-		dd = frappe.get_all("Sales Invoice Item", filters={"parent": hd, "parenttype": "Sales Invoice"}, fields=["so_detail", "item_code",
+		dd = frappe.get_all("Sales Invoice Item", filters={"parent": hd, "parenttype": "Sales Invoice"}, fields=["so_detail", "npp_dong_don", "item_code",
 			"uom", "conversion_factor", "qty", "rate", "npp_giam_dong", "npp_thue_suat", "npp_hang_doi", "npp_ghi_chu"], order_by="idx asc")
 		ra = []
 		for chi_so, de in dong_x:
@@ -159,7 +159,7 @@ class TestXuatHang(IntegrationTestCase):
 				ra.append(de)
 				continue
 			r = dd[chi_so]
-			ra.append({"order_line_id": r.so_detail, "product_id": r.item_code, "unit_name": r.uom, "conversion_factor": r.conversion_factor,
+			ra.append({"order_line_id": r.so_detail or r.npp_dong_don, "product_id": r.item_code, "unit_name": r.uom, "conversion_factor": r.conversion_factor,
 				"quantity": r.qty, "unit_price": r.rate, "line_discount": r.npp_giam_dong, "vat_rate": r.npp_thue_suat,
 				"is_exchange": bool(r.npp_hang_doi), "note": r.npp_ghi_chu, **de})
 		return ra
@@ -197,9 +197,11 @@ class TestXuatHang(IntegrationTestCase):
 		tb = {}
 		for loai in frappe.get_all("NPP Thong Bao", filters={"duong_dan": ("in", duong)}, pluck="loai"):
 			tb[loai] = tb.get(loai, 0) + 1
+		dong_don = sorted([x["product_id"], x["unit_name"], _so(x["quantity"]), _so(x["invoiced_qty"])] for x in doc({"bang": "sales_order_lines",
+			"select": "product_id, unit_name, quantity, invoiced_qty", "loc": [{"op": "eq", "cot": "order_id", "gt": don}]}, ADMIN)["data"])
 		return {"tra_ve": tra_ve, "tra_ve_huy": tra_ve_huy,
 			"don": {"status": so["status"], "co_completed_at": so["completed_at"] is not None, "cancel_reason": so["cancel_reason"],
-				"co_cancelled_at": so["cancelled_at"] is not None, "lich_su": lich_su},
+				"co_cancelled_at": so["cancelled_at"] is not None, "lich_su": lich_su, "dong_don": dong_don or None},
 			"thong_bao": tb or None, "hd": hd or None, "ton_lo": ton_lo([x[0] for x in self.vang["nen"]["lo"]])}
 
 	@staticmethod
@@ -216,6 +218,8 @@ class TestXuatHang(IntegrationTestCase):
 					c[k] = _so(c[k])
 			h["lo"] = [[a, b, _so(c)] for a, b, c in h["lo"]] if h.get("lo") else None
 		ct["ton_lo"] = {k: _so(v) for k, v in (ct.get("ton_lo") or {}).items()}
+		if ct.get("don") and ct["don"].get("dong_don"):
+			ct["don"]["dong_don"] = [[a, b, _so(c), _so(d)] for a, b, c, d in ct["don"]["dong_don"]]
 		for x in ct.get("tra_ve") or []:
 			x["short_qty"] = _so(x["short_qty"])
 		for x in ct.get("tra_ve_huy") or []:

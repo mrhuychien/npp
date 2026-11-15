@@ -440,6 +440,15 @@
    "fieldtype": "Small Text",
    "insert_after": "description",
    "label": "Ghi chú dòng"
+  },
+  {
+   "fieldname": "npp_dong_don",
+   "fieldtype": "Data",
+   "insert_after": "so_detail",
+   "label": "Dòng đơn (khác đơn vị)",
+   "read_only": 1,
+   "no_copy": 1,
+   "search_index": 1
   }
  ],
  "Sales Order": [
@@ -458,7 +467,7 @@
    "fieldtype": "Link",
    "insert_after": "customer_name",
    "label": "Người đứng tên",
-   "options": "User",
+   "options": "NPP Nhan Vien",
    "search_index": 1
   },
   {
@@ -527,7 +536,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
-   "options": "User",
+   "options": "NPP Nhan Vien",
    "read_only": 1
   },
   {

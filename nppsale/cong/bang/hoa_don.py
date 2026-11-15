@@ -86,7 +86,8 @@ def nap():
 		cot={
 			# Tờ đã huỷ nhả móc nối về dòng đơn (mig 162): dòng HĐ giữ bản chụp, order_line_id = NULL — không chặn bỏ dòng khỏi đơn
 			"id": c("{t}.`name`"), "invoice_id": c("parent"),
-			"order_line_id": c("CASE WHEN {t}.`docstatus` = 2 THEN NULL ELSE {t}.`so_detail` END"), "product_id": c("item_code"),
+			"order_line_id": c("CASE WHEN {t}.`docstatus` = 2 THEN NULL ELSE COALESCE(NULLIF({t}.`so_detail`, ''), {t}.`npp_dong_don`) END"),
+			"product_id": c("item_code"),
 			"unit_name": c("uom"), "conversion_factor": c("conversion_factor", "so"), "quantity": c("qty", "so"), "unit_price": c("rate", "tien"),
 			"line_discount": c("npp_giam_dong", "tien"), "line_total": c("amount", "tien"), "vat_rate": c("npp_thue_suat", "so"),
 			"is_exchange": c("npp_hang_doi", "bool"), "sort_order": c("idx", "so"), "note": c("npp_ghi_chu"),

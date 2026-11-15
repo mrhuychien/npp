@@ -13,6 +13,10 @@ from ..sql import LoiCong
 from ._chung import c, co_cot, la_nv, org
 
 VAI_XEM_DON = ("owner", "manager", "accountant", "warehouse")
+# số đã xuất của dòng đơn (mig 179 — gồm dòng HĐ đổi đơn vị lúc xuất) — cùng luật với get_invoiceable_lines (nppsale.rpc.xuat_hang)
+_DA_XUAT = ("(SELECT COALESCE(SUM(hi.`qty` * COALESCE(NULLIF(hi.`conversion_factor`, 0), 1)), 0) / "
+	"COALESCE(NULLIF({t}.`conversion_factor`, 0), 1) FROM `tabSales Invoice Item` hi WHERE hi.`parenttype` = 'Sales Invoice' "
+	"AND hi.`docstatus` = 1 AND (hi.`so_detail` = {t}.`name` OR hi.`npp_dong_don` = {t}.`name`))")
 
 
 def ve_don(nc: NguCanh, bd: str = "{t}"):
@@ -52,7 +56,9 @@ def _cot_don():
 		"vat": c("total_taxes_and_charges", "tien"), "total": c(_TONG, "tien"),
 		"merged_into": CotDef("NULL"), "notes": c("npp_ghi_chu"), "approved_by": CotDef("NULL"), "approved_at": CotDef("NULL", "gio"),
 		"approval_reason": c("npp_ly_do_canh_bao"),
-		"submitted_at": c("CASE WHEN IFNULL({t}.`npp_trang_thai`, 'draft') != 'draft' THEN {t}.`creation` END", "gio"),
+		# lần đầu sang submitted (check_order_status_transition / _don_moi_moc_gui chỉ đặt khi đang trống) — giữ cả khi đơn gửi về nháp
+		"submitted_at": c("(SELECT MIN(nk.`luc`) FROM `tabNPP Nhat Ky Don` nk WHERE nk.`don` = {t}.`name` AND nk.`loai` = 'trang_thai' "
+			"AND nk.`den_trang_thai` = 'submitted')", "gio"),
 		"cancelled_at": c("npp_huy_luc", "gio"), "cancelled_by": c("npp_huy_boi"), "cancel_reason": c("npp_ly_do_huy"),
 		"closed_at": CotDef("NULL", "gio"), "closed_by": CotDef("NULL"),
 		"created_at": c("creation", "gio"), "created_by": c("CASE WHEN {t}.`owner` IN ('Administrator', 'Guest') THEN NULL ELSE {t}.`owner` END"),
@@ -148,7 +154,7 @@ def nap():
 			"id": c("{t}.`name`"), "org_id": org(), "order_id": c("parent"), "product_id": c("item_code"), "unit_name": c("uom"),
 			"quantity": c("qty", "so"), "unit_price": c("rate", "tien"), "line_discount": c("npp_giam_dong", "tien"),
 			"line_total": c("amount", "tien"), "batch_id": CotDef("NULL"), "note": c("additional_notes"),
-			"conversion_factor": c("conversion_factor", "so"), "vat_rate": c("npp_thue_suat", "so"), "invoiced_qty": c("delivered_qty", "so"),
+			"conversion_factor": c("conversion_factor", "so"), "vat_rate": c("npp_thue_suat", "so"), "invoiced_qty": c(_DA_XUAT, "so"),
 			"sort_order": c("idx", "so"), "created_at": c("creation", "gio"),
 		},
 		quan_he=[
