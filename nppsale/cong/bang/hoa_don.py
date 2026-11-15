@@ -65,6 +65,7 @@ _QH_HD = [
 	QuanHe("users", "cancelled_by", "id", False, ("sales_invoices_cancelled_by_fkey",)),
 	QuanHe("sales_orders", "order_id", "id", False, ("sales_invoices_order_id_fkey",)),
 	QuanHe("sales_invoice_lines", "id", "invoice_id", True, ("sales_invoice_lines_invoice_id_fkey",)),
+	QuanHe("returns", "id", "invoice_id", True, ("returns_invoice_id_fkey",)),  # SourceInvoiceModal: returns(id, status, credit_…)
 ]
 
 

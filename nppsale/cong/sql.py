@@ -216,7 +216,8 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 	chon = [f"{c[0]} AS `{c[1]}`" for c in cot]
 	cot_ra = [(c[2], c[1], c[3]) for c in cot if c[2] is not None]
 	from_where = f" FROM {bang.nguon} {bd} WHERE {' AND '.join(where)}"
-	sql = "SELECT " + ", ".join(chon) + from_where + _sap_xep(bang, thu_tu_goc, bd)
+	# không sắp → thứ tự mặc định của bảng (dòng con theo idx — Postgres trả theo thứ tự chèn), chỉ ở đường đọc thường (không gộp nhóm)
+	sql = "SELECT " + ", ".join(chon) + from_where + _sap_xep(bang, thu_tu_goc or list(bang.thu_tu_mac_dinh), bd)
 	tu, den = None, None
 	if yc.get("range"):
 		tu, den = int(yc["range"][0]), int(yc["range"][1])
@@ -319,6 +320,6 @@ def cau_long(kl: KeHoachLong, khoa: list, nc) -> tuple[str, dict, list]:
 	where = [vế_rls(kl.bang, nc, bd, ts), f"{e_kia} IN (" + ", ".join(ts.them(k) for k in khoa) + ")"]
 	where += [dieu_kien(kl.bang, d, bd, ts) for d in kl.dieu]
 	sql = ("SELECT " + ", ".join(f"{c[0]} AS `{c[1]}`" for c in cot) + f" FROM {kl.bang.nguon} {bd} WHERE "
-		+ " AND ".join(where) + _sap_xep(kl.bang, kl.thu_tu, bd))
+		+ " AND ".join(where) + _sap_xep(kl.bang, kl.thu_tu or list(kl.bang.thu_tu_mac_dinh), bd))
 	cot_ra = [(c[2], c[1], c[3]) for c in cot if c[2] is not None]
 	return sql, ts.gia_tri, cot_ra

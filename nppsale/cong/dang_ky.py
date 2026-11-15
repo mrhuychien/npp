@@ -57,6 +57,7 @@ class Bang:
 	ghi: Any = None
 	mo_ta: str = ""
 	an_cot: dict = field(default_factory=dict)
+	thu_tu_mac_dinh: list = field(default_factory=list)  # [{"cot": …, "tang": bool}] khi yêu cầu không sắp (dòng con: theo idx như Postgres)
 
 	def cot_def(self, ten: str) -> CotDef | None:
 		return self.cot.get(ten)

@@ -1,0 +1,232 @@
+{
+ "actions": [],
+ "autoname": "PT-.####",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "tu_sinh",
+  "trang_thai",
+  "khach_hang",
+  "ten_khach",
+  "ngay_tra",
+  "don_hang",
+  "hoa_don",
+  "nhan_vien",
+  "ly_do",
+  "ghi_chu",
+  "kho_nhan",
+  "tien_tra",
+  "ngay_tru_doanh_so",
+  "ghi_co_luc",
+  "hoan_thanh_luc",
+  "hoan_thanh_boi",
+  "sua_luc",
+  "huy_luc",
+  "ly_do_huy",
+  "to_ghi_co",
+  "phieu_nhap_kho",
+  "dong",
+  "tim_kd"
+ ],
+ "fields": [
+  {
+   "fieldname": "tu_sinh",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Phiếu tự sinh theo HĐ",
+   "read_only": 1
+  },
+  {
+   "default": "draft",
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái",
+   "options": "draft\nsubmitted\ncompleted\ncancelled",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "khach_hang",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Khách hàng",
+   "options": "Customer",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ten_khach",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tên khách",
+   "read_only": 1,
+   "fetch_from": "khach_hang.customer_name"
+  },
+  {
+   "default": "Today",
+   "fieldname": "ngay_tra",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ngày phiếu",
+   "reqd": 1
+  },
+  {
+   "fieldname": "don_hang",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Đơn hàng",
+   "options": "Sales Order",
+   "search_index": 1
+  },
+  {
+   "fieldname": "hoa_don",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Hoá đơn gắn",
+   "options": "Sales Invoice",
+   "search_index": 1
+  },
+  {
+   "fieldname": "nhan_vien",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Người đứng tên",
+   "options": "NPP Nhan Vien",
+   "search_index": 1
+  },
+  {
+   "fieldname": "ly_do",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lý do",
+   "options": "\ndamaged\nwrong_item\nnear_expiry\nexpired\nrefused"
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "kho_nhan",
+   "fieldtype": "Link",
+   "label": "Kho nhận",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "tien_tra",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Tiền trả (ghi có)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ngay_tru_doanh_so",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Ngày trừ doanh số",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ghi_co_luc",
+   "fieldtype": "Datetime",
+   "label": "Mốc ghi có",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hoan_thanh_luc",
+   "fieldtype": "Datetime",
+   "label": "Hoàn thành / nhập kho lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hoan_thanh_boi",
+   "fieldtype": "Link",
+   "label": "Người hoàn thành",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sua_luc",
+   "fieldtype": "Datetime",
+   "label": "Sửa lần cuối lúc",
+   "read_only": 1,
+   "description": "updated_at của nppsale (mig 220): chỉ đổi khi sửa khách / đơn / HĐ gắn / lý do / ghi chú / ngày phiếu hoặc dòng hàng — đổi trạng thái / người / mốc thì KHÔNG đổi; tờ in / Excel lấy làm giờ sửa cuối."
+  },
+  {
+   "fieldname": "huy_luc",
+   "fieldtype": "Datetime",
+   "label": "Huỷ lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ly_do_huy",
+   "fieldtype": "Small Text",
+   "label": "Lý do huỷ"
+  },
+  {
+   "fieldname": "to_ghi_co",
+   "fieldtype": "Link",
+   "label": "Tờ ghi có",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phieu_nhap_kho",
+   "fieldtype": "Link",
+   "label": "Phiếu nhập kho",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dong",
+   "fieldtype": "Table",
+   "label": "Dòng hàng trả",
+   "options": "NPP Phieu Tra Dong"
+  },
+  {
+   "fieldname": "tim_kd",
+   "fieldtype": "Data",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Ban Hang",
+ "name": "NPP Phieu Tra",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "ten_khach,hoa_don,don_hang,tim_kd",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "ten_khach",
+ "track_changes": 1
+}
