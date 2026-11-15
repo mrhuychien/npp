@@ -150,7 +150,14 @@ class TestSoanHang(IntegrationTestCase):
 		self.assertEqual(self._goi("owner", "danh_dau_soan_hang", {"p_ids": [hd1], "p_da": False})["data"], 0)
 		self.assertEqual(self._goi("owner", "danh_dau_soan_hang", {})["data"], 0)
 		# HĐ đã huỷ không đánh dấu được (chỉ HĐ đã ghi sổ)
+		self.assertEqual(self._goi("owner", "danh_dau_soan_hang", {"p_ids": [hd2]})["data"], 1)
 		self.assertNotIn("error", self._goi("owner", "cancel_invoice", {"p_invoice_id": hd2, "p_reason": "Khach doi y"}))
+		# tờ chép / amend (HD-…-n, HDT-…-n) không mang mốc soạn / huỷ của tờ cũ (no_copy — blueprint 02 §5.6): HĐ sửa là HĐ "chưa soạn"
+		cu = frappe.get_doc("Sales Invoice", hd2)
+		self.assertTrue(cu.npp_soan_luc and cu.npp_huy_luc and cu.npp_ly_do_huy)
+		moi = frappe.copy_doc(cu, ignore_no_copy=False)  # đường amend của app (mặc định copy_doc chép cả trường no_copy)
+		self.assertEqual([moi.get(k) for k in ("npp_soan_luc", "npp_soan_boi", "npp_ly_do_huy", "npp_huy_luc", "npp_huy_boi")], [None] * 5)
+		self.assertEqual(self._goi("owner", "danh_dau_soan_hang", {"p_ids": [hd2], "p_da": False})["data"], 0)  # đã huỷ: không gỡ được
 		self.assertEqual(self._goi("owner", "danh_dau_soan_hang", {"p_ids": [hd2]})["data"], 0)
 		self.assertEqual(self._loi(self._goi("warehouse", "tao_luot_soan", {"p_invoice_ids": [hd2]})),
 			"HOA_DON_KHONG_HOP_LE: chỉ soạn hoá đơn đã ghi sổ của NPP")

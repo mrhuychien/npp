@@ -317,7 +317,8 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ghi_chu",
    "label": "Đã soạn lúc",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "allow_on_submit": 1,
@@ -326,14 +327,16 @@
    "insert_after": "npp_soan_luc",
    "label": "Người soạn",
    "options": "NPP Nhan Vien",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "npp_ly_do_huy",
    "fieldtype": "Small Text",
    "insert_after": "amended_from",
-   "label": "Lý do huỷ"
+   "label": "Lý do huỷ",
+   "no_copy": 1
   },
   {
    "allow_on_submit": 1,
@@ -341,7 +344,8 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "allow_on_submit": 1,
@@ -350,7 +354,8 @@
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
    "options": "NPP Nhan Vien",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "allow_on_submit": 1,
@@ -520,7 +525,8 @@
    "fieldname": "npp_ly_do_huy",
    "fieldtype": "Small Text",
    "insert_after": "npp_ghi_chu",
-   "label": "Lý do huỷ"
+   "label": "Lý do huỷ",
+   "no_copy": 1
   },
   {
    "allow_on_submit": 1,
@@ -528,7 +534,8 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "allow_on_submit": 1,
@@ -537,7 +544,8 @@
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
    "options": "NPP Nhan Vien",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "description": "Hàng trả kèm đơn đã trừ vào số khách phải trả lúc lên đơn (= subtotal + vat − total của nppsale); không tính lại khi phiếu trả đổi",
