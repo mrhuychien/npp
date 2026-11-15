@@ -103,6 +103,80 @@ def _tk_giam_gia_don(cong_ty: str, abbr: str) -> str:
 		"account_type": "", "is_group": 0}).insert(ignore_permissions=True).name
 
 
+# Cài đặt lõi của luồng tiền thu (bản bàn bạc 3.11; đặc tả phiếu thu §0.4): huỷ HĐ / Sửa HĐ có tiền thu phải tự gỡ phân bổ (thiếu thì
+# lõi nổ "Cannot delete or cancel because … is linked with Payment Entry"); không tự cấn trừ / không tách tài khoản ứng trước (phiếu thu
+# luôn phân bổ đích danh từng HĐ — nppsale không có "tạm ứng"); sổ cái sửa được (huỷ + lập lại chứng từ cùng ngày, không bút toán đảo).
+CAI_DAT_KE_TOAN = {"unlink_payment_on_cancellation_of_invoice": 1, "auto_reconcile_payments": 0, "enable_immutable_ledger": 0}
+
+# Hình thức thanh toán của phiếu thu / phiếu chi (`method` của nppsale) → Mode of Payment mặc định (tên, kiểu, tài khoản).
+HINH_THUC = (("ht_tien_mat", "Tien mat", "Cash"), ("ht_chuyen_khoan", "Chuyen khoan", "Bank"), ("ht_vi", "Vi dien tu", "Bank"))
+
+
+def _cai_dat_ke_toan(cong_ty: str) -> None:
+	ac = frappe.get_meta("Accounts Settings")
+	for k, v in CAI_DAT_KE_TOAN.items():
+		if ac.has_field(k) and int(frappe.db.get_single_value("Accounts Settings", k) or 0) != v:
+			frappe.db.set_single_value("Accounts Settings", k, v)
+	if frappe.get_meta("Company").has_field("book_advance_payments_in_separate_party_account") and int(
+			frappe.db.get_value("Company", cong_ty, "book_advance_payments_in_separate_party_account") or 0):
+		frappe.db.set_value("Company", cong_ty, "book_advance_payments_in_separate_party_account", 0)
+
+
+def _tai_khoan_tien(cong_ty: str, abbr: str, kieu: str, ten_moi: str | None = None) -> str:
+	"""Tài khoản tiền của một hình thức: Cash → TK tiền mặt mặc định của công ty; Bank → TK ngân hàng mặc định; `ten_moi` (ví điện tử) →
+	tài khoản riêng cùng nhóm với TK ngân hàng (tạo khi chưa có)."""
+	if kieu == "Cash":
+		tk = frappe.get_cached_value("Company", cong_ty, "default_cash_account") or frappe.db.get_value("Account",
+			{"company": cong_ty, "account_type": "Cash", "is_group": 0})
+		if tk:
+			return tk
+	ngan_hang = frappe.get_cached_value("Company", cong_ty, "default_bank_account") or frappe.db.get_value("Account",
+		{"company": cong_ty, "account_type": "Bank", "is_group": 0})
+	if ngan_hang and not ten_moi and kieu == "Bank":
+		return ngan_hang
+	nhom = (frappe.db.get_value("Account", ngan_hang, "parent_account") if ngan_hang else None) or frappe.db.get_value("Account",
+		{"company": cong_ty, "account_type": "Bank", "is_group": 1}) or frappe.db.get_value("Account",
+		{"company": cong_ty, "root_type": "Asset", "is_group": 1}, order_by="lft desc")
+	ten = ten_moi or ("Tien mat" if kieu == "Cash" else "Ngan hang")
+	ma = f"{ten} - {abbr}"
+	if not frappe.db.exists("Account", ma):
+		frappe.get_doc({"doctype": "Account", "account_name": ten, "parent_account": nhom, "company": cong_ty, "account_type": kieu,
+			"is_group": 0}).insert(ignore_permissions=True)
+	return ma
+
+
+def _hinh_thuc(cong_ty: str, abbr: str, cd) -> dict:
+	"""Ba Mode of Payment của app (giữ tên đã chọn ở NPP Cai Dat nếu có) + tài khoản mặc định cho công ty → {trường NPP Cai Dat: tên}."""
+	ra = {}
+	for truong, ten_md, kieu in HINH_THUC:
+		ten = (cd.get(truong) if cd and cd.meta.has_field(truong) else None) or ten_md
+		if not frappe.db.exists("Mode of Payment", ten):
+			frappe.get_doc({"doctype": "Mode of Payment", "mode_of_payment": ten, "type": kieu, "enabled": 1}).insert(ignore_permissions=True)
+		mp = frappe.get_doc("Mode of Payment", ten)
+		if not any(a.company == cong_ty and a.default_account for a in mp.accounts):
+			tk = _tai_khoan_tien(cong_ty, abbr, mp.type if mp.type in ("Cash", "Bank") else kieu,
+				ten_md if truong == "ht_vi" else None)
+			dong = next((a for a in mp.accounts if a.company == cong_ty), None)
+			if dong:
+				dong.default_account = tk
+			else:
+				mp.append("accounts", {"company": cong_ty, "default_account": tk})
+			mp.save(ignore_permissions=True)
+		ra[truong] = ten
+	return ra
+
+
+def _tk_tam_dau_ky(cong_ty: str, abbr: str) -> str:
+	"""Temporary Opening — đối ứng của tờ nợ đầu kỳ `DK-` / `DKN-` và tồn đầu kỳ (lõi: Opening Invoice Creation Tool dùng đúng loại này)."""
+	tk = frappe.db.get_value("Account", {"company": cong_ty, "account_type": "Temporary", "is_group": 0})
+	if tk:
+		return tk
+	nhom = frappe.db.get_value("Account", {"company": cong_ty, "root_type": "Asset", "is_group": 1,
+		"parent_account": ("in", ("", None))}) or frappe.db.get_value("Account", {"company": cong_ty, "root_type": "Asset", "is_group": 1})
+	return frappe.get_doc({"doctype": "Account", "account_name": "Temporary Opening", "parent_account": nhom, "company": cong_ty,
+		"account_type": "Temporary", "is_group": 0}).insert(ignore_permissions=True).name
+
+
 def dam_bao():
 	cong_ty = _cong_ty()
 	if not cong_ty:
@@ -116,12 +190,17 @@ def dam_bao():
 	# "Thue GTGT dau vao" — VAT nhân đôi). Blueprint 02 §3.5.
 	if frappe.db.get_single_value("Accounts Settings", "add_taxes_from_item_tax_template"):
 		frappe.db.set_single_value("Accounts Settings", "add_taxes_from_item_tax_template", 0)
-	if not frappe.db.exists("DocType", "NPP Cai Dat"):
+	_cai_dat_ke_toan(cong_ty)
+	co_cd = frappe.db.exists("DocType", "NPP Cai Dat")
+	cd = frappe.get_single("NPP Cai Dat") if co_cd else None
+	ht = _hinh_thuc(cong_ty, abbr, cd)
+	tam = _tk_tam_dau_ky(cong_ty, abbr)
+	if not co_cd:
 		return
-	cd = frappe.get_single("NPP Cai Dat")
 	doi = False
 	tk_giam = _tk_giam_gia_don(cong_ty, abbr)
-	for k, v in (("kho_ban", kho_ban), ("kho_can_date", kho_date), ("mau_thue_ban", ban), ("mau_thue_mua", mua), ("tk_giam_gia_don", tk_giam)):
+	for k, v in (("kho_ban", kho_ban), ("kho_can_date", kho_date), ("mau_thue_ban", ban), ("mau_thue_mua", mua), ("tk_giam_gia_don", tk_giam),
+			("tk_tam_dau_ky", tam), *ht.items()):
 		if cd.meta.has_field(k) and not cd.get(k):
 			cd.set(k, v)
 			doi = True
@@ -144,6 +223,11 @@ def cai_dat_ban() -> frappe._dict:
 			mau_thue_ban=g.get("mau_thue_ban") or (f"VAT theo mat hang - {abbr}" if abbr else None),
 			mau_thue_mua=g.get("mau_thue_mua") or (f"VAT mua theo mat hang - {abbr}" if abbr else None),
 			tk_giam_gia_don=g.get("tk_giam_gia_don") or (f"Chiet khau thuong mai - {abbr}" if abbr else None),
+			tk_tam_dau_ky=g.get("tk_tam_dau_ky") or (frappe.db.get_value("Account", {"company": cong_ty, "account_type": "Temporary",
+				"is_group": 0}) if cong_ty else None),
+			# hình thức thanh toán (`method` của nppsale) → Mode of Payment
+			hinh_thuc={"cash": g.get("ht_tien_mat") or "Tien mat", "transfer": g.get("ht_chuyen_khoan") or "Chuyen khoan",
+				"ewallet": g.get("ht_vi") or "Vi dien tu"},
 		)
 		frappe.local._npp_cai_dat_ban = cd
 	return cd

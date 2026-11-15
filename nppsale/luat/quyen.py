@@ -33,11 +33,15 @@ def co_quyen(vai: str | None, khoa: str, quyen_rieng: dict[str, bool] | None, do
 
 # Bộ dòng quyền vai gieo sẵn cho NPP — `_gieo_quyen_mac_dinh` bản mig 202 (chủ nhà 26/09/2026: "NV bán hàng chỉ cần Module bán hàng …
 # Còn lại bỏ hết" — bỏ ("sales", "receivables", "create") của mig 166: NVBH không lập phiếu thu). Gieo MỘT lần khi lập đơn vị.
+# + Quản lý lập / huỷ phiếu thu (Q4 tạm quyết của đặc tả phiếu thu — 00_quyet_dinh_trien_khai.md mục Q7): mig 215 cấp hai dòng này cho
+# các NPP có sẵn lúc chạy (chủ nhà 28/09/2026) và ghi rõ hàm gieo thiếu là "KHÔNG cố ý"; nppsale chưa vá hàm gieo → NPP mới thiếu.
 DONG_VAI_GIEO_SAN: list[tuple[str, str, str]] = [
 	("manager", "orders", "approve"),
 	("manager", "orders", "update"),
 	("manager", "returns", "approve"),
 	("manager", "inventory", "approve"),
+	("manager", "receivables", "create"),
+	("manager", "receivables", "update"),
 	("sales", "orders", "update"),
 	("accountant", "receivables", "create"),
 	("accountant", "receivables", "update"),

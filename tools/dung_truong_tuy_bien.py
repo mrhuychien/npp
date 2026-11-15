@@ -159,9 +159,23 @@ def main():
 			print("  - " + c)
 	if a.ghi:
 		os.makedirs(os.path.dirname(DICH), exist_ok=True)
-		if chi_dt and os.path.exists(DICH):  # chỉ thay các DocType được chọn, giữ phần còn lại của tệp
+		cu = {}
+		if os.path.exists(DICH):
 			with open(DICH, encoding="utf-8") as f:
 				cu = json.load(f)
+		# Bảng blueprint không có cột mô tả và không ghi được "bỏ chỉ mục": giữ `description` + `search_index = 0` đã có trong tệp
+		# (search_index 0 là cố ý — gỡ chỉ mục cũ khi trường đổi sang Small Text, vd. Item.npp_tim_kd).
+		for dt, ds in kq.items():
+			cu_dt = {x["fieldname"]: x for x in cu.get(dt, [])}
+			for f in ds:
+				x = cu_dt.get(f["fieldname"])
+				if not x:
+					continue
+				if x.get("description") and not f.get("description"):
+					f["description"] = x["description"]
+				if x.get("search_index") == 0 and "search_index" not in f:
+					f["search_index"] = 0
+		if chi_dt and cu:  # chỉ thay các DocType được chọn, giữ phần còn lại của tệp
 			cu.update(kq)
 			kq = cu
 		with open(DICH, "w", encoding="utf-8") as f:

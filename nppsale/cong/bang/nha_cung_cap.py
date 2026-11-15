@@ -16,7 +16,7 @@ _ANH_XA = {
 	"legal_name": "npp_ten_phap_ly", "business_type": "npp_loai_hinh", "representative": "npp_dai_dien",
 	"business_license_no": "npp_so_dkkd", "business_license_date": "npp_ngay_dkkd", "registered_address": "npp_dia_chi_dkkd",
 	"bank_account": "npp_so_tai_khoan", "bank_name": "npp_ngan_hang", "rating": "npp_danh_gia", "is_verified": ("npp_da_xac_minh", bool_vao),
-	"notes": "npp_ghi_chu", "is_active": ("npp_ngung_hop_tac", lambda v: 0 if bool_vao(v) else 1),
+	"notes": "supplier_details", "is_active": ("npp_ngung_hop_tac", lambda v: 0 if bool_vao(v) else 1),
 }
 
 
@@ -57,7 +57,7 @@ dang_ky(Bang(
 		"representative": c("npp_dai_dien"), "business_license_no": c("npp_so_dkkd"), "business_license_date": c("npp_ngay_dkkd", "ngay"),
 		"registered_address": c("npp_dia_chi_dkkd"), "bank_account": c("npp_so_tai_khoan"), "bank_name": c("npp_ngan_hang"),
 		"credit_limit": c("CASE WHEN {t}.`npp_co_han_muc` = 1 THEN {t}.`npp_han_muc` END", "tien"), "rating": c("NULLIF({t}.`npp_danh_gia`, 0)", "so"),
-		"is_verified": c("npp_da_xac_minh", "bool"), "notes": c("npp_ghi_chu"), "is_active": c("(1 - {t}.`npp_ngung_hop_tac`)", "bool"),
+		"is_verified": c("npp_da_xac_minh", "bool"), "notes": c("supplier_details"), "is_active": c("(1 - {t}.`npp_ngung_hop_tac`)", "bool"),
 		"tim_kd": c("npp_tim_kd"), "created_at": c("creation", "gio"),
 		"created_by": c("CASE WHEN {t}.`owner` IN ('Administrator', 'Guest') THEN NULL ELSE {t}.`owner` END"), "updated_at": c("modified", "gio"),
 	},

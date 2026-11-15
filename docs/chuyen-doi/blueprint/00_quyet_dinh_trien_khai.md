@@ -102,3 +102,12 @@ chỗ khác nppsale ghi ở `LECH_PT` / `SUA_MONG` trong bài, đổi được m
 
 Khác biệt kỹ thuật không đổi số: nppsale đảo nhập kho bằng phiếu xuất "Đảo phiếu trả" + ghi chú "(đã đảo)", bản ERPNext huỷ chứng từ (docstatus 2);
 giá vốn lô nền sau khi nhập lại do lõi định giá theo lô (nppsale giữ giá lô).
+
+## Q7. Phiếu thu / tiền thu / nợ đầu kỳ (P3d) — chỗ em tạm quyết, chờ anh chốt
+
+Đặc tả phiếu thu (đọc thẳng `create_cash_receipt` / `void_cash_receipt` / trigger công nợ đang chạy của nppsale) có 17 câu cần chốt (Q1–Q17 của
+đặc tả). Em dựng theo cách dưới; bảng thêm dần theo từng phần P3d.
+
+| Câu | nppsale hôm nay | Bản ERPNext (tạm) |
+|---|---|---|
+| Q4 — quản lý ở NPP MỚI lập / huỷ phiếu thu | hàm gieo quyền (`_gieo_quyen_mac_dinh`) không gieo `manager receivables.create/update`; mig 215 chỉ vá NPP có sẵn lúc chạy và ghi rõ thiếu là "KHÔNG cố ý" | gieo thêm hai dòng ấy (`DONG_VAI_GIEO_SAN`) — đúng ý anh 28/09/2026; NPP chuyển sang mang theo dòng quyền đang có |

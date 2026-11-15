@@ -31,6 +31,9 @@ SAN: dict[str, tuple[str, ...]] = {
 	"Sales Taxes and Charges Template": ("read", "select"),
 	"Payment Terms Template": ("read", "select"),
 	"Account": ("read", "select"),  # get_party_account → account_perm_check (Sales Order.validate)
+	# Payment Entry.validate → set_missing_ref_details(force=True) → get_reference_details gọi has_permission(HĐ, "read", throw=True)
+	# (payment_entry.py:182, :3010) — cờ ignore_permissions của PE không lan sang (phiếu thu lập dưới chính người thu — đặc tả phiếu thu §0.4)
+	"Sales Invoice": ("read", "select"),
 	# Chứng từ phụ NỘI BỘ của kho: lõi tự lập gói lô (SerialBatchCreation → doc.save()) và tự ghi sổ / huỷ nó trong Stock Ledger
 	# Entry.on_submit / on_cancel dưới quyền người gọi (dò bằng bài Xuất hàng, 13/11/2026). Người dùng không chạm được gói lô nào ngoài
 	# method của app (cửa /api/resource… bị chặn với vai NPP — nppsale.portal.chan).

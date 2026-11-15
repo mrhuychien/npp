@@ -207,6 +207,10 @@ doc_events = {
 		"on_submit": "nppsale.su_kien.cong_no.sau_thanh_toan",
 		"on_cancel": "nppsale.su_kien.cong_no.sau_thanh_toan",
 	},
+	"Journal Entry": {
+		"on_submit": "nppsale.su_kien.cong_no.sau_but_toan",
+		"on_cancel": "nppsale.su_kien.cong_no.sau_but_toan",
+	},
 }
 
 # doc_events = {

@@ -161,10 +161,22 @@ def sau_ghi_so_hoa_don(doc, method=None):
 			chieu_phieu_tra(doc.get("npp_phieu_tra"))
 
 
+def chieu_cac_hd(ten_hd) -> None:
+	"""Chiếu lại các nguồn công nợ chịu ảnh hưởng của một nhóm Sales Invoice (mỗi tên một lần)."""
+	for ten in dict.fromkeys(t for t in ten_hd if t):
+		si = frappe.db.get_value("Sales Invoice", ten, ["name", "is_return", "npp_hoa_don_goc", "npp_phieu_tra"], as_dict=True)
+		if si:
+			chieu_nguon_cua(si)
+
+
 def sau_thanh_toan(doc, method=None):
 	"""Payment Entry ghi sổ / huỷ: chiếu lại mọi HĐ được phân bổ."""
-	for r in doc.get("references") or []:
-		if r.reference_doctype == "Sales Invoice" and r.reference_name:
-			si = frappe.db.get_value("Sales Invoice", r.reference_name, ["name", "is_return", "npp_hoa_don_goc", "npp_phieu_tra"], as_dict=True)
-			if si:
-				chieu_nguon_cua(si)
+	chieu_cac_hd(r.reference_name for r in doc.get("references") or [] if r.reference_doctype == "Sales Invoice")
+
+
+def sau_but_toan(doc, method=None):
+	"""Journal Entry ghi sổ / huỷ: chiếu lại mọi HĐ / tờ ghi có mà một vế khách hàng tham chiếu (cấn trừ dư có `CTR-` của phiếu thu,
+	lập lại cấn trừ…). Đặc tả phiếu thu §0.4 chỉ đòi bút toán của app (`npp_loai` khác trống); ở đây chiếu cho MỌI bút toán có vế tham
+	chiếu HĐ — bản chiếu luôn khớp sổ kể cả khi kế toán cấn trừ tay trên Desk (chỉ đọc vài dòng, không tốn gì thêm)."""
+	chieu_cac_hd(r.reference_name for r in doc.get("accounts") or []
+		if r.reference_type == "Sales Invoice" and r.party_type == "Customer")

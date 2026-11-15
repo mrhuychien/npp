@@ -27,12 +27,14 @@ class TestQuyen(unittest.TestCase):
 		self.assertFalse(co_quyen("manager", "orders", None, VAI))  # khoá không có hành động
 
 	def test_bo_gieo_san_dung_mig_202(self):
-		"""= _gieo_quyen_mac_dinh đang chạy (mig 202): NVBH không còn receivables.create (không lập phiếu thu)."""
+		"""= _gieo_quyen_mac_dinh đang chạy (mig 202): NVBH không còn receivables.create (không lập phiếu thu) + hai dòng quản lý của
+		mig 215 (Q7 tạm quyết — mig 215 chỉ vá NPP có sẵn, ghi thiếu ở hàm gieo là "KHÔNG cố ý")."""
 		self.assertEqual(sorted(DONG_VAI_GIEO_SAN), sorted([
 			("manager", "orders", "approve"), ("manager", "orders", "update"), ("manager", "returns", "approve"),
-			("manager", "inventory", "approve"), ("sales", "orders", "update"), ("accountant", "receivables", "create"),
-			("accountant", "receivables", "update")]))
+			("manager", "inventory", "approve"), ("manager", "receivables", "create"), ("manager", "receivables", "update"),
+			("sales", "orders", "update"), ("accountant", "receivables", "create"), ("accountant", "receivables", "update")]))
 		self.assertFalse(co_quyen("sales", "receivables.create", None, VAI))
+		self.assertTrue(co_quyen("manager", "receivables.create", None, VAI))
 
 	def test_khong_ho_so_khong_duoc(self):
 		self.assertFalse(co_quyen(None, "orders.read", {"orders.read": True}, VAI))

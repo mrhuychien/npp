@@ -57,7 +57,7 @@
   {
    "fieldname": "npp_sb_diem_ban",
    "fieldtype": "Section Break",
-   "insert_after": "customer_name",
+   "insert_after": "image",
    "label": "Điểm bán (NPP)"
   },
   {
@@ -275,6 +275,334 @@
    "label": "Khoá tìm",
    "read_only": 1,
    "search_index": 0
+  },
+  {
+   "fieldname": "npp_id_cu",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "insert_after": "npp_tim_kd",
+   "label": "Mã cũ (nppsale)",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  }
+ ],
+ "Journal Entry": [
+  {
+   "description": "Trống = chứng từ không do app lập (lõi / nhập tay) — Select có lựa chọn rỗng để lõi không gán mặc định giá trị đầu",
+   "fieldname": "npp_loai",
+   "fieldtype": "Select",
+   "insert_after": "voucher_type",
+   "label": "Loại bút toán NPP",
+   "options": "\ncan_tru_khach\nbu_tru_ncc\nchi_phi\ntra_chi_phi\ndieu_chinh_gia_nhap",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_phieu_thu",
+   "fieldtype": "Link",
+   "insert_after": "npp_loai",
+   "label": "Phiếu thu NPP",
+   "options": "NPP Phieu Thu",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_phieu_chi",
+   "fieldtype": "Link",
+   "insert_after": "npp_phieu_thu",
+   "label": "Phiếu chi NPP",
+   "options": "NPP Phieu Chi",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_phieu_nhap",
+   "fieldtype": "Link",
+   "insert_after": "npp_phieu_chi",
+   "label": "Phiếu nhập",
+   "options": "Purchase Invoice",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "Journal Entry Account": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_xac_nhan_boi",
+   "fieldtype": "Link",
+   "insert_after": "reference_name",
+   "label": "Người xác nhận",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_xac_nhan_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_xac_nhan_boi",
+   "label": "Xác nhận lúc"
+  }
+ ],
+ "Landed Cost Voucher": [
+  {
+   "fieldname": "npp_phieu_nhap",
+   "fieldtype": "Link",
+   "insert_after": "posting_date",
+   "label": "Phiếu nhập",
+   "options": "Purchase Invoice",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_but_toan",
+   "fieldtype": "Link",
+   "insert_after": "npp_phieu_nhap",
+   "label": "Bút toán điều chỉnh nợ",
+   "options": "Journal Entry",
+   "read_only": 1
+  }
+ ],
+ "Payment Entry": [
+  {
+   "description": "Trống = chứng từ không do app lập (lõi / nhập tay) — Select có lựa chọn rỗng để lõi không gán mặc định giá trị đầu",
+   "fieldname": "npp_loai",
+   "fieldtype": "Select",
+   "insert_after": "payment_type",
+   "label": "Loại phiếu NPP",
+   "options": "\nphieu_thu\nphieu_chi_ncc\nghi_tra_ncc",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_phieu_thu",
+   "fieldtype": "Link",
+   "insert_after": "npp_loai",
+   "label": "Phiếu thu NPP",
+   "options": "NPP Phieu Thu",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "remarks",
+   "label": "Ghi chú",
+   "no_copy": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ly_do_huy",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_ghi_chu",
+   "label": "Lý do huỷ"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_ly_do_huy",
+   "label": "Huỷ lúc",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_huy_luc",
+   "label": "Người huỷ",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_xac_nhan_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_huy_boi",
+   "label": "Người xác nhận (trả trước)",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_xac_nhan_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_xac_nhan_boi",
+   "label": "Xác nhận lúc (trả trước)"
+  }
+ ],
+ "Payment Entry Reference": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_xac_nhan_boi",
+   "fieldtype": "Link",
+   "insert_after": "allocated_amount",
+   "label": "Người xác nhận",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_xac_nhan_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_xac_nhan_boi",
+   "label": "Xác nhận lúc"
+  }
+ ],
+ "Purchase Invoice": [
+  {
+   "description": "Trống = chứng từ không do app lập (lõi / nhập tay) — Select có lựa chọn rỗng để lõi không gán mặc định giá trị đầu",
+   "fieldname": "npp_loai",
+   "fieldtype": "Select",
+   "insert_after": "is_return",
+   "label": "Loại tờ NPP",
+   "options": "\nphieu_nhap\ntra_ncc\ndau_ky\nlap_tay",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_giam_dau_phieu",
+   "fieldtype": "Currency",
+   "insert_after": "discount_amount",
+   "label": "Giảm đầu phiếu"
+  },
+  {
+   "fieldname": "npp_co_thue_go_tay",
+   "fieldtype": "Check",
+   "insert_after": "taxes_and_charges",
+   "label": "Có thuế gõ tay"
+  },
+  {
+   "depends_on": "eval:doc.npp_co_thue_go_tay",
+   "fieldname": "npp_thue_go_tay",
+   "fieldtype": "Currency",
+   "insert_after": "npp_co_thue_go_tay",
+   "label": "Thuế gõ tay"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "remarks",
+   "label": "Ghi chú",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "npp_ly_do",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_ghi_chu",
+   "label": "Lý do trả"
+  },
+  {
+   "fieldname": "npp_hoan_thanh_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "amended_from",
+   "label": "Hoàn thành lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_hoan_thanh_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_hoan_thanh_luc",
+   "label": "Người hoàn thành",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ly_do_huy",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_hoan_thanh_boi",
+   "label": "Lý do huỷ"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_luc",
+   "fieldtype": "Datetime",
+   "insert_after": "npp_ly_do_huy",
+   "label": "Huỷ lúc",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_huy_boi",
+   "fieldtype": "Link",
+   "insert_after": "npp_huy_luc",
+   "label": "Người huỷ",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_han_thanh_toan",
+   "fieldtype": "Date",
+   "insert_after": "due_date",
+   "label": "Hạn nợ"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_qua_han_tay",
+   "fieldtype": "Check",
+   "insert_after": "npp_han_thanh_toan",
+   "label": "Đánh dấu quá hạn"
+  },
+  {
+   "fieldname": "npp_phieu_kho_loai",
+   "fieldtype": "Link",
+   "insert_after": "bill_date",
+   "label": "Loại phiếu kho",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_phieu_kho",
+   "fieldtype": "Dynamic Link",
+   "insert_after": "npp_phieu_kho_loai",
+   "label": "Phiếu nhập kho",
+   "options": "npp_phieu_kho_loai",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_ma_cu",
+   "fieldtype": "Data",
+   "insert_after": "npp_loai",
+   "label": "Mã cũ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "npp_ma_cu",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_sua_gia",
+   "fieldtype": "JSON",
+   "insert_after": "npp_huy_boi",
+   "label": "Giá đã sửa",
+   "read_only": 1
+  }
+ ],
+ "Purchase Invoice Item": [
+  {
+   "fieldname": "npp_giam_dong",
+   "fieldtype": "Currency",
+   "insert_after": "discount_amount",
+   "label": "Giảm dòng"
+  },
+  {
+   "fieldname": "npp_thue_suat",
+   "fieldtype": "Float",
+   "insert_after": "item_tax_template",
+   "label": "Thuế suất",
+   "precision": "4"
+  },
+  {
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "description",
+   "label": "Ghi chú dòng"
   }
  ],
  "Sales Invoice": [
@@ -308,7 +636,7 @@
    "allow_on_submit": 1,
    "fieldname": "npp_ghi_chu",
    "fieldtype": "Small Text",
-   "insert_after": "npp_qua_han_tay",
+   "insert_after": "remarks",
    "label": "Ghi chú"
   },
   {
@@ -317,8 +645,8 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ghi_chu",
    "label": "Đã soạn lúc",
-   "read_only": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -326,9 +654,9 @@
    "fieldtype": "Link",
    "insert_after": "npp_soan_luc",
    "label": "Người soạn",
+   "no_copy": 1,
    "options": "NPP Nhan Vien",
-   "read_only": 1,
-   "no_copy": 1
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -344,8 +672,8 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
-   "read_only": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -353,9 +681,9 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
+   "no_copy": 1,
    "options": "NPP Nhan Vien",
-   "read_only": 1,
-   "no_copy": 1
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -427,6 +755,15 @@
    "label": "Giảm dòng (ghi nhớ)"
   },
   {
+   "fieldname": "npp_dong_don",
+   "fieldtype": "Data",
+   "insert_after": "so_detail",
+   "label": "Dòng đơn (khác đơn vị)",
+   "no_copy": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
    "fieldname": "npp_thue_suat",
    "fieldtype": "Float",
    "insert_after": "item_tax_template",
@@ -445,15 +782,6 @@
    "fieldtype": "Small Text",
    "insert_after": "description",
    "label": "Ghi chú dòng"
-  },
-  {
-   "fieldname": "npp_dong_don",
-   "fieldtype": "Data",
-   "insert_after": "so_detail",
-   "label": "Dòng đơn (khác đơn vị)",
-   "read_only": 1,
-   "no_copy": 1,
-   "search_index": 1
   }
  ],
  "Sales Order": [
@@ -534,8 +862,8 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
-   "read_only": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -543,9 +871,9 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
+   "no_copy": 1,
    "options": "NPP Nhan Vien",
-   "read_only": 1,
-   "no_copy": 1
+   "read_only": 1
   },
   {
    "description": "Hàng trả kèm đơn đã trừ vào số khách phải trả lúc lên đơn (= subtotal + vat − total của nppsale); không tính lại khi phiếu trả đổi",
@@ -581,6 +909,64 @@
    "label": "Thuế suất",
    "precision": "4",
    "read_only": 1
+  }
+ ],
+ "Stock Entry": [
+  {
+   "fieldname": "npp_loai",
+   "fieldtype": "Select",
+   "insert_after": "stock_entry_type",
+   "label": "Loại phiếu NPP",
+   "options": "\nnhap_kho\nton_dau_ky\nxuat_le\nchuyen_kho\nchuyen_date_tu_dong\ndieu_chinh_kiem_ke\nnhap_lai_tra",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_ly_do_xuat",
+   "fieldtype": "Data",
+   "insert_after": "npp_loai",
+   "label": "Lý do xuất"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "remarks",
+   "label": "Ghi chú",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "npp_kiem_ke",
+   "fieldtype": "Link",
+   "insert_after": "npp_ly_do_xuat",
+   "label": "Phiếu kiểm kê",
+   "options": "NPP Kiem Ke",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_phieu_tra",
+   "fieldtype": "Link",
+   "insert_after": "npp_kiem_ke",
+   "label": "Phiếu trả",
+   "options": "NPP Phieu Tra",
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "npp_phieu_tra",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "Stock Entry Detail": [
+  {
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "description",
+   "label": "Ghi chú dòng"
   }
  ],
  "Supplier": [
@@ -705,68 +1091,22 @@
    "label": "Đã xác minh"
   },
   {
-   "fieldname": "npp_ghi_chu",
-   "fieldtype": "Small Text",
-   "insert_after": "supplier_details",
-   "label": "Ghi chú"
-  },
-  {
    "fieldname": "npp_tim_kd",
    "fieldtype": "Small Text",
-   "insert_after": "npp_ghi_chu",
+   "insert_after": "supplier_details",
    "label": "Khoá tìm",
    "read_only": 1,
    "search_index": 0
-  }
- ],
- "Stock Entry": [
-  {
-   "fieldname": "npp_loai",
-   "fieldtype": "Select",
-   "insert_after": "stock_entry_type",
-   "label": "Loại phiếu NPP",
-   "options": "\nnhap_kho\nton_dau_ky\nxuat_le\nchuyen_kho\nchuyen_date_tu_dong\ndieu_chinh_kiem_ke\nnhap_lai_tra",
-   "read_only": 1,
-   "search_index": 1
   },
   {
-   "fieldname": "npp_ly_do_xuat",
+   "fieldname": "npp_id_cu",
    "fieldtype": "Data",
-   "insert_after": "npp_loai",
-   "label": "Lý do xuất"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "npp_ghi_chu",
-   "fieldtype": "Small Text",
-   "insert_after": "remarks",
-   "label": "Ghi chú",
-   "no_copy": 1
-  },
-  {
-   "fieldname": "npp_kiem_ke",
-   "fieldtype": "Link",
-   "insert_after": "npp_ly_do_xuat",
-   "label": "Phiếu kiểm kê",
-   "options": "NPP Kiem Ke",
+   "hidden": 1,
+   "insert_after": "npp_tim_kd",
+   "label": "Mã cũ (nppsale)",
+   "no_copy": 1,
    "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "npp_phieu_tra",
-   "fieldtype": "Link",
-   "insert_after": "npp_kiem_ke",
-   "label": "Phiếu trả",
-   "options": "NPP Phieu Tra",
-   "search_index": 1
-  },
-  {
-   "fieldname": "npp_tim_kd",
-   "fieldtype": "Data",
-   "insert_after": "npp_phieu_tra",
-   "label": "Khoá tìm",
-   "read_only": 1,
-   "search_index": 1
+   "unique": 1
   }
  ]
 }
