@@ -44,6 +44,29 @@ class TestKhoaChungTu(IntegrationTestCase):
 		self.assertTrue(_goi(self.a, "release_entity_lock", p_entity_type="sales_order", p_entity_id="DH-9001")["data"])
 		self.assertTrue(_goi(self.b, "acquire_entity_lock", p_entity_type="sales_order", p_entity_id="DH-9001")["data"][0]["ok"])
 
+	def test_bao_realtime_toi_phong_tung_nv(self):
+		"""Giành / nhả khoá → đẩy "npp_cong" tới phòng user của TỪNG NV đang làm (NV NPP là Website User — không vào phòng "all" mà
+		publish_realtime(doctype=…) không docname rơi vào); NV đã nghỉ / bị khoá không nhận."""
+		from unittest.mock import patch
+
+		nghi = _nv("0913000403", "sales", "NV nghi")
+		frappe.db.set_value("NPP Nhan Vien", nghi, "nghi_viec_luc", frappe.utils.now_datetime())
+		goi = []
+		with patch("frappe.publish_realtime", side_effect=lambda *a, **k: goi.append((a, k))):
+			_goi(self.a, "acquire_entity_lock", p_entity_type="sales_order", p_entity_id="DH-9100")
+			_goi(self.a, "release_entity_lock", p_entity_type="sales_order", p_entity_id="DH-9100")
+		goi = [(a, k) for a, k in goi if a and a[0] == "npp_cong"]  # bỏ doc_update… của lõi
+		self.assertTrue(goi)
+		for _a, k in goi:
+			self.assertNotIn("doctype", k)
+			self.assertNotIn("room", k)
+			self.assertTrue(k.get("user"), k)
+		nhan = {k["user"] for _a, k in goi}
+		self.assertIn(self.a, nhan)
+		self.assertIn(self.b, nhan)
+		self.assertNotIn(nghi, nhan)
+		self.assertEqual({a[1]["su_kien"] for a, _k in goi}, {"UPSERT", "DELETE"})
+
 	def test_khoa_qua_han_bi_don(self):
 		_goi(self.a, "acquire_entity_lock", p_entity_type="sales_order", p_entity_id="DH-9002")
 		frappe.db.sql("UPDATE `tabNPP Khoa Chung Tu` SET nhip_cuoi = NOW(6) - INTERVAL 11 MINUTE WHERE name = 'sales_order:DH-9002'")

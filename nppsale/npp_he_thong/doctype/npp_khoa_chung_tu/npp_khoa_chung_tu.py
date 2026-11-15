@@ -13,10 +13,9 @@ class NPPKhoaChungTu(Document):
 		self._bao("DELETE")
 
 	def _bao(self, su_kien: str):
-		frappe.publish_realtime(
-			"npp_cong",
-			{"bang": "entity_locks", "su_kien": su_kien, "entity_type": self.loai_chung_tu, "entity_id": self.chung_tu,
-				"locked_by": self.nguoi_khoa},
-			doctype="NPP Khoa Chung Tu",
-			after_commit=True,
-		)
+		"""Đẩy tới phòng của TỪNG NV đang làm (= entity_locks thấy được với mọi NV của NPP). Không dùng `doctype=` không kèm docname:
+		lõi rơi vào phòng "all" mà chỉ System User vào (realtime/handlers.js) — NV NPP là Website User, không bao giờ nhận."""
+		tin = {"bang": "entity_locks", "su_kien": su_kien, "entity_type": self.loai_chung_tu, "entity_id": self.chung_tu,
+			"locked_by": self.nguoi_khoa}
+		for nv in frappe.get_all("NPP Nhan Vien", filters={"dang_hoat_dong": 1, "nghi_viec_luc": ("is", "not set")}, pluck="name"):
+			frappe.publish_realtime("npp_cong", tin, user=nv, after_commit=True)
