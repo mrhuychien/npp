@@ -158,6 +158,57 @@ def nap():
 		rls=_rls_dong,
 		ghi=GhiDongDon(),
 	))
+	if co_cot("NPP Nhat Ky Don", "loai"):
+		_nap_nhat_ky()
+
+
+def _rls_lich_su(nc):
+	"""order_status_history "View history of visible orders": dòng của đơn người gọi thấy được (sales_order_select)."""
+	v = ve_don(nc, "so")
+	if v is None or v is False:
+		return v
+	return (f"{{t}}.`don` IN (SELECT so.`name` FROM `tabSales Order` so WHERE {v[0]})", v[1])
+
+
+def _nap_nhat_ky():
+	"""NPP Nhat Ky Don gộp hai bảng nhật ký của nppsale (blueprint 02): loai 'trang_thai' = order_status_history (trigger đổi trạng thái),
+	loai 'dong' = order_activity_log (mig 052, RLS `org_id = user_org_id()` — mọi NV của NPP). Chỉ đọc: ghi do method."""
+	from ..sql import LoiCong as _L
+	from ._chung import rls_moi_nv
+
+	class _ChiDoc:
+		def __init__(self, ten):
+			self.ten = ten
+
+		def them(self, ds, nc):
+			raise _L("42501", f'new row violates row-level security policy for table "{self.ten}"', http=403)
+
+		def sua(self, gia_tri, ids, nc):
+			return []
+
+		def xoa(self, ids, nc):
+			return []
+
+	dang_ky(Bang(
+		ten="order_status_history",
+		nguon="(SELECT * FROM `tabNPP Nhat Ky Don` WHERE `loai` = 'trang_thai')",
+		cot={"id": c("{t}.`name`"), "order_id": c("don"), "from_status": c("tu_trang_thai"), "to_status": c("den_trang_thai"),
+			"changed_by": c("nguoi"), "changed_at": c("luc", "gio"), "notes": c("ghi_chu")},
+		quan_he=[QuanHe("users", "changed_by", "id", False, ("order_status_history_changed_by_fkey", "changed_by")),
+			QuanHe("sales_orders", "order_id", "id", False, ("order_status_history_order_id_fkey", "order_id"))],
+		rls=_rls_lich_su,
+		ghi=_ChiDoc("order_status_history"),
+	))
+	dang_ky(Bang(
+		ten="order_activity_log",
+		nguon="(SELECT * FROM `tabNPP Nhat Ky Don` WHERE `loai` = 'dong')",
+		cot={"id": c("{t}.`name`"), "org_id": org(), "order_id": c("don"), "order_line_id": c("dong_don"), "action": c("hanh_dong"),
+			"workflow_stage": c("giai_doan"), "changes": c("thay_doi", "json"), "actor_id": c("nguoi"), "created_at": c("luc", "gio")},
+		quan_he=[QuanHe("users", "actor_id", "id", False, ("order_activity_log_actor_id_fkey", "actor_id")),
+			QuanHe("sales_orders", "order_id", "id", False, ("order_activity_log_order_id_fkey", "order_id"))],
+		rls=rls_moi_nv,
+		ghi=_ChiDoc("order_activity_log"),
+	))
 
 
 try:
