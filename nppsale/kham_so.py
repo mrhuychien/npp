@@ -116,3 +116,111 @@ def quet_phieu_tra() -> list[dict]:
 				f"Công nợ {no if no is not None else 'KHÔNG CÓ DÒNG'} — đúng phải là {dung:g}", "Chiếu lại công nợ HĐ (chieu_hoa_don)"))
 	ra.sort(key=lambda x: (x["nhom"], x["chung_tu"]))
 	return ra
+
+
+# ================================================================================================ công nợ ↔ phiếu thu (P3d)
+@frappe.whitelist()
+def cong_no() -> list[dict]:
+	frappe.only_for(("System Manager", "Administrator"))
+	return quet_cong_no()
+
+
+def quet_cong_no(khach: list[str] | None = None) -> list[dict]:
+	"""Bản ERPNext của `scripts/sql/quet/phieu-thu-cong-no.sql` (mig 164, INV1–INV5) + bất biến của bản chiếu (đặc tả phiếu thu §1.7):
+	  10. Σ còn nợ các dòng công nợ của khách ≠ Σ Payment Ledger (delinked = 0) của khách (dòng chiếu thiếu / thừa / cũ).
+	  11. Dòng công nợ: còn nợ / trạng thái lệch với sổ (chiếu cũ) — INV2.
+	  12. Phiếu thu: tiền thu ≠ Σ dòng `payment` (INV4); Payment Entry cùng tên lệch tiền / sai trạng thái so với phiếu.
+	  13. Bút toán cấn trừ CTR- / bút toán chuyển tiền thu vượt (`chuyen_tien_thua`) không cân, hoặc còn ghi sổ khi phiếu sở hữu đã huỷ; phiếu thu
+	      sống mà Payment Entry còn tiền chưa phân bổ (dòng `tien_thua` — lưới an toàn, RPC không bao giờ để lại).
+	  14. Dòng phiếu thu SỐNG trỏ HĐ đã huỷ / mất dòng công nợ (INV5)."""
+	from nppsale.su_kien import cong_no as CN
+
+	ra: list[dict] = []
+	if not frappe.db.exists("DocType", "NPP Cong No"):
+		return ra
+	ten_khach = dict(frappe.db.sql("SELECT `name`, `customer_name` FROM `tabCustomer`"))
+	loc_kh = {"khach_hang": ("in", khach)} if khach else {}
+	so_cai = dict(frappe.db.sql("""SELECT `party`, SUM(`amount`) FROM `tabPayment Ledger Entry` WHERE `party_type` = 'Customer' AND `delinked` = 0
+		AND `account_type` = 'Receivable' GROUP BY `party`"""))
+	chieu: dict[str, float] = {}
+	for r in frappe.get_all("NPP Cong No", filters=loc_kh, fields=["name", "loai", "khach_hang", "hoa_don", "phieu_tra", "phieu_thu", "so_tien",
+			"da_thu", "con_no", "trang_thai", "qua_han_tay"]):
+		chieu[r.khach_hang] = chieu.get(r.khach_hang, 0.0) + flt(r.con_no)
+		that = CN.con_no_dong(r)
+		tt = CN.trang_thai(flt(r.so_tien), flt(r.so_tien) - that, bool(r.qua_han_tay))
+		if abs(that - flt(r.con_no)) >= 0.5 or tt != r.trang_thai:
+			ra.append(_dong(11, "Dòng công nợ lệch sổ (chiếu cũ)", r.name, ten_khach.get(r.khach_hang), r.con_no,
+				f"{r.loai}: còn nợ {flt(r.con_no):g} / sổ {that:g}; trạng thái {r.trang_thai} / đúng {tt}", "Chiếu lại dòng (chieu_dong)"))
+	for kh in sorted(set(chieu) | ({k for k in so_cai if not khach or k in khach})):
+		if abs(chieu.get(kh, 0.0) - flt(so_cai.get(kh))) >= 0.5:
+			ra.append(_dong(10, "Công nợ khách lệch sổ cái", kh, ten_khach.get(kh), chieu.get(kh, 0.0),
+				f"Σ dòng công nợ {chieu.get(kh, 0.0):g} — Σ sổ cái {flt(so_cai.get(kh)):g}",
+				"Chạy kham_so_cong_no; còn lệch thì tìm chứng từ không thuộc nhóm nào (bút toán lõi bị gỡ tham chiếu)"))
+	if frappe.db.exists("DocType", "NPP Phieu Thu"):
+		co_loai = frappe.get_meta("Journal Entry").has_field("npp_loai")
+		for p in frappe.get_all("NPP Phieu Thu", filters=loc_kh, fields=["name", "khach_hang", "trang_thai", "tien_thu", "but_toan_tien",
+				"but_toan_can_tru"]):
+			kh = ten_khach.get(p.khach_hang)
+			if p.trang_thai != "voided":
+				tong = flt(frappe.db.sql("""SELECT SUM(`so_tien`) FROM `tabNPP Phieu Thu Dong` WHERE `parent` = %s AND `parenttype` = 'NPP Phieu Thu'
+					AND `loai` = 'payment'""", p.name)[0][0])
+				if abs(tong - flt(p.tien_thu)) >= 0.5:
+					ra.append(_dong(12, "Phiếu thu: tiền thu ≠ Σ dòng tiền (INV4)", p.name, kh, p.tien_thu, f"Σ dòng payment {tong:g}", "Báo lại"))
+			pe = frappe.db.get_value("Payment Entry", p.but_toan_tien, ["docstatus", "paid_amount"], as_dict=True) if p.but_toan_tien else None
+			can_pe = p.trang_thai != "voided" and flt(p.tien_thu) > 0
+			if (can_pe and (not pe or pe.docstatus != 1 or abs(flt(pe.paid_amount) - flt(p.tien_thu)) >= 0.5)) or (
+					not can_pe and pe and pe.docstatus == 1):
+				ra.append(_dong(12, "Phiếu thu ↔ Payment Entry lệch", p.name, kh, p.tien_thu,
+					f"PE {p.but_toan_tien or '—'}: {pe.docstatus if pe else 'không có'} / {flt(pe.paid_amount) if pe else 0:g}", "Báo lại — không tự sửa"))
+			je = frappe.db.get_value("Journal Entry", p.but_toan_can_tru, ["docstatus", "total_debit", "total_credit"], as_dict=True) \
+				if p.but_toan_can_tru else None
+			if je and ((p.trang_thai == "voided" and je.docstatus == 1) or (je.docstatus == 1 and abs(flt(je.total_debit) - flt(je.total_credit)) >= 0.5)):
+				ra.append(_dong(13, "Bút toán cấn trừ sai trạng thái / không cân", p.name, kh, je.total_debit,
+					f"{p.but_toan_can_tru}: docstatus {je.docstatus}, Nợ {flt(je.total_debit):g} / Có {flt(je.total_credit):g}", "Báo lại"))
+			# Sửa HĐ giảm tiền: phần thu vượt chuyển vào HĐ mới (bút toán `chuyen_tien_thua`, phương án B của Q1) — RPC luôn phân bổ hết tiền phiếu
+			if co_loai:
+				for cj in frappe.get_all("Journal Entry", filters={"npp_phieu_thu": p.name, "npp_loai": "chuyen_tien_thua", "docstatus": 1},
+						fields=["name", "total_debit", "total_credit"]):
+					if p.trang_thai == "voided" or abs(flt(cj.total_debit) - flt(cj.total_credit)) >= 0.5:
+						ra.append(_dong(13, "Bút toán chuyển tiền thu vượt sai trạng thái / không cân", p.name, kh, cj.total_debit,
+							f"{cj.name}: phiếu {p.trang_thai}, Nợ {flt(cj.total_debit):g} / Có {flt(cj.total_credit):g}", "Báo lại"))
+			# theo Payment Ledger (trường unallocated_amount của PE không trừ bút toán trỏ PE — bút toán chuyển của Sửa HĐ)
+			treo = -CN._con_no([p.but_toan_tien], "Payment Entry") if can_pe and pe and pe.docstatus == 1 else 0.0
+			if treo >= 0.5:
+				ra.append(_dong(13, "Phiếu thu còn tiền chưa phân bổ (Payment Entry treo tiền ngoài app)", p.name, kh, treo,
+					f"{p.but_toan_tien}: chưa phân bổ {treo:g} — dòng công nợ `tien_thua` đang giữ số này", "Báo lại — không tự sửa"))
+		for d in frappe.db.sql("""SELECT d.`parent`, d.`name`, d.`hoa_don`, d.`cong_no`, p.`khach_hang` FROM `tabNPP Phieu Thu Dong` d
+				JOIN `tabNPP Phieu Thu` p ON p.`name` = d.`parent` WHERE d.`parenttype` = 'NPP Phieu Thu' AND p.`trang_thai` != 'voided'""", as_dict=True):
+			if khach and d.khach_hang not in khach:
+				continue
+			huy = d.hoa_don and frappe.db.get_value("Sales Invoice", d.hoa_don, "docstatus") == 2
+			mat = not d.cong_no or not frappe.db.exists("NPP Cong No", d.cong_no)
+			if huy or mat:
+				ra.append(_dong(14, "Dòng phiếu thu sống trỏ HĐ đã huỷ / mất dòng công nợ (INV5)", d.parent, ten_khach.get(d.khach_hang), 0,
+					f"dòng {d.name}: HĐ {d.hoa_don or '—'}{' (đã huỷ)' if huy else ''}, công nợ {d.cong_no or 'trống'}", "Báo lại"))
+	ra.sort(key=lambda x: (x["nhom"], x["chung_tu"]))
+	return ra
+
+
+def kham_so_cong_no() -> None:
+	"""Việc đêm 01:00 (đặc tả phiếu thu §2.5.3): khách có Payment Ledger đổi trong ngày → chiếu lại mọi dòng + mọi HĐ / phiếu trả / phiếu thu của
+	khách, rồi khám; còn lệch → Error Log (không tự sửa chứng từ)."""
+	from frappe.utils import add_days, now_datetime
+
+	from nppsale.su_kien import cong_no as CN
+
+	khach = frappe.db.sql_list("""SELECT DISTINCT `party` FROM `tabPayment Ledger Entry` WHERE `party_type` = 'Customer'
+		AND `modified` >= %s""", add_days(now_datetime(), -1))
+	for kh in khach:
+		for si in frappe.get_all("Sales Invoice", filters={"customer": kh, "docstatus": ("in", (1, 2))},
+				fields=["name", "is_return", "npp_hoa_don_goc", "npp_phieu_tra"]):
+			CN.chieu_nguon_cua(si)
+		for r in frappe.get_all("NPP Cong No", filters={"khach_hang": kh}, fields=["name", "loai", "hoa_don", "phieu_tra", "phieu_thu"]):
+			CN.chieu_dong(r)
+		if frappe.db.exists("DocType", "NPP Phieu Thu"):
+			for ph in frappe.get_all("NPP Phieu Thu", filters={"khach_hang": kh}, pluck="name"):
+				CN.chieu_tien_thua(ph)
+	lech = quet_cong_no(khach) if khach else []
+	frappe.db.commit()
+	if lech:
+		frappe.log_error(title=f"Khám sổ công nợ: {len(lech)} chỗ lệch", message=frappe.as_json(lech[:200], indent=1))

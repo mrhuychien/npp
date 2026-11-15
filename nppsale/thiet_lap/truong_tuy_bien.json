@@ -5,6 +5,7 @@
    "fieldtype": "Datetime",
    "insert_after": "expiry_date",
    "label": "Ngày nhập",
+   "module": "NPP Kho Mua",
    "read_only": 1,
    "search_index": 1
   },
@@ -12,13 +13,15 @@
    "fieldname": "npp_vi_tri",
    "fieldtype": "Data",
    "insert_after": "npp_ngay_nhap",
-   "label": "Vị trí"
+   "label": "Vị trí",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_kho_tao",
    "fieldtype": "Link",
    "insert_after": "npp_vi_tri",
    "label": "Kho khi tạo",
+   "module": "NPP Kho Mua",
    "options": "Warehouse",
    "read_only": 1
   },
@@ -27,6 +30,7 @@
    "fieldtype": "Currency",
    "insert_after": "npp_kho_tao",
    "label": "Giá vốn lô rỗng",
+   "module": "NPP Kho Mua",
    "precision": "6"
   },
   {
@@ -34,6 +38,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_gia_von_lo_rong",
    "label": "Chuyển vùng lúc",
+   "module": "NPP Kho Mua",
    "read_only": 1
   },
   {
@@ -41,6 +46,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_chuyen_vung_luc",
    "label": "Người chuyển vùng",
+   "module": "NPP Kho Mua",
    "options": "NPP Nhan Vien",
    "read_only": 1
   },
@@ -49,6 +55,7 @@
    "fieldtype": "Data",
    "insert_after": "item_name",
    "label": "Khoá tìm",
+   "module": "NPP Kho Mua",
    "read_only": 1,
    "search_index": 1
   }
@@ -58,13 +65,15 @@
    "fieldname": "npp_sb_diem_ban",
    "fieldtype": "Section Break",
    "insert_after": "image",
-   "label": "Điểm bán (NPP)"
+   "label": "Điểm bán (NPP)",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_id_cu",
    "fieldtype": "Data",
    "insert_after": "npp_sb_diem_ban",
    "label": "Mã cũ (nppsale)",
+   "module": "NPP Khach Hang",
    "no_copy": 1,
    "read_only": 1,
    "unique": 1
@@ -74,7 +83,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "insert_after": "npp_id_cu",
-   "label": "Chủ cửa hàng"
+   "label": "Chủ cửa hàng",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_sdt",
@@ -83,6 +93,7 @@
    "in_standard_filter": 1,
    "insert_after": "npp_chu_cua_hang",
    "label": "Số điện thoại",
+   "module": "NPP Khach Hang",
    "options": "Phone",
    "unique": 1
   },
@@ -90,25 +101,29 @@
    "fieldname": "npp_dia_chi",
    "fieldtype": "Small Text",
    "insert_after": "npp_sdt",
-   "label": "Địa chỉ"
+   "label": "Địa chỉ",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_phuong",
    "fieldtype": "Data",
    "insert_after": "npp_dia_chi",
-   "label": "Phường / xã"
+   "label": "Phường / xã",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_quan",
    "fieldtype": "Data",
    "insert_after": "npp_phuong",
-   "label": "Quận / huyện"
+   "label": "Quận / huyện",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_tinh",
    "fieldtype": "Data",
    "insert_after": "npp_quan",
-   "label": "Tỉnh / TP"
+   "label": "Tỉnh / TP",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_tuyen",
@@ -116,6 +131,7 @@
    "in_standard_filter": 1,
    "insert_after": "npp_tinh",
    "label": "Mã tuyến",
+   "module": "NPP Khach Hang",
    "search_index": 1
   },
   {
@@ -124,6 +140,7 @@
    "fieldtype": "Select",
    "insert_after": "npp_tuyen",
    "label": "Trạng thái",
+   "module": "NPP Khach Hang",
    "options": "active\nsuspended\nlocked",
    "search_index": 1
   },
@@ -132,13 +149,15 @@
    "fieldname": "npp_han_muc",
    "fieldtype": "Currency",
    "insert_after": "npp_trang_thai",
-   "label": "Hạn mức nợ"
+   "label": "Hạn mức nợ",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_vi_do",
    "fieldtype": "Float",
    "insert_after": "npp_han_muc",
    "label": "Vĩ độ",
+   "module": "NPP Khach Hang",
    "precision": "7"
   },
   {
@@ -146,6 +165,7 @@
    "fieldtype": "Float",
    "insert_after": "npp_vi_do",
    "label": "Kinh độ",
+   "module": "NPP Khach Hang",
    "precision": "7"
   },
   {
@@ -153,6 +173,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_kinh_do",
    "label": "Duyệt ảnh + vị trí lúc",
+   "module": "NPP Khach Hang",
    "read_only": 1
   },
   {
@@ -160,6 +181,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_duyet_anh_luc",
    "label": "Người duyệt ảnh",
+   "module": "NPP Khach Hang",
    "options": "NPP Nhan Vien",
    "read_only": 1
   },
@@ -168,6 +190,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_duyet_anh_boi",
    "label": "Nhắc ảnh lúc",
+   "module": "NPP Khach Hang",
    "read_only": 1
   },
   {
@@ -175,25 +198,29 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_nhac_anh_luc",
    "label": "Nhắc tuyến lúc",
+   "module": "NPP Khach Hang",
    "read_only": 1
   },
   {
    "fieldname": "npp_ten_xuat_hd",
    "fieldtype": "Data",
    "insert_after": "npp_nhac_tuyen_luc",
-   "label": "Tên đơn vị xuất HĐ"
+   "label": "Tên đơn vị xuất HĐ",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_dia_chi_xuat_hd",
    "fieldtype": "Small Text",
    "insert_after": "npp_ten_xuat_hd",
-   "label": "Địa chỉ xuất HĐ"
+   "label": "Địa chỉ xuất HĐ",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_email_xuat_hd",
    "fieldtype": "Data",
    "insert_after": "npp_dia_chi_xuat_hd",
    "label": "Email nhận HĐ",
+   "module": "NPP Khach Hang",
    "options": "Email"
   },
   {
@@ -201,13 +228,15 @@
    "fieldname": "npp_hinh_thuc_tt",
    "fieldtype": "Data",
    "insert_after": "npp_email_xuat_hd",
-   "label": "Hình thức thanh toán (HĐĐT)"
+   "label": "Hình thức thanh toán (HĐĐT)",
+   "module": "NPP Khach Hang"
   },
   {
    "fieldname": "npp_tim_kd",
    "fieldtype": "Small Text",
    "insert_after": "npp_hinh_thuc_tt",
    "label": "Khoá tìm",
+   "module": "NPP Khach Hang",
    "read_only": 1
   }
  ],
@@ -218,6 +247,7 @@
    "insert_after": "file_url",
    "label": "Đường dẫn kho (nppsale)",
    "length": 500,
+   "module": "NPP Khach Hang",
    "read_only": 1,
    "unique": 1
   }
@@ -227,13 +257,15 @@
    "fieldname": "npp_gia_ban",
    "fieldtype": "Currency",
    "insert_after": "standard_rate",
-   "label": "Giá bán (đơn vị cơ sở)"
+   "label": "Giá bán (đơn vị cơ sở)",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_thue_suat",
    "fieldtype": "Float",
    "insert_after": "stock_uom",
    "label": "Thuế suất mặc định",
+   "module": "NPP Ban Hang",
    "precision": "4"
   },
   {
@@ -241,38 +273,44 @@
    "fieldtype": "Check",
    "insert_after": "disabled",
    "label": "Ngừng bán",
+   "module": "NPP Ban Hang",
    "search_index": 1
   },
   {
    "fieldname": "npp_vi_tri_ke",
    "fieldtype": "Data",
    "insert_after": "brand",
-   "label": "Vị trí kệ"
+   "label": "Vị trí kệ",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_ton_toi_da",
    "fieldtype": "Float",
    "insert_after": "safety_stock",
-   "label": "Tồn tối đa"
+   "label": "Tồn tối đa",
+   "module": "NPP Ban Hang"
   },
   {
    "default": "1",
    "fieldname": "npp_ban_truc_tiep",
    "fieldtype": "Check",
    "insert_after": "is_sales_item",
-   "label": "Bán trực tiếp"
+   "label": "Bán trực tiếp",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_theo_doi_serial",
    "fieldtype": "Check",
    "insert_after": "has_serial_no",
-   "label": "Theo dõi serial (ghi nhận)"
+   "label": "Theo dõi serial (ghi nhận)",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_tim_kd",
    "fieldtype": "Small Text",
    "insert_after": "item_name",
    "label": "Khoá tìm",
+   "module": "NPP Ban Hang",
    "read_only": 1,
    "search_index": 0
   },
@@ -282,6 +320,7 @@
    "hidden": 1,
    "insert_after": "npp_tim_kd",
    "label": "Mã cũ (nppsale)",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1,
    "unique": 1
@@ -294,7 +333,8 @@
    "fieldtype": "Select",
    "insert_after": "voucher_type",
    "label": "Loại bút toán NPP",
-   "options": "\ncan_tru_khach\nbu_tru_ncc\nchi_phi\ntra_chi_phi\ndieu_chinh_gia_nhap",
+   "module": "NPP Tien",
+   "options": "\ncan_tru_khach\nchuyen_tien_thua\nbu_tru_ncc\nchi_phi\ntra_chi_phi\ndieu_chinh_gia_nhap",
    "read_only": 1,
    "search_index": 1
   },
@@ -303,6 +343,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_loai",
    "label": "Phiếu thu NPP",
+   "module": "NPP Tien",
    "options": "NPP Phieu Thu",
    "read_only": 1,
    "search_index": 1
@@ -312,6 +353,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_phieu_thu",
    "label": "Phiếu chi NPP",
+   "module": "NPP Tien",
    "options": "NPP Phieu Chi",
    "read_only": 1,
    "search_index": 1
@@ -321,6 +363,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_phieu_chi",
    "label": "Phiếu nhập",
+   "module": "NPP Tien",
    "options": "Purchase Invoice",
    "read_only": 1,
    "search_index": 1
@@ -333,6 +376,7 @@
    "fieldtype": "Link",
    "insert_after": "reference_name",
    "label": "Người xác nhận",
+   "module": "NPP Tien",
    "options": "NPP Nhan Vien"
   },
   {
@@ -340,7 +384,8 @@
    "fieldname": "npp_xac_nhan_luc",
    "fieldtype": "Datetime",
    "insert_after": "npp_xac_nhan_boi",
-   "label": "Xác nhận lúc"
+   "label": "Xác nhận lúc",
+   "module": "NPP Tien"
   }
  ],
  "Landed Cost Voucher": [
@@ -349,6 +394,7 @@
    "fieldtype": "Link",
    "insert_after": "posting_date",
    "label": "Phiếu nhập",
+   "module": "NPP Kho Mua",
    "options": "Purchase Invoice",
    "read_only": 1,
    "search_index": 1
@@ -358,6 +404,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_phieu_nhap",
    "label": "Bút toán điều chỉnh nợ",
+   "module": "NPP Kho Mua",
    "options": "Journal Entry",
    "read_only": 1
   }
@@ -369,6 +416,7 @@
    "fieldtype": "Select",
    "insert_after": "payment_type",
    "label": "Loại phiếu NPP",
+   "module": "NPP Tien",
    "options": "\nphieu_thu\nphieu_chi_ncc\nghi_tra_ncc",
    "read_only": 1,
    "search_index": 1
@@ -378,6 +426,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_loai",
    "label": "Phiếu thu NPP",
+   "module": "NPP Tien",
    "options": "NPP Phieu Thu",
    "read_only": 1,
    "search_index": 1
@@ -388,6 +437,7 @@
    "fieldtype": "Small Text",
    "insert_after": "remarks",
    "label": "Ghi chú",
+   "module": "NPP Tien",
    "no_copy": 1
   },
   {
@@ -395,7 +445,8 @@
    "fieldname": "npp_ly_do_huy",
    "fieldtype": "Small Text",
    "insert_after": "npp_ghi_chu",
-   "label": "Lý do huỷ"
+   "label": "Lý do huỷ",
+   "module": "NPP Tien"
   },
   {
    "allow_on_submit": 1,
@@ -403,6 +454,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
+   "module": "NPP Tien",
    "read_only": 1
   },
   {
@@ -411,6 +463,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
+   "module": "NPP Tien",
    "options": "NPP Nhan Vien",
    "read_only": 1
   },
@@ -420,6 +473,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_boi",
    "label": "Người xác nhận (trả trước)",
+   "module": "NPP Tien",
    "options": "NPP Nhan Vien"
   },
   {
@@ -427,7 +481,8 @@
    "fieldname": "npp_xac_nhan_luc",
    "fieldtype": "Datetime",
    "insert_after": "npp_xac_nhan_boi",
-   "label": "Xác nhận lúc (trả trước)"
+   "label": "Xác nhận lúc (trả trước)",
+   "module": "NPP Tien"
   }
  ],
  "Payment Entry Reference": [
@@ -437,6 +492,7 @@
    "fieldtype": "Link",
    "insert_after": "allocated_amount",
    "label": "Người xác nhận",
+   "module": "NPP Tien",
    "options": "NPP Nhan Vien"
   },
   {
@@ -444,7 +500,8 @@
    "fieldname": "npp_xac_nhan_luc",
    "fieldtype": "Datetime",
    "insert_after": "npp_xac_nhan_boi",
-   "label": "Xác nhận lúc"
+   "label": "Xác nhận lúc",
+   "module": "NPP Tien"
   }
  ],
  "Purchase Invoice": [
@@ -454,6 +511,7 @@
    "fieldtype": "Select",
    "insert_after": "is_return",
    "label": "Loại tờ NPP",
+   "module": "NPP Kho Mua",
    "options": "\nphieu_nhap\ntra_ncc\ndau_ky\nlap_tay",
    "read_only": 1,
    "search_index": 1
@@ -462,20 +520,23 @@
    "fieldname": "npp_giam_dau_phieu",
    "fieldtype": "Currency",
    "insert_after": "discount_amount",
-   "label": "Giảm đầu phiếu"
+   "label": "Giảm đầu phiếu",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_co_thue_go_tay",
    "fieldtype": "Check",
    "insert_after": "taxes_and_charges",
-   "label": "Có thuế gõ tay"
+   "label": "Có thuế gõ tay",
+   "module": "NPP Kho Mua"
   },
   {
    "depends_on": "eval:doc.npp_co_thue_go_tay",
    "fieldname": "npp_thue_go_tay",
    "fieldtype": "Currency",
    "insert_after": "npp_co_thue_go_tay",
-   "label": "Thuế gõ tay"
+   "label": "Thuế gõ tay",
+   "module": "NPP Kho Mua"
   },
   {
    "allow_on_submit": 1,
@@ -483,19 +544,22 @@
    "fieldtype": "Small Text",
    "insert_after": "remarks",
    "label": "Ghi chú",
+   "module": "NPP Kho Mua",
    "no_copy": 1
   },
   {
    "fieldname": "npp_ly_do",
    "fieldtype": "Small Text",
    "insert_after": "npp_ghi_chu",
-   "label": "Lý do trả"
+   "label": "Lý do trả",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_hoan_thanh_luc",
    "fieldtype": "Datetime",
    "insert_after": "amended_from",
    "label": "Hoàn thành lúc",
+   "module": "NPP Kho Mua",
    "read_only": 1
   },
   {
@@ -503,6 +567,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_hoan_thanh_luc",
    "label": "Người hoàn thành",
+   "module": "NPP Kho Mua",
    "options": "NPP Nhan Vien",
    "read_only": 1
   },
@@ -511,7 +576,8 @@
    "fieldname": "npp_ly_do_huy",
    "fieldtype": "Small Text",
    "insert_after": "npp_hoan_thanh_boi",
-   "label": "Lý do huỷ"
+   "label": "Lý do huỷ",
+   "module": "NPP Kho Mua"
   },
   {
    "allow_on_submit": 1,
@@ -519,6 +585,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
+   "module": "NPP Kho Mua",
    "read_only": 1
   },
   {
@@ -527,6 +594,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
+   "module": "NPP Kho Mua",
    "options": "NPP Nhan Vien",
    "read_only": 1
   },
@@ -535,20 +603,23 @@
    "fieldname": "npp_han_thanh_toan",
    "fieldtype": "Date",
    "insert_after": "due_date",
-   "label": "Hạn nợ"
+   "label": "Hạn nợ",
+   "module": "NPP Kho Mua"
   },
   {
    "allow_on_submit": 1,
    "fieldname": "npp_qua_han_tay",
    "fieldtype": "Check",
    "insert_after": "npp_han_thanh_toan",
-   "label": "Đánh dấu quá hạn"
+   "label": "Đánh dấu quá hạn",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_phieu_kho_loai",
    "fieldtype": "Link",
    "insert_after": "bill_date",
    "label": "Loại phiếu kho",
+   "module": "NPP Kho Mua",
    "options": "DocType",
    "read_only": 1
   },
@@ -557,6 +628,7 @@
    "fieldtype": "Dynamic Link",
    "insert_after": "npp_phieu_kho_loai",
    "label": "Phiếu nhập kho",
+   "module": "NPP Kho Mua",
    "options": "npp_phieu_kho_loai",
    "read_only": 1
   },
@@ -565,6 +637,7 @@
    "fieldtype": "Data",
    "insert_after": "npp_loai",
    "label": "Mã cũ",
+   "module": "NPP Kho Mua",
    "read_only": 1
   },
   {
@@ -572,6 +645,7 @@
    "fieldtype": "Data",
    "insert_after": "npp_ma_cu",
    "label": "Khoá tìm",
+   "module": "NPP Kho Mua",
    "read_only": 1,
    "search_index": 1
   },
@@ -581,6 +655,7 @@
    "fieldtype": "JSON",
    "insert_after": "npp_huy_boi",
    "label": "Giá đã sửa",
+   "module": "NPP Kho Mua",
    "read_only": 1
   }
  ],
@@ -589,20 +664,23 @@
    "fieldname": "npp_giam_dong",
    "fieldtype": "Currency",
    "insert_after": "discount_amount",
-   "label": "Giảm dòng"
+   "label": "Giảm dòng",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_thue_suat",
    "fieldtype": "Float",
    "insert_after": "item_tax_template",
    "label": "Thuế suất",
+   "module": "NPP Kho Mua",
    "precision": "4"
   },
   {
    "fieldname": "npp_ghi_chu",
    "fieldtype": "Small Text",
    "insert_after": "description",
-   "label": "Ghi chú dòng"
+   "label": "Ghi chú dòng",
+   "module": "NPP Kho Mua"
   }
  ],
  "Sales Invoice": [
@@ -611,6 +689,7 @@
    "fieldtype": "Link",
    "insert_after": "customer_name",
    "label": "Đơn hàng",
+   "module": "NPP Ban Hang",
    "options": "Sales Order",
    "read_only": 1,
    "search_index": 1
@@ -621,6 +700,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_don_hang",
    "label": "Người đứng tên",
+   "module": "NPP Ban Hang",
    "options": "NPP Nhan Vien",
    "search_index": 1
   },
@@ -629,6 +709,7 @@
    "fieldtype": "Data",
    "insert_after": "npp_nhan_vien",
    "label": "Khoá tìm",
+   "module": "NPP Ban Hang",
    "read_only": 1,
    "search_index": 1
   },
@@ -637,7 +718,8 @@
    "fieldname": "npp_ghi_chu",
    "fieldtype": "Small Text",
    "insert_after": "remarks",
-   "label": "Ghi chú"
+   "label": "Ghi chú",
+   "module": "NPP Ban Hang"
   },
   {
    "allow_on_submit": 1,
@@ -645,6 +727,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ghi_chu",
    "label": "Đã soạn lúc",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1
   },
@@ -654,6 +737,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_soan_luc",
    "label": "Người soạn",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "options": "NPP Nhan Vien",
    "read_only": 1
@@ -664,6 +748,7 @@
    "fieldtype": "Small Text",
    "insert_after": "amended_from",
    "label": "Lý do huỷ",
+   "module": "NPP Ban Hang",
    "no_copy": 1
   },
   {
@@ -672,6 +757,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1
   },
@@ -681,6 +767,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "options": "NPP Nhan Vien",
    "read_only": 1
@@ -692,6 +779,7 @@
    "fieldtype": "Link",
    "insert_after": "return_against",
    "label": "HĐ gắn",
+   "module": "NPP Ban Hang",
    "options": "Sales Invoice",
    "search_index": 1
   },
@@ -702,6 +790,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_hoa_don_goc",
    "label": "Phiếu trả",
+   "module": "NPP Ban Hang",
    "options": "NPP Phieu Tra",
    "search_index": 1
   },
@@ -711,6 +800,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_tim_kd",
    "label": "NV giữ nợ",
+   "module": "NPP Ban Hang",
    "options": "NPP Nhan Vien",
    "read_only": 1,
    "search_index": 1
@@ -721,6 +811,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_nv_giu_no",
    "label": "Nợ giao từ NV",
+   "module": "NPP Ban Hang",
    "options": "NPP Nhan Vien",
    "read_only": 1
   },
@@ -730,6 +821,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_giao_tu_nv",
    "label": "Nợ về NPP lúc",
+   "module": "NPP Ban Hang",
    "read_only": 1
   },
   {
@@ -737,14 +829,16 @@
    "fieldname": "npp_han_thanh_toan",
    "fieldtype": "Date",
    "insert_after": "due_date",
-   "label": "Hạn nợ"
+   "label": "Hạn nợ",
+   "module": "NPP Ban Hang"
   },
   {
    "allow_on_submit": 1,
    "fieldname": "npp_qua_han_tay",
    "fieldtype": "Check",
    "insert_after": "npp_han_thanh_toan",
-   "label": "Đánh dấu quá hạn"
+   "label": "Đánh dấu quá hạn",
+   "module": "NPP Ban Hang"
   }
  ],
  "Sales Invoice Item": [
@@ -752,13 +846,15 @@
    "fieldname": "npp_giam_dong",
    "fieldtype": "Currency",
    "insert_after": "discount_amount",
-   "label": "Giảm dòng (ghi nhớ)"
+   "label": "Giảm dòng (ghi nhớ)",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_dong_don",
    "fieldtype": "Data",
    "insert_after": "so_detail",
    "label": "Dòng đơn (khác đơn vị)",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1,
    "search_index": 1
@@ -768,6 +864,7 @@
    "fieldtype": "Float",
    "insert_after": "item_tax_template",
    "label": "Thuế suất",
+   "module": "NPP Ban Hang",
    "precision": "4",
    "read_only": 1
   },
@@ -775,13 +872,15 @@
    "fieldname": "npp_hang_doi",
    "fieldtype": "Check",
    "insert_after": "is_free_item",
-   "label": "Hàng đổi"
+   "label": "Hàng đổi",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_ghi_chu",
    "fieldtype": "Small Text",
    "insert_after": "description",
-   "label": "Ghi chú dòng"
+   "label": "Ghi chú dòng",
+   "module": "NPP Ban Hang"
   }
  ],
  "Sales Order": [
@@ -791,6 +890,7 @@
    "fieldtype": "Select",
    "insert_after": "order_type",
    "label": "Trạng thái NPP",
+   "module": "NPP Ban Hang",
    "options": "draft\nsubmitted\ncompleted\ncancelled",
    "read_only": 1,
    "search_index": 1
@@ -800,6 +900,7 @@
    "fieldtype": "Link",
    "insert_after": "customer_name",
    "label": "Người đứng tên",
+   "module": "NPP Ban Hang",
    "options": "NPP Nhan Vien",
    "search_index": 1
   },
@@ -808,6 +909,7 @@
    "fieldtype": "Data",
    "insert_after": "npp_nhan_vien",
    "label": "Khoá tìm",
+   "module": "NPP Ban Hang",
    "read_only": 1,
    "search_index": 1
   },
@@ -816,6 +918,7 @@
    "fieldtype": "Data",
    "insert_after": "amended_from",
    "label": "Mã gửi offline",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1,
    "unique": 1
@@ -826,6 +929,7 @@
    "fieldtype": "Int",
    "insert_after": "transaction_date",
    "label": "Lần sửa",
+   "module": "NPP Ban Hang",
    "read_only": 1
   },
   {
@@ -833,20 +937,23 @@
    "fieldname": "npp_ly_do_canh_bao",
    "fieldtype": "Small Text",
    "insert_after": "npp_lan_sua",
-   "label": "Cảnh báo khi gửi"
+   "label": "Cảnh báo khi gửi",
+   "module": "NPP Ban Hang"
   },
   {
    "allow_on_submit": 1,
    "fieldname": "npp_ghi_chu",
    "fieldtype": "Small Text",
    "insert_after": "delivery_date",
-   "label": "Ghi chú"
+   "label": "Ghi chú",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_giam_gia_don",
    "fieldtype": "Currency",
    "insert_after": "discount_amount",
-   "label": "Giảm giá cả đơn"
+   "label": "Giảm giá cả đơn",
+   "module": "NPP Ban Hang"
   },
   {
    "allow_on_submit": 1,
@@ -854,6 +961,7 @@
    "fieldtype": "Small Text",
    "insert_after": "npp_ghi_chu",
    "label": "Lý do huỷ",
+   "module": "NPP Ban Hang",
    "no_copy": 1
   },
   {
@@ -862,6 +970,7 @@
    "fieldtype": "Datetime",
    "insert_after": "npp_ly_do_huy",
    "label": "Huỷ lúc",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1
   },
@@ -871,6 +980,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_huy_luc",
    "label": "Người huỷ",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "options": "NPP Nhan Vien",
    "read_only": 1
@@ -881,6 +991,7 @@
    "fieldtype": "Currency",
    "insert_after": "npp_giam_gia_don",
    "label": "Trừ hàng trả lúc lên đơn",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1
   },
@@ -891,6 +1002,7 @@
    "hidden": 1,
    "insert_after": "npp_tru_hang_tra",
    "label": "Dòng đã đổi, đầu đơn chưa lưu",
+   "module": "NPP Ban Hang",
    "no_copy": 1,
    "read_only": 1
   }
@@ -900,13 +1012,15 @@
    "fieldname": "npp_giam_dong",
    "fieldtype": "Currency",
    "insert_after": "discount_amount",
-   "label": "Giảm dòng (ghi nhớ)"
+   "label": "Giảm dòng (ghi nhớ)",
+   "module": "NPP Ban Hang"
   },
   {
    "fieldname": "npp_thue_suat",
    "fieldtype": "Float",
    "insert_after": "item_tax_template",
    "label": "Thuế suất",
+   "module": "NPP Ban Hang",
    "precision": "4",
    "read_only": 1
   }
@@ -917,6 +1031,7 @@
    "fieldtype": "Select",
    "insert_after": "stock_entry_type",
    "label": "Loại phiếu NPP",
+   "module": "NPP Kho Mua",
    "options": "\nnhap_kho\nton_dau_ky\nxuat_le\nchuyen_kho\nchuyen_date_tu_dong\ndieu_chinh_kiem_ke\nnhap_lai_tra",
    "read_only": 1,
    "search_index": 1
@@ -925,7 +1040,8 @@
    "fieldname": "npp_ly_do_xuat",
    "fieldtype": "Data",
    "insert_after": "npp_loai",
-   "label": "Lý do xuất"
+   "label": "Lý do xuất",
+   "module": "NPP Kho Mua"
   },
   {
    "allow_on_submit": 1,
@@ -933,6 +1049,7 @@
    "fieldtype": "Small Text",
    "insert_after": "remarks",
    "label": "Ghi chú",
+   "module": "NPP Kho Mua",
    "no_copy": 1
   },
   {
@@ -940,6 +1057,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_ly_do_xuat",
    "label": "Phiếu kiểm kê",
+   "module": "NPP Kho Mua",
    "options": "NPP Kiem Ke",
    "read_only": 1,
    "search_index": 1
@@ -949,6 +1067,7 @@
    "fieldtype": "Link",
    "insert_after": "npp_kiem_ke",
    "label": "Phiếu trả",
+   "module": "NPP Kho Mua",
    "options": "NPP Phieu Tra",
    "search_index": 1
   },
@@ -957,6 +1076,7 @@
    "fieldtype": "Data",
    "insert_after": "npp_phieu_tra",
    "label": "Khoá tìm",
+   "module": "NPP Kho Mua",
    "read_only": 1,
    "search_index": 1
   }
@@ -966,7 +1086,8 @@
    "fieldname": "npp_ghi_chu",
    "fieldtype": "Small Text",
    "insert_after": "description",
-   "label": "Ghi chú dòng"
+   "label": "Ghi chú dòng",
+   "module": "NPP Kho Mua"
   }
  ],
  "Supplier": [
@@ -975,6 +1096,7 @@
    "fieldtype": "Data",
    "insert_after": "supplier_name",
    "label": "Mã NCC",
+   "module": "NPP Kho Mua",
    "search_index": 1,
    "unique": 1
   },
@@ -982,26 +1104,30 @@
    "fieldname": "npp_nhom",
    "fieldtype": "Data",
    "insert_after": "npp_ma",
-   "label": "Nhóm NCC"
+   "label": "Nhóm NCC",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_ngung_hop_tac",
    "fieldtype": "Check",
    "insert_after": "disabled",
    "label": "Ngừng hợp tác",
+   "module": "NPP Kho Mua",
    "search_index": 1
   },
   {
    "fieldname": "npp_nguoi_lien_he",
    "fieldtype": "Data",
    "insert_after": "tax_id",
-   "label": "Người liên hệ"
+   "label": "Người liên hệ",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_dien_thoai",
    "fieldtype": "Data",
    "insert_after": "npp_nguoi_lien_he",
    "label": "Điện thoại",
+   "module": "NPP Kho Mua",
    "options": "Phone"
   },
   {
@@ -1009,92 +1135,107 @@
    "fieldtype": "Data",
    "insert_after": "npp_dien_thoai",
    "label": "Email",
+   "module": "NPP Kho Mua",
    "options": "Email"
   },
   {
    "fieldname": "npp_dia_chi",
    "fieldtype": "Small Text",
    "insert_after": "npp_email",
-   "label": "Địa chỉ"
+   "label": "Địa chỉ",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_ten_phap_ly",
    "fieldtype": "Data",
    "insert_after": "npp_dia_chi",
-   "label": "Tên pháp lý"
+   "label": "Tên pháp lý",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_loai_hinh",
    "fieldtype": "Data",
    "insert_after": "npp_ten_phap_ly",
-   "label": "Loại hình"
+   "label": "Loại hình",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_dai_dien",
    "fieldtype": "Data",
    "insert_after": "npp_loai_hinh",
-   "label": "Người đại diện"
+   "label": "Người đại diện",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_so_dkkd",
    "fieldtype": "Data",
    "insert_after": "npp_dai_dien",
-   "label": "Số ĐKKD"
+   "label": "Số ĐKKD",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_ngay_dkkd",
    "fieldtype": "Date",
    "insert_after": "npp_so_dkkd",
-   "label": "Ngày cấp ĐKKD"
+   "label": "Ngày cấp ĐKKD",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_dia_chi_dkkd",
    "fieldtype": "Small Text",
    "insert_after": "npp_ngay_dkkd",
-   "label": "Địa chỉ đăng ký"
+   "label": "Địa chỉ đăng ký",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_so_tai_khoan",
    "fieldtype": "Data",
    "insert_after": "npp_dia_chi_dkkd",
-   "label": "Số tài khoản"
+   "label": "Số tài khoản",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_ngan_hang",
    "fieldtype": "Data",
    "insert_after": "npp_so_tai_khoan",
-   "label": "Ngân hàng"
+   "label": "Ngân hàng",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_co_han_muc",
    "fieldtype": "Check",
    "insert_after": "npp_ngan_hang",
-   "label": "Có hạn mức"
+   "label": "Có hạn mức",
+   "module": "NPP Kho Mua"
   },
   {
    "depends_on": "eval:doc.npp_co_han_muc",
    "fieldname": "npp_han_muc",
    "fieldtype": "Currency",
    "insert_after": "npp_co_han_muc",
-   "label": "Hạn mức nợ"
+   "label": "Hạn mức nợ",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_danh_gia",
    "fieldtype": "Float",
    "insert_after": "npp_han_muc",
-   "label": "Đánh giá"
+   "label": "Đánh giá",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_da_xac_minh",
    "fieldtype": "Check",
    "insert_after": "npp_danh_gia",
-   "label": "Đã xác minh"
+   "label": "Đã xác minh",
+   "module": "NPP Kho Mua"
   },
   {
    "fieldname": "npp_tim_kd",
    "fieldtype": "Small Text",
    "insert_after": "supplier_details",
    "label": "Khoá tìm",
+   "module": "NPP Kho Mua",
    "read_only": 1,
    "search_index": 0
   },
@@ -1104,6 +1245,7 @@
    "hidden": 1,
    "insert_after": "npp_tim_kd",
    "label": "Mã cũ (nppsale)",
+   "module": "NPP Kho Mua",
    "no_copy": 1,
    "read_only": 1,
    "unique": 1

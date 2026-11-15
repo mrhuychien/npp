@@ -23,6 +23,16 @@ from dung_doctype import CO, KIEU, KIEU_SO, _o, bo_dau_ma  # noqa: E402
 
 DICH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "nppsale", "thiet_lap", "truong_tuy_bien.json")
 
+# Blueprint 02 §2.2: mỗi DocType lõi MỘT module (bảng con lõi đi theo bảng cha) — tệp 06 xuất / soát Custom Field theo module
+MODULE = {
+	"Customer": "NPP Khach Hang", "File": "NPP Khach Hang",
+	"Item": "NPP Ban Hang", "Sales Order": "NPP Ban Hang", "Sales Order Item": "NPP Ban Hang", "Sales Invoice": "NPP Ban Hang",
+	"Sales Invoice Item": "NPP Ban Hang",
+	"Supplier": "NPP Kho Mua", "Purchase Invoice": "NPP Kho Mua", "Purchase Invoice Item": "NPP Kho Mua", "Landed Cost Voucher": "NPP Kho Mua",
+	"Batch": "NPP Kho Mua", "Stock Entry": "NPP Kho Mua", "Stock Entry Detail": "NPP Kho Mua",
+	"Payment Entry": "NPP Tien", "Payment Entry Reference": "NPP Tien", "Journal Entry": "NPP Tien", "Journal Entry Account": "NPP Tien",
+}
+
 
 def doc_bang(md: str) -> list[tuple[list[str], list[str]]]:
 	"""Mọi bảng markdown có cột `insert_after` và `fieldname` → (tiêu đề, các dòng)."""
@@ -131,6 +141,10 @@ def main():
 				dt, f = truong(tieu_de, d, canh_bao)
 				if not f or (chi_dt and dt not in chi_dt):
 					continue
+				if dt in MODULE:
+					f["module"] = MODULE[dt]
+				else:
+					canh_bao.append(f"{dt}.{f['fieldname']}: DocType lõi chưa có module trong bảng §2.2")
 				ds = kq.setdefault(dt, [])
 				cu = next((x for x in ds if x["fieldname"] == f["fieldname"]), None)
 				if cu:

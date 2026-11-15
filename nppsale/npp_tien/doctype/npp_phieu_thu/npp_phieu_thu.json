@@ -28,7 +28,6 @@
   "nv_giu_tien_thua",
   "giao_tu_nv",
   "ve_npp_luc",
-  "hoa_don_tien_thua",
   "tim_kd",
   "dong"
  ],
@@ -43,6 +42,7 @@
    "search_index": 1
   },
   {
+   "fetch_from": "khach_hang.customer_name",
    "fieldname": "ten_khach",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -193,13 +193,6 @@
    "fieldname": "ve_npp_luc",
    "fieldtype": "Datetime",
    "label": "Tiền thừa về NPP lúc",
-   "read_only": 1
-  },
-  {
-   "fieldname": "hoa_don_tien_thua",
-   "fieldtype": "Link",
-   "label": "HĐ sinh tiền thừa",
-   "options": "Sales Invoice",
    "read_only": 1
   },
   {

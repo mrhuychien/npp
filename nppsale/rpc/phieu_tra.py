@@ -522,6 +522,10 @@ def save_pos_return(p=None):
 		if doc.trang_thai == "completed":
 			if not complete:
 				raise NppLoi("RETURN_COMPLETED: phiếu đã nhập kho — sửa xong phải bấm Ghi nhận để kho và công nợ đổi theo")
+			if kh != doc.khach_hang:  # _cong_no_phieu_tra (mig 191): dư có đã bị rút ở phiếu thu → không đổi khách (kiểm trước khi huỷ chứng từ)
+				from .can_tru import kiem_doi_khach_phieu_tra
+
+				kiem_doi_khach_phieu_tra(doc.name, kh)
 			_huy(doc, "Sửa phiếu trả trên POS — ghi nhận lại", nc, cd)
 			doc.reload()
 			doc.update({"trang_thai": "draft", "huy_luc": None, "ly_do_huy": None})
@@ -824,9 +828,13 @@ def _huy_chung_tu(dt: str, ten: str | None):
 	"""Huỷ chứng từ lõi nhập lại (lõi đảo kho theo gói lô). Hàng nhập lại đã bán tiếp → lõi chặn lô âm (CFD-05; nppsale cho lô âm — ⚠ Q5)."""
 	if not ten:
 		return False
-	d = frappe.get_doc(dt, ten)
-	if d.docstatus != 1:
+	if frappe.db.get_value(dt, ten, "docstatus") != 1:
 		return False
+	if dt == "Sales Invoice":  # tờ ghi có có kho đang là nguồn dư có của bút toán cấn trừ → huỷ bút toán trước (đọc tờ SAU — huỷ bút toán
+		from .can_tru import truoc_huy_to_ghi_co  # chạm `modified` của tờ), lập lại cuối lời gọi
+
+		truoc_huy_to_ghi_co(ten)
+	d = frappe.get_doc(dt, ten)
 	d.flags.ignore_permissions = True
 	try:
 		d.cancel()
@@ -1061,9 +1069,12 @@ def _huy_to_ghi_co(ten: str, ly_do: str | None = None):
 
 	from nppsale.cong.ngu_canh import hien_tai
 
-	cn = frappe.get_doc("Sales Invoice", ten)
-	if cn.docstatus != 1:
+	if frappe.db.get_value("Sales Invoice", ten, "docstatus") != 1:
 		return
+	from .can_tru import truoc_huy_to_ghi_co
+
+	truoc_huy_to_ghi_co(ten)  # bút toán cấn trừ đang trỏ tờ: huỷ trước (lõi gỡ tham chiếu lặng lẽ), lập lại cuối lời gọi RPC
+	cn = frappe.get_doc("Sales Invoice", ten)  # đọc SAU khi huỷ bút toán (lõi chạm `modified` của tờ)
 	nc = hien_tai()
 	cn.npp_ly_do_huy = ly_do
 	cn.npp_huy_luc = now_datetime()

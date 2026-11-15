@@ -10,6 +10,8 @@ giữ tên trên chứng từ cũ); "khi nghỉ bàn giao khách hàng và công
 from __future__ import annotations
 
 import frappe
+from decimal import Decimal
+
 from frappe.utils import cint, flt, now_datetime
 
 from nppsale.cong.loi import NppLoi
@@ -36,6 +38,9 @@ CHAN: list[tuple[str, str, str, str, dict | None]] = [
 	("returns", "requested_by", "NPP Phieu Tra", "owner", None),
 	("returns", "completed_by", "NPP Phieu Tra", "hoan_thanh_boi", None),
 	("cash_receipts", "created_by", "NPP Phieu Thu", "owner", None),
+	("cash_receipts", "collected_by", "NPP Phieu Thu", "nguoi_thu", None),
+	("cash_receipts", "received_by", "NPP Phieu Thu", "nhan_boi", None),
+	("cash_receipts", "voided_by", "NPP Phieu Thu", "huy_boi", None),
 	("stock_entries", "created_by", "Stock Entry", "owner", None),
 	("purchase_invoices", "created_by", "Purchase Invoice", "owner", None),
 	("expenses", "created_by", "NPP Phieu Chi", "owner", None),
@@ -58,8 +63,17 @@ def dem_chung_tu(nv: str) -> dict:
 		if n:
 			tong += n
 			ct.append({"bang": bang, "cot": cot, "so": n})
+	# payments.collected_by / verified_by = dòng của phiếu thu CHƯA huỷ (nppsale xoá payments khi huỷ phiếu)
+	if frappe.db.exists("DocType", "NPP Phieu Thu Dong"):
+		for cot, dk in (("collected_by", "p.`nguoi_thu` = %(nv)s"), ("verified_by", "d.`xac_nhan_boi` = %(nv)s")):
+			n = frappe.db.sql(f"""SELECT COUNT(*) FROM `tabNPP Phieu Thu Dong` d JOIN `tabNPP Phieu Thu` p ON p.`name` = d.`parent`
+				WHERE d.`parenttype` = 'NPP Phieu Thu' AND p.`trang_thai` != 'voided' AND {dk}""", {"nv": nv})[0][0]
+			if n:
+				tong += n
+				ct.append({"bang": "payments", "cot": cot, "so": n})
+	ct.sort(key=lambda x: (x["bang"], x["cot"]))  # ORDER BY bảng, cột của vòng dò khoá ngoại
 	no = frappe.db.sql("""SELECT COUNT(*), COALESCE(SUM(`so_tien` - IFNULL(`da_thu`, 0)), 0) FROM `tabNPP Cong No`
-		WHERE `nhan_vien` = %s AND `trang_thai` != 'paid'""", nv)[0]
+		WHERE `nhan_vien` = %s AND `trang_thai` != 'paid'""", nv)[0]  # Σ trong SQL (DECIMAL) — không cộng float
 	return {"tong": tong, "chi_tiet": ct,
 		"khach": frappe.db.sql("SELECT COUNT(DISTINCT `khach`) FROM `tabNPP Phan Cong Khach` WHERE `nhan_vien` = %s", nv)[0][0],
 		"lich_tuyen": frappe.db.count("NPP Lich Tuyen", {"nhan_vien": nv}), "so_khoan_no": cint(no[0]), "tien_no": flt(no[1])}
@@ -110,14 +124,14 @@ def cho_nhan_vien_nghi(p_user_id=None):
 		tuyen += 1
 	# nợ chưa thu về NPP (chế độ giao nợ: người giữ trống + mốc về NPP); nợ đã thu xong giữ tên người cũ
 	bay_gio = now_datetime()
-	so_no, tien = 0, 0.0
+	so_no, tien = 0, Decimal(0)
 	for r in frappe.get_all("NPP Cong No", filters={"nhan_vien": nv, "trang_thai": ("!=", "paid")}, fields=["name", "so_tien", "da_thu"]):
 		dat_nguoi_giu(r.name, None, bay_gio)
 		so_no += 1
-		tien += flt(r.so_tien) - flt(r.da_thu)
+		tien += Decimal(str(r.so_tien or 0)) - Decimal(str(r.da_thu or 0))
 	for ten in frappe.get_all("NPP Khoa Chung Tu", filters={"nguoi_khoa": nv}, pluck="name"):
 		frappe.delete_doc("NPP Khoa Chung Tu", ten, ignore_permissions=True, force=True)
-	return {"khach": cint(khach), "lich_tuyen": tuyen, "so_khoan_no": so_no, "tien_no": tien}
+	return {"khach": cint(khach), "lich_tuyen": tuyen, "so_khoan_no": so_no, "tien_no": int(tien) if tien == int(tien) else float(tien)}
 
 
 @rpc("giao_cong_no_npp", ghi=True)
@@ -129,10 +143,15 @@ def giao_cong_no_npp(p_customer_id=None, p_user_id=None):
 	x = frappe.db.get_value("NPP Nhan Vien", nv, ["dang_hoat_dong", "nghi_viec_luc"], as_dict=True) if nv else None
 	if not x or not cint(x.dang_hoat_dong) or x.nghi_viec_luc:
 		raise NppLoi("NV_KHONG_HOP_LE: nhân viên đã nghỉ / bị khoá")
-	so_no, tien = 0, 0.0
-	for r in frappe.get_all("NPP Cong No", filters={"khach_hang": _chu(p_customer_id), "ve_npp_luc": ("is", "set"),
+	kh = _chu(p_customer_id)
+	if kh:
+		from nppsale.su_kien.cong_no import khoa_khach
+
+		khoa_khach(kh)  # nppsale UPDATE khoá dòng — hai lượt đồng thời không đếm trùng
+	so_no, tien = 0, Decimal(0)
+	for r in frappe.get_all("NPP Cong No", filters={"khach_hang": kh, "ve_npp_luc": ("is", "set"),
 			"trang_thai": ("!=", "paid")}, fields=["name", "so_tien", "da_thu"]):
 		dat_nguoi_giu(r.name, nv, None)
 		so_no += 1
-		tien += flt(r.so_tien) - flt(r.da_thu)
-	return {"so_khoan_no": so_no, "tien_no": tien}
+		tien += Decimal(str(r.so_tien or 0)) - Decimal(str(r.da_thu or 0))
+	return {"so_khoan_no": so_no, "tien_no": int(tien) if tien == int(tien) else float(tien)}

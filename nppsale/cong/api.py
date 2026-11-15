@@ -106,7 +106,9 @@ def rpc(ten=None, tham_so=None, sau=None):
 		return _goi_co_khoa(ten, muc, ts, sau, diem)
 	frappe.db.savepoint(diem)
 	try:
+		frappe.local._npp_je_cho = None
 		kq = muc.ham(**ts)
+		_sau_rpc()
 		sau = _doc_json(sau)
 		if sau:
 			if not isinstance(kq, list):
@@ -124,6 +126,15 @@ def rpc(ten=None, tham_so=None, sau=None):
 THU_LAI_KHOA = (0.2, 0.5, 1.0)  # giây chờ trước lượt thử lại thứ 2, 3, 4
 
 
+def _sau_rpc():
+	"""Cuối mỗi lời gọi RPC (trong cùng điểm lui): lập lại các bút toán cấn trừ dư có đã huỷ vì tờ ghi có chúng trỏ bị huỷ / lập lại
+	(nppsale.rpc.can_tru — đặc tả phiếu thu §2.5.2)."""
+	if getattr(frappe.local, "_npp_je_cho", None):
+		from nppsale.rpc.can_tru import sau_thao_tac_phieu_tra
+
+		sau_thao_tac_phieu_tra()
+
+
 def _goi_co_khoa(ten, muc, ts, sau, diem):
 	"""RPC ghi kho: chuẩn bị → COMMIT → savepoint → hàm (câu đầu là khoá). Deadlock / quá hạn khoá → lui hẳn và thử lại."""
 	import time
@@ -134,7 +145,9 @@ def _goi_co_khoa(ten, muc, ts, sau, diem):
 			if not frappe.flags.in_test:  # bài kiểm chạy trong một giao dịch lui cuối bài — commit là ghi hẳn dữ liệu thử
 				frappe.db.commit()
 			frappe.db.savepoint(diem)
+			frappe.local._npp_je_cho = None
 			kq = muc.ham(**ts)
+			_sau_rpc()
 			if _doc_json(sau):
 				raise LoiCong("PGRST100", f"{ten} không trả tập dòng — không lọc / sắp / phân trang được kết quả")
 			return {"data": kq, "status": 200}

@@ -142,9 +142,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "man,nguoi",
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
- "title_field": "man",
- "search_fields": "man,nguoi"
+ "title_field": "man"
 }

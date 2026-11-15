@@ -48,12 +48,14 @@
   {
    "fieldname": "vi_do",
    "fieldtype": "Float",
-   "label": "Vĩ độ"
+   "label": "Vĩ độ",
+   "precision": "7"
   },
   {
    "fieldname": "kinh_do",
    "fieldtype": "Float",
-   "label": "Kinh độ"
+   "label": "Kinh độ",
+   "precision": "7"
   },
   {
    "fieldname": "sai_so",

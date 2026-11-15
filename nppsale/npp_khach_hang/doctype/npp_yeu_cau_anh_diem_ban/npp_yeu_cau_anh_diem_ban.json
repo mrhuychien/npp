@@ -69,12 +69,14 @@
   {
    "fieldname": "vi_do",
    "fieldtype": "Float",
-   "label": "Vĩ độ ảnh"
+   "label": "Vĩ độ ảnh",
+   "precision": "7"
   },
   {
    "fieldname": "kinh_do",
    "fieldtype": "Float",
-   "label": "Kinh độ ảnh"
+   "label": "Kinh độ ảnh",
+   "precision": "7"
   },
   {
    "fieldname": "sai_so",
@@ -84,12 +86,14 @@
   {
    "fieldname": "vi_do_ghim",
    "fieldtype": "Float",
-   "label": "Vĩ độ ghim"
+   "label": "Vĩ độ ghim",
+   "precision": "7"
   },
   {
    "fieldname": "kinh_do_ghim",
    "fieldtype": "Float",
-   "label": "Kinh độ ghim"
+   "label": "Kinh độ ghim",
+   "precision": "7"
   },
   {
    "default": "pending",

@@ -1765,10 +1765,9 @@ và Journal Entry `voucher_type = Credit Note` khi dùng dư có — đúng dạ
 | ghi_chu | Ghi chú | Small Text | | | | | `notes` — sửa được sau khi lập (mig 214) |
 | but_toan_tien | Bút toán thu tiền | Link | Payment Entry | | | | **mới**; RO — PE (Receive) cùng tên phiếu; trống khi `tien_thu = 0` |
 | but_toan_can_tru | Bút toán cấn trừ | Link | Journal Entry | | | | **mới**; RO — JE `Credit Note` đang hiệu lực (`CTR-…`); trống khi không dùng dư có |
-| nv_giu_tien_thua | NV giữ tiền thừa | Link | NPP Nhan Vien | | | | **mới** — NV đứng tên dòng `NPP Cong No` loại `tien_thua` (tiền đã thu còn thừa sau Sửa HĐ giảm tiền — mig 184); RO |
+| nv_giu_tien_thua | NV giữ tiền thừa | Link | NPP Nhan Vien | | | | **mới** — NV đứng tên dòng `NPP Cong No` loại `tien_thua` (tiền chưa phân bổ của PE — lưới an toàn, CFD-04; tiền thu vượt sau Sửa HĐ giảm tiền KHÔNG thành tiền thừa — chuyển vào HĐ mới, phương án B của Q1); RO |
 | giao_tu_nv | Tiền thừa giao từ NV | Link | NPP Nhan Vien | | | | **mới** — như dấu bàn giao của HĐ (mig 246); RO |
 | ve_npp_luc | Tiền thừa về NPP lúc | Datetime | | | | | **mới** — như mig 223; RO |
-| hoa_don_tien_thua | HĐ sinh tiền thừa | Link | Sales Invoice | | | | **mới** (đặc tả phiếu thu §1.2, phương án A của Q1) — HĐ (tờ mới nhất của chuỗi amend) mà phần chưa phân bổ của PE sinh ra từ đó: dòng `tien_thua` lấy nhãn / đơn / hạn / ngày lập của HĐ này như dòng HĐ của nppsale; huỷ phiếu mà tiền thừa đã bị phiếu khác rút thì bút toán `CTR-` lập lại trỏ vào HĐ này; RO |
 | tim_kd | Khoá tìm | Small Text | | | | | `tim_kd` = khoá tìm (`receipt_code`, `notes`) — mig 249; RO; hook `before_save`; Small Text không chỉ mục vì khoá có ghi chú (§2.8) |
 | dong | Dòng phân bổ | Table | NPP Phieu Thu Dong | | | | `cash_receipt_lines` / `payments` |
 
@@ -1798,7 +1797,10 @@ Cột chuẩn: `owner` = `created_by`; `creation` = `created_at` = `payments.col
   `trang_thai` / `nhan_*` / `xac_nhan_*` của dòng — không chạm sổ.
 - **Sửa HĐ có tiền thu** (method `reissue_invoice` gọi): lõi gỡ phân bổ PE khi huỷ HĐ (`unlink_payment_on_cancellation_of_invoice`) → method phân bổ lại
   PE sang tờ mới bằng `reconcile_against_document` (PE giữ tên = số phiếu thu không đổi — mig 184), huỷ + lập lại JE cấn trừ nếu có, trỏ lại `cong_no` /
-  `hoa_don` / `chung_tu` của dòng; phần vượt số nợ tờ mới nằm ở PE thành tiền thừa (`nv_giu_tien_thua` = NV giữ nợ của tờ mới).
+  `hoa_don` / `chung_tu` của dòng; phần vượt số nợ tờ mới **chuyển vào chính tờ mới** bằng JE `chuyen_tien_thua` (Credit Note, số `CTR-`: Nợ PE /
+  Có HĐ mới, `npp_phieu_thu` = phiếu) → dòng HĐ đã thu > phải thu = dư có trên chính dòng HĐ như `receivables` của nppsale (`paid += paid cũ`, phương
+  án B của Q1 — 00_quyet_dinh_trien_khai.md Q7). Sửa tiếp: JE chuyển gộp lại vào phần của PE rồi huỷ, lập lại theo tờ mới; huỷ phiếu: huỷ JE chuyển
+  trước PE (phần dư có ấy đã bị phiếu khác rút thì "khách nợ lại" trên chính dòng HĐ — mig 212).
 - **Phiếu trả nguồn dư có bị sửa / huỷ** (`save_pos_return` ghi nhận lại, `cancel_return` — §4.3): lõi **không chặn** huỷ tờ ghi có khi JE còn tham chiếu
   mà tự gỡ tham chiếu ấy khỏi JE (`unlink_payment_on_cancellation_of_invoice` = 1 — §5.16; `on_cancel` chạy trước bước kiểm liên kết —
   `erpnext/controllers/accounts_controller.py:2273–2274`, `frappe/model/document.py:1728–1730`), để lại JE `CTR-` treo và HĐ được đắp vẫn giữ phần đã trừ →
@@ -3401,7 +3403,7 @@ của dòng trả trước), không lấy `creation` của dòng tham chiếu; P
 | Bảng nppsale | DocType lõi | fieldname | Label | Type | Options | insert_after | Notes |
 |---|---|---|---|---|---|---|---|
 | cash_receipt_lines · payable_payments · expenses | Journal Entry | naming_series · voucher_type · user_remark | (lõi) |  | thêm `CTR-.####`↵`CTN-.####`↵`BTC-.####`↵`DCN-.####` | — | dùng: `CTR-` cấn trừ dư có khách (`Credit Note`, §4.5.0); `CTN-` bù trừ debit note NCC vào phiếu nhập (`Debit Note`); `BTC-` bút toán phiếu chi (`Journal Entry`); `DCN-` điều chỉnh nợ NCC khi sửa giá phiếu nhập đã bán (`Debit Note` khi giảm nợ — lõi bỏ kiểm số còn nợ với hai loại `Credit / Debit Note`, `journal_entry.py:910–918`, nên giảm được cả phiếu đã trả đủ: nợ âm như nppsale; `Journal Entry` khi tăng); `user_remark` = `payable_payments.notes` của dòng bù trừ |
-| (nhiều) | Journal Entry | npp_loai | Loại bút toán NPP | Select | ↵`can_tru_khach`↵`bu_tru_ncc`↵`chi_phi`↵`tra_chi_phi`↵`dieu_chinh_gia_nhap` | voucher_type | **mới**; RO; idx — hàm chiếu công nợ và nguồn `payable_payments` lọc theo trường này |
+| (nhiều) | Journal Entry | npp_loai | Loại bút toán NPP | Select | ↵`can_tru_khach`↵`chuyen_tien_thua`↵`bu_tru_ncc`↵`chi_phi`↵`tra_chi_phi`↵`dieu_chinh_gia_nhap` | voucher_type | **mới**; RO; idx — hàm chiếu công nợ và nguồn `payable_payments` lọc theo trường này |
 | cash_receipt_lines | Journal Entry | npp_phieu_thu | Phiếu thu NPP | Link | NPP Phieu Thu | npp_loai | **mới**; RO; idx |
 | expenses | Journal Entry | npp_phieu_chi | Phiếu chi NPP | Link | NPP Phieu Chi | npp_phieu_thu | **mới**; RO; idx |
 | purchase_invoices | Journal Entry | npp_phieu_nhap | Phiếu nhập | Link | Purchase Invoice | npp_phieu_chi | **mới**; RO; idx — phiếu nhập được bù trừ / được điều chỉnh giá |
@@ -3992,58 +3994,59 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
     `form_dict.csrf_token` — `frappe/auth.py:94`); thử ở P2 cùng khung portal.
 
 **Mã cần đổi** — chỗ mã đã dựng (P2 / P3) còn lệch tệp này; mọi câu "mã chưa làm / mã chưa ghi / chưa phát" trong thân tệp trỏ về một dòng dưới:
+(✅ ĐÃ SỬA = mã đã theo tệp này, có bài thử; ⏳ CHỜ CHỐT = chờ anh quyết điểm 6 (v) / điểm 16 của §7.1 rồi mới sửa.)
 
-- **Mã cần đổi — `NPP Do Nap`** (§4.1, Phụ lục B điểm 6): DocType trong mã mới 5 trường (`man`, `nhan`, `ms`, `noi_dung`, `nguoi` —
+- ✅ **ĐÃ SỬA** **Mã cần đổi — `NPP Do Nap`** (§4.1, Phụ lục B điểm 6): DocType trong mã mới 5 trường (`man`, `nhan`, `ms`, `noi_dung`, `nguoi` —
   `npp_he_thong/doctype/npp_do_nap/npp_do_nap.json`), controller trống → tách cột theo §4.1 (`tu_mo_trang`, `loi`, `dong`, `ttfb_ms`, `dcl_ms`, `so_cau`, `cham`,
   `mang_*`, `user_agent`), giới hạn 60 lượt / phút / người, `clear_old_logs` + hook `default_log_clearing_doctypes = {"NPP Do Nap": 30}` (`hooks.py:336` còn để chú
   thích — thiếu thì Log Settings không dọn, bảng phình mãi), gói thiếu `man` vẫn ghi như route nppsale (`src/app/api/do-nap/route.ts` chỉ trả 400 khi JSON hỏng /
   không phải object; `api/do_nap.py:23–24` đang trả 400).
-- **Mã cần đổi — Customer Group tăng `phien`** (§4.1 `NPP Phien Danh Muc`, §6.1 `customer_groups`): doc_events `Customer Group` (`hooks.py:194–198`) chỉ gọi
+- ✅ **ĐÃ SỬA** **Mã cần đổi — Customer Group tăng `phien`** (§4.1 `NPP Phien Danh Muc`, §6.1 `customer_groups`): doc_events `Customer Group` (`hooks.py:194–198`) chỉ gọi
   `tang_phien_khach()` — thêm `after_rename` và `on_update` khi `default_price_list` đổi gọi `tang_phien_danh_muc()`. Cổng suy `price_lists.group_id` từ Customer
   Group, nên đổi tên / đổi bảng giá nhóm mà không tăng `phien` thì máy NVBH giữ bảng giá đã nhớ theo nhóm cũ, `unitPriceFor` không khớp `pl.group_id` và rơi về giá
   chung tới lần đổi danh mục hàng kế tiếp.
-- **Mã cần đổi — `NPP Cong No.khoa_cho`** (§4.3, §6.1 `receivables`): DocType trong mã chưa có trường (`npp_ban_hang/doctype/npp_cong_no/npp_cong_no.json`) —
+- ✅ **ĐÃ SỬA** **Mã cần đổi — `NPP Cong No.khoa_cho`** (§4.3, §6.1 `receivables`): DocType trong mã chưa có trường (`npp_ban_hang/doctype/npp_cong_no/npp_cong_no.json`) —
   thêm Data unique; hàm chiếu (`su_kien/cong_no.chieu_hoa_don`) đặt `dau_ky:<khách>` cho dòng tờ `DK-`, trống với loại khác; `ghi_no_dau_ky` (P3d) khoá dòng
   Customer `FOR UPDATE` và kiểm khách chưa có dòng `dau_ky` trước khi lập tờ — thiếu thì nhập Excel nợ đầu kỳ hai lần (hoặc hai người cùng nhập) ra hai tờ `DK-`.
-- **Mã cần đổi — `created_at` của dòng đơn / dòng trả** (§6.1, §7.1 điểm 6 (v)): cổng `sales_order_lines` đang trả `created_at` = `creation` (nppsale không có
+- ⏳ **CHỜ CHỐT** **Mã cần đổi — `created_at` của dòng đơn / dòng trả** (§6.1, §7.1 điểm 6 (v)): cổng `sales_order_lines` đang trả `created_at` = `creation` (nppsale không có
   cột — `cong/bang/don_hang.py`), `return_lines` thì không — thống nhất theo quyết định ở điểm 6 (v).
-- **Mã cần đổi — `Sales Invoice.npp_ghi_chu`** (§5.6, Phụ lục B điểm 15): `insert_after` = `remarks` (`thiet_lap/truong_tuy_bien.json` đang `npp_qua_han_tay` —
+- ✅ **ĐÃ SỬA** **Mã cần đổi — `Sales Invoice.npp_ghi_chu`** (§5.6, Phụ lục B điểm 15): `insert_after` = `remarks` (`thiet_lap/truong_tuy_bien.json` đang `npp_qua_han_tay` —
   neo vào Custom Field khai sau nó trong bảng; Frappe vẫn xếp đúng theo chuỗi `insert_after` lúc dựng meta — `frappe/model/meta.py:1040–1063` — nên chỉ là sửa
   cho đúng quy ước đầu §5).
-- **Mã cần đổi — `Supplier.npp_ghi_chu` → `supplier_details`** (§5.2, §6.1 `suppliers`): cổng `nppsale/cong/bang/nha_cung_cap.py:19` (`_ANH_XA`) và `:60` (cột
+- ✅ **ĐÃ SỬA** **Mã cần đổi — `Supplier.npp_ghi_chu` → `supplier_details`** (§5.2, §6.1 `suppliers`): cổng `nppsale/cong/bang/nha_cung_cap.py:19` (`_ANH_XA`) và `:60` (cột
   đọc) đổi `notes` ↔ `supplier_details`; sinh lại `thiet_lap/truong_tuy_bien.json` (Supplier bỏ `npp_ghi_chu`, `npp_tim_kd` sau `supplier_details`); một patch
   (`nppsale/patches/v0_1/…`) chép `npp_ghi_chu` sang `supplier_details` (khi ô lõi còn trống) rồi xoá Custom Field `Supplier-npp_ghi_chu` trên site đã cài —
   `create_custom_fields(update=True)` không xoá trường nào (`thiet_lap/truong_tuy_bien.py`).
-- **Mã cần đổi — `rename_doc` thiếu `ignore_permissions`** (§4.4.0, §6.1 `suppliers` / `batches`, §2.10): `nppsale/cong/bang/san_pham.py:152` (`_doi_sku`, đổi
+- ✅ **ĐÃ SỬA** **Mã cần đổi — `rename_doc` thiếu `ignore_permissions`** (§4.4.0, §6.1 `suppliers` / `batches`, §2.10): `nppsale/cong/bang/san_pham.py:152` (`_doi_sku`, đổi
   SKU mặt hàng chưa có chứng từ) gọi `frappe.rename_doc("Item", …, force=True)` không kèm `ignore_permissions=True` — vai NPP chỉ có `read` / `select` trên Item
   (`thiet_lap/quyen_san.py`), nên chủ / quản lý đổi SKU vấp "You need write permission on Item … to rename" (`frappe/model/rename_doc.py:377`); bài
   `test_cong_san_pham.test_tao_doc_don_vi_gia_va_pham_vi_nvbh` gọi cổng khi phiên còn là Administrator nên không bắt được — chạy lời đổi SKU dưới
   `frappe.set_user(self.chu.user)`. `doi_ma_lo` / `gop_nha_cung_cap` (chưa dựng) theo cùng luật.
-- **Mã cần đổi — tài khoản chênh lệch của phiếu `NL-`** (§5.11 dòng `npp_loai`, §7.1 điểm 16): `nppsale/rpc/phieu_tra.py` (`_lap_phieu_nhap`) dựng dòng Stock
+- ⏳ **CHỜ CHỐT** **Mã cần đổi — tài khoản chênh lệch của phiếu `NL-`** (§5.11 dòng `npp_loai`, §7.1 điểm 16): `nppsale/rpc/phieu_tra.py` (`_lap_phieu_nhap`) dựng dòng Stock
   Entry không đặt `expense_account` (Q6 (dòng Q12) tạm để mặc định lõi — chờ anh chốt điểm 16) → lõi điền `Company.stock_adjustment_account`; đặt
   `Company.default_expense_account` (giá vốn hàng bán) cho mọi dòng để sổ cái của phiếu nhập lại khớp vế Có giá vốn của tờ ghi có có kho; bài thử phiếu trả tự
   sinh kiểm tài khoản của bút toán phiếu `NL-`.
-- **Mã cần đổi (khi dựng phiếu thu — P3d) — huỷ tờ ghi có đang được cấn trừ** (§4.5 `NPP Phieu Thu`): `nppsale/rpc/phieu_tra.py` (`_huy_to_ghi_co`) huỷ
+- ✅ **ĐÃ SỬA** **Mã cần đổi (khi dựng phiếu thu — P3d) — huỷ tờ ghi có đang được cấn trừ** (§4.5 `NPP Phieu Thu`): `nppsale/rpc/phieu_tra.py` (`_huy_to_ghi_co`) huỷ
   thẳng tờ `HDT-`; khi đã có JE `CTR-` tham chiếu tờ ấy, lõi không chặn mà gỡ tham chiếu (JE treo, HĐ được đắp giữ phần đã trừ) — thêm bước huỷ JE `CTR-` đang
   tham chiếu tờ trước khi huỷ rồi lập lại JE với dư có còn lại; bài thử "phiếu trả nguồn dư có bị huỷ / sửa" kiểm nợ HĐ được đắp tăng lại, không chờ lỗi của lõi.
-- **Mã cần đổi — cột Link tới DocType UUID** (§2.3, §4.8.0, điểm 1 ở trên): `nppsale/thiet_lap/__init__.py` (`_chay_het`, chạy ở `after_install` + `after_migrate`)
+- ✅ **ĐÃ SỬA** **Mã cần đổi — cột Link tới DocType UUID** (§2.3, §4.8.0, điểm 1 ở trên): `nppsale/thiet_lap/__init__.py` (`_chay_het`, chạy ở `after_install` + `after_migrate`)
   chưa có bước nào sửa kiểu cột — thêm một bước: mọi Link (DocField và Custom Field) có DocType đích `autoname = UUID` mà `information_schema.columns.column_type`
   còn `varchar(140)` → đổi `''` → NULL rồi `ALTER TABLE … MODIFY <cột> uuid`. Cột đang có trong mã: `NPP Yeu Cau Anh Diem Ban.anh` (→ `NPP Anh Diem Ban`, cùng
   module `NPP Khach Hang`) — trên poc.local đang là `uuid` (bảng được tạo khi `NPP Anh Diem Ban` đã có), cài mới thì tuỳ thứ tự `os.listdir`; về sau
   `NPP HDDT.hoa_don_ban_ls` / `don_hang_ls`, `NPP MISA Log.hddt`, `NPP MISA Snapshot.hddt` và các Link giữa 20 `NPP LS *`. Kèm bài test đọc
   `information_schema.columns` khẳng định kiểu.
-- **Mã cần đổi — khoá chứng từ dọn bằng câu xoá thẳng chưa phát realtime** (§4.1 `NPP Khoa Chung Tu`, §6.3): `release_stale_entity_locks` (lịch mỗi phút) và
+- ✅ **ĐÃ SỬA** **Mã cần đổi — khoá chứng từ dọn bằng câu xoá thẳng chưa phát realtime** (§4.1 `NPP Khoa Chung Tu`, §6.3): `release_stale_entity_locks` (lịch mỗi phút) và
   phần dọn lười trong `acquire_entity_lock` / `heartbeat_entity_lock` (`nppsale/rpc/khoa_chung_tu.py`) xoá bằng `DELETE` thẳng, không qua `on_trash` nên không phát
   gì — đọc các dòng quá hạn trước, xoá, rồi `publish_realtime("npp_cong", {bang: "entity_locks", su_kien: "DELETE", …}, user=<từng NV đang làm>,
   after_commit=True)` từng dòng. Hôm nay vòng hỏi 8 giây của portal che lỗ này; nối socket (§6.3) mà thiếu bước này thì người chờ khoá treo ở "người khác
   đang sửa".
-- **Mã cần đổi — `precision` / `fetch_from` của DocType riêng** (§4 đầu mục, §4.8.0): `tools/dung_doctype.py` chỉ đọc chữ `precision n` ở cột Notes (cột
+- ✅ **ĐÃ SỬA** **Mã cần đổi — `precision` / `fetch_from` của DocType riêng** (§4 đầu mục, §4.8.0): `tools/dung_doctype.py` chỉ đọc chữ `precision n` ở cột Notes (cột
   Options chỉ được tách `length`) và không đọc `fetch_from` (`NPP Phieu Tra.ten_khach` có trong JSON vì thêm tay; `NPP Phieu Thu.ten_khach` sinh ra sẽ
   thiếu). (a) JSON đã sinh của `NPP Ghe Tham`, `NPP Anh Diem Ban`, `NPP Yeu Cau Anh Diem Ban` thiếu `precision` 7 ở `vi_do` / `kinh_do` (/ `vi_do_ghim` /
   `kinh_do_ghim`) vì bản trước ghi ở cột Options (nay đã chuyển sang Notes) → sinh lại ba DocType; (b) 20 bảng `NPP LS *` ghi `precision n` ở cột Options
   (quy ước §4.8.0) → công cụ đọc thêm cột Options cho Currency / Float (như `tools/dung_truong_tuy_bien.py` đã làm) trước khi sinh, kẻo mọi cột tiền / SL lưu
   trữ thành `decimal(21,9)` mặc định.
-- **Mã cần đổi — `module` của Custom Field** (§2.2): `thiet_lap/truong_tuy_bien.json` (sinh bằng `tools/dung_truong_tuy_bien.py`) không ghi `module` → Custom Field
+- ✅ **ĐÃ SỬA** **Mã cần đổi — `module` của Custom Field** (§2.2): `thiet_lap/truong_tuy_bien.json` (sinh bằng `tools/dung_truong_tuy_bien.py`) không ghi `module` → Custom Field
   không thuộc module nào; ghi `module` theo bảng §2.2 (một module mỗi DocType lõi) để tệp 06 xuất / soát theo module — không đổi hành vi lúc chạy.
 
 ### 7.3 Chỗ blueprint khác bản bàn bạc (anh duyệt cùng tệp này)

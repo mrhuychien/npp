@@ -61,9 +61,11 @@ def _uuid_pg(v) -> str | None:
 
 
 def _mang(p: dict, khoa: str) -> list:
-	"""jsonb_array_elements(COALESCE(p->'k', '[]'))."""
+	"""jsonb_array_elements(COALESCE(p->'k', '[]')) — thiếu khoá → []; JSON null (p->'k' là jsonb 'null', COALESCE không thay) → lỗi vô hướng."""
 	v = p.get(khoa)
 	if v is None:
+		if khoa in p:
+			raise LoiCong("22023", "cannot extract elements from a scalar")
 		return []
 	if isinstance(v, list):
 		return v
@@ -113,6 +115,8 @@ def _chuan_bi_thu(p=None):
 	frappe.local._npp_phieu_thu = kq
 	p = _p(p)
 	try:
+		if p.get("customer_id") == "":  # (p->>'customer_id')::uuid của khối DECLARE — chuỗi rỗng nổ trước cả FORBIDDEN
+			raise LoiCong("22P02", 'invalid input syntax for type uuid: ""')
 		_dung_du_co(p)
 	except LoiCong as e:
 		kq.loi_dau = e
@@ -143,12 +147,8 @@ def _ngay_chon(r) -> tuple:
 
 
 def _hd_cua_dong(r) -> str | None:
-	"""`invoice_id` của dòng công nợ theo nghĩa nppsale: HĐ (dòng HĐ / tiền thừa); nợ đầu kỳ + phiếu trả: trống."""
-	if r.get("loai") == "hoa_don":
-		return r.get("hoa_don")
-	if r.get("loai") == "tien_thua":
-		return frappe.db.get_value(DT, r.get("phieu_thu"), "hoa_don_tien_thua") if r.get("phieu_thu") else None
-	return None
+	"""`invoice_id` của dòng công nợ theo nghĩa nppsale: HĐ (dòng HĐ); nợ đầu kỳ + phiếu trả + tiền thừa chưa phân bổ: trống."""
+	return r.get("hoa_don") if r.get("loai") == "hoa_don" else None
 
 
 def _si_cua_dong(r) -> str | None:
@@ -401,7 +401,7 @@ def _qua_han_sau_huy(si: str) -> None:
 	(giờ VN); ngược lại mất dấu."""
 	r = frappe.db.get_value(CN.DT, {"khoa_nguon": f"Sales Invoice:{si}"}, ["so_tien", "da_thu", "han_thanh_toan"], as_dict=True)
 	co = 0
-	if r and (r.so_tien or 0) >= 0 and (r.so_tien or 0) - (r.da_thu or 0) > 0.005 and (r.da_thu or 0) <= 0.005 and r.han_thanh_toan \
+	if r and (r.so_tien or 0) >= 0 and (r.so_tien or 0) - (r.da_thu or 0) >= 0.01 and (r.da_thu or 0) <= 0 and r.han_thanh_toan \
 			and getdate(r.han_thanh_toan) < getdate(nowdate()):
 		co = 1
 	if int(frappe.db.get_value("Sales Invoice", si, "npp_qua_han_tay") or 0) != co:
@@ -411,9 +411,9 @@ def _qua_han_sau_huy(si: str) -> None:
 @rpc("void_cash_receipt", ghi=True, chuan_bi=_chuan_bi_huy_thu)
 def void_cash_receipt(p_receipt_id=None, p_reason=None):
 	nc = hien_tai()
-	cd = cai_dat_ban()
+	cai_dat_ban()
 	ten = _van_ban(p_receipt_id)
-	r = frappe.db.sql(f"""SELECT `name`, `trang_thai`, `khach_hang`, `but_toan_tien`, `but_toan_can_tru`, `hoa_don_tien_thua`
+	r = frappe.db.sql(f"""SELECT `name`, `trang_thai`, `khach_hang`, `but_toan_tien`, `but_toan_can_tru`
 		FROM `tab{DT}` WHERE `name` = %s FOR UPDATE""", ten, as_dict=True) if ten else []
 	if not r:
 		raise NppLoi("RECEIPT_NOT_FOUND")
@@ -428,25 +428,26 @@ def void_cash_receipt(p_receipt_id=None, p_reason=None):
 	CN.khoa_khach(r.khach_hang)
 	cham = {d.cong_no for d in frappe.get_all("NPP Phieu Thu Dong", filters={"parent": ten, "parenttype": DT}, fields=["cong_no"]) if d.cong_no}
 
-	# (A) tiền thừa của PE này đã bị phiếu khác rút: huỷ các bút toán ấy TRƯỚC khi huỷ PE (lõi huỷ PE sẽ lặng lẽ gỡ tham chiếu của chúng),
-	# lập lại giữ nguyên số từng vế, vế trỏ PE chuyển sang HĐ sinh tiền thừa — "khách nợ lại" trên chính dòng HĐ như nppsale (mig 212 §2)
-	lap_lai = []
-	if r.but_toan_tien:
-		for (je_ten,) in frappe.db.sql("""SELECT DISTINCT a.`parent` FROM `tabJournal Entry Account` a JOIN `tabJournal Entry` j ON j.`name` = a.`parent`
-				WHERE j.`docstatus` = 1 AND a.`reference_type` = 'Payment Entry' AND a.`reference_name` = %s AND IFNULL(j.`npp_phieu_thu`, '') != %s""",
-				(r.but_toan_tien, ten)):
-			je = frappe.get_doc("Journal Entry", je_ten)
-			lap_lai.append(je)
-			je.flags.ignore_permissions = True
-			je.cancel()
+	# phần thu vượt sau Sửa HĐ đã chuyển vào HĐ (bút toán `chuyen_tien_thua` của phiếu): huỷ trước PE — nợ HĐ tăng lại; phần ấy đã bị phiếu khác
+	# rút thì bút toán cấn trừ của phiếu kia (trỏ HĐ) giữ nguyên → "khách nợ lại" trên chính dòng HĐ (mig 212 §2)
+	from .can_tru import huy_je
+
+	chuyen = frappe.get_all("Journal Entry", filters={"npp_phieu_thu": ten, "npp_loai": "chuyen_tien_thua", "docstatus": 1}, pluck="name")
+	for je in frappe.get_all("Journal Entry Account", filters={"parent": ("in", chuyen or [""]), "reference_type": "Sales Invoice"},
+			pluck="reference_name"):
+		r_hd = frappe.db.get_value(CN.DT, {"khoa_nguon": f"Sales Invoice:{je}"}, "name")
+		if r_hd:
+			cham.add(r_hd)
+	huy_je(chuyen)
 	for dt_ct, ct in (("Journal Entry", r.but_toan_can_tru), ("Payment Entry", r.but_toan_tien)):
 		if ct and frappe.db.get_value(dt_ct, ct, "docstatus") == 1:
 			d = frappe.get_doc(dt_ct, ct)
 			d.flags.ignore_permissions = True
 			d.cancel()
 	frappe.local.message_log = []
-	for je in lap_lai:
-		cham |= _lap_lai_tro_hd(je, r.but_toan_tien, r.hoa_don_tien_thua, cd)
+	# Q18 (a): khoản thu của phiếu huỷ mất cùng `payments` ở nppsale → bỏ dấu xác nhận trên dòng (đếm chứng từ của NV khớp nppsale)
+	frappe.db.sql("""UPDATE `tabNPP Phieu Thu Dong` SET `xac_nhan_boi` = NULL, `xac_nhan_luc` = NULL WHERE `parent` = %s
+		AND `parenttype` = 'NPP Phieu Thu'""", ten)
 
 	frappe.db.set_value(DT, ten, {"trang_thai": "voided", "huy_luc": now_datetime(),
 		"huy_boi": nc.user if frappe.db.exists("NPP Nhan Vien", nc.user) else None, "ly_do_huy": ly_do}, update_modified=False)
@@ -462,35 +463,3 @@ def void_cash_receipt(p_receipt_id=None, p_reason=None):
 	frappe.local.message_log = []
 	return None
 
-
-def _lap_lai_tro_hd(je, pe: str, hd: str | None, cd) -> set:
-	"""Lập lại (amend CTR-…-n) bút toán cấn trừ của phiếu KHÁC đã rút tiền thừa của PE vừa huỷ: giữ số từng vế, vế trỏ PE → HĐ sinh tiền thừa;
-	trỏ lại dòng phiếu thu của phiếu sở hữu bút toán. Trả các dòng công nợ bị chạm."""
-	if not hd:
-		frappe.throw(f"Phiếu thu {pe} có tiền thừa đã bị rút nhưng không rõ HĐ sinh tiền thừa — không lập lại được bút toán {je.name}")
-	moi = frappe.copy_doc(je)
-	moi.amended_from = je.name
-	moi.docstatus = 0
-	for a in moi.accounts:
-		if a.reference_type == "Payment Entry" and a.reference_name == pe:
-			a.reference_type, a.reference_name = "Sales Invoice", hd
-			a.account = _tk_cua_chung_tu("Sales Invoice", hd)
-	moi.flags.ignore_permissions = True
-	moi.insert()
-	moi.submit()
-	frappe.local.message_log = []
-	cham = set()
-	so_huu = je.get("npp_phieu_thu")
-	dong_hd = frappe.db.get_value(CN.DT, {"khoa_nguon": f"Sales Invoice:{hd}"}, "name")
-	dong_tt = frappe.db.get_value(CN.DT, {"khoa_nguon": f"NPP Phieu Thu:{frappe.db.get_value('Payment Entry', pe, 'npp_phieu_thu')}"}, "name")
-	if so_huu:
-		frappe.db.set_value(DT, so_huu, "but_toan_can_tru", moi.name, update_modified=False)
-		for d in frappe.get_all("NPP Phieu Thu Dong", filters={"parent": so_huu, "parenttype": DT, "chung_tu_loai": "Payment Entry",
-				"chung_tu": pe}, fields=["name", "cong_no"]):
-			frappe.db.set_value("NPP Phieu Thu Dong", d.name, {"cong_no": dong_hd or d.cong_no, "hoa_don": hd,
-				"chung_tu_loai": "Sales Invoice", "chung_tu": hd}, update_modified=False)
-			cham.add(d.cong_no)
-	for x in (dong_hd, dong_tt):
-		if x:
-			cham.add(x)
-	return cham

@@ -55,8 +55,10 @@ def nhom_cua_dong(r) -> tuple[str, list[str]]:
 		pe = frappe.db.get_value("NPP Phieu Thu", r.get("phieu_thu"), "but_toan_tien") if r.get("phieu_thu") else None
 		return "Payment Entry", [pe] if pe and frappe.db.get_value("Payment Entry", pe, "docstatus") == 1 else []
 	if r.get("loai") == "phieu_tra":
+		# mọi tờ ghi có của phiếu, kể cả đã huỷ: Payment Ledger của tờ huỷ đã delinked, nhưng bút toán cấn trừ lập lại có thể trỏ tờ huỷ (phiếu độc
+		# lập bị huỷ khi dư có đã bị rút — Q3) và vẫn phải cộng vào dòng của phiếu (như chieu_phieu_tra)
 		return "Sales Invoice", frappe.get_all("Sales Invoice", filters={"npp_phieu_tra": r.get("phieu_tra"), "is_return": 1,
-			"docstatus": 1}, pluck="name", order_by="posting_date asc, name asc") if r.get("phieu_tra") else []
+			"docstatus": ("in", (1, 2))}, pluck="name", order_by="posting_date asc, name asc") if r.get("phieu_tra") else []
 	hd = r.get("hoa_don")
 	return "Sales Invoice", ([hd, *ghi_co_gan(hd)] if hd else [])
 
@@ -216,13 +218,14 @@ def chieu_phieu_tra(pt: str) -> str | None:
 
 
 def chieu_tien_thua(pt: str | None) -> str | None:
-	"""Dòng TIỀN THỪA của một phiếu thu (phương án A — đặc tả phiếu thu §2.5.1): phần chưa phân bổ của Payment Entry cùng tên (sinh khi Sửa
-	HĐ làm tờ mới nhỏ hơn số đã thu — mig 184) cộng bút toán cấn trừ đã rút nó. Khoá `NPP Phieu Thu:<phiếu>`. Có dòng khi còn số ≠ 0 hoặc
-	còn dòng phiếu thu chưa huỷ trỏ tới; nhãn / đơn / hạn / ngày lập theo HĐ sinh ra tiền thừa (`hoa_don_tien_thua`) như dòng HĐ của nppsale."""
+	"""Dòng TIỀN THỪA CHƯA PHÂN BỔ của một phiếu thu (CFD-04): phần chưa phân bổ của Payment Entry cùng tên cộng bút toán cấn trừ đã rút
+	nó. Khoá `NPP Phieu Thu:<phiếu>`. Có dòng khi còn số ≠ 0 hoặc còn dòng phiếu thu chưa huỷ trỏ tới. Lưới an toàn: các RPC luôn phân bổ
+	hết tiền phiếu (Sửa HĐ giảm tiền chuyển phần thu vượt vào chính HĐ mới — phương án B của Q1, `can_tru.chuyen_tien_thu`) nên dòng chỉ
+	hiện khi sổ có Payment Entry treo tiền ngoài app — Σ nợ của khách vẫn khớp sổ cái, khám sổ nhóm 13 báo."""
 	if not pt or not frappe.db.exists("DocType", "NPP Phieu Thu"):
 		return None
 	khoa = f"NPP Phieu Thu:{pt}"
-	r = frappe.db.get_value("NPP Phieu Thu", pt, ["name", "khach_hang", "ten_khach", "but_toan_tien", "hoa_don_tien_thua", "nv_giu_tien_thua",
+	r = frappe.db.get_value("NPP Phieu Thu", pt, ["name", "khach_hang", "ten_khach", "but_toan_tien", "nv_giu_tien_thua",
 		"giao_tu_nv", "ve_npp_luc", "creation"], as_dict=True)
 	pe = r.but_toan_tien if r else None
 	con_no = _con_no([pe], "Payment Entry") if pe and frappe.db.get_value("Payment Entry", pe, "docstatus") == 1 else 0.0
@@ -231,15 +234,13 @@ def chieu_tien_thua(pt: str | None) -> str | None:
 		if dong:
 			frappe.db.delete(DT, {"khoa_nguon": khoa})
 		return None
-	h = frappe.db.get_value("Sales Invoice", r.hoa_don_tien_thua, ["npp_don_hang", "npp_han_thanh_toan", "due_date", "creation"],
-		as_dict=True) if r.hoa_don_tien_thua else None
 	return _ghi(khoa, {
-		"loai": "tien_thua", "khach_hang": r.khach_hang, "ten_khach": r.ten_khach, "hoa_don": r.hoa_don_tien_thua, "phieu_tra": None,
-		"phieu_thu": pt, "don_hang": h.npp_don_hang if h else None,
+		"loai": "tien_thua", "khach_hang": r.khach_hang, "ten_khach": r.ten_khach, "hoa_don": None, "phieu_tra": None,
+		"phieu_thu": pt, "don_hang": None,
 		"nhan_vien": r.nv_giu_tien_thua, "giao_tu_nv": r.giao_tu_nv, "ve_npp_luc": r.ve_npp_luc,
-		"so_tien": 0, "da_thu": -con_no, "con_no": con_no, "han_thanh_toan": (h.npp_han_thanh_toan or h.due_date) if h else None,
-		"trang_thai": trang_thai(0, -con_no, False), "qua_han_tay": 0, "ghi_chu": None,
-		"tao_luc": h.creation if h else r.creation, "tinh_luc": now_datetime(),
+		"so_tien": 0, "da_thu": -con_no, "con_no": con_no, "han_thanh_toan": None,
+		"trang_thai": trang_thai(0, -con_no, False), "qua_han_tay": 0, "ghi_chu": "Tiền thừa chưa phân bổ",
+		"tao_luc": r.creation, "tinh_luc": now_datetime(),
 	})
 
 

@@ -83,7 +83,7 @@ def _o(dong: str) -> list[str]:
 
 
 def doc_dau(dau: list[str]) -> dict:
-	s = " ".join(dau)
+	s = re.sub(r"\s+", " ", " ".join(dau))  # dòng đầu xuống dòng giữa nhãn đậm ("**Title⏎  Field**") vẫn khớp
 
 	def lay(nhan):
 		m = re.search(r"\*\*" + re.escape(nhan) + r"\*\*:\s*(.+?)(?=\s*·\s*\*\*|\s*-\s*\*\*|$)", s)
@@ -214,9 +214,13 @@ def doc_truong(bang: list[str], ten_dt: str) -> tuple[list[dict], list[str]]:
 		if m_dep:
 			e = m_dep.group(1).strip()
 			f["depends_on"] = e if e.startswith("eval:") or not re.fullmatch(r"[a-z_][a-z0-9_]*", e) else f"eval:doc.{e}"
-		m_pre = re.search(r"\bprecision\s+(\d)", ghi)
+		# precision: cột Notes hoặc cột Options (quy ước §4.8.0 của bảng lưu trữ) — như tools/dung_truong_tuy_bien.py
+		m_pre = re.search(r"\bprecision\s+(\d)", (f.get("options") or "") + " " + tuy + " " + ghi)
 		if m_pre and kieu in ("Float", "Currency", "Percent"):
 			f["precision"] = m_pre.group(1)
+		m_fetch = re.search(r"fetch_from\s+`([a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*)`", ghi)
+		if m_fetch:
+			f["fetch_from"] = m_fetch.group(1)
 		if kieu == "Section Break":
 			m_pl = re.search(r"permlevel\s+(\d)", ghi)
 			permlevel_khoi = int(m_pl.group(1)) if m_pl else 0
@@ -288,12 +292,12 @@ def dung(k: dict) -> tuple[dict, list[str]]:
 		j["track_changes"] = 1
 	if not la_single:
 		j.update(dat_ten(d["naming"], ten))
-	tf = re.findall(r"`([a-z0-9_]+)`", d["title"] or "")
+	tf = re.findall(r"`([a-z0-9_]+)`", d["title"] or "") or re.findall(r"^([a-z][a-z0-9_]*)\b", (d["title"] or "").strip())
 	if tf:
 		j["title_field"] = tf[0]
 		if "show_title_field_in_link" in d["title"]:
 			j["show_title_field_in_link"] = 1
-	sf = re.findall(r"`([^`]+)`", d["search"] or "")
+	sf = re.findall(r"`([^`]+)`", d["search"] or "") or re.findall(r"^([a-z][a-z0-9_]*(?:\s*,\s*[a-z][a-z0-9_]*)*)", (d["search"] or "").strip())
 	if sf:
 		j["search_fields"] = sf[0].replace(" ", "")
 	if not la_con:

@@ -60,11 +60,11 @@ def dung_nen(nen: dict) -> dict:
 	if not frappe.db.exists("Customer Group", nhom_mac_dinh):
 		frappe.get_doc({"doctype": "Customer Group", "customer_group_name": nhom_mac_dinh, "parent_customer_group": "All Customer Groups",
 			"is_group": 0}).insert(ignore_permissions=True)
-	for k, (ten, nhom) in nen["khach"].items():
+	for i, (k, (ten, nhom)) in enumerate(nen["khach"].items()):
 		ten_kh = frappe.db.get_value("Customer", {"customer_name": ten}, "name")
-		if not ten_kh:
+		if not ten_kh:  # số điện thoại như sql_nen của bộ sinh (tools/vang_tao_don.py: '09000000NN')
 			ten_kh = frappe.get_doc({"doctype": "Customer", "customer_name": ten, "customer_type": "Company",
-				"customer_group": ma[nhom] if nhom else nhom_mac_dinh}).insert(ignore_permissions=True).name
+				"customer_group": ma[nhom] if nhom else nhom_mac_dinh, "npp_sdt": f"09000000{i + 1:02d}"}).insert(ignore_permissions=True).name
 		ma[k] = ten_kh
 	ma["C9"] = "KH-KHONG-CO"
 	nhom_hang = frappe.db.get_value("Item Group", {"is_group": 0}, "name")

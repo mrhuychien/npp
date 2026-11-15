@@ -176,7 +176,7 @@ def _ghi_so(ten: str) -> None:
 # ------------------------------------------------------------------------------------------------ SỬA
 def _co_qua_han(so_tien, da_thu) -> int:
 	"""PATCH status = 'overdue': trigger chỉ giữ khi dòng chưa thu đủ, không trả dư, số không âm (mig 212)."""
-	return 1 if so_tien >= 0 and da_thu < so_tien - 0.01 else 0
+	return 1 if so_tien >= 0 and da_thu <= so_tien - 0.01 else 0
 
 
 def sua_cong_no(gt: dict, ids: list[str], nc) -> list[str]:
