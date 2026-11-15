@@ -1768,6 +1768,7 @@ và Journal Entry `voucher_type = Credit Note` khi dùng dư có — đúng dạ
 | nv_giu_tien_thua | NV giữ tiền thừa | Link | NPP Nhan Vien | | | | **mới** — NV đứng tên dòng `NPP Cong No` loại `tien_thua` (tiền đã thu còn thừa sau Sửa HĐ giảm tiền — mig 184); RO |
 | giao_tu_nv | Tiền thừa giao từ NV | Link | NPP Nhan Vien | | | | **mới** — như dấu bàn giao của HĐ (mig 246); RO |
 | ve_npp_luc | Tiền thừa về NPP lúc | Datetime | | | | | **mới** — như mig 223; RO |
+| hoa_don_tien_thua | HĐ sinh tiền thừa | Link | Sales Invoice | | | | **mới** (đặc tả phiếu thu §1.2, phương án A của Q1) — HĐ (tờ mới nhất của chuỗi amend) mà phần chưa phân bổ của PE sinh ra từ đó: dòng `tien_thua` lấy nhãn / đơn / hạn / ngày lập của HĐ này như dòng HĐ của nppsale; huỷ phiếu mà tiền thừa đã bị phiếu khác rút thì bút toán `CTR-` lập lại trỏ vào HĐ này; RO |
 | tim_kd | Khoá tìm | Small Text | | | | | `tim_kd` = khoá tìm (`receipt_code`, `notes`) — mig 249; RO; hook `before_save`; Small Text không chỉ mục vì khoá có ghi chú (§2.8) |
 | dong | Dòng phân bổ | Table | NPP Phieu Thu Dong | | | | `cash_receipt_lines` / `payments` |
 

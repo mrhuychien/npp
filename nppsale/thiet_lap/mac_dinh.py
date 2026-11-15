@@ -27,7 +27,12 @@ def _dat_ten_chung_tu():
 	for dt, chon, mac in (("Customer", "KH-.#####", "KH-.#####"), ("Supplier", "NCC-.####", "NCC-.####"),
 			("Sales Order", "DH-.####", "DH-.####"), ("Sales Invoice", "HD-.####\nHDT-.####\nDK-.####", "HD-.####"),
 			# phiếu kho (blueprint 02 §5.11): nhập IN-…, xuất lẻ XKL-, chuyển CKL-, điều chỉnh kiểm kê DCK-, nhập lại hàng trả NL-
-			("Stock Entry", "IN-.YYYY.MM.DD.-.####\nXKL-.####\nCKL-.####\nDCK-.####\nNL-.####", "IN-.YYYY.MM.DD.-.####")):
+			("Stock Entry", "IN-.YYYY.MM.DD.-.####\nXKL-.####\nCKL-.####\nDCK-.####\nNL-.####", "IN-.YYYY.MM.DD.-.####"),
+			# tiền (blueprint 02 §5.7 / §5.8): giữ dãy lõi làm mặc định (chứng từ lập tay trên Desk); PE thu tiền khách lấy tên phiếu thu
+			# (không dùng dãy) — PCNCC- phiếu chi NCC, GTN- ghi trả nợ NCC; JE: CTR- cấn trừ dư có khách, CTN- cấn trừ NCC, BTC- phiếu chi,
+			# DCN- điều chỉnh giá nhập
+			("Payment Entry", "ACC-PAY-.YYYY.-\nPCNCC-.####\nGTN-.####", "ACC-PAY-.YYYY.-"),
+			("Journal Entry", "ACC-JV-.YYYY.-\nCTR-.####\nCTN-.####\nBTC-.####\nDCN-.####", "ACC-JV-.YYYY.-")):
 		for prop, gt in (("options", chon), ("default", mac)):
 			if frappe.db.get_value("Property Setter", {"doc_type": dt, "field_name": "naming_series", "property": prop}, "value") != gt:
 				make_property_setter(dt, "naming_series", prop, gt, "Text", validate_fields_for_doctype=False)

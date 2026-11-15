@@ -34,6 +34,9 @@ SAN: dict[str, tuple[str, ...]] = {
 	# Payment Entry.validate → set_missing_ref_details(force=True) → get_reference_details gọi has_permission(HĐ, "read", throw=True)
 	# (payment_entry.py:182, :3010) — cờ ignore_permissions của PE không lan sang (phiếu thu lập dưới chính người thu — đặc tả phiếu thu §0.4)
 	"Sales Invoice": ("read", "select"),
+	# Payment Entry.validate → set_missing_values → get_account_details gọi has_permission("Payment Entry", throw=True) (payment_entry.py:649,
+	# :2922) — vai NPP phải ĐỌC được loại chứng từ (ghi vẫn chỉ qua method create_cash_receipt / void_cash_receipt)
+	"Payment Entry": ("read", "select"),
 	# Chứng từ phụ NỘI BỘ của kho: lõi tự lập gói lô (SerialBatchCreation → doc.save()) và tự ghi sổ / huỷ nó trong Stock Ledger
 	# Entry.on_submit / on_cancel dưới quyền người gọi (dò bằng bài Xuất hàng, 13/11/2026). Người dùng không chạm được gói lô nào ngoài
 	# method của app (cửa /api/resource… bị chặn với vai NPP — nppsale.portal.chan).
