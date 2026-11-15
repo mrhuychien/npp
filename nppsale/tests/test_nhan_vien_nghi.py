@@ -145,6 +145,8 @@ class TestNhanVienNghi(IntegrationTestCase):
 		frappe.db.set_value("Customer", k, "npp_duyet_anh_boi", nv)
 		log = frappe.get_doc({"doctype": "NPP Ban Giao Khach", "nguon": "chua_ai", "den_nv": nv, "kieu": "chung", "khach": "[]",
 			"ket_qua": "{}", "tao_boi": self.ma["u:owner"]}).insert(ignore_permissions=True).name
+		luot = frappe.get_doc({"doctype": "NPP Luot Soan", "ma": "SH-01/01-01", "trang_thai": "xong", "xong_boi": nv}).insert(
+			ignore_permissions=True).name  # luot_soan.xong_boi ON DELETE SET NULL
 		frappe.set_user(self.ma["u:owner"])
 		try:
 			ma, kq = xoa(frappe._dict(tham={"id": nv}))
@@ -154,6 +156,7 @@ class TestNhanVienNghi(IntegrationTestCase):
 		self.assertFalse(frappe.db.exists("NPP Nhan Vien", nv))
 		self.assertIsNone(frappe.db.get_value("Customer", k, "npp_duyet_anh_boi"))
 		self.assertIsNone(frappe.db.get_value("NPP Ban Giao Khach", log, "den_nv"))
+		self.assertIsNone(frappe.db.get_value("NPP Luot Soan", luot, "xong_boi"))
 
 	def test_xoa_nv_co_chung_tu_bi_chan(self):
 		"""Màn xoá NV hỏi cùng bộ đếm: đã có chứng từ → 409 CO_CHUNG_TU (không xoá), như route xoá của nppsale (mig 223)."""

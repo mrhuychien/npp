@@ -70,7 +70,8 @@ _DAT_RONG = [("NPP Nhat Ky Don", "nguoi"), ("NPP Do Nap", "nguoi"), ("NPP Nhan V
 	("Customer", "npp_duyet_anh_boi"),  # customers.photo_approved_by
 	("NPP Yeu Cau Anh Diem Ban", "nguoi_xin"), ("NPP Yeu Cau Anh Diem Ban", "nguoi_duyet"),  # customer_photo_requests
 	("NPP Ban Giao Khach", "tu_nv"), ("NPP Ban Giao Khach", "den_nv"), ("NPP Ban Giao Khach", "tao_boi"),  # ban_giao_khach_log
-	("Sales Invoice", "npp_soan_boi")]  # sales_invoices.soan_boi
+	("Sales Invoice", "npp_soan_boi"),  # sales_invoices.soan_boi
+	("NPP Luot Soan", "xong_boi")]  # luot_soan.xong_boi (created_by = owner — không phải liên kết)
 
 
 @tuyen("DELETE", r"^/api/admin/users/(?P<id>[^/]+)$")

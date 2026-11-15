@@ -1,0 +1,93 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-15 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "ma",
+  "trang_thai",
+  "hoa_don",
+  "tien_do",
+  "xong_luc",
+  "xong_boi"
+ ],
+ "fields": [
+  {
+   "fieldname": "ma",
+   "fieldtype": "Data",
+   "label": "Mã lượt",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "SH-dd/mm-NN — NN = số lượt tạo trong ngày (giờ VN) + 1 (mig 225); blueprint 02 §7.1 điểm 9"
+  },
+  {
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "label": "Trạng thái",
+   "options": "dang_soan\nxong\nhuy",
+   "default": "dang_soan",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "hoa_don",
+   "fieldtype": "Table",
+   "label": "Hoá đơn (rổ A–Z)",
+   "options": "NPP Luot Soan Hoa Don"
+  },
+  {
+   "fieldname": "tien_do",
+   "fieldtype": "JSON",
+   "label": "Tiến độ",
+   "description": "nhat: mã hàng → SL cơ sở đã nhặt; chia: <mã hàng>|<mã HĐ> → true"
+  },
+  {
+   "fieldname": "xong_luc",
+   "fieldtype": "Datetime",
+   "label": "Hoàn tất lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "xong_boi",
+   "fieldtype": "Link",
+   "label": "Người hoàn tất",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-15 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Ban Hang",
+ "name": "NPP Luot Soan",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "ma",
+ "title_field": "ma",
+ "show_title_field_in_link": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
