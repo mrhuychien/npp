@@ -24,7 +24,7 @@ class TestNhanVien(IntegrationTestCase):
 		self.assertIn("NPP NVBH", [r.role for r in u.roles])
 		self.assertEqual(u.user_type, "Website User")
 		# = viSearchKey(ho_ten, sdt) của nppsale: bản viết liền bỏ số 0 đầu từng từ ("0911 000 101" → "9110101")
-		self.assertEqual(nv.khoa_tim, "nguyen van thu nguyenvanthu 0911 000 101 0911000101 9110101")
+		self.assertEqual(nv.tim_kd, "nguyen van thu nguyenvanthu 0911 000 101 0911000101 9110101")
 		nv.vai = "warehouse"
 		nv.save(ignore_permissions=True)
 		roles = [r.role for r in frappe.get_doc("User", nv.user).roles]

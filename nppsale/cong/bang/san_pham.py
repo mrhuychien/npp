@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import frappe
 
+from nppsale.su_kien.san_pham import BANG_GIA_CHUNG_SQL, BANG_GIA_NHAP_SQL
+
 from ..dang_ky import Bang, CotDef, NguCanh, QuanHe, dang_ky
 from ..ngu_canh import xem_gia_von
 from ..sql import LoiCong
@@ -257,16 +259,16 @@ dang_ky(Bang(
 ))
 
 # ----------------------------------------------------------------------------------------------------------------------------
-# price_lists — Item Price của bảng giá bán (Gia chuan = nhóm NULL; Gia nhom * = nhóm có default_price_list trỏ tới)
+# price_lists — Item Price của bảng giá bán (bảng giá chung của NPP Cai Dat = nhóm NULL; Gia nhom * = nhóm có default_price_list trỏ tới)
 # ----------------------------------------------------------------------------------------------------------------------------
 _NHOM_CUA_BANG = "(SELECT cg.`name` FROM `tabCustomer Group` cg WHERE cg.`default_price_list` = {t}.`price_list` LIMIT 1)"
 
 
 def _bang_cua_nhom(nhom):
-	from nppsale.su_kien.san_pham import GIA_CHUAN
+	from nppsale.su_kien.san_pham import bang_gia_chung
 
 	if not nhom:
-		return GIA_CHUAN
+		return bang_gia_chung()
 	bg = frappe.db.get_value("Customer Group", nhom, "default_price_list")
 	if not bg:
 		raise LoiCong("23503", f"Nhóm khách {nhom} chưa có bảng giá.")
@@ -286,9 +288,9 @@ class GhiGiaBan(GhiDocType):
 dang_ky(Bang(
 	ten="price_lists",
 	nguon="(SELECT ip.* FROM `tabItem Price` ip JOIN `tabPrice List` pl ON pl.`name` = ip.`price_list` "
-	"WHERE pl.`selling` = 1 AND ip.`price_list` != 'Gia nhap')",
+	f"WHERE pl.`selling` = 1 AND ip.`price_list` != {BANG_GIA_NHAP_SQL})",
 	cot={"id": c("{t}.`name`"), "org_id": org(), "product_id": c("item_code"),
-		"group_id": c("CASE WHEN {t}.`price_list` = 'Gia chuan' THEN NULL ELSE " + _NHOM_CUA_BANG + " END"),
+		"group_id": c("CASE WHEN {t}.`price_list` = " + BANG_GIA_CHUNG_SQL + " THEN NULL ELSE " + _NHOM_CUA_BANG + " END"),
 		"unit_name": c("uom"), "price": c("price_list_rate", "tien"), "effective_from": c("valid_from", "ngay"),
 		"effective_to": c("valid_upto", "ngay"), "created_at": c("creation", "gio")},
 	quan_he=[QuanHe("products", "product_id", "id", False, ("price_lists_product_id_fkey",)),
@@ -300,7 +302,7 @@ dang_ky(Bang(
 
 dang_ky(Bang(
 	ten="purchase_price_lists",
-	nguon="(SELECT * FROM `tabItem Price` WHERE `price_list` = 'Gia nhap')",
+	nguon=f"(SELECT * FROM `tabItem Price` WHERE `price_list` = {BANG_GIA_NHAP_SQL})",
 	cot={"id": c("{t}.`name`"), "org_id": org(), "product_id": c("item_code"), "unit_name": c("uom"), "price": c("price_list_rate", "tien"),
 		"effective_date": c("valid_from", "ngay"), "source_invoice_id": c("reference"), "updated_by": c("modified_by"),
 		"updated_at": c("modified", "gio")},

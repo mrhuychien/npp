@@ -24,7 +24,7 @@ from nppsale.cong.sql import LoiCong
 from nppsale.luat import gia_don as L
 from nppsale.npp_he_thong.doctype.npp_nhat_ky_don.npp_nhat_ky_don import ghi_nhat_ky_don
 from nppsale.npp_he_thong.doctype.npp_thong_bao.npp_thong_bao import gui_thong_bao
-from nppsale.su_kien.san_pham import GIA_CHUAN
+from nppsale.su_kien.san_pham import bang_gia_chung
 from nppsale.thiet_lap.ban_hang import cai_dat_ban, mau_thue_dong
 
 from . import rpc
@@ -376,7 +376,7 @@ def sua_dau_don(gt: dict, ids: list[str], nc) -> list[str]:
 		for k, v in doi.items():
 			so.set(k, v)
 		if "customer" in doi:  # bảng giá + giá bảng từng dòng theo nhóm của khách mới
-			bang = _bang_gia_nhom(so.customer) or GIA_CHUAN
+			bang = _bang_gia_nhom(so.customer) or bang_gia_chung()
 			so.selling_price_list = bang
 			cd = cai_dat_ban()
 			for r in so.items:

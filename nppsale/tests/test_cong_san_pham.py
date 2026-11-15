@@ -155,3 +155,46 @@ class TestCongSanPham(IntegrationTestCase):
 		finally:
 			frappe.set_user("Administrator")
 		self.assertEqual(flt(frappe.db.get_value("Item", a, "valuation_rate")), 8000)
+
+	def test_bang_gia_chung_va_nhap_theo_cai_dat(self):
+		"""Blueprint 02 §3.11: tên bảng giá chung / nhập ở NPP Cai Dat (không viết cứng "Gia chuan" / "Gia nhap"). Đổi cài đặt → giá bảng của
+		đơn, bảng cổng price_lists (nhóm NULL) / purchase_price_lists, chỗ ghi giá nhóm trống đều theo bảng mới; Selling / Buying Settings
+		trỏ theo khi chạy lại thiết lập mặc định."""
+		from nppsale.rpc.don_hang import _gia_bang
+		from nppsale.su_kien.san_pham import bang_gia_chung, bang_gia_nhap, dam_bao_bang_gia
+		from nppsale.thiet_lap.mac_dinh import dam_bao
+
+		self.assertEqual((bang_gia_chung(), bang_gia_nhap()), ("Gia chuan", "Gia nhap"))
+		self.assertEqual(frappe.db.get_single_value("NPP Cai Dat", "bang_gia_chung", cache=False), "Gia chuan")
+		a = self._sp("SPT-BG-01")
+		for bang, gia in (("Gia chuan", 10000), ("Gia nhap", 7000)):
+			frappe.get_doc({"doctype": "Item Price", "item_code": a, "price_list": bang, "uom": "Lon thử",
+				"price_list_rate": gia}).insert(ignore_permissions=True)
+		dam_bao_bang_gia("Bang gia chung thu", ban=True)
+		dam_bao_bang_gia("Bang gia nhap thu", ban=False)
+		for bang, gia in (("Bang gia chung thu", 12000), ("Bang gia nhap thu", 6500)):
+			frappe.get_doc({"doctype": "Item Price", "item_code": a, "price_list": bang, "uom": "Lon thử",
+				"price_list_rate": gia}).insert(ignore_permissions=True)
+		self.assertEqual(_gia_bang(a, "Lon thử", None), 10000)
+		frappe.db.set_single_value("NPP Cai Dat", "bang_gia_chung", "Bang gia chung thu")
+		frappe.db.set_single_value("NPP Cai Dat", "bang_gia_nhap", "Bang gia nhap thu")
+		self.assertEqual(_gia_bang(a, "Lon thử", None), 12000)
+		ban = {(r["price"], r["group_id"]) for r in doc({"bang": "price_lists", "select": "price, group_id",
+			"loc": [{"op": "eq", "cot": "product_id", "gt": a}]}, self.chu)["data"]}
+		self.assertIn((12000, None), ban)
+		self.assertNotIn(6500, {p for p, _ in ban})  # bảng giá nhập không lẫn vào bảng giá bán
+		nhap = [r["price"] for r in doc({"bang": "purchase_price_lists", "select": "price", "loc": [{"op": "eq", "cot": "product_id", "gt": a}]},
+			self.chu)["data"]]
+		self.assertEqual(nhap, [6500])
+		# ghi giá bán nhóm trống qua cổng → vào bảng giá chung đang chọn
+		b = self._sp("SPT-BG-02")
+		frappe.set_user(self.chu.user)
+		try:
+			ghi({"bang": "price_lists", "hanh_dong": "insert", "gia_tri": {"product_id": b, "unit_name": "Lon thử", "price": 9900,
+				"group_id": None}}, self.chu)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_all("Item Price", filters={"item_code": b}, pluck="price_list"), ["Bang gia chung thu"])
+		dam_bao()
+		self.assertEqual(frappe.db.get_single_value("Selling Settings", "selling_price_list", cache=False), "Bang gia chung thu")
+		self.assertEqual(frappe.db.get_single_value("Buying Settings", "buying_price_list", cache=False), "Bang gia nhap thu")

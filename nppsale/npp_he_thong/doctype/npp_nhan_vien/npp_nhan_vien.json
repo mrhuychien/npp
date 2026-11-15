@@ -26,7 +26,7 @@
   "qr_token",
   "qr_token_bam",
   "qr_cap_luc",
-  "khoa_tim"
+  "tim_kd"
  ],
  "fields": [
   {
@@ -166,14 +166,14 @@
    "permlevel": 1
   },
   {
-   "fieldname": "khoa_tim",
+   "fieldname": "tim_kd",
    "fieldtype": "Small Text",
    "label": "Khoá tìm"
   }
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-11-11 00:00:00.000000",
+ "modified": "2026-11-15 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "NPP He Thong",
  "name": "NPP Nhan Vien",

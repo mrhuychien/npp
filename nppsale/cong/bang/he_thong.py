@@ -193,7 +193,7 @@ dang_ky(Bang(
 		"price_edit_max_increase_pct": c("tran_tang_gia", "so"), "allow_discount": c("cho_giam_gia", "bool"),
 		"discount_max_type": c("kieu_tran_giam"),
 		"discount_max_value": c("CASE WHEN {t}.`co_tran_giam` = 1 THEN {t}.`tran_giam` END", "so"),
-		"left_at": c("nghi_viec_luc", "gio"), "left_by": c("nghi_viec_boi"), "tim_kd": c("khoa_tim"),
+		"left_at": c("nghi_viec_luc", "gio"), "left_by": c("nghi_viec_boi"), "tim_kd": c("tim_kd"),
 	},
 	quan_he=[QuanHe("user_suppliers", "id", "user_id", True, ("user_suppliers_user_id_fkey",))],
 	rls=rls_moi_nv,

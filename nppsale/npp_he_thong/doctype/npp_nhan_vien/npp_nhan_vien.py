@@ -33,7 +33,7 @@ class NPPNhanVien(Document):
 			if d.nha_cung_cap in thay:
 				frappe.throw(_("Công ty {0} bị chọn hai lần.").format(d.nha_cung_cap))
 			thay.add(d.nha_cung_cap)
-		self.khoa_tim = khoa_tim_ds(self.ho_ten, self.sdt)
+		self.tim_kd = khoa_tim_ds(self.ho_ten, self.sdt)
 
 	def _kiem_sdt(self):
 		if not self.sdt:

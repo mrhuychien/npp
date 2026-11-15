@@ -30,7 +30,7 @@ from nppsale.cong.ngu_canh import co_quyen, hien_tai
 from nppsale.cong.sql import LoiCong
 from nppsale.luat import gia_don as L
 from nppsale.npp_he_thong.doctype.npp_nhat_ky_don.npp_nhat_ky_don import ghi_nhat_ky_don
-from nppsale.su_kien.san_pham import GIA_CHUAN
+from nppsale.su_kien.san_pham import bang_gia_chung
 from nppsale.thiet_lap.ban_hang import cai_dat_ban, mau_thue_dong
 
 from . import rpc
@@ -97,7 +97,7 @@ def _quyen(nc) -> L.QuyenGiam:
 
 # ------------------------------------------------------------------------------------------------ giá bảng của đúng đơn vị
 def _gia_bang(hang: str, don_vi: str, bang_nhom: str | None) -> float:
-	"""_gia_bang_don_vi(sp, đơn vị, nhóm khách) — 4 bậc: (1) bảng giá của nhóm khách, đúng đơn vị; (2) Gia chuan, đúng đơn vị; (3) đơn
+	"""_gia_bang_don_vi(sp, đơn vị, nhóm khách) — 4 bậc: (1) bảng giá của nhóm khách, đúng đơn vị; (2) bảng giá chung (NPP Cai Dat), đúng đơn vị; (3) đơn
 	vị cơ sở → giá bán của mặt hàng; (4) đơn vị khác có hệ số → giá đơn vị cơ sở (lại qua 3 bậc trên) × hệ số. Trùng → giá thấp nhất;
 	0 = chưa có giá."""
 	def min_gia(bang):
@@ -109,7 +109,7 @@ def _gia_bang(hang: str, don_vi: str, bang_nhom: str | None) -> float:
 		v = min_gia(bang_nhom)
 		if v is not None:
 			return v
-	v = min_gia(GIA_CHUAN)
+	v = min_gia(bang_gia_chung())
 	if v is not None:
 		return v
 	sp = frappe.db.get_value("Item", hang, ["stock_uom", "npp_gia_ban"], as_dict=True)
@@ -308,7 +308,7 @@ def create_order_with_lines(p=None):
 	so.update({
 		"customer": khach, "company": cd.cong_ty, "order_type": "Sales", "transaction_date": nowdate(),
 		"delivery_date": _chu(o.get("expected_delivery")) or None, "skip_delivery_note": 1,
-		"selling_price_list": bang_nhom or GIA_CHUAN, "ignore_pricing_rule": 1, "set_warehouse": cd.kho_ban,
+		"selling_price_list": bang_nhom or bang_gia_chung(), "ignore_pricing_rule": 1, "set_warehouse": cd.kho_ban,
 		"payment_terms_template": dieu_khoan, "disable_rounded_total": 1, "taxes_and_charges": cd.mau_thue_ban,
 		"npp_trang_thai": trang_thai, "npp_nhan_vien": nguoi_dung_ten, "npp_client_request_id": crid, "npp_lan_sua": 0,
 		"npp_ly_do_canh_bao": _chu(o.get("approval_reason")) or None, "npp_ghi_chu": _chu(o.get("notes")) or None,

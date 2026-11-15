@@ -10,8 +10,24 @@ import frappe
 from nppsale.luat.tim import khoa_tim_ds
 from nppsale.npp_he_thong.doctype.npp_phien_danh_muc.npp_phien_danh_muc import tang_phien_danh_muc
 
-GIA_CHUAN = "Gia chuan"
-GIA_NHAP = "Gia nhap"
+GIA_CHUAN = "Gia chuan"  # tên mặc định lúc lập — tên đang dùng ở NPP Cai Dat.bang_gia_chung
+GIA_NHAP = "Gia nhap"  # — NPP Cai Dat.bang_gia_nhap
+
+# Tên bảng giá trong câu SQL (đọc cài đặt lúc chạy câu — đổi cài đặt không cần nạp lại sổ đăng ký cổng)
+BANG_GIA_CHUNG_SQL = ("COALESCE((SELECT s.`value` FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'bang_gia_chung'), "
+	f"'{GIA_CHUAN}')")
+BANG_GIA_NHAP_SQL = ("COALESCE((SELECT s.`value` FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'bang_gia_nhap'), "
+	f"'{GIA_NHAP}')")
+
+
+def bang_gia_chung() -> str:
+	"""Bảng giá bán chung (nppsale: price_lists có group_id NULL) — NPP Cai Dat.bang_gia_chung, trống thì "Gia chuan"."""
+	return frappe.db.get_single_value("NPP Cai Dat", "bang_gia_chung", cache=False) or GIA_CHUAN
+
+
+def bang_gia_nhap() -> str:
+	"""Bảng giá nhập (nppsale: purchase_price_lists) — NPP Cai Dat.bang_gia_nhap, trống thì "Gia nhap"."""
+	return frappe.db.get_single_value("NPP Cai Dat", "bang_gia_nhap", cache=False) or GIA_NHAP
 
 
 def validate_item(doc, method=None):

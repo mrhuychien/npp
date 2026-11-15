@@ -36,7 +36,9 @@
   "cb_so_sach",
   "mau_thue_ban",
   "mau_thue_mua",
-  "tk_giam_gia_don"
+  "tk_giam_gia_don",
+  "bang_gia_chung",
+  "bang_gia_nhap"
  ],
  "fields": [
   {
@@ -231,12 +233,26 @@
    "label": "TK giảm giá cả đơn",
    "options": "Account",
    "description": "additional_discount_account của HĐ (giảm sau thuế, không hạ nền thuế)"
+  },
+  {
+   "fieldname": "bang_gia_chung",
+   "fieldtype": "Link",
+   "label": "Bảng giá chung",
+   "options": "Price List",
+   "description": "Bảng giá bán của khách không thuộc nhóm có bảng giá riêng (nppsale: price_lists nhóm trống). Selling Settings trỏ theo."
+  },
+  {
+   "fieldname": "bang_gia_nhap",
+   "fieldtype": "Link",
+   "label": "Bảng giá nhập",
+   "options": "Price List",
+   "description": "Giá nhập gần nhất theo mặt hàng (nppsale: purchase_price_lists). Buying Settings trỏ theo."
   }
  ],
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-11 16:00:00.000000",
+ "modified": "2026-11-15 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "NPP He Thong",
  "name": "NPP Cai Dat",
