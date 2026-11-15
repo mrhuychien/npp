@@ -25,7 +25,9 @@ def _dat_ten_chung_tu():
 		ss.save(ignore_permissions=True)
 	# (DocType, lựa chọn naming_series, mặc định) — HĐ bán HD-, tờ ghi có của phiếu trả HDT-, tờ nợ đầu kỳ DK- (blueprint 02 §2.4 / §5.6)
 	for dt, chon, mac in (("Customer", "KH-.#####", "KH-.#####"), ("Supplier", "NCC-.####", "NCC-.####"),
-			("Sales Order", "DH-.####", "DH-.####"), ("Sales Invoice", "HD-.####\nHDT-.####\nDK-.####", "HD-.####")):
+			("Sales Order", "DH-.####", "DH-.####"), ("Sales Invoice", "HD-.####\nHDT-.####\nDK-.####", "HD-.####"),
+			# phiếu kho (blueprint 02 §5.11): nhập IN-…, xuất lẻ XKL-, chuyển CKL-, điều chỉnh kiểm kê DCK-, nhập lại hàng trả NL-
+			("Stock Entry", "IN-.YYYY.MM.DD.-.####\nXKL-.####\nCKL-.####\nDCK-.####\nNL-.####", "IN-.YYYY.MM.DD.-.####")):
 		for prop, gt in (("options", chon), ("default", mac)):
 			if frappe.db.get_value("Property Setter", {"doc_type": dt, "field_name": "naming_series", "property": prop}, "value") != gt:
 				make_property_setter(dt, "naming_series", prop, gt, "Text", validate_fields_for_doctype=False)

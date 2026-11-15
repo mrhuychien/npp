@@ -92,3 +92,56 @@ class TestPhieuTraCong(IntegrationTestCase):
 			"select": "id"})
 		self.assertEqual(xoa["data"], [{"id": pt["id"]}])
 		self.assertFalse(frappe.db.exists("NPP Phieu Tra", pt["id"]))
+
+	def _goi(self, nguoi: str, ten: str, ts: dict) -> dict:
+		from nppsale.cong import api
+
+		frappe.set_user(self.ma["u:" + nguoi])
+		frappe.local._npp_ngu_canh = None
+		try:
+			return api.rpc(ten=ten, tham_so=ts)
+		finally:
+			frappe.set_user("Administrator")
+			frappe.local._npp_ngu_canh = None
+
+	def _ton(self, lo: str) -> float:
+		ds = doc({"bang": "batches", "select": "batch_code, warehouse_zone, qty_on_hand", "loc": [{"op": "eq", "cot": "batch_code", "gt": lo}]},
+			self._nc("owner"))["data"]
+		return sum(flt(x["qty_on_hand"]) for x in ds if x["warehouse_zone"] == "sale")
+
+	def test_tu_lap_doc_lap_hoan_thanh_va_huy(self):
+		k = self.ma["C1"]
+		ton_l2 = self._ton("L2-MOI-HAN-SOM")
+		ket = self._goi("owner", "save_pos_return", {"p": {"customer_id": k, "reason": "damaged", "zone": "sale", "lines": [
+			{"product_id": self.ma["P1"], "unit_name": "Lon", "quantity": 2, "unit_price": 9500, "vat_rate": 0.08},
+			{"product_id": self.ma["P2"], "unit_name": "Chai", "quantity": 1, "unit_price": 0, "vat_rate": 0, "is_exchange": True}]}})
+		self.assertNotIn("error", ket, ket)
+		pt = ket["data"]
+		r = frappe.get_doc("NPP Phieu Tra", pt)
+		self.assertEqual((r.trang_thai, flt(r.tien_tra), r.nhan_vien), ("draft", 20520, self.ma["u:owner"]))
+		ket = self._goi("owner", "complete_return", {"p_return_id": pt, "p_zone": "sale"})
+		self.assertNotIn("error", ket, ket)
+		r.reload()
+		self.assertEqual(r.trang_thai, "completed")
+		self.assertTrue(r.to_ghi_co and r.to_ghi_co.startswith("HDT-"), r.to_ghi_co)
+		self.assertEqual(ket["data"], [{"entry_id": r.to_ghi_co}])
+		cn = frappe.get_doc("Sales Invoice", r.to_ghi_co)
+		self.assertEqual((cn.is_return, cn.update_stock, cn.docstatus), (1, 1, 1))
+		self.assertEqual(flt(cn.grand_total), -20520)
+		self.assertEqual(self._ton("L2-MOI-HAN-SOM"), ton_l2 + 2)  # lô mới nhất của P1 ở kho bán
+		no = doc({"bang": "receivables", "select": "amount, paid, status, return_id, invoice_id",
+			"loc": [{"op": "eq", "cot": "return_id", "gt": pt}]}, self._nc("owner"))["data"]
+		self.assertEqual(no, [{"amount": -20520, "paid": 0, "status": "open", "return_id": pt, "invoice_id": None}])
+		self.assertIsNotNone(r.ghi_co_luc)
+		self.assertEqual(str(r.ngay_tru_doanh_so), str(frappe.utils.getdate(r.ghi_co_luc)))
+		# huỷ: đảo kho, bỏ dòng nợ âm, phiếu Đã huỷ
+		ket = self._goi("owner", "cancel_return", {"p_return_id": pt, "p_reason": "Nhap nham"})
+		self.assertNotIn("error", ket, ket)
+		r.reload()
+		self.assertEqual((r.trang_thai, r.ly_do_huy, r.to_ghi_co, r.ghi_co_luc, r.ngay_tru_doanh_so), ("cancelled", "Nhap nham", None, None, None))
+		self.assertEqual(frappe.db.get_value("Sales Invoice", cn.name, "docstatus"), 2)
+		self.assertEqual(self._ton("L2-MOI-HAN-SOM"), ton_l2)
+		self.assertEqual(doc({"bang": "receivables", "select": "id", "loc": [{"op": "eq", "cot": "return_id", "gt": pt}]},
+			self._nc("owner"))["data"], [])
+		ket = self._goi("owner", "cancel_return", {"p_return_id": pt, "p_reason": "x"})
+		self.assertEqual(ket["error"]["message"], "RETURN_NOT_CANCELLABLE: phiếu ở trạng thái cancelled không huỷ được")

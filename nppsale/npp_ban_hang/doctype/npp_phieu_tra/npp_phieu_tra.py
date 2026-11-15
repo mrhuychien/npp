@@ -42,7 +42,7 @@ class NPPPhieuTra(Document):
 
 		# "UPDATE OF …" xét theo lệnh ghi lúc vào — các bước dưới đổi giá trị không làm trigger sau chạy thêm
 		da_cham = {f: cham(f) for f in ("trang_thai", "hoa_don", "khach_hang", "don_hang", "nhan_vien", "ngay_tra")}
-		self._chuan_dong(cu)
+		# ĐẦU phiếu trước (Postgres chèn / sửa dòng returns rồi mới tới return_lines): khách–HĐ, gắn HĐ, người, mốc, guard
 		if self.ly_do and self.ly_do not in LT.LY_DO:
 			_check("returns", "returns_reason_check")
 		self._dung_khach_hoa_don(da_cham)
@@ -56,6 +56,8 @@ class NPPPhieuTra(Document):
 				doi_ngay=bool(cu) and str(cu.get("ngay_tra") or "") != str(self.ngay_tra or ""), bay_gio=now_datetime(), hom_nay=getdate(nowdate()))
 		if da_cham["nhan_vien"]:
 			self._chot_nguoi()
+		# DÒNG sau (đơn vị → trần giá theo HĐ vừa gắn → khoá ghi thẳng; tiền trả)
+		self._chuan_dong(cu)
 		self.ngay_tru_doanh_so = LT.ngay_tru_doanh_so(tu_sinh=bool(self.tu_sinh), trang_thai=self.trang_thai,
 			ngay_hd_ghi_so=self._ngay_hd_ghi_so(), ngay_ghi_co=getdate(self.ghi_co_luc) if self.ghi_co_luc else None,
 			ngay_tra=getdate(self.ngay_tra) if self.ngay_tra else None, ngay_tao=getdate(self.creation) if self.creation else getdate(nowdate()))

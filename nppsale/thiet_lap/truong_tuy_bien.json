@@ -718,5 +718,55 @@
    "read_only": 1,
    "search_index": 0
   }
+ ],
+ "Stock Entry": [
+  {
+   "fieldname": "npp_loai",
+   "fieldtype": "Select",
+   "insert_after": "stock_entry_type",
+   "label": "Loại phiếu NPP",
+   "options": "\nnhap_kho\nton_dau_ky\nxuat_le\nchuyen_kho\nchuyen_date_tu_dong\ndieu_chinh_kiem_ke\nnhap_lai_tra",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_ly_do_xuat",
+   "fieldtype": "Data",
+   "insert_after": "npp_loai",
+   "label": "Lý do xuất"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ghi_chu",
+   "fieldtype": "Small Text",
+   "insert_after": "remarks",
+   "label": "Ghi chú",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "npp_kiem_ke",
+   "fieldtype": "Link",
+   "insert_after": "npp_ly_do_xuat",
+   "label": "Phiếu kiểm kê",
+   "options": "NPP Kiem Ke",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_phieu_tra",
+   "fieldtype": "Link",
+   "insert_after": "npp_kiem_ke",
+   "label": "Phiếu trả",
+   "options": "NPP Phieu Tra",
+   "search_index": 1
+  },
+  {
+   "fieldname": "npp_tim_kd",
+   "fieldtype": "Data",
+   "insert_after": "npp_phieu_tra",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  }
  ]
 }

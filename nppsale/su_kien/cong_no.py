@@ -100,15 +100,45 @@ def dat_nguoi_giu(dong: str, nv: str | None, ve_npp_luc, giao=_GIU_DAU) -> None:
 		gt[truong[2]] = giao
 	frappe.db.set_value(dt, ten, gt, update_modified=False)
 	if dt == "Sales Invoice":
-		chieu_nguon_cua(frappe.db.get_value("Sales Invoice", ten, ["name", "is_return", "npp_hoa_don_goc"], as_dict=True))
+		chieu_nguon_cua(frappe.db.get_value("Sales Invoice", ten, ["name", "is_return", "npp_hoa_don_goc", "npp_phieu_tra"], as_dict=True))
+
+
+def chieu_phieu_tra(pt: str) -> str | None:
+	"""Dòng công nợ ÂM (dư có) của phiếu trả TỰ LẬP độc lập — không HĐ, không đơn (`_cong_no_phieu_tra`, mig 191; blueprint §3.5.5):
+	một phiếu một dòng, khoá `NPP Phieu Tra:<PT>` (giữ qua mỗi lần lập lại tờ ghi có). Có khi phiếu Hoàn thành và tờ ghi có đang ghi sổ;
+	mất điều kiện → xoá dòng (bản chiếu thuần — nppsale để lại dòng amount 0, ⚠ Q6 của đặc tả)."""
+	khoa = f"NPP Phieu Tra:{pt}"
+	r = frappe.db.get_value("NPP Phieu Tra", pt, ["name", "trang_thai", "tu_sinh", "to_ghi_co", "hoa_don", "don_hang"], as_dict=True) \
+		if frappe.db.exists("DocType", "NPP Phieu Tra") else None
+	to = None
+	if r and not r.tu_sinh and r.trang_thai == "completed" and not r.hoa_don and not r.don_hang and r.to_ghi_co:
+		to = frappe.db.get_value("Sales Invoice", r.to_ghi_co, ["name", "docstatus", "customer", "customer_name", "grand_total", "posting_date",
+			"creation", "npp_nv_giu_no", "npp_giao_tu_nv", "npp_ve_npp_luc"], as_dict=True)
+	if not to or to.docstatus != 1:
+		frappe.db.delete(DT, {"khoa_nguon": khoa})
+		return None
+	nhom = frappe.get_all("Sales Invoice", filters={"npp_phieu_tra": pt, "is_return": 1}, pluck="name")
+	so_tien = flt(to.grand_total)
+	con_no = _con_no(nhom)
+	da_thu = so_tien - con_no
+	return _ghi(khoa, {
+		"loai": "phieu_tra", "khach_hang": to.customer, "ten_khach": to.customer_name, "hoa_don": None, "phieu_tra": pt, "don_hang": None,
+		"nhan_vien": to.npp_nv_giu_no, "giao_tu_nv": to.npp_giao_tu_nv, "ve_npp_luc": to.npp_ve_npp_luc,
+		"so_tien": so_tien, "da_thu": da_thu, "con_no": con_no, "han_thanh_toan": to.posting_date,
+		"trang_thai": trang_thai(so_tien, da_thu, False), "qua_han_tay": 0, "ghi_chu": "Dư có từ phiếu trả hàng", "tao_luc": to.creation,
+		"tinh_luc": now_datetime(),
+	})
 
 
 def chieu_nguon_cua(si) -> None:
-	"""Mọi dòng công nợ chịu ảnh hưởng của một Sales Invoice (HĐ: chính nó; tờ ghi có: HĐ gắn)."""
+	"""Mọi dòng công nợ chịu ảnh hưởng của một Sales Invoice (HĐ: chính nó; tờ ghi có gắn HĐ: HĐ gắn; tờ ghi có độc lập của phiếu trả tự
+	lập: dòng âm của phiếu)."""
 	if si.get("is_return"):
 		goc = si.get("npp_hoa_don_goc")
 		if goc:
 			chieu_hoa_don(goc)
+		elif si.get("npp_phieu_tra"):
+			chieu_phieu_tra(si.get("npp_phieu_tra"))
 		return
 	chieu_hoa_don(si.name)
 
@@ -122,6 +152,6 @@ def sau_thanh_toan(doc, method=None):
 	"""Payment Entry ghi sổ / huỷ: chiếu lại mọi HĐ được phân bổ."""
 	for r in doc.get("references") or []:
 		if r.reference_doctype == "Sales Invoice" and r.reference_name:
-			si = frappe.db.get_value("Sales Invoice", r.reference_name, ["name", "is_return", "npp_hoa_don_goc"], as_dict=True)
+			si = frappe.db.get_value("Sales Invoice", r.reference_name, ["name", "is_return", "npp_hoa_don_goc", "npp_phieu_tra"], as_dict=True)
 			if si:
 				chieu_nguon_cua(si)
