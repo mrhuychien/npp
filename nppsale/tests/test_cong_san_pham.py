@@ -50,6 +50,14 @@ class TestCongSanPham(IntegrationTestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_ten_dai_khoa_tim_qua_140(self):
+		"""Khoá tìm = SKU + tên + mã vạch, mỗi từ thêm bản viết liền — dài gấp đôi tên; Data 140 ký tự làm lõi từ chối lưu mặt hàng tên dài."""
+		ten = "Nước tăng lực Red Bull Thái Lan lon 250ml thùng 24 lon chính hãng nhập khẩu"
+		a = self._sp("SPT-DAI-01", name=ten, barcode="8936000000001")
+		khoa = frappe.db.get_value("Item", a, "npp_tim_kd")
+		self.assertGreater(len(khoa), 140)
+		self.assertIn("8936000000001", khoa)
+
 	def test_tao_doc_don_vi_gia_va_pham_vi_nvbh(self):
 		phien = doc_phien()["phien"]
 		a = self._sp("SPT-A01", self.ncc_a, barcode="8939999000017")
@@ -69,8 +77,21 @@ class TestCongSanPham(IntegrationTestCase):
 			"loc": [{"op": "eq", "cot": "id", "gt": a}]}, self.nv)["data"][0]
 		self.assertEqual(sp["units"], [{"unit_name": "Thùng thử", "conversion": 24}])
 		self.assertEqual(sp["price_lists"], [{"unit_name": "Thùng thử", "price": 230000, "group_id": None}])
-		with self.assertRaises(LoiCong):
+		# form Sửa sản phẩm luôn gửi lại `sku`: trùng giá trị → bỏ qua, các trường khác vẫn lưu
+		ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": "SPT-A01", "name": "Hàng A sửa tên"},
+			"loc": [{"op": "eq", "cot": "id", "gt": a}]}, self.chu)
+		self.assertEqual(frappe.db.get_value("Item", a, "item_name"), "Hàng A sửa tên")
+		# đã có chứng từ (lô) → SKU khoá (câu 18)
+		frappe.get_doc({"doctype": "Batch", "batch_id": "SPT-A01-L1", "item": a}).insert(ignore_permissions=True)
+		with self.assertRaises(LoiCong) as loi:
 			ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": "DOI"}, "loc": [{"op": "eq", "cot": "id", "gt": a}]}, self.chu)
+		self.assertIn("SKU_KHOA", str(loi.exception))
+		# chưa có chứng từ → đổi SKU = đổi tên bản ghi; trùng SKU khác → 23505
+		with self.assertRaises(LoiCong):
+			ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": "SPT-B01"}, "loc": [{"op": "eq", "cot": "id", "gt": k}]}, self.chu)
+		ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": "SPT-K02"}, "loc": [{"op": "eq", "cot": "id", "gt": k}]}, self.chu)
+		self.assertFalse(frappe.db.exists("Item", k))
+		self.assertEqual(frappe.db.get_value("Item", "SPT-K02", "item_code"), "SPT-K02")
 		self.assertEqual(ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"status": "inactive"},
 			"loc": [{"op": "eq", "cot": "id", "gt": a}], "select": "id"}, self.nv)["data"], [])  # NVBH không sửa hàng
 		ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"status": "inactive"}, "loc": [{"op": "eq", "cot": "id", "gt": a}]}, self.chu)

@@ -50,6 +50,15 @@ _ANH_XA_SP = {
 _BO_QUA = set(CHI_DOC) | {"allow_price_edit", "price_edit_max_type", "price_edit_max", "category"}
 
 
+# Chứng từ chạm mặt hàng (câu 18 — có rồi thì SKU bất biến): đơn / HĐ / phiếu nhập / đơn mua / phiếu kho / sổ kho / lô
+_CHUNG_TU_HANG = (("Sales Order Item", "item_code"), ("Sales Invoice Item", "item_code"), ("Purchase Invoice Item", "item_code"),
+	("Purchase Order Item", "item_code"), ("Stock Entry Detail", "item_code"), ("Stock Ledger Entry", "item_code"), ("Batch", "item"))
+
+
+def co_chung_tu_hang(hang: str) -> bool:
+	return any(frappe.db.exists(dt, {truong: hang}) for dt, truong in _CHUNG_TU_HANG)
+
+
 class GhiSanPham:
 	"""Thêm / sửa / xoá Item theo cột nppsale. Mã vạch = dòng đầu Item Barcode; NCC chính = Item Default của công ty; ảnh = `image`."""
 
@@ -109,17 +118,32 @@ class GhiSanPham:
 		return ra
 
 	def sua(self, gia_tri, ids, nc):
+		"""Sửa mặt hàng. `sku` (= `name` = item_code): form Sửa sản phẩm luôn gửi lại — trùng giá trị thì bỏ qua; đổi thật = đổi tên bản ghi
+		(câu 18), chỉ khi mặt hàng CHƯA có chứng từ (có rồi → tạo mặt hàng mới + ngừng bán mặt hàng cũ)."""
 		if nc.vai not in VAI_SUA_HANG and not nc.bo_qua_rls:
 			return []
-		if "sku" in gia_tri:
-			raise LoiCong("P0001", "SKU không đổi được (mã mặt hàng là khoá chứng từ).")
+		sku_moi = str(gia_tri["sku"] or "").strip() if "sku" in gia_tri else None
+		g = {k: v for k, v in gia_tri.items() if k != "sku"}
 		ra = []
 		for ten in ids:
+			if sku_moi is not None and sku_moi != frappe.db.get_value("Item", ten, "item_code"):
+				ten = self._doi_sku(ten, sku_moi, len(ids))
 			doc = frappe.get_doc("Item", ten)
-			self._gan(doc, gia_tri)
+			self._gan(doc, g)
 			doc.save(ignore_permissions=True)
 			ra.append(ten)
 		return ra
+
+	@staticmethod
+	def _doi_sku(ten: str, moi: str, so_dong: int) -> str:
+		if not moi:
+			raise LoiCong("23502", 'null value in column "sku" of relation "products" violates not-null constraint')
+		if so_dong > 1 or frappe.db.exists("Item", moi):
+			raise LoiCong("23505", 'duplicate key value violates unique constraint "products_org_id_sku_key"', http=409)
+		if co_chung_tu_hang(ten):
+			raise LoiCong("P0001", "SKU_KHOA: mặt hàng đã có chứng từ — không đổi SKU được. Tạo mặt hàng mới rồi ngừng bán mặt hàng cũ.")
+		frappe.rename_doc("Item", ten, moi, force=True, show_alert=False, rebuild_search=False)  # không xếp việc nền dựng chỉ mục
+		return moi
 
 	def xoa(self, ids, nc):
 		if nc.vai not in VAI_SUA_HANG and not nc.bo_qua_rls:

@@ -270,11 +270,11 @@
   },
   {
    "fieldname": "npp_tim_kd",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "insert_after": "item_name",
    "label": "Khoá tìm",
    "read_only": 1,
-   "search_index": 1
+   "search_index": 0
   }
  ],
  "Sales Invoice": [
@@ -704,11 +704,11 @@
   },
   {
    "fieldname": "npp_tim_kd",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "insert_after": "npp_ghi_chu",
    "label": "Khoá tìm",
    "read_only": 1,
-   "search_index": 1
+   "search_index": 0
   }
  ]
 }

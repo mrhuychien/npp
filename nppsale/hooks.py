@@ -196,6 +196,7 @@ doc_events = {
 	},
 	# Công nợ = bản chiếu từ sổ (blueprint 02 §4.3.0): chứng từ nguồn ghi sổ / huỷ / đổi trường AOS → chiếu lại dòng NPP Cong No
 	"Sales Invoice": {
+		"validate": "nppsale.su_kien.hoa_don.validate",
 		"on_submit": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",
 		"on_cancel": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",
 		"on_update_after_submit": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",

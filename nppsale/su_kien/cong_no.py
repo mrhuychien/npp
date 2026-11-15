@@ -54,7 +54,7 @@ def _ghi(khoa: str, gia_tri: dict) -> str:
 
 def chieu_hoa_don(ten: str) -> str | None:
 	"""Chiếu dòng công nợ của một HĐ bán / tờ nợ đầu kỳ (không phải tờ ghi có). Trả tên dòng (receivable_id) hoặc None."""
-	si = frappe.db.get_value("Sales Invoice", ten, ["name", "docstatus", "is_return", "customer", "grand_total", "creation", "due_date",
+	si = frappe.db.get_value("Sales Invoice", ten, ["name", "docstatus", "is_return", "customer", "customer_name", "grand_total", "creation", "due_date",
 		"npp_don_hang", "npp_nv_giu_no", "npp_giao_tu_nv", "npp_ve_npp_luc", "npp_han_thanh_toan", "npp_qua_han_tay", "npp_ghi_chu"],
 		as_dict=True)
 	if not si or si.is_return:
@@ -70,7 +70,8 @@ def chieu_hoa_don(ten: str) -> str | None:
 	da_thu = so_tien - con_no
 	dau_ky = ten.startswith("DK-")
 	return _ghi(khoa, {
-		"loai": "dau_ky" if dau_ky else "hoa_don", "khach_hang": si.customer, "hoa_don": ten, "don_hang": si.npp_don_hang,
+		"loai": "dau_ky" if dau_ky else "hoa_don", "khach_hang": si.customer, "ten_khach": si.customer_name, "hoa_don": ten,
+		"don_hang": si.npp_don_hang,
 		"nhan_vien": si.npp_nv_giu_no, "giao_tu_nv": si.npp_giao_tu_nv, "ve_npp_luc": si.npp_ve_npp_luc,
 		"so_tien": so_tien, "da_thu": da_thu, "con_no": con_no, "han_thanh_toan": si.npp_han_thanh_toan or si.due_date,
 		"trang_thai": trang_thai(so_tien, da_thu, bool(si.npp_qua_han_tay)), "qua_han_tay": 1 if si.npp_qua_han_tay else 0,

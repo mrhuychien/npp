@@ -291,6 +291,18 @@ class TestXuatHang(IntegrationTestCase):
 		p = {**ngay_tuong_doi(xuat["p"]), "order_id": don, "lines": self._dong_xuat(don, xuat["dong"])}
 		return don, self._goi(xuat["nguoi"], "post_invoice", {"p": p})["data"][0]["invoice_id"]
 
+	def test_khoa_tim_hoa_don_va_ten_khach_cong_no(self):
+		"""Khoá tìm HĐ = khoa_tim_ds(mã HĐ) (mig 249 — ô tìm số HĐ của danh sách lọc cột này); dòng công nợ mang tên khách (Title Field)."""
+		from nppsale.luat.tim import khoa_tim_ds
+
+		_don, hd = self._don_da_xuat()
+		self.assertEqual(frappe.db.get_value("Sales Invoice", hd, "npp_tim_kd"), khoa_tim_ds(hd))
+		self.assertIn("hd0001", frappe.db.get_value("Sales Invoice", hd, "npp_tim_kd") or "")
+		ds = doc({"bang": "sales_invoices", "select": "id", "loc": [{"op": "ilike", "cot": "tim_kd", "gt": "%hd0001%"}]}, ADMIN)["data"]
+		self.assertIn(hd, [x["id"] for x in ds])
+		self.assertEqual(frappe.db.get_value("NPP Cong No", {"hoa_don": hd}, "ten_khach"),
+			frappe.db.get_value("Sales Invoice", hd, "customer_name"))
+
 	def test_cua_chan_xuat_sua_huy(self):
 		"""Các cửa chặn ngoài bộ vàng: post_invoice không nhận `reissue_of` (lệch có chủ ý — Sửa HĐ chỉ qua reissue_invoice); phần Sửa HĐ
 		chưa dựng (hàng trả kèm, chuyển tiền thu) báo rõ và tờ cũ còn nguyên; HĐ đã thu tiền thì huỷ bị khoá (đúng nppsale)."""
