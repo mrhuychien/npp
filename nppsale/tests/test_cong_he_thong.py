@@ -108,3 +108,28 @@ class TestCongHeThong(IntegrationTestCase):
 		# approval_rules: NVBH đọc ra rỗng (evaluateApproval dùng mặc định)
 		self.assertEqual(doc({"bang": "approval_rules", "select": "id"}, self.nv)["data"], [])
 		self.assertEqual(len(doc({"bang": "approval_rules", "select": "auto_approve_max"}, self.ql)["data"]), 1)
+
+
+class TestUserOrgRole(IntegrationTestCase):
+	"""user_org_id() / user_role() (trang /debug của nppsale gọi): NV đang hoạt động → mã đơn vị + vai; bị khoá / không phải NV → null."""
+
+	def _goi(self, user, ten):
+		from nppsale.cong import api
+
+		frappe.set_user(user)
+		frappe.local._npp_ngu_canh = None
+		try:
+			return api.rpc(ten=ten, tham_so={})
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_nv_hoat_dong_va_bi_khoa(self):
+		nv = _nv("0912000311", "warehouse", "Thu kho").user
+		org = frappe.db.get_single_value("NPP Cai Dat", "org_id")
+		self.assertTrue(org)
+		self.assertEqual(self._goi(nv, "user_org_id")["data"], org)
+		self.assertEqual(self._goi(nv, "user_role")["data"], "warehouse")
+		frappe.db.set_value("NPP Nhan Vien", nv, "dang_hoat_dong", 0)
+		self.assertIsNone(self._goi(nv, "user_org_id")["data"])
+		self.assertIsNone(self._goi(nv, "user_role")["data"])
+		self.assertIsNone(self._goi("Administrator", "user_role")["data"])
