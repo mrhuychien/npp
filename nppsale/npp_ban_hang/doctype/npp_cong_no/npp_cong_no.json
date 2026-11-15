@@ -13,6 +13,7 @@
   "phieu_thu",
   "don_hang",
   "khoa_nguon",
+  "khoa_cho",
   "nhan_vien",
   "giao_tu_nv",
   "ve_npp_luc",
@@ -94,6 +95,13 @@
    "label": "Khoá nguồn",
    "read_only": 1,
    "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "khoa_cho",
+   "fieldtype": "Data",
+   "label": "Khoá một dòng đầu kỳ",
+   "read_only": 1,
    "unique": 1
   },
   {

@@ -1,0 +1,239 @@
+{
+ "actions": [],
+ "autoname": "PTH-.YY.MM.DD.-.####",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "khach_hang",
+  "ten_khach",
+  "ngay_thu",
+  "hinh_thuc",
+  "trang_thai",
+  "nguon",
+  "nguon_id",
+  "tong_chon",
+  "dung_du_co",
+  "tien_thu",
+  "nguoi_thu",
+  "nhan_boi",
+  "nhan_luc",
+  "huy_luc",
+  "huy_boi",
+  "ly_do_huy",
+  "client_key",
+  "ghi_chu",
+  "but_toan_tien",
+  "but_toan_can_tru",
+  "nv_giu_tien_thua",
+  "giao_tu_nv",
+  "ve_npp_luc",
+  "tim_kd",
+  "dong"
+ ],
+ "fields": [
+  {
+   "fieldname": "khach_hang",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Khách hàng",
+   "options": "Customer",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ten_khach",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tên khách",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ngay_thu",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ngày thu",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "hinh_thuc",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Hình thức",
+   "options": "cash\ntransfer\newallet",
+   "reqd": 1
+  },
+  {
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái",
+   "options": "pending\nreceived\nvoided",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "nguon",
+   "fieldtype": "Select",
+   "label": "Nguồn",
+   "options": "standalone\nmanual\ndelivery_settle",
+   "read_only": 1
+  },
+  {
+   "fieldname": "nguon_id",
+   "fieldtype": "Data",
+   "label": "Mã nguồn cũ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tong_chon",
+   "fieldtype": "Currency",
+   "label": "Tổng các khoản đã chọn",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dung_du_co",
+   "fieldtype": "Currency",
+   "label": "Dùng dư có",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tien_thu",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Tiền thu",
+   "read_only": 1
+  },
+  {
+   "fieldname": "nguoi_thu",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Người thu",
+   "options": "NPP Nhan Vien",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "nhan_boi",
+   "fieldtype": "Link",
+   "label": "Người nhận",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "fieldname": "nhan_luc",
+   "fieldtype": "Datetime",
+   "label": "Nhận lúc"
+  },
+  {
+   "fieldname": "huy_luc",
+   "fieldtype": "Datetime",
+   "label": "Huỷ lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "huy_boi",
+   "fieldtype": "Link",
+   "label": "Người huỷ",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ly_do_huy",
+   "fieldtype": "Small Text",
+   "label": "Lý do huỷ"
+  },
+  {
+   "fieldname": "client_key",
+   "fieldtype": "Data",
+   "label": "Mã chống gửi trùng",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "but_toan_tien",
+   "fieldtype": "Link",
+   "label": "Bút toán thu tiền",
+   "options": "Payment Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "but_toan_can_tru",
+   "fieldtype": "Link",
+   "label": "Bút toán cấn trừ",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "nv_giu_tien_thua",
+   "fieldtype": "Link",
+   "label": "NV giữ tiền thừa",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "fieldname": "giao_tu_nv",
+   "fieldtype": "Link",
+   "label": "Tiền thừa giao từ NV",
+   "options": "NPP Nhan Vien",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ve_npp_luc",
+   "fieldtype": "Datetime",
+   "label": "Tiền thừa về NPP lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tim_kd",
+   "fieldtype": "Small Text",
+   "label": "Khoá tìm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dong",
+   "fieldtype": "Table",
+   "label": "Dòng phân bổ",
+   "options": "NPP Phieu Thu Dong"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Tien",
+ "name": "NPP Phieu Thu",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "khach_hang,nguoi_thu",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "ten_khach",
+ "track_changes": 1
+}

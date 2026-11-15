@@ -30,15 +30,31 @@
   "sb_lam_tron",
   "luat_sl_le",
   "luat_vat_hddt",
-  "sb_so_sach",
+  "sb_kho_gia",
   "kho_ban",
   "kho_can_date",
-  "cb_so_sach",
+  "bang_gia_chung",
+  "bang_gia_nhap",
   "mau_thue_ban",
   "mau_thue_mua",
+  "sb_hinh_thuc",
+  "ht_tien_mat",
+  "ht_chuyen_khoan",
+  "ht_vi",
+  "sb_tai_khoan",
   "tk_giam_gia_don",
-  "bang_gia_chung",
-  "bang_gia_nhap"
+  "tk_thue_dau_vao",
+  "tk_giam_dau_phieu_nhap",
+  "tk_trung_gian_sua_gia_nhap",
+  "tk_no_ncc_lap_tay",
+  "tk_tam_dau_ky",
+  "tk_xuat_le",
+  "tk_nhap_kho_khong_hd",
+  "tk_thua_kiem_ke",
+  "tk_chi_phi_phai_tra",
+  "tk_chi_phi_mac_dinh",
+  "sb_chuyen_doi",
+  "ngay_cat_chuyen"
  ],
  "fields": [
   {
@@ -192,34 +208,39 @@
    "options": "c\ne"
   },
   {
-   "fieldname": "sb_so_sach",
+   "fieldname": "sb_kho_gia",
    "fieldtype": "Section Break",
-   "label": "Sổ sách bán hàng (blueprint 02 §3.6)"
+   "label": "Kho, bảng giá, thuế"
   },
   {
    "fieldname": "kho_ban",
    "fieldtype": "Link",
    "label": "Kho bán",
-   "options": "Warehouse",
-   "description": "Vùng sale của nppsale — Xuất hàng, đơn, tồn POS"
+   "options": "Warehouse"
   },
   {
    "fieldname": "kho_can_date",
    "fieldtype": "Link",
    "label": "Kho cận date",
-   "options": "Warehouse",
-   "description": "Vùng date — hàng cận hạn / hàng trả"
+   "options": "Warehouse"
   },
   {
-   "fieldname": "cb_so_sach",
-   "fieldtype": "Column Break"
+   "fieldname": "bang_gia_chung",
+   "fieldtype": "Link",
+   "label": "Bảng giá chung",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "bang_gia_nhap",
+   "fieldtype": "Link",
+   "label": "Bảng giá nhập",
+   "options": "Price List"
   },
   {
    "fieldname": "mau_thue_ban",
    "fieldtype": "Link",
    "label": "Mẫu thuế bán",
-   "options": "Sales Taxes and Charges Template",
-   "description": "\"VAT theo mặt hàng\": một dòng On Net Total 0%, thuế thật theo Item Tax Template của từng dòng"
+   "options": "Sales Taxes and Charges Template"
   },
   {
    "fieldname": "mau_thue_mua",
@@ -228,31 +249,114 @@
    "options": "Purchase Taxes and Charges Template"
   },
   {
+   "fieldname": "sb_hinh_thuc",
+   "fieldtype": "Section Break",
+   "label": "Hình thức thanh toán"
+  },
+  {
+   "fieldname": "ht_tien_mat",
+   "fieldtype": "Link",
+   "label": "Tiền mặt",
+   "options": "Mode of Payment"
+  },
+  {
+   "fieldname": "ht_chuyen_khoan",
+   "fieldtype": "Link",
+   "label": "Chuyển khoản",
+   "options": "Mode of Payment"
+  },
+  {
+   "fieldname": "ht_vi",
+   "fieldtype": "Link",
+   "label": "Ví điện tử",
+   "options": "Mode of Payment"
+  },
+  {
+   "fieldname": "sb_tai_khoan",
+   "fieldtype": "Section Break",
+   "label": "Tài khoản cho bút toán app tự lập"
+  },
+  {
    "fieldname": "tk_giam_gia_don",
    "fieldtype": "Link",
    "label": "TK giảm giá cả đơn",
-   "options": "Account",
-   "description": "additional_discount_account của HĐ (giảm sau thuế, không hạ nền thuế)"
+   "options": "Account"
   },
   {
-   "fieldname": "bang_gia_chung",
+   "fieldname": "tk_thue_dau_vao",
    "fieldtype": "Link",
-   "label": "Bảng giá chung",
-   "options": "Price List",
-   "description": "Bảng giá bán của khách không thuộc nhóm có bảng giá riêng (nppsale: price_lists nhóm trống). Selling Settings trỏ theo."
+   "label": "TK thuế GTGT đầu vào",
+   "options": "Account"
   },
   {
-   "fieldname": "bang_gia_nhap",
+   "fieldname": "tk_giam_dau_phieu_nhap",
    "fieldtype": "Link",
-   "label": "Bảng giá nhập",
-   "options": "Price List",
-   "description": "Giá nhập gần nhất theo mặt hàng (nppsale: purchase_price_lists). Buying Settings trỏ theo."
+   "label": "TK giảm đầu phiếu nhập",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_trung_gian_sua_gia_nhap",
+   "fieldtype": "Link",
+   "label": "TK trung gian sửa giá nhập",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_no_ncc_lap_tay",
+   "fieldtype": "Link",
+   "label": "TK nợ NCC lập tay",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_tam_dau_ky",
+   "fieldtype": "Link",
+   "label": "TK tạm đầu kỳ",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_xuat_le",
+   "fieldtype": "Link",
+   "label": "TK chênh lệch xuất lẻ",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_nhap_kho_khong_hd",
+   "fieldtype": "Link",
+   "label": "TK nhập kho không công nợ",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_thua_kiem_ke",
+   "fieldtype": "Link",
+   "label": "TK thừa kiểm kê",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_chi_phi_phai_tra",
+   "fieldtype": "Link",
+   "label": "TK chi phí phải trả",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tk_chi_phi_mac_dinh",
+   "fieldtype": "Link",
+   "label": "TK chi phí mặc định",
+   "options": "Account"
+  },
+  {
+   "fieldname": "sb_chuyen_doi",
+   "fieldtype": "Section Break",
+   "label": "Chuyển dữ liệu"
+  },
+  {
+   "fieldname": "ngay_cat_chuyen",
+   "fieldtype": "Date",
+   "label": "Ngày cắt chuyển"
   }
  ],
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-15 00:00:00.000000",
+ "modified": "2026-11-11 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "NPP He Thong",
  "name": "NPP Cai Dat",

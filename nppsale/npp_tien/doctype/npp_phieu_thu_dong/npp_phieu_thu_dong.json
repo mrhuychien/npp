@@ -1,0 +1,105 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "loai",
+  "so_tien",
+  "cong_no",
+  "hoa_don",
+  "don_hang",
+  "phieu_tra",
+  "chung_tu_loai",
+  "chung_tu",
+  "xac_nhan_boi",
+  "xac_nhan_luc",
+  "ghi_chu"
+ ],
+ "fields": [
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Loại dòng",
+   "options": "payment\ncredit_applied\nreturn_credit",
+   "reqd": 1
+  },
+  {
+   "fieldname": "so_tien",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Số tiền",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cong_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Khoản nợ",
+   "options": "NPP Cong No"
+  },
+  {
+   "fieldname": "hoa_don",
+   "fieldtype": "Link",
+   "label": "Hoá đơn",
+   "options": "Sales Invoice"
+  },
+  {
+   "fieldname": "don_hang",
+   "fieldtype": "Link",
+   "label": "Đơn hàng",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "phieu_tra",
+   "fieldtype": "Link",
+   "label": "Phiếu trả",
+   "options": "NPP Phieu Tra"
+  },
+  {
+   "fieldname": "chung_tu_loai",
+   "fieldtype": "Link",
+   "label": "Loại chứng từ sổ",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "chung_tu",
+   "fieldtype": "Dynamic Link",
+   "label": "Chứng từ sổ",
+   "options": "chung_tu_loai"
+  },
+  {
+   "fieldname": "xac_nhan_boi",
+   "fieldtype": "Link",
+   "label": "Người xác nhận",
+   "options": "NPP Nhan Vien"
+  },
+  {
+   "fieldname": "xac_nhan_luc",
+   "fieldtype": "Datetime",
+   "label": "Xác nhận lúc"
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Tien",
+ "name": "NPP Phieu Thu Dong",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
