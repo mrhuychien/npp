@@ -193,7 +193,8 @@ doc_events = {
 	},
 	"Customer Group": {
 		"after_insert": ["nppsale.su_kien.khach_hang.thay_doi", "nppsale.su_kien.san_pham.nhom_khach_moi"],
-		"on_update": "nppsale.su_kien.khach_hang.thay_doi",
+		"on_update": "nppsale.su_kien.khach_hang.nhom_doi",
+		"after_rename": "nppsale.su_kien.khach_hang.nhom_doi",
 		"on_trash": "nppsale.su_kien.khach_hang.thay_doi",
 	},
 	# Công nợ = bản chiếu từ sổ (blueprint 02 §4.3.0): chứng từ nguồn ghi sổ / huỷ / đổi trường AOS → chiếu lại dòng NPP Cong No
@@ -337,9 +338,8 @@ before_request = ["nppsale.portal.chan.chan_cua_chung"]
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
 
-# default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
-# }
+# Log Settings của lõi dọn bảng nhật ký của app (blueprint 02 §4.1): lượt đo nạp màn giữ 30 ngày
+default_log_clearing_doctypes = {"NPP Do Nap": 30}
 
 # Translation
 # ------------

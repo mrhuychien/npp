@@ -74,8 +74,17 @@ class TestKhoaChungTu(IntegrationTestCase):
 		self.assertTrue(k["data"][0]["ok"])
 		self.assertEqual(k["data"][0]["holder_id"], self.b)
 		frappe.db.sql("UPDATE `tabNPP Khoa Chung Tu` SET nhip_cuoi = NOW(6) - INTERVAL 11 MINUTE")
-		release_stale_entity_locks()
+		# dọn bằng câu xoá thẳng vẫn phải báo DELETE tới từng NV (người đang chờ khoá nhận ngay, không chờ vòng hỏi)
+		from unittest.mock import patch
+
+		goi = []
+		with patch("frappe.publish_realtime", side_effect=lambda *a, **k: goi.append((a, k))):
+			self.assertGreaterEqual(release_stale_entity_locks(), 1)
 		self.assertFalse(frappe.db.exists("NPP Khoa Chung Tu", "sales_order:DH-9002"))
+		bao = [(a[1], k.get("user")) for a, k in goi if a and a[0] == "npp_cong" and a[1].get("entity_id") == "DH-9002"]
+		self.assertTrue(bao)
+		self.assertTrue(all(t["su_kien"] == "DELETE" and t["bang"] == "entity_locks" and t["locked_by"] == self.b for t, _u in bao))
+		self.assertIn(self.a, {u for _t, u in bao})
 
 	def test_chua_dang_nhap_hoac_khong_phai_nv(self):
 		k = _goi("Guest", "acquire_entity_lock", p_entity_type="sales_order", p_entity_id="DH-9003")

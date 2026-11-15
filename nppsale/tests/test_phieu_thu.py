@@ -191,3 +191,192 @@ class TestPhieuThu(IntegrationTestCase):
 			(2, 2))
 		self.assertEqual(flt(self._no(hd).da_thu), 0)
 		self.assertEqual(flt(frappe.db.get_value("NPP Cong No", dong_tra.name, "con_no")), -20520)
+
+
+class TestPhieuThuCong(TestPhieuThu):
+	"""Cổng: cash_receipts / cash_receipt_lines / payments / cash_collections / receivables (ma trận ghi thẳng — đặc tả phiếu thu §4.0)."""
+
+	def _nc(self, nguoi: str):
+		from nppsale.cong.dang_ky import NguCanh
+
+		u = self.ma["u:" + nguoi]
+		return NguCanh(user=u, vai=frappe.db.get_value("NPP Nhan Vien", u, "vai"))
+
+	def _doc(self, nguoi: str, yc: dict) -> list:
+		from nppsale.cong.truy_van import doc
+
+		return doc(yc, self._nc(nguoi))["data"]
+
+	def _ghi(self, nguoi: str, yc: dict):
+		from nppsale.cong.ghi import ghi
+
+		frappe.set_user(self.ma["u:" + nguoi])
+		frappe.local._npp_ngu_canh = None
+		try:
+			return ghi(yc, self._nc(nguoi))
+		finally:
+			frappe.set_user("Administrator")
+			frappe.local._npp_ngu_canh = None
+
+	def _loi_ghi(self, nguoi: str, yc: dict) -> tuple[str, str]:
+		from nppsale.cong.loi import NppLoi
+		from nppsale.cong.sql import LoiCong
+
+		try:
+			self._ghi(nguoi, yc)
+		except NppLoi as e:
+			return (e.code, e.ma)
+		except LoiCong as e:
+			return (e.ma, e.thong_diep)
+		self.fail(f"không lỗi: {yc}")
+
+	def test_cong_phieu_thu(self):
+		hd = self._hd()
+		no = self._no(hd)
+		ten = self._ok("accountant", "create_cash_receipt", {"p": {"customer_id": no.khach_hang, "method": "transfer", "lines": [
+			{"receivable_id": no.name, "amount": 6020}], "notes": "ghi chu"}})
+		loc = [{"op": "eq", "cot": "id", "gt": ten}]
+		r = self._doc("accountant", {"bang": "cash_receipts", "select": "*", "loc": loc})
+		self.assertEqual(len(r), 1)
+		self.assertEqual(len(r[0]), 20)  # đúng 20 cột của nppsale
+		self.assertEqual({k: r[0][k] for k in ("id", "receipt_code", "source_type", "status", "submitted_amount", "expected_amount",
+			"collected_by", "received_by", "notes")}, {"id": ten, "receipt_code": ten, "source_type": "standalone", "status": "received",
+			"submitted_amount": 6020, "expected_amount": 6020, "collected_by": self.ma["u:accountant"], "received_by": self.ma["u:accountant"],
+			"notes": "ghi chu"})
+		self.assertEqual(self._doc("sales_a", {"bang": "cash_receipts", "select": "id", "loc": loc}), [])  # NVBH: chỉ phiếu mình thu
+		dong = self._doc("accountant", {"bang": "cash_receipt_lines", "select": "id, payment_id, receivable_id, invoice_id, kind, amount",
+			"loc": [{"op": "eq", "cot": "receipt_id", "gt": ten}]})
+		self.assertEqual([(d["payment_id"] == d["id"], d["receivable_id"], d["invoice_id"], d["kind"], d["amount"]) for d in dong],
+			[(True, no.name, hd, "payment", 6020)])
+		k = self._doc("accountant", {"bang": "payments", "select": "id, receivable_id, amount, method, collected_by",
+			"loc": [{"op": "eq", "cot": "receivable_id", "gt": no.name}]})
+		self.assertEqual([(x["id"], x["amount"], x["method"], x["collected_by"]) for x in k], [(dong[0]["id"], 6020, "transfer",
+			self.ma["u:accountant"])])
+		self.assertEqual(self._doc("warehouse", {"bang": "payments", "select": "id", "loc": [{"op": "eq", "cot": "receivable_id",
+			"gt": no.name}]}), [])
+		# ghi thẳng phiếu
+		self.assertEqual(self._loi_ghi("owner", {"bang": "cash_receipts", "hanh_dong": "insert", "gia_tri": {"notes": "x"}}),
+			("P0001", "PHIEU_THU_KHOA: phiếu thu chỉ lập / huỷ qua nút Lập phiếu thu, Huỷ phiếu thu"))
+		self.assertEqual(self._ghi("accountant", {"bang": "cash_receipts", "hanh_dong": "update", "gia_tri": {"notes": "moi",
+			"submitted_amount": 6020}, "loc": loc, "select": "id, notes, tim_kd"})["data"][0]["notes"], "moi")
+		self.assertIn("moi", frappe.db.get_value("NPP Phieu Thu", ten, "tim_kd"))
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "cash_receipts", "hanh_dong": "update", "gia_tri": {"submitted_amount": 1},
+			"loc": loc})[1], "PHIEU_THU_KHOA: phiếu thu chỉ lập / huỷ qua nút Lập phiếu thu, Huỷ phiếu thu")
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "cash_receipts", "hanh_dong": "update", "gia_tri": {"status": "voided"},
+			"loc": loc})[1], "PHIEU_THU_KHOA: phiếu thu chỉ lập / huỷ qua nút Lập phiếu thu, Huỷ phiếu thu")
+		self.assertEqual(self._ghi("accountant", {"bang": "cash_receipts", "hanh_dong": "delete", "loc": loc, "select": "id"})["data"], [])
+		self.assertEqual(self._loi_ghi("owner", {"bang": "cash_receipts", "hanh_dong": "delete", "loc": loc})[1],
+			"PHIEU_THU_KHOA: phiếu thu chỉ lập / huỷ qua nút Lập phiếu thu, Huỷ phiếu thu")
+		self.assertEqual(self._loi_ghi("owner", {"bang": "cash_receipts", "hanh_dong": "update", "gia_tri": {"khong_co": 1}, "loc": loc})[0],
+			"PGRST204")
+		# dòng phiếu thu: cấm mọi ghi
+		khoa_tien = "THU_TIEN_KHOA: tiền thu chỉ ghi / huỷ qua phiếu thu (lập phiếu thu, huỷ phiếu thu)"
+		dloc = [{"op": "eq", "cot": "id", "gt": dong[0]["id"]}]
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "cash_receipt_lines", "hanh_dong": "update", "gia_tri": {"notes": "x"},
+			"loc": dloc})[1], khoa_tien)
+		self.assertEqual(self._ghi("accountant", {"bang": "cash_receipt_lines", "hanh_dong": "delete", "loc": dloc, "select": "id"})["data"], [])
+		self.assertEqual(self._loi_ghi("sales_a", {"bang": "cash_receipt_lines", "hanh_dong": "insert", "gia_tri": {"amount": 1}})[1],
+			khoa_tien)
+		# khoản thu: chỉ xác nhận (chủ / kế toán); quản lý 0 dòng
+		x = self._ghi("accountant", {"bang": "payments", "hanh_dong": "update", "gia_tri": {"verified_by": self.ma["u:accountant"],
+			"verified_at": "2026-11-15T10:00:00+07:00", "amount": 6020}, "loc": dloc, "select": "id, verified_by, verified_at"})["data"]
+		self.assertEqual((x[0]["verified_by"], str(x[0]["verified_at"])[:19]), (self.ma["u:accountant"], "2026-11-15T10:00:00"))
+		self.assertEqual(self._ghi("manager", {"bang": "payments", "hanh_dong": "update", "gia_tri": {"verified_by": None}, "loc": dloc,
+			"select": "id"})["data"], [])
+		self.assertEqual(self._loi_ghi("owner", {"bang": "payments", "hanh_dong": "update", "gia_tri": {"amount": 1}, "loc": dloc})[1], khoa_tien)
+		self.assertEqual(self._ghi("owner", {"bang": "payments", "hanh_dong": "delete", "loc": dloc, "select": "id"})["data"], [])
+		# huỷ phiếu: khoản thu biến mất, dòng giữ, payment_id = NULL
+		self._ok("accountant", "void_cash_receipt", {"p_receipt_id": ten, "p_reason": "x"})
+		self.assertEqual(self._doc("accountant", {"bang": "payments", "select": "id", "loc": dloc}), [])
+		self.assertEqual(self._doc("accountant", {"bang": "cash_receipt_lines", "select": "payment_id, amount", "loc": dloc}),
+			[{"payment_id": None, "amount": 6020}])
+		# chuyến giao cũ
+		self.assertEqual(self._doc("owner", {"bang": "cash_collections", "select": "*"}), [])
+		self.assertEqual(self._loi_ghi("owner", {"bang": "cash_collections", "hanh_dong": "insert", "gia_tri": {"notes": "x"}})[1],
+			"LEGACY_FLOW_REMOVED: chức năng đã gỡ")
+
+	def test_no_dau_ky(self):
+		kh = self.ma["C2"]
+		them = {"customer_id": kh, "amount": 500000, "paid": 0, "due_date": add_days(nowdate(), -2), "status": "open", "opening_balance": True,
+			"note": "no cu"}
+		chon = "id, amount, paid, status, opening_balance, note, due_date, invoice_id, customer_id"
+		self.assertEqual(self._loi_ghi("manager", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": them})[0], "42501")
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": {**them,
+			"opening_balance": False}})[1], "CONG_NO_KHOA: công nợ chỉ sinh từ hóa đơn / phiếu trả — màn hình chỉ thêm được nợ đầu kỳ chưa thu")
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": {**them, "paid": 5}})[1],
+			"CONG_NO_KHOA: công nợ chỉ sinh từ hóa đơn / phiếu trả — màn hình chỉ thêm được nợ đầu kỳ chưa thu")
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": {**them, "amount": None}}),
+			("23502", 'null value in column "amount" of relation "receivables" violates not-null constraint'))
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": {**them, "amount": 0}})[1],
+			"BAD_AMOUNT: nợ đầu kỳ phải là số đồng chẵn lớn hơn 0")
+		r = self._ghi("accountant", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": them, "select": chon})["data"][0]
+		self.assertEqual({k: r[k] for k in ("amount", "paid", "status", "opening_balance", "note", "invoice_id", "customer_id")},
+			{"amount": 500000, "paid": 0, "status": "open", "opening_balance": True, "note": "no cu", "invoice_id": None, "customer_id": kh})
+		si = frappe.db.get_value("NPP Cong No", r["id"], "hoa_don")
+		self.assertTrue(si.startswith("DK-"), si)
+		self.assertEqual(frappe.db.get_value("Sales Invoice", si, ["is_opening", "docstatus", "grand_total"]), ("Yes", 1, 500000))
+		self.assertEqual(self._loi_ghi("owner", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": them}),
+			("23505", 'duplicate key value violates unique constraint "uq_receivables_opening"'))
+		loc = [{"op": "eq", "cot": "id", "gt": r["id"]}]
+		# sửa số (chưa thu): amend DK-…-1, giữ id; đánh dấu quá hạn
+		s = self._ghi("accountant", {"bang": "receivables", "hanh_dong": "update", "gia_tri": {"amount": 600000, "due_date": them["due_date"],
+			"note": "no cu 2"}, "loc": loc, "select": chon})["data"]
+		self.assertEqual([(x["id"], x["amount"], x["note"]) for x in s], [(r["id"], 600000, "no cu 2")])
+		si2 = frappe.db.get_value("NPP Cong No", r["id"], "hoa_don")
+		self.assertEqual((si2, frappe.db.get_value("Sales Invoice", si, "docstatus")), (f"{si}-1", 2))
+		s = self._ghi("owner", {"bang": "receivables", "hanh_dong": "update", "gia_tri": {"status": "overdue"}, "loc": loc, "select": "status"})
+		self.assertEqual(s["data"], [{"status": "overdue"}])
+		self.assertEqual(self._ghi("manager", {"bang": "receivables", "hanh_dong": "update", "gia_tri": {"status": "open"}, "loc": loc,
+			"select": "id"})["data"], [])
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "update", "gia_tri": {"paid": 1}, "loc": loc})[1],
+			"CONG_NO_KHOA: số nợ / số đã thu chỉ đổi qua hóa đơn, phiếu trả, phiếu thu (RPC)")
+		# thu một phần → không xoá được; huỷ phiếu → còn dòng phiếu thu (đã huỷ) trỏ tới → 23503
+		ten = self._ok("owner", "create_cash_receipt", {"p": {"customer_id": kh, "lines": [{"receivable_id": r["id"], "amount": 100000}]}})
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "delete", "loc": loc})[1],
+			"CONG_NO_KHOA: chỉ xoá được nợ đầu kỳ chưa thu đồng nào")
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "update", "gia_tri": {"amount": 700000},
+			"loc": loc})[1], "CONG_NO_KHOA: số nợ / số đã thu chỉ đổi qua hóa đơn, phiếu trả, phiếu thu (RPC)")
+		self._ok("owner", "void_cash_receipt", {"p_receipt_id": ten, "p_reason": "x"})
+		self.assertEqual(self._loi_ghi("accountant", {"bang": "receivables", "hanh_dong": "delete", "loc": loc})[0], "23503")
+		# khách khác: thêm rồi xoá (trả dòng đọc TRƯỚC khi xoá); NVBH xoá 0 dòng
+		r2 = self._ghi("owner", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": {**them, "customer_id": self.ma["C1"]},
+			"select": "id"})["data"][0]
+		loc2 = [{"op": "eq", "cot": "id", "gt": r2["id"]}]
+		self.assertEqual(self._ghi("owner", {"bang": "receivables", "hanh_dong": "delete", "loc": loc2, "select": "id, amount"})["data"],
+			[{"id": r2["id"], "amount": 500000}])
+		self.assertFalse(frappe.db.exists("NPP Cong No", r2["id"]))
+
+	def test_rpc_doc_cong_no(self):
+		"""receivables_by_customer / by_rep / summary, cash_received_total, bao_cao_cong_no — RLS người gọi, không kẹp 0, quá hạn theo dấu / theo hạn."""
+		hd = self._hd()
+		no = self._no(hd)
+		dk = self._ghi("accountant", {"bang": "receivables", "hanh_dong": "insert", "gia_tri": {"customer_id": self.ma["C2"], "amount": 500000,
+			"paid": 0, "due_date": add_days(nowdate(), -40), "status": "overdue", "opening_balance": True}, "select": "id, status"})["data"][0]
+		self.assertEqual(dk["status"], "overdue")
+		ten = self._ok("accountant", "create_cash_receipt", {"p": {"customer_id": no.khach_hang, "lines": [
+			{"receivable_id": no.name, "amount": 6020}]}})
+		kq = self._ok("owner", "receivables_by_customer", {})
+		theo = {r["customer_id"]: r for r in kq}
+		self.assertEqual({k: theo[self.ma["C2"]][k] for k in ("total_debt", "total_paid", "remaining", "overdue_amount", "rep_name")},
+			{"total_debt": 500000, "total_paid": 0, "remaining": 500000, "overdue_amount": 500000, "rep_name": "-"})
+		c1 = theo[no.khach_hang]
+		self.assertEqual((c1["total_debt"], c1["total_paid"], c1["remaining"], c1["overdue_amount"]), (26020, 6020, 20000, 0))
+		self.assertEqual([r["remaining"] for r in kq], sorted((r["remaining"] for r in kq), reverse=True))
+		self.assertEqual(self._ok("warehouse", "receivables_by_customer", {}), [])
+		rep = {r["full_name"]: r for r in self._ok("owner", "receivables_by_rep", {})}
+		chua = rep["(Chưa gán nhân viên)"]
+		self.assertEqual((chua["user_id"], chua["total_debt"], chua["overdue_amount"], chua["dso"], chua["collection_rate"]), (None, 500000, 500000, 40, 0))
+		tom = self._ok("owner", "receivables_summary", {})
+		self.assertEqual(len(tom), 1)
+		self.assertEqual((tom[0]["total_outstanding"], tom[0]["overdue_amount"], tom[0]["overdue_count"]), (520000, 500000, 1))
+		self.assertEqual(self._ok("warehouse", "receivables_summary", {})[0]["total_outstanding"], 0)
+		self.assertEqual(self._ok("accountant", "cash_received_total", {"p_from": nowdate(), "p_to": nowdate()}), 6020)
+		self.assertEqual(self._ok("sales_a", "cash_received_total", {"p_from": nowdate(), "p_to": nowdate()}), 0)  # phiếu người khác thu
+		self.assertEqual(self._ok("owner", "cash_received_total", {"p_from": None, "p_to": nowdate()}), 0)
+		bc = self._ok("owner", "bao_cao_cong_no", {"p_tu_thu": add_days(nowdate(), -180), "p_tu_90": add_days(nowdate(), -91)})
+		self.assertEqual(sorted(p["id"] for p in bc["mo"]), sorted([no.name, dk["id"]]))
+		self.assertEqual(sorted(p["id"] for p in bc["gan90"]), sorted([no.name, dk["id"]]))
+		self.assertEqual([(t["amount"], t["method"], t["receivable"]["id"], t["receivable"]["invoice"]["invoice_code"]) for t in bc["thu"]],
+			[(6020, "cash", no.name, hd)])
+		self._ok("accountant", "void_cash_receipt", {"p_receipt_id": ten, "p_reason": "x"})
+		self.assertEqual(self._ok("accountant", "cash_received_total", {"p_from": nowdate(), "p_to": nowdate()}), 0)

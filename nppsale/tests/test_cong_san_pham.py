@@ -101,7 +101,12 @@ class TestCongSanPham(IntegrationTestCase):
 		# chưa có chứng từ → đổi SKU = đổi tên bản ghi; trùng SKU khác → 23505
 		with self.assertRaises(LoiCong):
 			ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": "SPT-B01"}, "loc": [{"op": "eq", "cot": "id", "gt": k}]}, self.chu)
-		ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": "SPT-K02"}, "loc": [{"op": "eq", "cot": "id", "gt": k}]}, self.chu)
+		# đổi SKU chạy dưới chính phiên chủ NPP (vai NPP chỉ đọc Item ở lớp Frappe — rename_doc thiếu ignore_permissions vấp quyền ghi)
+		frappe.set_user(self.chu.user)
+		try:
+			ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": "SPT-K02"}, "loc": [{"op": "eq", "cot": "id", "gt": k}]}, self.chu)
+		finally:
+			frappe.set_user("Administrator")
 		self.assertFalse(frappe.db.exists("Item", k))
 		self.assertEqual(frappe.db.get_value("Item", "SPT-K02", "item_code"), "SPT-K02")
 		self.assertEqual(ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"status": "inactive"},

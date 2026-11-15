@@ -6,7 +6,8 @@
   warehouse, hoặc người đứng tên HĐ = tôi, hoặc người đứng tên ĐƠN của HĐ = tôi.
 - sales_invoice_lines ← Sales Invoice Item của HĐ trên; theo dòng cha.
 - receivables ← NPP Cong No (bản chiếu từ sổ — nppsale.su_kien.cong_no). RLS: owner / manager / accountant mọi dòng; sales dòng mình giữ nợ;
-  thủ kho không dòng nào (không có chính sách). Ghi (nợ đầu kỳ) dựng ở bước nợ đầu kỳ.
+  thủ kho không dòng nào (không có chính sách). Ghi thẳng (nợ đầu kỳ, dấu quá hạn): nppsale.rpc.no_dau_ky. Dòng tiền thừa của phiếu thu
+  (phương án A) mang `invoice_id` của HĐ sinh ra nó — nhãn khoản nợ / gộp theo HĐ / theo đơn ra như dòng HĐ của nppsale.
 """
 from __future__ import annotations
 
@@ -109,7 +110,7 @@ def nap():
 				"sales_user_id": c("nhan_vien"), "amount": c("so_tien", "tien"), "paid": c("da_thu", "tien"),
 				"due_date": c("han_thanh_toan", "ngay"), "status": c("trang_thai"), "created_at": c("tao_luc", "gio"),
 				"opening_balance": c("({t}.`loai` = 'dau_ky')", "bool"), "note": c("ghi_chu"),
-				"invoice_id": c("CASE WHEN {t}.`loai` = 'hoa_don' THEN {t}.`hoa_don` END"), "return_id": c("phieu_tra"),
+				"invoice_id": c("CASE WHEN {t}.`loai` IN ('hoa_don', 'tien_thua') THEN {t}.`hoa_don` END"), "return_id": c("phieu_tra"),
 				"ve_npp_luc": c("ve_npp_luc", "gio"), "giao_tu_nv": c("giao_tu_nv"),
 			},
 			quan_he=[
@@ -119,7 +120,27 @@ def nap():
 				QuanHe("sales_invoices", "invoice_id", "id", False, ("receivables_invoice_id_fkey",)),
 			],
 			rls=_rls_no,
+			ghi=GhiCongNo(),
 		))
+
+
+class GhiCongNo:
+	"""receivables: thêm / sửa / xoá nợ đầu kỳ, dấu quá hạn — trigger + RLS của nppsale (nppsale.rpc.no_dau_ky)."""
+
+	def them(self, ds, nc):
+		from nppsale.rpc.no_dau_ky import ghi_no_dau_ky
+
+		return ghi_no_dau_ky(ds, nc)
+
+	def sua(self, gia_tri, ids, nc):
+		from nppsale.rpc.no_dau_ky import sua_cong_no
+
+		return sua_cong_no(gia_tri, ids, nc)
+
+	def xoa(self, ids, nc):
+		from nppsale.rpc.no_dau_ky import xoa_no_dau_ky
+
+		return xoa_no_dau_ky(ids, nc)
 
 
 def _rls_no(nc: NguCanh):

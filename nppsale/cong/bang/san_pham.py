@@ -149,7 +149,10 @@ class GhiSanPham:
 			raise LoiCong("23505", 'duplicate key value violates unique constraint "products_org_id_sku_key"', http=409)
 		if co_chung_tu_hang(ten):
 			raise LoiCong("P0001", "SKU_KHOA: mặt hàng đã có chứng từ — không đổi SKU được. Tạo mặt hàng mới rồi ngừng bán mặt hàng cũ.")
-		frappe.rename_doc("Item", ten, moi, force=True, show_alert=False, rebuild_search=False)  # không xếp việc nền dựng chỉ mục
+		# vai NPP chỉ đọc Item ở lớp Frappe (quyen_san) — quyền đã kiểm ở cổng (VAI_SUA_HANG); không xếp việc nền dựng chỉ mục
+		from frappe.model.rename_doc import rename_doc  # frappe.rename_doc không nhận ignore_permissions
+
+		rename_doc(doctype="Item", old=ten, new=moi, force=True, ignore_permissions=True, show_alert=False, rebuild_search=False)
 		return moi
 
 	def xoa(self, ids, nc):

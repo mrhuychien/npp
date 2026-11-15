@@ -111,3 +111,13 @@ giá vốn lô nền sau khi nhập lại do lõi định giá theo lô (nppsale
 | Câu | nppsale hôm nay | Bản ERPNext (tạm) |
 |---|---|---|
 | Q4 — quản lý ở NPP MỚI lập / huỷ phiếu thu | hàm gieo quyền (`_gieo_quyen_mac_dinh`) không gieo `manager receivables.create/update`; mig 215 chỉ vá NPP có sẵn lúc chạy và ghi rõ thiếu là "KHÔNG cố ý" | gieo thêm hai dòng ấy (`DONG_VAI_GIEO_SAN`) — đúng ý anh 28/09/2026; NPP chuyển sang mang theo dòng quyền đang có |
+| Q1 — tiền đã thu vượt tờ mới sau Sửa HĐ giảm tiền | phần vượt nằm ngay trên dòng HĐ (`paid > amount`, dư có) | phương án A (CFD-04 đã duyệt): phần chưa phân bổ của Payment Entry thành dòng công nợ riêng `tien_thua`, mang mã HĐ / đơn / hạn của HĐ sinh ra nó — cộng theo HĐ / theo đơn ra như nppsale; dòng HĐ tự nó không âm. Phương án B (bút toán chuyển vào chính HĐ, khớp từng dòng) chờ anh chọn |
+| Q2 — sửa SỐ nợ đầu kỳ đã thu | cho (phần chênh thành dư có) | khoá `CONG_NO_KHOA` (CFD-01: huỷ + lập lại tờ `DK-` không mang được tiền đã thu); chưa thu thì sửa = huỷ + `DK-…-n`, giữ id dòng công nợ + ngày lập gốc |
+| Q5 — hai người cùng rút một dư có | cả hai qua, phiếu sau ghi tiền mặt không ai đưa | khoá khách + mọi dòng công nợ của khách TRƯỚC khi tính; người sau nhận `CREDIT_BALANCE_TOO_LOW` |
+| Q7 — nợ đầu kỳ 0 / âm / số lẻ | nhận | `BAD_AMOUNT: nợ đầu kỳ phải là số đồng chẵn lớn hơn 0` (thêm và sửa) |
+| Q8 — xoá nợ đầu kỳ từng có phiếu thu (đã huỷ) | lỗi 23503 (khoá ngoại dòng phiếu thu) | giữ như nppsale |
+| Q14 — `method` lạ (kể cả `credit_applied` / `return_credit`) khi có tiền thật | chỉ nổ CHECK ở dòng `payment` | từ chối mọi giá trị ngoài cash / transfer / ewallet bằng đúng lỗi `23514` |
+| Q16 — dòng công nợ mất chứng từ nguồn mà còn dòng phiếu thu sống trỏ tới | không xảy ra (dòng phiếu trả giữ `amount 0`) | giữ dòng (số 0) cho dòng phiếu trả / tiền thừa — `payments` / báo cáo công nợ không mất khoản thu |
+| Cấn phiếu trả ở phiếu thu (`credits`, nhánh cũ trước mig 191) | chỉ phiếu 0đ còn lọt điều kiện, ghi `applied_receipt_id` | chỉ giữ phần kiểm (`BAD_CREDIT`); phiếu 0đ lọt thì không ghi gì (`applied_receipt_id` không port) |
+| Ghi thẳng `receivables`: đổi người giữ / hạn / ghi chú của dòng HĐ, phiếu trả | chủ / kế toán đổi được (trigger không chặn) | `CONG_NO_KHOA` (blueprint §6.1 — không màn nào gửi; người giữ đổi qua bàn giao / giao nợ) |
+| Mã phiếu thu | `PT-YYMMDD-NNNN` 4 số ngẫu nhiên | `PTH-YYMMDD-####` chạy liên tục (câu 13); Payment Entry mang đúng số phiếu |

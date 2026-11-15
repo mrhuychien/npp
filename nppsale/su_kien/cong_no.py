@@ -108,6 +108,18 @@ def _ghi(khoa: str, gia_tri: dict) -> str:
 	return doc.name
 
 
+def _tao_luc_goc(ten: str, creation):
+	"""Ngày lập của tờ GỐC trong chuỗi amend (nợ đầu kỳ sửa số = huỷ + `DK-…-n`; nppsale sửa tại chỗ — `created_at` không đổi)."""
+	goc, da = frappe.db.get_value("Sales Invoice", ten, "amended_from"), {ten}
+	while goc and goc not in da:
+		da.add(goc)
+		x = frappe.db.get_value("Sales Invoice", goc, ["creation", "amended_from"], as_dict=True)
+		if not x:
+			break
+		creation, goc = x.creation, x.amended_from
+	return creation
+
+
 def chieu_hoa_don(ten: str) -> str | None:
 	"""Chiếu dòng công nợ của một HĐ bán / tờ nợ đầu kỳ (không phải tờ ghi có). Trả tên dòng (receivable_id) hoặc None."""
 	si = frappe.db.get_value("Sales Invoice", ten, ["name", "docstatus", "is_return", "customer", "customer_name", "grand_total", "creation", "due_date",
@@ -133,8 +145,8 @@ def chieu_hoa_don(ten: str) -> str | None:
 		"so_tien": so_tien, "da_thu": da_thu, "con_no": con_no,
 		"han_thanh_toan": si.npp_han_thanh_toan if dau_ky else (si.npp_han_thanh_toan or si.due_date),
 		"trang_thai": trang_thai(so_tien, da_thu, bool(si.npp_qua_han_tay)), "qua_han_tay": 1 if si.npp_qua_han_tay else 0,
-		"ghi_chu": si.npp_ghi_chu if dau_ky else None, "tao_luc": si.creation, "tinh_luc": now_datetime(),
-		"khoa_cho": f"dau_ky:{si.customer}" if dau_ky else None,
+		"ghi_chu": si.npp_ghi_chu if dau_ky else None, "tao_luc": _tao_luc_goc(ten, si.creation) if dau_ky else si.creation,
+		"tinh_luc": now_datetime(), "khoa_cho": f"dau_ky:{si.customer}" if dau_ky else None,
 	})
 
 

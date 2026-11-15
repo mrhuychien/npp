@@ -16,11 +16,12 @@ def sau_khi_migrate():
 def _chay_het():
 	import frappe
 
-	from . import ban_hang, mac_dinh, quyen_san, truong_tuy_bien, vai
+	from . import ban_hang, cot_uuid, mac_dinh, quyen_san, truong_tuy_bien, vai
 
 	vai.dam_bao()
 	quyen_san.dam_bao()
 	truong_tuy_bien.ap()
+	cot_uuid.dam_bao()
 	mac_dinh.dam_bao()
 	ban_hang.dam_bao()
 	frappe.db.commit()

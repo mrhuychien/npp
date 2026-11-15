@@ -45,3 +45,18 @@ def validate(doc, method=None):
 
 def thay_doi(doc, method=None):
 	tang_phien_khach()
+
+
+def nhom_doi(doc, method=None, *a, **k):
+	"""Customer Group (blueprint 02 §4.1 / §7.2): ngoài số phiên KHÁCH (khách mang nhóm → bảng giá), đổi TÊN nhóm hoặc đổi bảng giá của nhóm
+	(`default_price_list`) còn phải tăng số phiên DANH MỤC — cổng suy `price_lists.group_id` từ Customer Group, máy NVBH giữ bảng giá đã nhớ
+	theo nhóm cũ thì `unitPriceFor` không khớp `pl.group_id`, rơi về giá chung tới lần đổi danh mục hàng kế tiếp."""
+	from nppsale.npp_he_thong.doctype.npp_phien_danh_muc.npp_phien_danh_muc import tang_phien_danh_muc
+
+	tang_phien_khach()
+	if method == "after_rename":
+		tang_phien_danh_muc()
+		return
+	truoc = doc.get_doc_before_save() if method == "on_update" else None
+	if truoc is not None and (truoc.get("default_price_list") or None) != (doc.get("default_price_list") or None):
+		tang_phien_danh_muc()

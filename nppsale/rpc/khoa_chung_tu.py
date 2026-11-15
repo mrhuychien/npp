@@ -14,9 +14,20 @@ QUA_HAN_PHUT = 10
 
 
 def release_stale_entity_locks() -> int:
-	"""Xoá khoá quá 10 phút không nhịp (nppsale: pg_cron mỗi phút + dọn lười trong acquire / heartbeat)."""
-	frappe.db.sql(f"DELETE FROM `tabNPP Khoa Chung Tu` WHERE `nhip_cuoi` < NOW(6) - INTERVAL {QUA_HAN_PHUT} MINUTE")
-	return frappe.db._cursor.rowcount if getattr(frappe.db, "_cursor", None) else 0
+	"""Xoá khoá quá 10 phút không nhịp (nppsale: pg_cron mỗi phút + dọn lười trong acquire / heartbeat). Xoá bằng câu thẳng (không qua
+	on_trash) nên tự phát DELETE realtime cho từng khoá — thiếu thì người đang chờ khoá treo ở "người khác đang sửa" tới vòng hỏi kế
+	(blueprint 02 §6.3 / §7.2)."""
+	cu = frappe.db.sql(f"""SELECT `name`, `loai_chung_tu`, `chung_tu`, `nguoi_khoa` FROM `tabNPP Khoa Chung Tu`
+		WHERE `nhip_cuoi` < NOW(6) - INTERVAL {QUA_HAN_PHUT} MINUTE FOR UPDATE""", as_dict=True)
+	if not cu:
+		return 0
+	frappe.db.delete("NPP Khoa Chung Tu", {"name": ("in", [r.name for r in cu])})
+	nv = frappe.get_all("NPP Nhan Vien", filters={"dang_hoat_dong": 1, "nghi_viec_luc": ("is", "not set")}, pluck="name")
+	for r in cu:
+		tin = {"bang": "entity_locks", "su_kien": "DELETE", "entity_type": r.loai_chung_tu, "entity_id": r.chung_tu, "locked_by": r.nguoi_khoa}
+		for u in nv:
+			frappe.publish_realtime("npp_cong", tin, user=u, after_commit=True)
+	return len(cu)
 
 
 def _ten(loai: str, id_: str) -> str:

@@ -5,46 +5,118 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "man",
   "nhan",
+  "man",
   "ms",
-  "noi_dung",
-  "nguoi"
+  "tu_mo_trang",
+  "loi",
+  "dong",
+  "ttfb_ms",
+  "dcl_ms",
+  "so_cau",
+  "cham",
+  "mang_loai",
+  "mang_rtt",
+  "mang_mbps",
+  "nguoi",
+  "user_agent",
+  "noi_dung"
  ],
  "fields": [
-  {
-   "fieldname": "man",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Màn",
-   "reqd": 1
-  },
   {
    "fieldname": "nhan",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Nhãn",
-   "options": "pos-nap\nbao-cao-nap"
+   "options": "pos-nap\nbao-cao-nap",
+   "reqd": 1
+  },
+  {
+   "fieldname": "man",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Màn"
   },
   {
    "fieldname": "ms",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Thời gian (ms)"
+   "label": "Thời gian (ms)",
+   "reqd": 1
   },
   {
-   "fieldname": "noi_dung",
+   "fieldname": "tu_mo_trang",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Tính từ lúc mở trang"
+  },
+  {
+   "fieldname": "loi",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Lỗi"
+  },
+  {
+   "fieldname": "dong",
+   "fieldtype": "Int",
+   "label": "Số dòng"
+  },
+  {
+   "fieldname": "ttfb_ms",
+   "fieldtype": "Int",
+   "label": "Chờ HTML (ms)"
+  },
+  {
+   "fieldname": "dcl_ms",
+   "fieldtype": "Int",
+   "label": "Dựng xong khung (ms)"
+  },
+  {
+   "fieldname": "so_cau",
+   "fieldtype": "Int",
+   "label": "Số câu gọi máy chủ"
+  },
+  {
+   "fieldname": "cham",
    "fieldtype": "JSON",
-   "label": "Gói đo"
+   "label": "Câu lâu nhất"
+  },
+  {
+   "fieldname": "mang_loai",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Loại mạng"
+  },
+  {
+   "fieldname": "mang_rtt",
+   "fieldtype": "Int",
+   "label": "RTT (ms)"
+  },
+  {
+   "fieldname": "mang_mbps",
+   "fieldtype": "Float",
+   "label": "Băng thông (Mbps)"
   },
   {
    "fieldname": "nguoi",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Người dùng",
-   "options": "NPP Nhan Vien"
+   "options": "NPP Nhan Vien",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user_agent",
+   "fieldtype": "Data",
+   "label": "Trình duyệt"
+  },
+  {
+   "fieldname": "noi_dung",
+   "fieldtype": "JSON",
+   "label": "Gói đo"
   }
  ],
  "index_web_pages_for_search": 0,
@@ -70,9 +142,9 @@
   }
  ],
  "row_format": "Dynamic",
- "search_fields": "man,nguoi",
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
- "title_field": "man"
+ "title_field": "man",
+ "search_fields": "man,nguoi"
 }
