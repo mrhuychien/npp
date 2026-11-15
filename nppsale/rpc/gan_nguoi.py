@@ -2,7 +2,7 @@
 
 Đổi người trên HĐ (mọi trạng thái — cả tờ đã huỷ) → dòng công nợ của HĐ đi theo (trigger `_hoa_don_doi_nguoi`) nhưng NGƯỜI GIỮ NỢ theo luật
 `_cong_no_giu_ve_npp` (nppsale.luat.giu_no): nợ đã về NPP đứng yên, dấu bàn giao giữ NV nhận, người mới đã nghỉ việc thì giữ người cũ.
-Phiếu trả gắn HĐ đi theo người của HĐ (thêm khi có NPP Phieu Tra). Người được gán: NV bán hàng / quản lý / chủ đang hoạt động.
+Phiếu trả gắn HĐ (mọi trạng thái) đi theo người của HĐ, kể cả tờ ghi có của phiếu. Người được gán: NV bán hàng / quản lý / chủ đang hoạt động.
 """
 from __future__ import annotations
 
@@ -33,6 +33,10 @@ def doi_nguoi_hoa_don(hd: str, nv_moi: str) -> None:
 	frappe.db.set_value("Sales Invoice", hd, gt)
 	if si.docstatus == 1:
 		chieu_hoa_don(hd)
+	if frappe.db.exists("DocType", "NPP Phieu Tra"):  # _hoa_don_doi_nguoi (mig 194): phiếu trả gắn HĐ (mọi trạng thái) đi theo
+		from .phieu_tra import doi_nguoi_theo_hd
+
+		doi_nguoi_theo_hd(hd, nv_moi)
 
 
 @rpc("assign_doc_seller", ghi=True)

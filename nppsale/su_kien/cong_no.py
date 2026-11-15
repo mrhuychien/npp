@@ -79,9 +79,12 @@ def chieu_hoa_don(ten: str) -> str | None:
 	})
 
 
-# Trường người giữ nợ trên chứng từ nguồn của từng loại dòng (blueprint 02 §5.6): (người giữ, mốc về NPP, dấu bàn giao)
+# Trường người giữ nợ trên chứng từ nguồn của từng loại dòng (blueprint 02 §5.6): (người giữ, mốc về NPP, dấu bàn giao). Dòng âm của phiếu
+# trả tự lập (`NPP Phieu Tra:<PT>`) giữ ba trường ấy trên tờ ghi có ĐANG HIỆU LỰC của phiếu (`to_ghi_co`) — bàn giao / nghỉ việc / giao nợ
+# ghi lên tờ rồi chiếu lại dòng.
 TRUONG_GIU = {"Sales Invoice": ("npp_nv_giu_no", "npp_ve_npp_luc", "npp_giao_tu_nv"),
-	"NPP Phieu Thu": ("nv_giu_tien_thua", "ve_npp_luc", "giao_tu_nv")}
+	"NPP Phieu Thu": ("nv_giu_tien_thua", "ve_npp_luc", "giao_tu_nv"),
+	"NPP Phieu Tra": ("npp_nv_giu_no", "npp_ve_npp_luc", "npp_giao_tu_nv")}
 
 
 _GIU_DAU = object()
@@ -93,6 +96,8 @@ def dat_nguoi_giu(dong: str, nv: str | None, ve_npp_luc, giao=_GIU_DAU) -> None:
 	khoa = frappe.db.get_value(DT, dong, "khoa_nguon")
 	dt, _, ten = (khoa or "").partition(":")
 	truong = TRUONG_GIU.get(dt)
+	if dt == "NPP Phieu Tra" and ten:
+		dt, ten = "Sales Invoice", frappe.db.get_value("NPP Phieu Tra", ten, "to_ghi_co")
 	if not truong or not ten:
 		frappe.throw(f"Không rõ chứng từ nguồn của dòng công nợ {dong} ({khoa})")
 	gt = {truong[0]: nv, truong[1]: None if nv else ve_npp_luc}
@@ -146,6 +151,14 @@ def chieu_nguon_cua(si) -> None:
 # ------------------------------------------------------------------------------------------------ doc_events
 def sau_ghi_so_hoa_don(doc, method=None):
 	chieu_nguon_cua(doc)
+	if method == "on_update_after_submit" and doc.get("is_return"):
+		# tờ ghi có đổi HĐ gắn (npp_hoa_don_goc, AOS): HĐ cũ mất khoản trừ; dòng âm độc lập của phiếu tính lại theo điều kiện mới
+		cu = doc.get_doc_before_save()
+		goc_cu = cu.get("npp_hoa_don_goc") if cu else None
+		if goc_cu and goc_cu != doc.get("npp_hoa_don_goc"):
+			chieu_hoa_don(goc_cu)
+		if doc.get("npp_phieu_tra") and doc.get("npp_hoa_don_goc"):
+			chieu_phieu_tra(doc.get("npp_phieu_tra"))
 
 
 def sau_thanh_toan(doc, method=None):

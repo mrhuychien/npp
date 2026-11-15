@@ -223,15 +223,44 @@ class TestTaoDon(IntegrationTestCase):
 		self.assertEqual(so.total_taxes_and_charges, 1440)
 		self.assertTrue(frappe.get_all("NPP Nhat Ky Don", filters={"don": so.name, "hanh_dong": "add_line"}))
 
-	def test_hang_tra_kem_don_chua_ho_tro(self):
+	def test_hang_tra_kem_don(self):
+		"""Hàng trả kèm đơn (mig 169 / 171 / 183): phiếu NHÁP theo đơn, chưa gắn HĐ, người đứng tên = NV đơn, dòng tính lại thành tiền;
+		lỗi của phiếu lùi CẢ đơn; lỗi phiếu ra TRƯỚC lỗi quyền giảm giá cả đơn (constraint trigger hoãn tới cuối giao dịch)."""
 		t = next(x for x in self.vang["tinh_huong"] if x["ma"] == "dung_gia_sales_a")
+		import uuid
+
 		p = doi_khoa(t["p"], self.ma)
-		p["returns"] = {"reason": "damaged", "notes": None}
+		p["client_request_id"] = str(uuid.uuid4())
+		p["returns"] = {"reason": "damaged", "notes": ""}
 		p["return_lines"] = [{"product_id": self.ma["P1"], "unit_name": "Lon", "quantity": 1, "unit_price": 9500, "vat_rate": 0.08,
-			"line_total": 9500, "is_exchange": False}]
+			"line_total": 1, "is_exchange": False, "note": "", "reason": ""},
+			{"product_id": self.ma["P1"], "unit_name": None, "quantity": 2, "unit_price": 0, "vat_rate": 0, "is_exchange": True}]
 		ket = goi_rpc(self.ma["u:sales_a"], "create_order_with_lines", {"p": p})
-		self.assertTrue(ket["error"]["message"].startswith("RETURNS_CHUA_HO_TRO"))
-		self.assertFalse(frappe.db.exists("Sales Order", {"npp_client_request_id": p["client_request_id"]}))
+		don = ket["data"][0]["order_id"]
+		pt = frappe.get_doc("NPP Phieu Tra", {"don_hang": don})
+		self.assertEqual((pt.trang_thai, pt.khach_hang, pt.ly_do, pt.ghi_chu, pt.hoa_don, pt.tu_sinh, pt.nhan_vien, pt.owner),
+			("draft", frappe.db.get_value("Sales Order", don, "customer"), "damaged", None, None, 0, self.ma["u:sales_a"],
+				self.ma["u:sales_a"]))
+		# Select rỗng lưu '' (cổng đọc NULLIF(ly_do, '') → null như nppsale)
+		self.assertEqual([(d.don_vi, d.so_luong, d.don_gia, d.thanh_tien, d.hang_doi, d.ghi_chu, d.ly_do or None) for d in pt.dong],
+			[("Lon", 1, 9500, 10260, 0, None, None), (frappe.db.get_value("Item", self.ma["P1"], "stock_uom"), 2, 0, 0, 1, None, None)])
+		self.assertEqual(pt.tien_tra, 10260)
+		# giá trả vượt trần → không đơn nào được ghi
+		p2 = doi_khoa(t["p"], self.ma)
+		p2["client_request_id"] = str(uuid.uuid4())
+		p2["returns"] = {"reason": "damaged"}
+		p2["return_lines"] = [{"product_id": self.ma["P1"], "unit_name": "Lon", "quantity": 1, "unit_price": 99999, "vat_rate": 0}]
+		ket = goi_rpc(self.ma["u:sales_a"], "create_order_with_lines", {"p": p2})
+		self.assertTrue(ket["error"]["message"].startswith("RETURN_PRICE_OVER_CEILING"), ket)
+		self.assertFalse(frappe.db.exists("Sales Order", {"npp_client_request_id": p2["client_request_id"]}))
+		# lý do rỗng → CHECK 23514 (không NULLIF như notes)
+		p3 = doi_khoa(t["p"], self.ma)
+		p3["client_request_id"] = str(uuid.uuid4())
+		p3["returns"] = {"reason": ""}
+		p3["return_lines"] = p2["return_lines"]
+		ket = goi_rpc(self.ma["u:sales_a"], "create_order_with_lines", {"p": p3})
+		self.assertEqual(ket["error"]["code"], "23514", ket)
+		self.assertFalse(frappe.db.exists("Sales Order", {"npp_client_request_id": p3["client_request_id"]}))
 
 	def test_dong_xuat_hang(self):
 		"""get_invoiceable_lines: dòng đơn để màn Xuất hàng dựng HĐ — SL đặt / đã xuất / còn lại, giá, giảm, thuế, giá bán cơ sở, tồn kho bán."""

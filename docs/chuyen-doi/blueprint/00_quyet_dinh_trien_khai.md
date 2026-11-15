@@ -71,3 +71,31 @@ mỗi khi HĐ, tờ ghi có, Payment Entry, bút toán cấn trừ ghi sổ / hu
 
 Mỗi giai đoạn: blueprint / mã → test (unit Python + bench run-tests trên site thử + vitest phía portal) → commit tiếng Việt →
 push nhánh `claude/elegant-hamilton-ak996q`. Không đụng `main`, không tạo PR khi anh chưa bảo.
+
+## Q6. Phiếu trả (P3c) — chỗ em tạm quyết, chờ anh chốt
+
+Đặc tả phiếu trả (đọc thẳng hàm + trigger đang chạy của nppsale) liệt kê 14 câu cần anh chốt (Q1–Q14 của đặc tả). Để không dừng, em dựng theo
+cách dưới. Bài vàng `nppsale/tests/test_phieu_tra_vang.py` so 150 tình huống với CHÍNH hàm Postgres của nppsale (`tools/vang_phieu_tra.py`);
+chỗ khác nppsale ghi ở `LECH_PT` / `SUA_MONG` trong bài, đổi được một chỗ khi anh chốt khác.
+
+| Câu | nppsale hôm nay | Bản ERPNext (tạm) |
+|---|---|---|
+| Q1 — ngày ghi kho phiếu tự lập | ghi kho **lúc bấm** Hoàn thành (mig 188), doanh số theo ngày phiếu | giữ như nppsale: tờ ghi có có kho ghi sổ lúc bấm; doanh số theo `ngay_tru_doanh_so` (12:00 ngày phiếu) |
+| Q2 — làm tròn tờ ghi có | tiền trả = Σ làm tròn từng dòng, đơn giá 2 số lẻ | lõi làm tròn khác (vd 3 × 3.333,5 ra 10.002 thay 10.001) → bù đúng phần lệch bằng giảm giá **sau thuế** (tài khoản giảm giá đơn) để tờ = đúng số nppsale từng đồng |
+| Q3 — không tìm được giá vốn nhập lại | nhập giá vốn 0 | lõi sẽ lấy giá bán làm giá vốn → **chặn** `RETURN_NO_COST` (nhập giá vốn mặc định của mặt hàng rồi hoàn thành lại); trước đó thử HĐ → đơn → lô mới nhất → giá vốn mặc định → giá nhập |
+| Q4 — lô nhập lại mới | `RESTOCK-<mã phiếu nhập>` | `RESTOCK-<PT>-<mặt hàng>` (lõi đặt tên lô theo mã — hai mặt hàng không trùng); hạn = hạn xa nhất của mặt hàng → hôm nay + hạn dùng → hôm nay + 365 |
+| Q5 — huỷ khi hàng nhập lại đã bán tiếp | cho lô âm | lõi chặn lô âm → báo `RETURN_STOCK_USED` |
+| Q6 — dòng nợ âm khi phiếu độc lập bị huỷ | để lại dòng 0 đ | bản chiếu thuần xoá dòng (tổng nợ như nhau); phần dư có đã dùng ở phiếu thu dựng ở P3d |
+| Q7 — sửa tay ô "Credit Note" của phiếu nháp | nhận, giữ tới lần đổi dòng kế | giữ như nppsale |
+| Q8a — SL trả âm | nhận → tiền trả âm làm nợ **tăng** (ngược ý mig 227) | **chặn** như CHECK đơn giá / thuế: `23514 … "return_lines_quantity_khong_am"` (SL 0 vẫn nhận; RPC vốn bỏ dòng SL ≤ 0) — lõi cũng không nhận dòng SL dương trên tờ ghi có |
+| Q8c — đơn vị lạ | nhận chữ tự do | nhận, tự tạo UOM (như dòng đơn) |
+| Q8d, e, g, h | thuế 100 %, phiếu nháp cờ tự sinh, ngày tương lai, POS sửa phiếu theo đơn | giữ như nppsale |
+| Q9 — lý do huỷ phiếu trả | không bắt | giữ như nppsale |
+| Q10 — đổi ngày phiếu tự lập đã hoàn thành | chỉ dời mốc ghi có / ngày trừ doanh số | giữ như nppsale (không lập lại tờ ghi có) |
+| Q11 — phiếu rỗng hoàn thành | lập phiếu nhập rỗng, `entry_id` có | hoàn thành không chứng từ kho, `entry_id` rỗng |
+| Q12 — tài khoản chênh lệch phiếu nhập lại `NL-` | — | mặc định của lõi (Stock Adjustment) — chưa thêm ô `tk_*` |
+| Q13 — hệ số quy đổi | tra danh mục lúc hoàn thành | chụp lúc lập chứng từ (tờ ghi có / phiếu nhập) — cùng thời điểm |
+| Q14 — lập lại tờ ghi có khi tiền phiếu tự sinh đổi | — | huỷ tờ cũ, amend `HDT-x-n` |
+
+Khác biệt kỹ thuật không đổi số: nppsale đảo nhập kho bằng phiếu xuất "Đảo phiếu trả" + ghi chú "(đã đảo)", bản ERPNext huỷ chứng từ (docstatus 2);
+giá vốn lô nền sau khi nhập lại do lõi định giá theo lô (nppsale giữ giá lô).

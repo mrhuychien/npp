@@ -305,15 +305,11 @@ class TestXuatHang(IntegrationTestCase):
 
 	def test_cua_chan_xuat_sua_huy(self):
 		"""Các cửa chặn ngoài bộ vàng: post_invoice không nhận `reissue_of` (lệch có chủ ý — Sửa HĐ chỉ qua reissue_invoice); phần Sửa HĐ
-		chưa dựng (hàng trả kèm, chuyển tiền thu) báo rõ và tờ cũ còn nguyên; HĐ đã thu tiền thì huỷ bị khoá (đúng nppsale)."""
+		chưa dựng (chuyển tiền thu) báo rõ và tờ cũ còn nguyên; HĐ đã thu tiền thì huỷ bị khoá (đúng nppsale)."""
 		don, hd = self._don_da_xuat()
 		ket = self._goi("owner", "post_invoice", {"p": {"order_id": don, "reissue_of": hd, "lines": []}})
 		self.assertEqual(ket["error"]["message"], "REISSUE_QUA_RPC_RIENG: sửa hóa đơn dùng reissue_invoice")
 		dong = self._dong_sua(hd, [[0, {}], [1, {}]])
-		for them in ({"return_edits": [{"line_id": "x", "quantity": 1}]}, {"return_adds": [{"product_id": "x"}]}, {"tra_da_nhap": "giu"}):
-			ket = self._goi("owner", "reissue_invoice", {"p_invoice_id": hd, "p": {"lines": dong, **them}})
-			self.assertTrue(ket["error"]["message"].startswith("RETURNS_CHUA_HO_TRO"), ket)
-		self.assertEqual(frappe.db.get_value("Sales Invoice", hd, "docstatus"), 1)
 		frappe.db.set_value("NPP Cong No", {"hoa_don": hd}, "da_thu", 1000)
 		ket = self._goi("owner", "cancel_invoice", {"p_invoice_id": hd, "p_reason": "Khach tra lai hang"})
 		self.assertEqual(ket["error"]["message"], "LOCKED_HAS_PAYMENT: hóa đơn đã có tiền thu, huỷ phiếu thu trước")

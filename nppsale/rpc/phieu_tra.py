@@ -11,7 +11,14 @@ Ghi thẳng từ trình duyệt (supabase.from('returns' | 'return_lines')) đi 
 - Phiếu tự sinh (`_khoa_phieu_tra_tu_sinh`, mig 191): cấm xoá, cấm đổi trạng thái / khách / HĐ / đơn / cờ tự sinh / tiền, cấm
   mọi ghi dòng (RETURN_FOLLOWS_INVOICE).
 Thứ tự lỗi như Postgres: trigger BEFORE (theo tên) rồi WITH CHECK của RLS; dòng: UNIT_MISSING → RETURN_PRICE_OVER_CEILING →
-RETURN_FOLLOWS_INVOICE → PHIEU_TRA_KHOA.
+RETURN_FOLLOWS_INVOICE → PHIEU_TRA_KHOA → 42501 → CHECK → khoá ngoại (móc `kiem_rls` / `kiem_dong_sau` gọi từ controller).
+
+RPC phiếu trả (save_pos_return, create_return_with_lines, complete_return, cancel_return) và phần nối vào bán hàng (đặc tả §3.5, §4):
+Xuất hàng (`ap_tra_them` / `phieu_cho_cua_don` → câu gắn `gan_phieu_theo_don` → `ap_sua_tra` → `dong_bo_to_ghi_co`), Huỷ HĐ (huỷ tờ
+ghi có trước → `huy_phieu_khi_huy_hd` → `huy_phieu_theo_don`), Sửa HĐ (`tra_da_nhap_truoc` → `go_phieu_khoi_hd` → `sau_lap_lai`), đổi
+người HĐ (`doi_nguoi_theo_hd`), công nợ theo người đứng tên (`cong_no_doi_nguoi`). Tờ ghi có KHÔNG kho `HDT-` của phiếu tự sinh luôn khớp
+dòng + tiền của phiếu (huỷ / lập lại amend); tổng tờ = đúng tiền trả nppsale (`_khop_tong`, ⚠ Q2). Quyết định tạm Q1–Q14:
+docs/chuyen-doi/blueprint/00_quyet_dinh_trien_khai.md mục Q6.
 """
 from __future__ import annotations
 
@@ -21,7 +28,7 @@ from frappe.utils import flt, nowdate
 from nppsale.cong.loi import NppLoi
 from nppsale.cong.sql import LoiCong
 
-from . import rpc  # noqa: F401 — RPC phiếu trả khai ở phần sau của P3c
+from . import rpc
 
 DT = "NPP Phieu Tra"
 VAI_LAP = ("owner", "manager", "sales")
@@ -96,17 +103,26 @@ def them_phieu(ds: list[dict], nc, nullif: set = frozenset()) -> list[str]:
 			_khoa("phiếu trả lập ra ở Nháp — hoàn thành đi qua nút Hoàn thành")
 		if g.get("applied_receipt_id") is not None:
 			_khoa("cột này chỉ đổi qua RPC")
-		if not doc.khach_hang:
-			raise LoiCong("23502", 'null value in column "customer_id" of relation "returns" violates not-null constraint', http=400)
 		doc.flags.cot_ghi = cham
 		doc.flags.ignore_permissions = True
-		frappe.db.savepoint("npp_them_pt")
+		# WITH CHECK của "Sales can create returns" chạy sau trigger BEFORE, trước NOT NULL / CHECK / khoá ngoại
+		doc.flags.kiem_rls = (lambda: _rls_ghi("returns")) if nc.vai not in VAI_LAP and not nc.bo_qua_rls else None
 		doc.insert()
-		if nc.vai not in VAI_LAP and not nc.bo_qua_rls:  # WITH CHECK của RLS chạy sau trigger BEFORE
-			frappe.db.rollback(save_point="npp_them_pt")
-			_rls_ghi("returns")
 		ra.append(doc.name)
 	return ra
+
+
+def thay_phieu(ten: str, nc) -> bool:
+	"""Người gọi đọc được phiếu theo RLS (cổng `_ve_phieu`) — trigger INVOKER của nppsale đọc phiếu cha dưới quyền người gọi."""
+	if nc.bo_qua_rls or nc.vai in ("owner", "manager", "accountant", "warehouse"):
+		return bool(frappe.db.exists(DT, ten))
+	if nc.vai != "sales":
+		return False
+	r = frappe.db.get_value(DT, ten, ["owner", "nhan_vien", "hoa_don", "don_hang"], as_dict=True)
+	if not r:
+		return False
+	return nc.user in (r.owner, r.nhan_vien) or (bool(r.hoa_don) and frappe.db.get_value("Sales Invoice", r.hoa_don, "npp_nhan_vien") == nc.user) \
+		or (bool(r.don_hang) and frappe.db.get_value("Sales Order", r.don_hang, "npp_nhan_vien") == nc.user)
 
 
 def _duoc_sua(doc, nc) -> bool:
@@ -138,11 +154,10 @@ def sua_phieu(gia_tri: dict, ids: list[str], nc) -> list[str]:
 				raise NppLoi("RETURN_FOLLOWS_INVOICE: phiếu trả tự sinh theo hóa đơn — muốn sửa thì sửa hóa đơn")
 		doc.flags.cot_ghi = cham
 		doc.flags.ignore_permissions = True
-		frappe.db.savepoint("npp_sua_pt")
+		# WITH CHECK của "Sales can update own draft returns": sau trigger BEFORE (người đứng tên có thể đã đổi theo HĐ vừa gắn)
+		doc.flags.kiem_rls = (lambda d=doc: _rls_ghi("returns") if not (d.nhan_vien == nc.user and d.trang_thai == "draft") else None) \
+			if not nc.bo_qua_rls and nc.vai == "sales" else None
 		doc.save()
-		if not nc.bo_qua_rls and nc.vai == "sales" and not (doc.nhan_vien == nc.user and doc.trang_thai == "draft"):
-			frappe.db.rollback(save_point="npp_sua_pt")  # WITH CHECK của "Sales can update own draft returns"
-			_rls_ghi("returns")
 		ra.append(ten)
 	return ra
 
@@ -176,26 +191,33 @@ def _duoc_ghi_dong(nc) -> bool:
 	return nc.bo_qua_rls or nc.vai in VAI_LAP
 
 
-def _khoa_dong(doc, nc):
-	"""Thứ tự trigger dòng sau trần giá (trần chạy trong validate): tự sinh → khoá Nháp."""
+def _khoa_dong(doc, nc, chen: bool = False):
+	"""Thứ tự trigger dòng sau trần giá (trần chạy trong validate): tự sinh → khoá Nháp — hai trigger INVOKER đọc phiếu cha dưới RLS của
+	người gọi (không thấy → không phải tự sinh, trạng thái '?'); rồi WITH CHECK của RLS dòng (lúc chèn: vai owner / manager / sales)."""
 	if nc.bo_qua_rls:
 		return
-	if doc.tu_sinh:
+	thay = thay_phieu(doc.name, nc)
+	cu = frappe.db.get_value(DT, doc.name, ["tu_sinh", "trang_thai"], as_dict=True) if thay else None
+	if cu and cu.tu_sinh:
 		raise NppLoi("RETURN_FOLLOWS_INVOICE: phiếu trả tự sinh theo hóa đơn — muốn sửa thì sửa hóa đơn")
-	if doc.trang_thai != "draft":
-		_khoa(f"dòng hàng chỉ sửa được khi phiếu trả còn Nháp (đang {doc.trang_thai or '?'})")
+	tt = cu.trang_thai if cu else None
+	if tt != "draft":
+		_khoa(f"dòng hàng chỉ sửa được khi phiếu trả còn Nháp (đang {tt or '?'})")
+	if chen and not _duoc_ghi_dong(nc):
+		_rls_ghi("return_lines")
 
 
 def them_dong(ds: list[dict], nc, nullif: set = frozenset()) -> list[str]:
-	if not _duoc_ghi_dong(nc):
-		_rls_ghi("return_lines")
 	ra = []
 	theo_phieu: dict = {}
 	for g in ds:
 		g = dict(g or {})
 		pt = g.get("return_id")
 		if not pt or not frappe.db.exists(DT, pt):
-			_rls_ghi("return_lines")  # phiếu cha không thấy được / không có — WITH CHECK
+			# phiếu cha không có: khoá Nháp (INVOKER) không đọc được trạng thái → '?' — ra trước WITH CHECK và khoá ngoại
+			if not nc.bo_qua_rls:
+				_khoa("dòng hàng chỉ sửa được khi phiếu trả còn Nháp (đang ?)")
+			_rls_ghi("return_lines")
 		theo_phieu.setdefault(pt, []).append(g)
 	for pt, dong in theo_phieu.items():
 		doc = frappe.get_doc(DT, pt)
@@ -208,16 +230,16 @@ def them_dong(ds: list[dict], nc, nullif: set = frozenset()) -> list[str]:
 			if d.so_luong is None:
 				raise LoiCong("23502", 'null value in column "quantity" of relation "return_lines" violates not-null constraint', http=400)
 			moi.append(d)
-		_luu_dong(doc, nc)
+		_luu_dong(doc, nc, chen=True)
 		ra += [d.name for d in moi]
 	return ra
 
 
-def _luu_dong(doc, nc):
-	"""Lưu phiếu sau khi đổi dòng: validate chạy đơn vị / thành tiền / trần giá trước, rồi khoá tự sinh / Nháp như thứ tự trigger."""
+def _luu_dong(doc, nc, chen: bool = False):
+	"""Lưu phiếu sau khi đổi dòng: validate chạy đơn vị / thành tiền / trần giá trước, rồi khoá tự sinh / Nháp / RLS như thứ tự trigger."""
 	doc.flags.ignore_permissions = True
 	doc.flags.cot_ghi = set()
-	doc.flags.kiem_dong_sau = (lambda: _khoa_dong(doc, nc))
+	doc.flags.kiem_dong_sau = (lambda: _khoa_dong(doc, nc, chen))
 	doc.save()
 
 
@@ -303,13 +325,45 @@ def doi_nguoi_phieu_tra(pt: str, nv: str):
 	doc.flags.qua_rpc = True
 	doc.flags.cot_ghi = {"nhan_vien"}
 	doc.flags.ignore_permissions = True
-	doc.save()
-	cong_no_doi_nguoi(doc)
+	doc.save()  # on_update của phiếu: tờ ghi có + dòng nợ âm theo người mới (_phieu_tra_doi_nguoi_cong_no)
 
 
 def cong_no_doi_nguoi(doc):
-	"""_phieu_tra_doi_nguoi_cong_no: dòng công nợ âm của phiếu (tờ ghi có độc lập) mang người đứng tên mới — dựng cùng phần tờ ghi có."""
-	return None
+	"""_phieu_tra_doi_nguoi_cong_no (mig 194): tờ ghi có đang hiệu lực của phiếu mang người đứng tên mới; dòng nợ âm của phiếu độc lập (người
+	giữ ở ba trường của tờ) đổi theo luật giữ nợ (`_cong_no_giu_ve_npp` — nợ đã về NPP đứng yên, người mới đã nghỉ thì giữ người cũ)."""
+	from frappe.utils import now_datetime
+
+	from nppsale.luat.giu_no import GiuNo, khi_doi_nguoi
+	from nppsale.rpc.gan_nguoi import da_nghi
+	from nppsale.su_kien.cong_no import chieu_phieu_tra
+
+	to = frappe.db.get_value("Sales Invoice", doc.to_ghi_co, ["docstatus", "npp_nhan_vien", "npp_nv_giu_no", "npp_ve_npp_luc",
+		"npp_giao_tu_nv", "npp_hoa_don_goc"], as_dict=True) if doc.to_ghi_co else None
+	if not to or to.docstatus != 1:
+		return
+	gt = {}
+	if to.npp_nhan_vien != doc.nhan_vien:
+		gt["npp_nhan_vien"] = doc.nhan_vien
+	if not to.npp_hoa_don_goc and to.npp_nv_giu_no != doc.nhan_vien:
+		moi = khi_doi_nguoi(GiuNo(to.npp_nv_giu_no, to.npp_ve_npp_luc, to.npp_giao_tu_nv), doc.nhan_vien, da_nghi, now_datetime())
+		gt.update({"npp_nv_giu_no": moi.nv, "npp_ve_npp_luc": moi.ve_npp, "npp_giao_tu_nv": moi.giao})
+	if gt:
+		frappe.db.set_value("Sales Invoice", doc.to_ghi_co, gt, update_modified=False)
+	chieu_phieu_tra(doc.name)
+
+
+def doi_nguoi_theo_hd(hd: str, nv: str) -> None:
+	"""_hoa_don_doi_nguoi (mig 194): đổi người đứng tên HĐ → phiếu trả gắn HĐ (mọi trạng thái, IS DISTINCT FROM) đổi theo; tờ ghi có
+	đang hiệu lực của phiếu mang người mới (dòng nợ của chúng là dòng của HĐ — người giữ do HĐ quyết)."""
+	for ten in frappe.get_all(DT, filters={"hoa_don": hd}, pluck="name", order_by="creation asc, name asc"):
+		doc = frappe.get_doc(DT, ten)
+		if doc.nhan_vien != nv:
+			doc.nhan_vien = nv
+			_luu_rpc(doc, {"nhan_vien"})
+	for t in frappe.get_all("Sales Invoice", filters={"is_return": 1, "npp_hoa_don_goc": hd, "docstatus": 1},
+			fields=["name", "npp_nhan_vien"]):
+		if t.npp_nhan_vien != nv:
+			frappe.db.set_value("Sales Invoice", t.name, "npp_nhan_vien", nv, update_modified=False)
 
 
 # ------------------------------------------------------------------------------------------------ RPC
@@ -451,6 +505,7 @@ def save_pos_return(p=None):
 			raise NppLoi("RETURN_FOLLOWS_INVOICE: phiếu trả tự sinh theo hóa đơn — muốn sửa thì sửa hóa đơn")
 		if nc.vai == "sales" and (doc.trang_thai != "draft" or doc.nhan_vien != nc.user):
 			raise NppLoi("FORBIDDEN: nhân viên bán hàng chỉ sửa được phiếu nháp của mình")
+		to_cu = doc.to_ghi_co
 		if doc.trang_thai == "completed":
 			if not complete:
 				raise NppLoi("RETURN_COMPLETED: phiếu đã nhập kho — sửa xong phải bấm Ghi nhận để kho và công nợ đổi theo")
@@ -482,7 +537,7 @@ def save_pos_return(p=None):
 			doc.flags.qua_rpc = True
 			doc.flags.cot_ghi = {"trang_thai"}
 			doc.save()
-		_hoan_thanh(doc.name, zone, None, nc, cd)
+		_hoan_thanh(doc.name, zone, None, nc, cd, to_cu=to_cu if rid else None)
 	return doc.name
 
 
@@ -615,7 +670,7 @@ def _lap_phieu_nhap(doc, kho: str, zone: str, luc, cd) -> str:
 	return se.name
 
 
-def _lap_to_ghi_co_co_kho(doc, kho: str, zone: str, luc, cd) -> str:
+def _lap_to_ghi_co_co_kho(doc, kho: str, zone: str, luc, cd, to_cu: str | None = None) -> str:
 	"""Tờ ghi có CÓ KHO `HDT-` của phiếu tự lập: mọi dòng SL > 0 (SL âm), dòng đổi theo luật dòng 0 đ, giá vốn nhập lại tự đặt theo đơn vị
 	kho rồi ghi sổ ngay (lưu lại tờ nháp đổi dòng là lõi xoá giá — PoC 5). Gắn HĐ thì npp_hoa_don_goc (nợ trừ vào HĐ), không thì dòng âm."""
 	from frappe.utils import now_datetime
@@ -634,6 +689,8 @@ def _lap_to_ghi_co_co_kho(doc, kho: str, zone: str, luc, cd) -> str:
 		"selling_price_list": bang, "ignore_pricing_rule": 1, "disable_rounded_total": 1, "taxes_and_charges": cd.mau_thue_ban,
 		"npp_hoa_don_goc": doc.hoa_don or None, "npp_phieu_tra": doc.name, "npp_nhan_vien": doc.nhan_vien, "npp_nv_giu_no": g.nv,
 		"npp_ve_npp_luc": g.ve_npp, "update_outstanding_for_self": 1, "due_date": luc.date()})
+	if to_cu and frappe.db.get_value("Sales Invoice", to_cu, "docstatus") == 2:
+		cn.amended_from = to_cu  # ghi nhận lại phiếu tự lập: amend tờ cũ (HDT-x-n), số PT giữ (bàn bạc 6.11)
 	for d in doc.dong:
 		if flt(d.so_luong) <= 0:
 			continue
@@ -651,11 +708,25 @@ def _lap_to_ghi_co_co_kho(doc, kho: str, zone: str, luc, cd) -> str:
 
 	for t in _get_taxes_and_charges("Sales Taxes and Charges Template", cd.mau_thue_ban) or []:
 		cn.append("taxes", t)
+	_khop_tong(cn, -flt(doc.tien_tra), cd)
 	cn.flags.ignore_permissions = True
 	cn.insert()
 	cn.submit()
 	frappe.local.message_log = []
 	return cn.name
+
+
+def _khop_tong(cn, muc_tieu: float, cd) -> None:
+	"""⚠ Q2 (đặc tả §7.1): tiền trả nppsale = Σ round(SL × giá × (1 + thuế)) TỪNG DÒNG, đơn giá trả được 2 số lẻ (mig 181); lõi làm tròn đơn
+	giá / tiền dòng / thuế theo độ chính xác tiền (VND 0 số lẻ) → tổng tờ lệch vài đồng (vd 3 × 3.333,5 = 10.001 ở nppsale, 10.002 ở lõi).
+	Công nợ là nguồn sự thật → bù đúng phần lệch bằng giảm giá SAU thuế (is_cash_or_non_trade_discount — cùng cách giảm giá cả đơn của HĐ,
+	không đổi nền thuế) để grand_total = −tiền trả. Tính trước khi lưu (lưu lại tờ nháp có kho làm lõi xoá giá vốn tự đặt — PoC 5)."""
+	cn.run_method("set_missing_values")
+	cn.calculate_taxes_and_totals()
+	lech = flt(cn.grand_total) - flt(muc_tieu)
+	if abs(lech) >= 0.5:
+		cn.update({"apply_discount_on": "Grand Total", "is_cash_or_non_trade_discount": 1, "discount_amount": lech,
+			"additional_discount_account": cd.tk_giam_gia_don})
 
 
 def _khoa_phieu(pt) -> object:
@@ -665,7 +736,7 @@ def _khoa_phieu(pt) -> object:
 	return frappe.get_doc(DT, pt)
 
 
-def _hoan_thanh(pt: str, zone, ngay, nc, cd):
+def _hoan_thanh(pt: str, zone, ngay, nc, cd, to_cu: str | None = None):
 	"""Thân complete_return (2 tham số; `ngay` = mốc ngày chọn của bản 3 tham số, None = lúc bấm) → tên chứng từ nhập (hoặc None)."""
 	import datetime as _dt
 
@@ -709,7 +780,7 @@ def _hoan_thanh(pt: str, zone, ngay, nc, cd):
 			chung_tu = _lap_phieu_nhap(doc, kho, zone, luc, cd)
 			doc.phieu_nhap_kho = chung_tu
 		else:
-			chung_tu = _lap_to_ghi_co_co_kho(doc, kho, zone, luc, cd)
+			chung_tu = _lap_to_ghi_co_co_kho(doc, kho, zone, luc, cd, to_cu)
 			doc.to_ghi_co = chung_tu
 	doc.update({"trang_thai": "completed", "hoan_thanh_luc": luc, "hoan_thanh_boi": nc.user if nc.vai else None, "kho_nhan": kho})
 	doc.flags.qua_rpc = True
@@ -851,3 +922,362 @@ def cancel_return(p_return_id=None, p_reason=None):
 	_khoa_bin_phieu(pt, cd)
 	_huy(_khoa_phieu(pt), p_reason, nc, cd)
 	return None
+
+
+# ================================================================================================ nối vào Xuất / Huỷ / Sửa HĐ (đặc tả §3.5, §4)
+def _he_so_dm(hang: str, don_vi: str | None):
+	"""Hệ số của đơn vị trong danh mục: đơn vị cơ sở → 1; có trong Item.uoms → hệ số; không có → None (product_units của nppsale)."""
+	if not don_vi:
+		return None
+	if don_vi == frappe.db.get_value("Item", hang, "stock_uom"):
+		return 1.0
+	v = frappe.db.get_value("UOM Conversion Detail", {"parent": hang, "parenttype": "Item", "uom": don_vi}, "conversion_factor")
+	return flt(v) if v is not None else None
+
+
+def phieu_cho_cua_don(don: str, hd: str | None, *, qua_rpc: bool):
+	"""_pending_return_for (mig 152 / 189): phiếu CŨ NHẤT của đơn ở Nháp / Chờ xử lý chưa gắn HĐ (hoặc gắn đúng HĐ) → dùng lại; không có →
+	lập phiếu nháp theo đơn (khách = khách đơn, lý do 'damaged', KHÔNG gắn HĐ — câu gắn sẽ bắt)."""
+	if not don:
+		raise NppLoi("ORDER_NOT_FOUND")
+	for r in frappe.get_all(DT, filters={"don_hang": don, "trang_thai": ["in", ["draft", "submitted"]]}, fields=["name", "hoa_don"],
+			order_by="creation asc, name asc"):
+		if not r.hoa_don or r.hoa_don == hd:
+			return frappe.get_doc(DT, r.name)
+	kh = frappe.db.get_value("Sales Order", don, "customer")
+	if not kh:
+		raise NppLoi("ORDER_NOT_FOUND")
+	doc = frappe.new_doc(DT)
+	doc.update({"don_hang": don, "khach_hang": kh, "trang_thai": "draft", "ly_do": "damaged", "ngay_tra": frappe.utils.getdate(nowdate())})
+	doc.flags.qua_rpc = qua_rpc
+	doc.flags.cot_ghi = {"don_hang", "khach_hang", "trang_thai", "ly_do", "ngay_tra"}
+	doc.flags.ignore_permissions = True
+	doc.insert()
+	return doc
+
+
+def ap_tra_them(don: str, hd: str | None, adds, *, qua_rpc: bool) -> int:
+	"""_apply_return_adds (mig 152 / 183 / 227): dòng trả / đổi thêm lúc Xuất / Sửa HĐ vào phiếu chờ của đơn (dựng nếu chưa có — kể cả khi
+	mọi phần tử SL ≤ 0). Trần giá theo vai người gọi, tham chiếu theo HĐ phiếu đang gắn lúc chèn."""
+	if not isinstance(adds, list) or not adds:
+		return 0
+	for x in adds:
+		if isinstance(x, dict) and _so(x.get("quantity")) > 0 and (_so(x.get("unit_price")) < 0 or not (0 <= _so(x.get("vat_rate")) <= 1)):
+			raise NppLoi("BAD_PAYLOAD: đơn giá hàng trả không được âm, thuế phải trong khoảng 0 – 1 (0 – 100 phần trăm)")
+	doc = phieu_cho_cua_don(don, hd, qua_rpc=qua_rpc)
+	n = 0
+	for x in adds:
+		if not isinstance(x, dict) or _so(x.get("quantity")) <= 0:
+			continue
+		doc.append("dong", {"mat_hang": _chu(x.get("product_id")), "don_vi": x.get("unit_name") or "", "so_luong": _so(x.get("quantity")),
+			"don_gia": _so(x.get("unit_price")), "thue_suat": _so(x.get("vat_rate")),
+			"hang_doi": 1 if _bool_pg(x.get("is_exchange")) else 0, "ghi_chu": _chu(x.get("note")), "ly_do": _chu(x.get("reason"))})
+		n += 1
+	if n:
+		_luu_rpc(doc, set())  # chèn dòng: guard người đứng tên không chạy (UPDATE OF sales_user_id); trần giá theo vai người gọi
+	return n
+
+
+def gan_phieu_theo_don(don: str, hd: str, giu=()) -> None:
+	"""Câu gắn của post_invoice (mig 131 / 133 / 189 / 213): MỌI phiếu theo đơn chưa gắn HĐ, Nháp / Chờ xử lý (trừ phiếu tự lập Sửa HĐ giữ
+	lại) → Chờ xử lý, gắn HĐ, tự sinh — nợ HĐ trừ ngay, doanh số trừ theo ngày HĐ."""
+	for ten in frappe.get_all(DT, filters={"don_hang": don, "trang_thai": ["in", ["draft", "submitted"]], "hoa_don": ["is", "not set"]},
+			pluck="name", order_by="creation asc, name asc"):
+		if ten in (giu or ()):
+			continue
+		doc = frappe.get_doc(DT, ten)
+		doc.update({"trang_thai": "submitted", "hoa_don": hd, "tu_sinh": 1})
+		_luu_rpc(doc, {"trang_thai", "hoa_don", "tu_sinh"})
+
+
+def ap_sua_tra(hd: str, edits) -> int:
+	"""_apply_return_edits (mig 149 / 181 / 183): sửa / xoá dòng của phiếu Nháp / Chờ xử lý gắn HĐ — SL ≤ 0 xoá; đổi quy cách quy giá theo hệ
+	số (2 số lẻ); dòng lạ / phiếu khác HĐ / phiếu đã xong bỏ qua im lặng. → số phần tử đã áp."""
+	from decimal import ROUND_HALF_UP, Decimal
+
+	if not isinstance(edits, list):
+		return 0
+	n = 0
+	for e in edits:
+		if not isinstance(e, dict):
+			continue
+		lid = _chu(e.get("line_id"))
+		r = frappe.db.sql(f"""SELECT d.`parent` FROM `tabNPP Phieu Tra Dong` d JOIN `tab{DT}` p ON p.`name` = d.`parent`
+			WHERE d.`name` = %s AND p.`hoa_don` = %s AND p.`trang_thai` IN ('draft', 'submitted')""", (lid, hd)) if lid else None
+		if not r:
+			continue
+		doc = frappe.get_doc(DT, r[0][0])
+		d = next(x for x in doc.dong if x.name == lid)
+		sl = _so(e.get("quantity"))
+		if sl <= 0:
+			doc.set("dong", [x for x in doc.dong if x.name != lid])
+		else:
+			dv_moi = (_chu(e.get("unit_name")) or "").strip() or None
+			if dv_moi and dv_moi != d.don_vi:
+				hs_moi = _he_so_dm(d.mat_hang, dv_moi)
+				if not hs_moi or hs_moi <= 0:
+					raise NppLoi(f'RETURN_UNIT_UNKNOWN: đơn vị "{dv_moi}" không có trong danh mục của mặt hàng')
+				hs_cu = _he_so_dm(d.mat_hang, d.don_vi)
+				if not hs_cu or hs_cu <= 0:
+					raise NppLoi(f'RETURN_UNIT_UNKNOWN: đơn vị cũ "{d.don_vi}" không còn trong danh mục — không quy được giá')
+				d.don_gia = float((Decimal(str(flt(d.don_gia))) * Decimal(str(hs_moi)) / Decimal(str(hs_cu))).quantize(Decimal("0.01"),
+					rounding=ROUND_HALF_UP))
+				d.don_vi = dv_moi
+			d.so_luong = sl
+			if "note" in e:
+				d.ghi_chu = _chu(e.get("note"))
+			if "reason" in e:
+				d.ly_do = _chu(e.get("reason"))
+		_luu_rpc(doc, set())
+		n += 1
+	return n
+
+
+def _huy_to_ghi_co(ten: str, ly_do: str | None = None):
+	from frappe.utils import now_datetime
+
+	from nppsale.cong.ngu_canh import hien_tai
+
+	cn = frappe.get_doc("Sales Invoice", ten)
+	if cn.docstatus != 1:
+		return
+	nc = hien_tai()
+	cn.npp_ly_do_huy = ly_do
+	cn.npp_huy_luc = now_datetime()
+	cn.npp_huy_boi = nc.user if frappe.db.exists("NPP Nhan Vien", nc.user) else None
+	cn.flags.ignore_permissions = True
+	cn.cancel()
+	frappe.local.message_log = []
+
+
+def _lap_to_ghi_co_khong_kho(doc, hd: str, cu: str | None, cd) -> str:
+	"""Tờ ghi có KHÔNG kho `HDT-` của phiếu tự sinh (blueprint §3.5.6): chỉ dòng tiền (không hàng đổi), SL âm, ngày = ngày HĐ, giờ = giờ HĐ
+	+ vài giây; trừ vào nợ HĐ qua npp_hoa_don_goc. Lập lại sau sửa → amend tờ cũ (HDT-x-n — ⚠ Q14)."""
+	import datetime as _dt
+
+	from frappe.utils import get_time, now_datetime
+
+	from nppsale.luat.giu_no import khi_lap
+	from nppsale.rpc.don_hang import _bang_gia_nhom
+	from nppsale.rpc.gan_nguoi import da_nghi
+	from nppsale.su_kien.san_pham import bang_gia_chung
+	from nppsale.thiet_lap.ban_hang import mau_thue_dong
+
+	h = frappe.db.get_value("Sales Invoice", hd, ["customer", "posting_date", "posting_time"], as_dict=True)
+	gio = (_dt.datetime.combine(_dt.date(2000, 1, 1), get_time(h.posting_time)) + _dt.timedelta(seconds=5)).time()
+	if gio < get_time(h.posting_time):  # vượt nửa đêm → kẹp 23:59:59
+		gio = _dt.time(23, 59, 59)
+	g = khi_lap(doc.nhan_vien, da_nghi, now_datetime())
+	cn = frappe.new_doc("Sales Invoice")
+	cn.update({"naming_series": "HDT-.####", "customer": h.customer, "company": cd.cong_ty, "is_return": 1, "update_stock": 0,
+		"set_posting_time": 1, "posting_date": h.posting_date, "posting_time": gio.strftime("%H:%M:%S"),
+		"selling_price_list": _bang_gia_nhom(h.customer) or bang_gia_chung(), "ignore_pricing_rule": 1, "disable_rounded_total": 1,
+		"taxes_and_charges": cd.mau_thue_ban, "npp_hoa_don_goc": hd, "npp_phieu_tra": doc.name, "npp_nhan_vien": doc.nhan_vien,
+		"npp_nv_giu_no": g.nv, "npp_ve_npp_luc": g.ve_npp, "update_outstanding_for_self": 1, "due_date": h.posting_date})
+	if cu:
+		cn.amended_from = cu
+	for d in doc.dong:
+		if d.hang_doi or flt(d.so_luong) == 0:
+			continue
+		hs = _he_so(d.mat_hang, d.don_vi)
+		if flt(d.he_so_quy_doi) != hs:
+			frappe.db.set_value("NPP Phieu Tra Dong", d.name, "he_so_quy_doi", hs, update_modified=False)
+			d.he_so_quy_doi = hs
+		cn.append("items", {"item_code": d.mat_hang, "qty": -flt(d.so_luong), "uom": d.don_vi, "conversion_factor": hs,
+			"rate": flt(d.don_gia), "price_list_rate": flt(d.don_gia), "discount_percentage": 0, "discount_amount": 0, "margin_type": "",
+			"margin_rate_or_amount": 0, "item_tax_template": mau_thue_dong(flt(d.thue_suat), cd.cong_ty), "npp_thue_suat": flt(d.thue_suat),
+			"npp_ghi_chu": d.ghi_chu})
+	from erpnext.controllers.accounts_controller import _get_taxes_and_charges
+
+	for t in _get_taxes_and_charges("Sales Taxes and Charges Template", cd.mau_thue_ban) or []:
+		cn.append("taxes", t)
+	_khop_tong(cn, -flt(doc.tien_tra), cd)
+	cn.flags.ignore_permissions = True
+	cn.insert()
+	cn.submit()
+	frappe.local.message_log = []
+	return cn.name
+
+
+def _chu_ky_to(ten: str) -> tuple:
+	return tuple(sorted((r.item_code, r.uom, round(-flt(r.qty), 6), round(flt(r.rate), 4), round(flt(r.npp_thue_suat), 4))
+		for r in frappe.get_all("Sales Invoice Item", filters={"parent": ten, "parenttype": "Sales Invoice"},
+			fields=["item_code", "uom", "qty", "rate", "npp_thue_suat"])))
+
+
+def dong_bo_to_ghi_co(hd: str, cd=None) -> None:
+	"""Giữ tờ ghi có KHÔNG kho khớp phiếu tự sinh của HĐ (thay cho việc nppsale tính sống credit_note_amount — mig 133): phiếu tự sinh Chờ xử
+	lý / Hoàn thành có tiền → đúng một tờ đang ghi sổ cùng dòng; lệch → huỷ tờ cũ, lập lại (amend); không tiền / rời HĐ → không còn tờ."""
+	from nppsale.thiet_lap.ban_hang import cai_dat_ban
+
+	cd = cd or cai_dat_ban()
+	can = {}
+	for r in frappe.get_all(DT, filters={"hoa_don": hd, "tu_sinh": 1, "trang_thai": ["in", ["submitted", "completed"]]}, pluck="name"):
+		doc = frappe.get_doc(DT, r)
+		can[doc.name] = doc
+	# tờ không kho đang ghi sổ của HĐ (cả của phiếu đã rời HĐ)
+	dang = frappe.get_all("Sales Invoice", filters={"is_return": 1, "update_stock": 0, "npp_hoa_don_goc": hd, "docstatus": 1},
+		fields=["name", "npp_phieu_tra", "grand_total"], order_by="creation asc")
+	theo_pt: dict = {}
+	for t in dang:
+		theo_pt.setdefault(t.npp_phieu_tra, []).append(t)
+	for pt, ds in theo_pt.items():
+		if pt not in can:
+			for t in ds:
+				_huy_to_ghi_co(t.name)
+	for pt, doc in can.items():
+		ds = theo_pt.get(pt, [])
+		# SL không kiểm dấu ở nppsale (dòng SL âm làm tiền trả âm — nợ HĐ tăng lại): mọi dòng tiền SL ≠ 0 lên tờ
+		can_to = any(not d.hang_doi and flt(d.so_luong) != 0 for d in doc.dong) and flt(doc.tien_tra) != 0
+		ky = tuple(sorted((d.mat_hang, d.don_vi, round(flt(d.so_luong), 6), round(flt(d.don_gia), 4), round(flt(d.thue_suat), 4))
+			for d in doc.dong if not d.hang_doi and flt(d.so_luong) != 0))
+		if can_to and len(ds) == 1 and _chu_ky_to(ds[0].name) == ky:
+			if doc.to_ghi_co != ds[0].name:
+				doc.db_set("to_ghi_co", ds[0].name, update_modified=False)
+			continue
+		for t in ds:
+			_huy_to_ghi_co(t.name)
+		if not can_to:
+			continue  # to_ghi_co giữ tên tờ đã huỷ: lần lập sau amend tiếp (HDT-x-n — ⚠ Q14)
+		goc = ds[-1].name if ds else doc.to_ghi_co
+		if goc and frappe.db.get_value("Sales Invoice", goc, "docstatus") != 2:
+			goc = None
+		doc.db_set("to_ghi_co", _lap_to_ghi_co_khong_kho(doc, hd, goc, cd), update_modified=False)
+
+
+def huy_phieu_khi_huy_hd(hd: str, ma_hd: str) -> None:
+	"""cancel_invoice sau khi huỷ HĐ (mig 131 / 135): phiếu tự sinh theo đơn → gỡ HĐ, về Nháp, bỏ cờ tự sinh (huỷ đơn sẽ huỷ tiếp); phiếu còn
+	gắn tờ (độc lập / tự lập) Nháp / Chờ → Đã huỷ 'Hóa đơn <mã> bị huỷ', giữ HĐ."""
+	from frappe.utils import now_datetime
+
+	for r in frappe.get_all(DT, filters={"hoa_don": hd, "trang_thai": ["in", ["draft", "submitted"]]},
+			fields=["name", "don_hang", "tu_sinh"], order_by="creation asc"):
+		doc = frappe.get_doc(DT, r.name)
+		if r.don_hang and r.tu_sinh:
+			doc.update({"hoa_don": None, "trang_thai": "draft", "tu_sinh": 0, "to_ghi_co": None})
+			_luu_rpc(doc, {"hoa_don", "trang_thai", "tu_sinh"})
+	for r in frappe.get_all(DT, filters={"hoa_don": hd, "trang_thai": ["in", ["draft", "submitted"]]}, pluck="name", order_by="creation asc"):
+		doc = frappe.get_doc(DT, r)
+		doc.update({"trang_thai": "cancelled", "huy_luc": now_datetime(), "ly_do_huy": f"Hóa đơn {ma_hd} bị huỷ"})
+		_luu_rpc(doc, {"trang_thai"})
+
+
+def huy_to_ghi_co_cua_hd(hd: str, ly_do: str | None) -> None:
+	"""Trước khi huỷ HĐ: huỷ mọi tờ ghi có đang ghi sổ gắn HĐ (Link npp_hoa_don_goc làm lõi chặn huỷ HĐ)."""
+	for t in frappe.get_all("Sales Invoice", filters={"is_return": 1, "npp_hoa_don_goc": hd, "docstatus": 1}, pluck="name",
+			order_by="creation desc"):
+		_huy_to_ghi_co(t, ly_do)
+
+
+def huy_phieu_theo_don(don: str, ly_do: str, chi_nhap: bool = False) -> None:
+	"""_huy_don_theo_hoa_don (mig 217) / cancel_order: phiếu của đơn Nháp / Chờ (cancel_order: chỉ Nháp) → Đã huỷ với lý do."""
+	from frappe.utils import now_datetime
+
+	tt = ["draft"] if chi_nhap else ["draft", "submitted"]
+	for r in frappe.get_all(DT, filters={"don_hang": don, "trang_thai": ["in", tt]}, pluck="name", order_by="creation asc"):
+		doc = frappe.get_doc(DT, r)
+		doc.update({"trang_thai": "cancelled", "huy_luc": now_datetime(), "ly_do_huy": ly_do})
+		_luu_rpc(doc, {"trang_thai"})
+
+
+# ------------------------------------------------------------------------------------------------ Sửa HĐ (reissue_invoice — đặc tả §4.4)
+def _van_ban(v) -> str | None:
+	"""p->>'x' của Postgres: chuỗi giữ nguyên, true/false, số theo JSON, null → None."""
+	import json
+
+	if v is None:
+		return None
+	if isinstance(v, bool):
+		return "true" if v else "false"
+	if isinstance(v, str):
+		return v
+	return json.dumps(v, ensure_ascii=False, separators=(", ", ": ")) if isinstance(v, (dict, list)) else str(v)
+
+
+def phieu_tu_lap_cua_hd(hd: str) -> tuple:
+	"""_mac_dinh_lap_lai (mig 213): phiếu TỰ LẬP Nháp / Chờ đang gắn tờ cũ — câu gắn của tờ mới không được biến chúng thành tự sinh."""
+	return tuple(frappe.get_all(DT, filters={"hoa_don": hd, "trang_thai": ["in", ["draft", "submitted"]], "tu_sinh": 0}, pluck="name"))
+
+
+def _go_to_khoi_hd(doc) -> None:
+	"""Phiếu rời HĐ giữa chừng Sửa HĐ: tờ ghi có KHÔNG kho (tự sinh) huỷ — lập lại theo tờ mới ở bước cuối; tờ ghi có CÓ kho (tự lập Hoàn
+	thành) gỡ móc npp_hoa_don_goc (AOS, không chạy hook chiếu giữa chừng)."""
+	if not doc.to_ghi_co or frappe.db.get_value("Sales Invoice", doc.to_ghi_co, "docstatus") != 1:
+		return
+	if frappe.db.get_value("Sales Invoice", doc.to_ghi_co, "update_stock"):
+		frappe.db.set_value("Sales Invoice", doc.to_ghi_co, "npp_hoa_don_goc", None, update_modified=False)
+	else:
+		_huy_to_ghi_co(doc.to_ghi_co)
+
+
+def tra_da_nhap_truoc(hd: str, p: dict, nc, cd) -> list[tuple[str, str]]:
+	"""_tra_da_nhap_truoc_lap_lai (mig 210 / 216 — chủ nhà 28/09/2026 "Cần huỷ phiếu nhập trước?"): phiếu Hoàn thành của tờ cũ → `lam_lai`
+	(chỉ phiếu tự sinh: huỷ phiếu nhập, phiếu về Chờ xử lý, đi theo tờ mới như phiếu chờ — KHÔNG nhập kho lại) hoặc gỡ khỏi tờ để gắn lại
+	vào tờ mới (`giu`, và phiếu tự lập ở cả hai chế độ). Vắng lựa chọn mà có phiếu tự sinh đã nhập kho → REISSUE_RETURN_STOCKED."""
+	che_do = (_van_ban(p.get("tra_da_nhap")) or "").strip() or None
+	xong = frappe.get_all(DT, filters={"hoa_don": hd, "trang_thai": "completed"}, fields=["name", "tu_sinh"], order_by="creation asc, name asc")
+	if not xong:
+		return []
+	if che_do is not None and che_do not in ("lam_lai", "giu"):
+		raise NppLoi(f"BAD_TRA_DA_NHAP: {che_do} — chỉ nhận lam_lai hoặc giu")
+	if che_do is None:
+		ma = [r.name for r in xong if r.tu_sinh]
+		if ma:
+			raise NppLoi(f"REISSUE_RETURN_STOCKED: phiếu trả {', '.join(ma)} đã nhập kho — chọn huỷ phiếu nhập hay giữ nguyên")
+	nho = []
+	for r in xong:
+		doc = _khoa_phieu(r.name)
+		if che_do == "lam_lai" and r.tu_sinh:
+			_huy(doc, "Sửa hóa đơn — nhập kho lại theo số mới", nc, cd)  # cần returns.approve → FORBIDDEN: bạn không có quyền huỷ đơn trả
+			nho.append((r.name, "nhap_lai"))
+		else:
+			_go_to_khoi_hd(doc)
+			doc.hoa_don = None
+			_luu_rpc(doc, {"hoa_don"})
+			nho.append((r.name, "gan_lai"))
+	return nho
+
+
+def go_phieu_khoi_hd(hd: str) -> list[str]:
+	"""v_rets của reissue_invoice: phiếu Nháp / Chờ gắn tờ cũ → gỡ HĐ (gắn lại sau khi lập tờ mới)."""
+	ds = frappe.get_all(DT, filters={"hoa_don": hd, "trang_thai": ["in", ["draft", "submitted"]]}, pluck="name",
+		order_by="creation asc, name asc")
+	for ten in ds:
+		doc = frappe.get_doc(DT, ten)
+		_go_to_khoi_hd(doc)
+		doc.hoa_don = None
+		_luu_rpc(doc, {"hoa_don"})
+	return ds
+
+
+def sau_lap_lai(hd_cu: str, hd_moi: str, v_rets: list[str], sua: int, nho: list[tuple[str, str]], nv_cu: str | None, cd) -> None:
+	"""Phần cuối reissue_invoice sau post_invoice của tờ mới: gắn lại v_rets (tự lập giữ trạng thái + cờ), phiếu bị chính lượt sửa làm rỗng
+	→ Nháp rời HĐ (cờ tự sinh giữ — mig 152 / 158), NV đứng tên theo tờ cũ (mig 182), gắn lại phiếu đã nhập kho (`gan_lai` — mig 210), rồi
+	tờ ghi có khớp phiếu."""
+	for ten in v_rets:
+		doc = frappe.get_doc(DT, ten)
+		if doc.hoa_don != hd_moi:
+			doc.hoa_don = hd_moi
+			_luu_rpc(doc, {"hoa_don"})
+	if sua > 0:
+		for ten in v_rets:
+			doc = frappe.get_doc(DT, ten)
+			if doc.trang_thai in ("draft", "submitted") and not doc.dong:
+				doc.update({"trang_thai": "draft", "hoa_don": None})
+				_luu_rpc(doc, {"trang_thai", "hoa_don"})
+	for ten in frappe.get_all(DT, filters={"hoa_don": hd_moi, "trang_thai": ["!=", "cancelled"]}, pluck="name"):
+		doc = frappe.get_doc(DT, ten)
+		if nv_cu and doc.nhan_vien != nv_cu:
+			doc.nhan_vien = nv_cu
+			_luu_rpc(doc, {"nhan_vien"})
+	for ten, lam in nho:
+		if lam != "gan_lai":
+			continue
+		doc = frappe.get_doc(DT, ten)
+		doc.hoa_don = hd_moi
+		_luu_rpc(doc, {"hoa_don"})
+		to = frappe.db.get_value("Sales Invoice", doc.to_ghi_co, ["docstatus", "update_stock"], as_dict=True) if doc.to_ghi_co else None
+		if to and to.docstatus == 1 and to.update_stock:
+			frappe.db.set_value("Sales Invoice", doc.to_ghi_co, {"npp_hoa_don_goc": hd_moi, "npp_nhan_vien": doc.nhan_vien},
+				update_modified=False)
+	dong_bo_to_ghi_co(hd_moi, cd)

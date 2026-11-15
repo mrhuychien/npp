@@ -416,7 +416,15 @@ def xoa_don(ids: list[str], nc) -> list[str]:
 					continue
 			elif not (nc.vai == "sales" and so.npp_nhan_vien == nc.user and tt == "draft"):
 				continue
-		# trg_sales_orders_before_delete: phiếu trả của đơn (khi có NPP Phieu Tra), gỡ ghé thăm
+		# trg_sales_orders_before_delete (mig 118 / 129): phiếu trả ĐÃ HOÀN THÀNH chặn xoá; phiếu khác của đơn (kể cả Đã huỷ) xoá theo; gỡ
+		# ghé thăm — chạy TRƯỚC khoá ngoại HĐ (23503)
+		if frappe.db.exists("DocType", "NPP Phieu Tra"):
+			xong = frappe.db.count("NPP Phieu Tra", {"don_hang": ten, "trang_thai": "completed"})
+			if xong:
+				raise NppLoi(f"Đơn {ten} có {xong} phiếu trả hàng ĐÃ HOÀN THÀNH (đã trừ công nợ / nhập lại kho) nên không xoá được. Huỷ phiếu "
+					"trả đó trước, hoặc giữ đơn.", goi_y="returns.order_id")
+			for pt in frappe.get_all("NPP Phieu Tra", filters={"don_hang": ten}, pluck="name"):
+				frappe.delete_doc("NPP Phieu Tra", pt, ignore_permissions=True, force=True)
 		for g in frappe.get_all("NPP Ghe Tham", filters={"don_hang": ten}, pluck="name"):
 			frappe.db.set_value("NPP Ghe Tham", g, "don_hang", None, update_modified=False)
 		if da_xuat:
@@ -458,6 +466,9 @@ def cancel_order(p_order_id=None, p_reason=None):
 	so.npp_ly_do_huy = _chu(p_reason)
 	_luu(so, rong_duoc=True)
 	ghi_nhat_ky_don(ten, "trang_thai", tu_trang_thai=tt, den_trang_thai="cancelled")
-	# phiếu trả nháp kèm đơn → Đã huỷ: thêm khi có NPP Phieu Tra
+	if frappe.db.exists("DocType", "NPP Phieu Tra"):  # mig 217: chỉ phiếu Nháp kèm đơn huỷ theo — phiếu Chờ xử lý không đụng
+		from .phieu_tra import huy_phieu_theo_don
+
+		huy_phieu_theo_don(ten, f"Đơn {ten} đã huỷ", chi_nhap=True)
 	gui_thong_bao(so.npp_nhan_vien, "order_cancelled", f"Đơn {ten} đã bị huỷ", _chu(p_reason), f"/orders/{ten}")
 	return None

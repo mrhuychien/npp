@@ -145,3 +145,52 @@ class TestPhieuTraCong(IntegrationTestCase):
 			self._nc("owner"))["data"], [])
 		ket = self._goi("owner", "cancel_return", {"p_return_id": pt, "p_reason": "x"})
 		self.assertEqual(ket["error"]["message"], "RETURN_NOT_CANCELLABLE: phiếu ở trạng thái cancelled không huỷ được")
+
+	def test_doc_loc_dem_nhu_giao_dien(self):
+		"""Đặc tả §5.3 — lời đọc thật của màn Trả hàng: gom nhóm `reason, count()` (lý do NULL là một nhóm), ô tìm `tim_kd` (PT-0001 → pt1),
+		trạng thái ngoài miền Select → rỗng không lỗi, `in` trạng thái, `is.null`, RLS NVBH, dòng phiếu theo thứ tự nhập."""
+		k = self.ma["C1"]
+		for nguoi, ly_do in (("owner", "damaged"), ("owner", None), ("sales_a", "expired")):
+			ket = self._goi(nguoi, "save_pos_return", {"p": {"customer_id": k, "reason": ly_do, "lines": [
+				{"product_id": self.ma["P1"], "unit_name": "Lon", "quantity": 1, "unit_price": 9500, "vat_rate": 0.08},
+				{"product_id": self.ma["P2"], "unit_name": "Chai", "quantity": 1, "unit_price": 5000, "vat_rate": 0.1}]}})
+			self.assertNotIn("error", ket, ket)
+		chu = self._nc("owner")
+		nhom = {x["reason"]: x["count"] for x in doc({"bang": "returns", "select": "reason, count()"}, chu)["data"]}
+		self.assertEqual(nhom, {"damaged": 1, None: 1, "expired": 1})
+		ten = sorted(frappe.get_all("NPP Phieu Tra", pluck="name"))
+		dau = ten[0]
+		so = str(int(dau.split("-")[1]))
+		tim = doc({"bang": "returns", "select": "id", "loc": [{"op": "or", "bieu_thuc": f'return_code.ilike.*pt{so}*,tim_kd.ilike.*pt{so}*'}]},
+			chu)["data"]
+		self.assertIn(dau, [x["id"] for x in tim])
+		self.assertEqual(doc({"bang": "returns", "select": "id", "loc": [{"op": "eq", "cot": "status", "gt": "approved"}]}, chu)["data"], [])
+		self.assertEqual(len(doc({"bang": "returns", "select": "id", "loc": [{"op": "in", "cot": "status", "gt": ["submitted", "draft"]}]},
+			chu)["data"]), 3)
+		self.assertEqual(doc({"bang": "returns", "select": "id", "loc": [{"op": "is", "cot": "sales_user_id", "gt": None}]}, chu)["data"], [])
+		# NVBH chỉ thấy phiếu mình lập / đứng tên
+		self.assertEqual(len(doc({"bang": "returns", "select": "id"}, self._nc("sales_a"))["data"]), 1)
+		self.assertEqual(doc({"bang": "returns", "select": "id"}, self._nc("sales_b"))["data"], [])
+		# dòng không `order` → thứ tự nhập
+		r = doc({"bang": "return_lines", "select": "product_id", "loc": [{"op": "eq", "cot": "return_id", "gt": dau}]}, chu)["data"]
+		self.assertEqual([x["product_id"] for x in r], [self.ma["P1"], self.ma["P2"]])
+
+	def test_ghi_nhan_lai_amend_to_ghi_co(self):
+		"""Ghi nhận lại phiếu tự lập đã nhập kho (save_pos_return complete trên phiếu cũ): số PT giữ, tờ ghi có cũ huỷ, tờ mới amend nó
+		(HDT-x-1 — bàn bạc 6.11); tổng tờ = đúng tiền trả kể cả đơn giá lẻ (⚠ Q2: 3 × 3.333,5 → 10.001)."""
+		k = self.ma["C2"]
+		dong = [{"product_id": self.ma["P2"], "unit_name": "Chai", "quantity": 3, "unit_price": 3333.5, "vat_rate": 0}]
+		ket = self._goi("owner", "save_pos_return", {"p": {"customer_id": k, "complete": True, "zone": "sale", "lines": dong}})
+		self.assertNotIn("error", ket, ket)
+		pt = ket["data"]
+		cu = frappe.db.get_value("NPP Phieu Tra", pt, "to_ghi_co")
+		self.assertEqual(flt(frappe.db.get_value("Sales Invoice", cu, "grand_total")), -10001)
+		ket = self._goi("owner", "save_pos_return", {"p": {"return_id": pt, "customer_id": k, "complete": True, "zone": "sale",
+			"lines": [{**dong[0], "quantity": 4}]}})
+		self.assertNotIn("error", ket, ket)
+		self.assertEqual(ket["data"], pt)
+		moi = frappe.db.get_value("NPP Phieu Tra", pt, "to_ghi_co")
+		self.assertEqual((moi, frappe.db.get_value("Sales Invoice", moi, "amended_from")), (f"{cu}-1", cu))
+		self.assertEqual(frappe.db.get_value("Sales Invoice", cu, "docstatus"), 2)
+		self.assertEqual(flt(frappe.db.get_value("Sales Invoice", moi, "grand_total")), -13334)
+

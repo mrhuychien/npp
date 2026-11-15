@@ -34,6 +34,7 @@ CHAN: list[tuple[str, str, str, str, dict | None]] = [
 	("batches", "zone_moved_by", "Batch", "npp_chuyen_vung_boi", None),
 	("returns", "sales_user_id", "NPP Phieu Tra", "nhan_vien", None),
 	("returns", "requested_by", "NPP Phieu Tra", "owner", None),
+	("returns", "completed_by", "NPP Phieu Tra", "hoan_thanh_boi", None),
 	("cash_receipts", "created_by", "NPP Phieu Thu", "owner", None),
 	("stock_entries", "created_by", "Stock Entry", "owner", None),
 	("purchase_invoices", "created_by", "Purchase Invoice", "owner", None),

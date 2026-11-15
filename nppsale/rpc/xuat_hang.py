@@ -5,11 +5,16 @@ quyền `orders.approve` → trạng thái đơn → dòng → xuất kho FIFO l
 (giảm giá cả đơn sau thuế, không hạ nền thuế) → đơn Hoàn thành (giao thiếu: đóng SO) → chiếu công nợ → nhật ký + báo NV.
 Hàng theo lô thiếu tồn luôn chặn (CFD-05); hàng không lô bán vượt khi mặt hàng cho phép + NPP Cai Dat.cho_ban_vuot_ton.
 
-cancel_invoice (mig 125 / 131 / 162 / 217): huỷ HĐ = huỷ đơn — lõi hoàn kho đúng lô (đảo gói lô), hook on_cancel bỏ dòng công nợ, đơn về
-submitted rồi Đã huỷ (lý do "Huỷ theo hóa đơn …"), báo NV; khoá khi đã thu tiền / đã phát hành HĐĐT / có phiếu trả hoàn thành.
+post_invoice nhận hàng trả kèm (return_adds / return_edits, mig 133 / 152 / 180 / 189 / 213): phiếu theo đơn thành phiếu TỰ SINH Chờ xử
+lý gắn HĐ, nợ HĐ trừ ngay qua tờ ghi có không kho (nppsale.rpc.phieu_tra).
 
-reissue_invoice (mig 128 / 182 / 213 / 215 / 227 / 247): Sửa HĐ = huỷ (đơn KHÔNG huỷ theo) + lập tờ mới amend tờ cũ (`HD-0001-1`) trong
-CÙNG giao dịch; giữ hệ số tờ cũ, NV đứng tên + người giữ nợ, mặc định ngày / điều khoản / giảm giá của tờ cũ.
+cancel_invoice (mig 125 / 131 / 135 / 162 / 213 / 217): huỷ HĐ = huỷ đơn — tờ ghi có của phiếu tự sinh huỷ trước, lõi hoàn kho đúng lô (đảo
+gói lô), hook on_cancel bỏ dòng công nợ, phiếu tự sinh về Nháp / phiếu tự lập bám tờ Đã huỷ, đơn về submitted rồi Đã huỷ (lý do "Huỷ theo
+hóa đơn …", phiếu Nháp / Chờ của đơn huỷ theo), báo NV; khoá khi đã thu tiền / đã phát hành HĐĐT / có phiếu trả hoàn thành.
+
+reissue_invoice (mig 128 / 152 / 182 / 210 / 213 / 215 / 216 / 227 / 247): Sửa HĐ = huỷ (đơn KHÔNG huỷ theo) + lập tờ mới amend tờ cũ
+(`HD-0001-1`) trong CÙNG giao dịch; giữ hệ số tờ cũ, NV đứng tên + người giữ nợ, mặc định ngày / điều khoản / giảm giá của tờ cũ; phiếu
+trả của tờ cũ đi theo tờ mới (đã nhập kho: hỏi `tra_da_nhap` lam_lai / giu).
 
 get_invoiceable_lines (mig 124 / 212): dòng của đơn để màn Xuất hàng (POS / điện thoại) dựng hoá đơn — SL đặt, đã xuất, còn lại, giá, giảm,
 thuế, tồn kho bán (theo đơn vị kho), cộng dòng HÀNG ĐỔI của phiếu trả nháp / chờ kèm đơn chưa bám HĐ nào. Hàm gốc SECURITY DEFINER, chỉ
@@ -272,10 +277,6 @@ def _xuat(nc, cd, p: dict, *, hd_cu: str | None = None, giu: dict | None = None)
 		oli = _chu(x.get("order_line_id")) if isinstance(x, dict) else None
 		if oli and (oli not in dong_don or dong_don[oli].item_code != _chu(x.get("product_id"))):
 			raise NppLoi("BAD_LINE: dòng hóa đơn không thuộc đơn này hoặc sai sản phẩm")
-	# hàng trả kèm đơn: post_invoice áp return_adds (Sửa HĐ đã gỡ khỏi tải trọng) và return_edits chỉ lúc xuất lần đầu
-	if not hd_cu and ((isinstance(p.get("return_adds"), list) and p["return_adds"]) or (
-			isinstance(p.get("return_edits"), list) and p["return_edits"])):
-		raise NppLoi("RETURNS_CHUA_HO_TRO: hàng trả kèm HĐ dựng ở bước phiếu trả của P3.")
 	ngay = str(getdate(_chu(p.get("invoice_date")) or nowdate()))
 	dk = _chu(p.get("payment_terms")) or so.payment_terms_template
 	# ---- dòng HĐ (theo thứ tự gửi lên, SL > 0)
@@ -351,6 +352,17 @@ def _xuat(nc, cd, p: dict, *, hd_cu: str | None = None, giu: dict | None = None)
 	si.insert()
 	si.submit()
 	frappe.local.message_log = []
+	# ---- hàng trả kèm (mig 133 / 152 / 180 / 189 / 213): dòng thêm (Sửa HĐ đã gỡ return_adds khỏi tải trọng) → câu gắn MỌI phiếu theo
+	# đơn chưa gắn HĐ (trừ phiếu tự lập Sửa HĐ giữ lại) → sửa dòng (chỉ lần xuất đầu) → tờ ghi có KHÔNG kho khớp phiếu tự sinh. Lỗi ở đây
+	# nổ SAU khi đã xuất kho / lập HĐ → lùi cả giao dịch
+	if frappe.db.exists("DocType", "NPP Phieu Tra"):
+		from .phieu_tra import ap_sua_tra, ap_tra_them, dong_bo_to_ghi_co, gan_phieu_theo_don
+
+		ap_tra_them(so.name, si.name, p.get("return_adds"), qua_rpc=True)
+		gan_phieu_theo_don(so.name, si.name, giu=(giu or {}).get("phieu_tu_lap") or ())
+		if not hd_cu:
+			ap_sua_tra(si.name, p.get("return_edits"))
+		dong_bo_to_ghi_co(si.name, cd)
 	# ---- đơn: một đơn một HĐ — xuất (kể cả giao thiếu) là Hoàn thành (mig 217); dòng chưa giao hết → đóng SO
 	so.reload()
 	if any(float(r.delivered_qty or 0) < float(r.qty or 0) for r in so.items) and so.status not in ("Closed", "Completed"):
@@ -428,6 +440,12 @@ def _huy(nc, cd, hd: str | None, p_reason, *, lap_lai: bool = False):
 	so = frappe.get_doc("Sales Order", don) if don else None
 	if so is not None and so.docstatus == 1 and so.status == "Closed":  # lõi đòi mở lại SO đã đóng trước khi huỷ HĐ (bàn bạc 6.12)
 		so.update_status("Draft")
+	co_pt = frappe.db.exists("DocType", "NPP Phieu Tra")
+	if co_pt:
+		# tờ ghi có đang ghi sổ gắn HĐ (lúc này chỉ còn tờ không kho của phiếu tự sinh Chờ xử lý): Link npp_hoa_don_goc chặn huỷ HĐ
+		from .phieu_tra import huy_to_ghi_co_cua_hd
+
+		huy_to_ghi_co_cua_hd(hd, ly_do)
 	# ---- huỷ HĐ: lõi hoàn kho đúng lô qua gói lô, gỡ phân bổ, đảo sổ cái; hook on_cancel chiếu lại công nợ (xoá dòng của tờ)
 	si.npp_ly_do_huy = ly_do
 	si.npp_huy_luc = now_datetime()
@@ -435,6 +453,11 @@ def _huy(nc, cd, hd: str | None, p_reason, *, lap_lai: bool = False):
 	si.flags.ignore_permissions = True
 	si.cancel()
 	frappe.local.message_log = []
+	if co_pt:
+		# phiếu tự sinh theo đơn → gỡ HĐ, về Nháp (mig 131 / 135); phiếu còn bám tờ (độc lập / tự lập) → Đã huỷ "Hóa đơn … bị huỷ" (mig 213)
+		from .phieu_tra import huy_phieu_khi_huy_hd
+
+		huy_phieu_khi_huy_hd(hd, si.name)
 	# ---- đơn: _wf2b_sync_order_status (không còn HĐ ghi sổ → submitted) rồi _huy_don_theo_hoa_don (→ Đã huỷ; Sửa HĐ thì không)
 	tt_don = None
 	if so is not None:
@@ -447,7 +470,10 @@ def _huy(nc, cd, hd: str | None, p_reason, *, lap_lai: bool = False):
 			if tt_don != tt_cu:
 				ghi_nhat_ky_don(so.name, "trang_thai", tu_trang_thai=tt_cu, den_trang_thai=tt_don)
 		if tt_don == "submitted" and not lap_lai:
-			# phiếu trả nháp / chờ của đơn → Đã huỷ: thêm khi có NPP Phieu Tra
+			if co_pt:  # _huy_don_theo_hoa_don (mig 217): mọi phiếu Nháp / Chờ của đơn (gồm phiếu tự sinh vừa về Nháp) huỷ theo
+				from .phieu_tra import huy_phieu_theo_don
+
+				huy_phieu_theo_don(so.name, f"Hóa đơn {si.name} bị huỷ — đơn {so.name} huỷ theo")
 			so.npp_trang_thai = "cancelled"
 			so.npp_huy_luc = now_datetime()
 			so.npp_huy_boi = si.npp_huy_boi
@@ -494,27 +520,48 @@ def _mac_dinh_lap_lai(hd: str, p: dict) -> dict:
 
 @rpc("reissue_invoice", ghi=True, chuan_bi=_chuan_bi_huy)
 def reissue_invoice(p_invoice_id=None, p=None):
-	"""Sửa HĐ (mig 128 / 149 / 152 / 182 / 184 / 213 / 215 / 227 / 246 / 247): huỷ tờ cũ (đơn KHÔNG huỷ theo) rồi lập tờ mới trong CÙNG
-	giao dịch — tờ mới amend tờ cũ (`HD-0001-1`), giữ hệ số tờ cũ, giữ NV đứng tên + người giữ nợ, mặc định ngày / điều khoản / giảm giá
-	của tờ cũ. Lỗi ở bất kỳ bước nào (thiếu tồn, không dòng…) → cả giao dịch lùi, tờ cũ còn nguyên.
-	Chưa gồm (báo rõ, không làm dở): hàng trả kèm (return_edits / return_adds / tra_da_nhap — bước phiếu trả) và chuyển tiền thu sang tờ
-	mới (mig 184 — bước phiếu thu)."""
+	"""Sửa HĐ (mig 128 / 149 / 152 / 182 / 184 / 210 / 213 / 215 / 216 / 227 / 246 / 247): huỷ tờ cũ (đơn KHÔNG huỷ theo) rồi lập tờ mới
+	trong CÙNG giao dịch — tờ mới amend tờ cũ (`HD-0001-1`), giữ hệ số tờ cũ, giữ NV đứng tên + người giữ nợ, mặc định ngày / điều khoản /
+	giảm giá của tờ cũ. Phần phiếu trả chạy TRƯỚC mọi kiểm quyền / trạng thái HĐ (nguyên thứ tự Postgres): phiếu đã nhập kho (hỏi
+	`tra_da_nhap`) → sửa / thêm dòng trả trên tờ cũ → gỡ phiếu chờ khỏi tờ cũ → huỷ tờ cũ → lập tờ mới (câu gắn bắt phiếu theo đơn) → gắn
+	lại phiếu tự lập / phiếu giữ nhập kho → tờ ghi có khớp phiếu. Lỗi ở bất kỳ bước nào → cả giao dịch lùi, tờ cũ còn nguyên.
+	Chưa gồm (báo rõ, không làm dở): chuyển tiền thu sang tờ mới (mig 184 — bước phiếu thu)."""
 	nc = hien_tai()
 	cd = cai_dat_ban()
 	hd = _chu(p_invoice_id)
 	p = p if isinstance(p, dict) else (frappe.parse_json(p) if p else {})
-	_khoa_bin(_hang_cua_hd(hd) | _hang_cua(p.get("lines") if isinstance(p.get("lines"), list) else []), cd)
+	co_pt = bool(frappe.db.exists("DocType", "NPP Phieu Tra"))
+	hang = _hang_cua_hd(hd) | _hang_cua(p.get("lines") if isinstance(p.get("lines"), list) else [])
+	if co_pt and hd:  # phiếu nhập lại của phiếu trả gắn tờ cũ có thể bị đảo (tra_da_nhap = lam_lai)
+		hang |= set(frappe.db.sql_list("""SELECT DISTINCT d.`mat_hang` FROM `tabNPP Phieu Tra Dong` d JOIN `tabNPP Phieu Tra` r
+			ON r.`name` = d.`parent` WHERE r.`hoa_don` = %s""", hd))
+	_khoa_bin(hang, cd)
 	if not hd or not frappe.db.exists("Sales Invoice", {"name": hd, "is_return": 0}):
 		raise NppLoi("INVOICE_NOT_FOUND")
 	p = _mac_dinh_lap_lai(hd, p)
-	if any(isinstance(p.get(k), list) and p[k] for k in ("return_edits", "return_adds")) or _chu(p.get("tra_da_nhap")):
-		raise NppLoi("RETURNS_CHUA_HO_TRO: hàng trả kèm khi sửa HĐ dựng ở bước phiếu trả của P3.")
-	if frappe.db.get_value("Sales Invoice", hd, "docstatus") == 1 and _tien_da_thu(hd):
-		raise NppLoi("REISSUE_TIEN_THU_CHUA_HO_TRO: sửa HĐ đã có tiền thu dựng ở bước phiếu thu của P3.")
 	cu = frappe.db.get_value("Sales Invoice", hd, ["npp_don_hang", "npp_nhan_vien", "npp_nv_giu_no", "npp_ve_npp_luc", "npp_giao_tu_nv"],
 		as_dict=True)
 	giu = {"nhan_vien": cu.npp_nhan_vien, "nv_giu_no": cu.npp_nv_giu_no, "ve_npp_luc": cu.npp_ve_npp_luc, "giao_tu_nv": cu.npp_giao_tu_nv}
+	nho, v_rets, sua = [], [], 0
+	if co_pt:
+		from .phieu_tra import ap_sua_tra, ap_tra_them, go_phieu_khoi_hd, phieu_tu_lap_cua_hd, tra_da_nhap_truoc
+
+		giu["phieu_tu_lap"] = phieu_tu_lap_cua_hd(hd)  # _mac_dinh_lap_lai (mig 213): câu gắn của tờ mới không biến chúng thành tự sinh
+		nho = tra_da_nhap_truoc(hd, p, nc, cd)  # mig 210 / 216
+		sua = ap_sua_tra(hd, p.get("return_edits"))  # trần giá tham chiếu dòng tờ CŨ
+		ap_tra_them(cu.npp_don_hang, hd, p.get("return_adds"), qua_rpc=False)  # trước khi bật via_rpc: guard áp khi phải dựng phiếu mới
+		v_rets = go_phieu_khoi_hd(hd)  # phiếu Nháp / Chờ của tờ cũ → gỡ HĐ (tờ ghi có của chúng huỷ trước — Link chặn huỷ HĐ)
+	elif any(isinstance(p.get(k), list) and p[k] for k in ("return_edits", "return_adds")) or _chu(p.get("tra_da_nhap")):
+		raise NppLoi("RETURNS_CHUA_HO_TRO: hàng trả kèm khi sửa HĐ cần DocType NPP Phieu Tra.")
+	if frappe.db.get_value("Sales Invoice", hd, "docstatus") == 1 and _tien_da_thu(hd):
+		raise NppLoi("REISSUE_TIEN_THU_CHUA_HO_TRO: sửa HĐ đã có tiền thu dựng ở bước phiếu thu của P3.")
 	_huy(nc, cd, hd, f"Lập lại hóa đơn {hd}", lap_lai=True)
-	tai = {k: v for k, v in p.items() if k != "return_adds"}
+	tai = {k: v for k, v in p.items() if k != "return_adds"}  # mig 152: gỡ return_adds — không thì dòng trả bị thêm hai lần
 	tai["order_id"] = cu.npp_don_hang
-	return [_xuat(nc, cd, tai, hd_cu=hd, giu=giu)]
+	ket = _xuat(nc, cd, tai, hd_cu=hd, giu=giu)
+	if co_pt:
+		from .phieu_tra import sau_lap_lai
+
+		sau_lap_lai(hd, ket["invoice_id"], v_rets, sua, nho, cu.npp_nhan_vien, cd)
+		ket["receivable_id"] = chieu_hoa_don(ket["invoice_id"])
+	return [ket]

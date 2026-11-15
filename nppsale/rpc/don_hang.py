@@ -290,15 +290,10 @@ def create_order_with_lines(p=None):
 	vat_c = _so(o.get("vat"), 0) or 0
 	tong_c = _so(o.get("total"), 0) or 0
 	giam_don = L.giam_don_hien_tai([(d["sl"], d["gia"]) for d in dong], sub_c)
-	if trang_thai in ("draft", "submitted"):
-		L.kiem_giam_don(giam_don, q=q, goc=0, dong=[(d["sl"], d["gia"], d["giam"]) for d in dong])
+	# quyền giảm giá cả đơn (_chot_giam_don) là constraint trigger HOÃN tới cuối giao dịch → kiểm sau phiếu trả kèm đơn (thứ tự lỗi như PG)
 	# Lưu đúng phần chênh màn hình gửi (kể cả 1–2 đ dưới ngưỡng sai số) để subtotal đọc ra = subtotal nppsale lưu nguyên văn;
 	# ngưỡng chỉ dùng để quyết "có giảm đơn không" khi kiểm quyền (như _giam_don_hien_tai).
 	chenh_don = max(0, L.tong_tien([(d["sl"], d["gia"]) for d in dong]) - L.lam_tron(sub_c))
-
-	if isinstance(p.get("returns"), dict) and isinstance(p.get("return_lines"), list) and p["return_lines"]:
-		# Phiếu trả nháp kèm đơn (returns / return_lines) đi vào NPP Phieu Tra — dựng ở bước phiếu trả của P3.
-		raise NppLoi("RETURNS_CHUA_HO_TRO: đơn có hàng trả kèm chưa ghi được trên bản ERPNext — bỏ hàng trả, gửi đơn trước rồi lập phiếu trả.")
 
 	# ---- ghi Sales Order
 	cd = cai_dat_ban()
@@ -332,6 +327,26 @@ def create_order_with_lines(p=None):
 			raise
 		return [{"order_id": ten, "order_code": ten, "already_existed": True}]
 	frappe.local.message_log = []
+
+	# ---- phiếu trả nháp kèm đơn (mig 169 / 171 / 183 — hàm SECURITY INVOKER: đi đúng đường trình duyệt, RLS + khoá + trigger): chờ
+	# đơn xuất hàng mới thành phiếu thật (câu gắn của post_invoice). Lỗi phiếu / dòng lùi CẢ đơn.
+	if isinstance(p.get("returns"), dict) and isinstance(p.get("return_lines"), list) and p["return_lines"]:
+		if not frappe.db.exists("DocType", "NPP Phieu Tra"):
+			raise NppLoi("RETURNS_CHUA_HO_TRO: đơn có hàng trả kèm cần DocType NPP Phieu Tra.")
+		from .phieu_tra import them_dong, them_phieu
+
+		tra = p["returns"]
+		ten_pt = them_phieu([{"order_id": so.name, "customer_id": khach, "reason": tra.get("reason"), "notes": tra.get("notes"),
+			"status": "draft"}], nc, nullif={"ghi_chu"})[0]
+		them_dong([{"return_id": ten_pt, "product_id": x.get("product_id") if isinstance(x, dict) else None,
+			"unit_name": x.get("unit_name") if isinstance(x, dict) else None, "quantity": x.get("quantity") if isinstance(x, dict) else None,
+			"unit_price": (x.get("unit_price") if isinstance(x, dict) and x.get("unit_price") is not None else 0),
+			"vat_rate": (x.get("vat_rate") if isinstance(x, dict) and x.get("vat_rate") is not None else 0),
+			"is_exchange": bool(isinstance(x, dict) and x.get("is_exchange") not in (None, False, "false", "f", "0", 0)),
+			"note": x.get("note") if isinstance(x, dict) else None, "reason": x.get("reason") if isinstance(x, dict) else None}
+			for x in p["return_lines"]], nc, nullif={"ghi_chu", "ly_do"})
+	if trang_thai in ("draft", "submitted"):
+		L.kiem_giam_don(giam_don, q=q, goc=0, dong=[(d["sl"], d["gia"], d["giam"]) for d in dong])
 
 	# ---- lịch sử (order_status_history khi tạo thẳng ở trạng thái khác nháp; order_activity_log từng dòng thêm)
 	if trang_thai != "draft":
