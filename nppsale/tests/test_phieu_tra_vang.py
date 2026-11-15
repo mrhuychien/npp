@@ -406,6 +406,11 @@ class TestPhieuTraVang(IntegrationTestCase):
 		for k in ("tra_ve", "pt", "cong_no", "hd", "don", "ton_lo", "lo_moi", "nhap"):
 			if ct[k] != ct_mong.get(k):
 				sai.append(f"{t['ma']}: {k} lệch ở {'; '.join(XH._cho_lech(ct[k], ct_mong.get(k)))[:2500]}")
+		# bất biến sổ của bản ERPNext (tờ ghi có ↔ phiếu ↔ công nợ ↔ phiếu nhập kho) — khám sổ phải sạch ở MỌI trạng thái cuối
+		from nppsale.kham_so import quet_phieu_tra
+
+		for d in quet_phieu_tra():
+			sai.append(f"{t['ma']}: khám sổ nhóm {d['nhom']} {d['loai']} — {d['chung_tu']}: {d['chi_tiet']}")
 		return sai
 
 	def test_tung_tinh_huong_nhu_nppsale(self):

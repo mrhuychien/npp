@@ -194,3 +194,33 @@ class TestPhieuTraCong(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value("Sales Invoice", cu, "docstatus"), 2)
 		self.assertEqual(flt(frappe.db.get_value("Sales Invoice", moi, "grand_total")), -13334)
 
+	def test_kham_so_bat_lech(self):
+		"""nppsale.kham_so.quet_phieu_tra: sổ đúng → không dòng nào; huỷ tay tờ ghi có của phiếu tự sinh (sổ lệch) → báo nhóm 1 (tờ ghi có
+		không khớp phiếu) và nhóm 6 (công nợ HĐ lệch công thức)."""
+		import uuid
+
+		from nppsale.kham_so import quet_phieu_tra
+		from nppsale.tests.test_tao_don import doi_khoa
+
+		t = next(x for x in self.vang["tinh_huong"] if x["ma"] == "xuat_du_mot_lo")
+		p = doi_khoa(t["buoc"][0]["p"], self.ma)
+		p["client_request_id"] = str(uuid.uuid4())
+		p["returns"] = {"reason": "damaged"}
+		p["return_lines"] = [{"product_id": self.ma["P1"], "unit_name": "Lon", "quantity": 1, "unit_price": 9500, "vat_rate": 0.08}]
+		p["order"]["total"] = p["order"]["total"] - 10260
+		don = self._goi(t["buoc"][0]["nguoi"], "create_order_with_lines", {"p": p})["data"][0]["order_id"]
+		dd = frappe.get_all("Sales Order Item", filters={"parent": don}, fields=["name", "item_code", "uom", "conversion_factor", "qty", "rate",
+			"npp_giam_dong", "npp_thue_suat"], order_by="idx asc")
+		ket = self._goi("owner", "post_invoice", {"p": {"order_id": don, "lines": [{"order_line_id": r.name, "product_id": r.item_code,
+			"unit_name": r.uom, "conversion_factor": r.conversion_factor, "quantity": r.qty, "unit_price": r.rate, "line_discount": r.npp_giam_dong,
+			"vat_rate": r.npp_thue_suat, "is_exchange": False} for r in dd]}})
+		self.assertNotIn("error", ket, ket)
+		hd = ket["data"][0]["invoice_id"]
+		self.assertEqual(quet_phieu_tra(), [])
+		pt = frappe.db.get_value("NPP Phieu Tra", {"hoa_don": hd}, ["name", "to_ghi_co"], as_dict=True)
+		cn = frappe.get_doc("Sales Invoice", pt.to_ghi_co)
+		cn.flags.ignore_permissions = True
+		cn.cancel()
+		nhom = sorted({(d["nhom"], d["chung_tu"]) for d in quet_phieu_tra()})
+		self.assertEqual(nhom, [(1, pt.name), (6, hd)])
+
