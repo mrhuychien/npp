@@ -506,7 +506,7 @@ từ `Version`).
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
 | sb_don_vi | Đơn vị | Section Break | | | | | |
-| org_id | Mã đơn vị (cổng) | Data | | ✓ | | | read_only, set_only_once. UUID; = `organizations.id` cũ khi chuyển dữ liệu, sinh khi cài site NPP mới. Cổng trả cho mọi cột `org_id`, cho `organizations.id`, `approval_rules.id`, `pricing_rules.org_id` |
+| org_id | Mã đơn vị (cổng) | Data | | ✓ | | | read_only, set_only_once — **chỉ ghi bằng `frappe.db.set_single_value("NPP Cai Dat", "org_id", …)`** (cả `after_install` lẫn công cụ chuyển dữ liệu): Single không bao giờ là bản mới (`load_from_db` xoá `__islocal` — `frappe/model/document.py:497–502`) nên `validate_set_only_once` chặn cả lần `save()` đặt giá trị đầu tiên (`CannotChangeConstantError`, không miễn giá trị rỗng — `:1091–1096`, `:1141–1167`); lúc cài, `save()` còn vướng các trường reqd chưa có giá trị (`cong_ty`, `ten_npp`). UUID; = `organizations.id` cũ khi chuyển dữ liệu, sinh khi cài site NPP mới. Cổng trả cho mọi cột `org_id`, cho `organizations.id`, `approval_rules.id`, `pricing_rules.org_id` |
 | cong_ty | Công ty sổ sách | Link | Company | ✓ | | | Company duy nhất của site. Không đổi tên Company theo `ten_npp` (tên Company nằm trong tên tài khoản / kho) |
 | ten_npp | Tên NPP | Data | | ✓ | | | `organizations.name` — tên in đầu chứng từ (`orgHeaderFrom`), `useOrg` |
 | ma_npp | Mã NPP | Data | | | | | `organizations.slug` (màn `/setup` ghi; một site một NPP nên không làm khoá) |
@@ -557,8 +557,10 @@ từ `Version`).
 | sb_chuyen_doi | Chuyển dữ liệu | Section Break | | | | | |
 | ngay_cat_chuyen | Ngày cắt chuyển | Date | | | | | **mới** (cần cho `NPP Luu Tru`): mốc chia nguồn lịch sử `NPP LS *` (§4.8.0) và chặn chứng từ mới ghi lùi trước mốc; đề xuất ngày 01 của tháng (§7.1 điểm 23); chốt rồi không đổi |
 
-`organizations.created_at` = `creation`; `approval_rules.updated_at / updated_by`, `pricing_rules.updated_at / updated_by` =
-`modified` / `modified_by`. `organizations.completed_edit_days` không port (bản bàn bạc 6.15) — cổng trả 1 (default cũ).
+`organizations.created_at`, `approval_rules.created_at / updated_at / updated_by`, `pricing_rules.updated_at / updated_by`: cổng trả **null**
+(`CotDef("NULL")` — `cong/bang/he_thong.py:104, 116, 131–132`): Single không giữ `creation` (dòng `creation` của `NPP Cai Dat` trong `tabSingles` là NULL; `modified`
+của Single đổi theo mọi trường, không riêng nhóm ngưỡng) và không màn nào hiện các cột này (`settings/approval-rules/page.tsx` chỉ xin rồi giữ).
+`organizations.completed_edit_days` không port (bản bàn bạc 6.15) — cổng trả 1 (default cũ).
 
 #### Relationships
 - Links to: Company, Warehouse, Price List, Sales Taxes and Charges Template, Purchase Taxes and Charges Template, Mode of Payment, Account.
@@ -566,7 +568,8 @@ từ `Version`).
 - Hằng `org_id` được mọi registry của cổng đọc (cache trong request).
 
 #### Computed/Auto fields
-- `org_id`: `after_install` của app sinh (site NPP mới) hoặc công cụ chuyển dữ liệu ghi (site có dữ liệu cũ). Không sửa được.
+- `org_id`: `after_install` của app sinh (site NPP mới) hoặc công cụ chuyển dữ liệu ghi (site có dữ liệu cũ) — cả hai bằng `frappe.db.set_single_value`
+  (không qua `save()` — xem Notes của trường). Không sửa được.
 - `ma_so_thue` → `Company.tax_id` ở `on_update` (một chiều).
 - Ghi qua cổng chia cột theo vai: nhóm Đơn vị chỉ chủ NPP (`organizations` — "Owners can update their org"); `nguong_kho_date_ngay`
   và nhóm Ngưỡng cảnh báo cho chủ NPP + quản lý (`pricing_rules_*`, `approval_rules_*`). Phân quyền DocPerm sàn ở tệp 03.
