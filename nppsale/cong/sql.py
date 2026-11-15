@@ -159,7 +159,7 @@ def _sap_xep(bang: D.Bang, thu_tu: list[dict], bd: str) -> str:
 
 def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 	"""yc: {"bang", "select", "loc", "thu_tu", "range": [tu, den], "limit", "count", "head"}."""
-	bang = D.lay(yc.get("bang") or "")
+	bang = D.nhin(D.lay(yc.get("bang") or ""), nc)
 	if bang is None:
 		raise LoiCong("42P01", f'relation "public.{yc.get("bang")}" does not exist', http=404)
 	try:
@@ -247,7 +247,7 @@ def _ke_hoach_gop_long(bang, yc, nc, cot, nut_long, nut_gop, where, dieu_long, t
 			raise LoiCong("PGRST200", f"Could not find a relationship between '{bang.ten}' and '{nl.ten}' in the schema cache")
 		if qh.nhieu or any(isinstance(x, (C.Long, C.Gop)) for x in nl.con):
 			raise LoiCong("PGRST100", "gộp nhóm kèm bảng lồng một-nhiều / lồng nhiều cấp chưa hỗ trợ ở cổng — dùng đường lùi")
-		bang_dich = D.lay(qh.bang)
+		bang_dich = D.nhin(D.lay(qh.bang), nc)
 		if bang_dich is None:
 			raise LoiCong("42P01", f'relation "public.{qh.bang}" does not exist', http=404)
 		al = f"q_j{i}"
@@ -285,7 +285,7 @@ def _ke_hoach_long(bang_cha: D.Bang, nl: C.Long, khoa_an: str, dieu_long: dict, 
 	qh = D.tim_quan_he(bang_cha, nl.ten, nl.goi_y)
 	if qh is None:
 		raise LoiCong("PGRST200", f"Could not find a relationship between '{bang_cha.ten}' and '{nl.ten}' in the schema cache")
-	bang_dich = D.lay(qh.bang)
+	bang_dich = D.nhin(D.lay(qh.bang), nc)
 	if bang_dich is None:
 		raise LoiCong("42P01", f'relation "public.{qh.bang}" does not exist', http=404)
 	dk = dieu_long.get(nl.khoa_ra, []) + (dieu_long.get(nl.ten, []) if nl.khoa_ra != nl.ten else [])

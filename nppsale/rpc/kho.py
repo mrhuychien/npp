@@ -1,7 +1,8 @@
 """RPC KHO chỉ đọc (STABLE ở nppsale — gọi GET): tồn kho bán theo mặt hàng (POS), tổng giá trị tồn, hàng đã đặt chưa xuất.
 
 Cùng một nguồn với bảng cổng `batches` (nppsale.cong.bang.kho.NGUON_LO: lô × kho từ gói lô chưa huỷ + lô ảo của hàng không lô) — một
-luật tồn cho mọi nơi đọc.
+luật tồn cho mọi nơi đọc. Giá trị tồn (tồn × giá vốn) chỉ người được xem giá vốn (`xemDuocGiaVon`) — người khác nhận NULL, như cột
+`batches.unit_cost` ở cổng (nppsale chỉ che ở giao diện).
 """
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from frappe.utils import flt
 
 from nppsale.cong.bang.kho import NGUON_LO
 from nppsale.cong.loi import NppLoi
-from nppsale.cong.ngu_canh import hien_tai
+from nppsale.cong.ngu_canh import hien_tai, xem_gia_von
 
 from . import rpc
 from .don_hang import _chu
@@ -37,7 +38,7 @@ def stock_value_summary():
 		return [{"inventory_value": 0, "batch_count": 0}]
 	gt, so = frappe.db.sql(f"""SELECT COALESCE(SUM(x.`ton` * COALESCE(x.`gia_von`, 0)), 0), COUNT(*) FROM {NGUON_LO} x
 		WHERE COALESCE(x.`ton`, 0) > 0""")[0]
-	return [{"inventory_value": flt(gt), "batch_count": int(so)}]
+	return [{"inventory_value": flt(gt) if xem_gia_von(hien_tai()) else None, "batch_count": int(so)}]
 
 
 @rpc("committed_stock_by_product", ghi=False)
@@ -73,7 +74,8 @@ def ton_kho_trang(p_tim=None, p_con_ton=True, p_sap="ten", p_offset=0, p_limit=2
 		return []
 	tu = tu_tim(p_tim or "")
 	con_ton = True if p_con_ton is None else bool(p_con_ton)
-	sap = p_sap if p_sap in ("gia-tri", "so-luong") else "ten"
+	xem = xem_gia_von(hien_tai())
+	sap = p_sap if p_sap in ("gia-tri", "so-luong") and (xem or p_sap != "gia-tri") else "ten"  # sắp theo giá trị cũng lộ giá vốn
 	tu_dong = max(int(p_offset or 0), 0)
 	so_dong = min(max(int(p_limit or 20), 1), 500)
 	ts: dict = {"tu_dong": tu_dong, "so_dong": so_dong}
@@ -117,4 +119,5 @@ def ton_kho_trang(p_tim=None, p_con_ton=True, p_sap="ten", p_offset=0, p_limit=2
 		dv.setdefault(r.parent, []).append({"unit_name": r.uom, "conversion": flt(r.conversion_factor)})
 	so = ("sale_qty", "sale_value", "date_qty", "date_value", "total_qty", "total_value", "sum_sale_qty", "sum_sale_value", "sum_date_qty",
 		"sum_date_value", "sum_total_qty", "sum_total_value")
-	return [{**r, **{k: flt(r[k]) for k in so}, "total_count": int(r.total_count), "units": dv.get(r.product_id)} for r in ds]
+	return [{**r, **{k: (flt(r[k]) if xem or not k.endswith("_value") else None) for k in so}, "total_count": int(r.total_count),
+		"units": dv.get(r.product_id)} for r in ds]

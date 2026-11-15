@@ -9,6 +9,7 @@ from __future__ import annotations
 import frappe
 
 from ..dang_ky import Bang, CotDef, NguCanh, QuanHe, dang_ky
+from ..ngu_canh import xem_gia_von
 from ..sql import LoiCong
 from ._chung import CHI_DOC, GhiDocType, bool_vao, c, la_nv, org, tu_choi
 
@@ -124,6 +125,10 @@ class GhiSanPham:
 			return []
 		sku_moi = str(gia_tri["sku"] or "").strip() if "sku" in gia_tri else None
 		g = {k: v for k, v in gia_tri.items() if k != "sku"}
+		if "cost_price" in g and not xem_gia_von(nc):
+			# người không được xem giá vốn đọc ra NULL (cổng che) — form Sửa sản phẩm ẩn ô giá vốn nhưng vẫn gửi lại số đã nạp (0):
+			# ghi theo là xoá giá vốn thật. Không thấy thì không đặt được — giữ số đang có.
+			g.pop("cost_price")
 		ra = []
 		for ten in ids:
 			if sku_moi is not None and sku_moi != frappe.db.get_value("Item", ten, "item_code"):
@@ -184,6 +189,7 @@ dang_ky(Bang(
 	],
 	rls=lambda nc: ve_san_pham(nc),
 	ghi=GhiSanPham(),
+	an_cot={"cost_price": xem_gia_von},
 ))
 
 # ----------------------------------------------------------------------------------------------------------------------------

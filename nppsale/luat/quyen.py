@@ -42,3 +42,34 @@ DONG_VAI_GIEO_SAN: list[tuple[str, str, str]] = [
 	("accountant", "receivables", "create"),
 	("accountant", "receivables", "update"),
 ]
+
+
+# Ô riêng "Giá vốn, giá trị tồn, lãi gộp" (`inventory.cost`, src/lib/permissions-features.ts) — mặc định của giao diện cho các vai
+# BACK_OFFICE_AND_WAREHOUSE = hành động mặc định của vai ở mô-đun cha "inventory" (`macDinhTinhNang`): ô không rỗng là được xem.
+GIA_VON_MAC_DINH: dict[str, frozenset] = {
+	"manager": frozenset({"read", "export"}),
+	"accountant": frozenset({"read"}),
+	"warehouse": frozenset({"read", "create", "update", "export"}),
+}
+
+
+def xem_duoc_gia_von(vai: str | None, quyen_rieng: dict[str, bool] | None, dong_vai: dict[tuple[str, str, str], bool] | None) -> bool:
+	"""= `xemDuocGiaVon` của giao diện (chủ nhà 25/09/2026: NVBH "Không xem được các thông tin quan trọng của nhà phân phối").
+
+	Chủ NPP luôn được → quyền riêng `inventory.cost.read` của chính người ấy thắng → ô `inventory.cost` của vai: mặc định
+	(GIA_VON_MAC_DINH) rồi áp các dòng quyền vai của ô ấy (được → thêm hành động, không → bỏ) — ô còn hành động nào là được xem.
+	Quyền mô-đun cha "inventory" KHÔNG mở được ô này (luật ô riêng `laORieng`, chủ nhà 20/10/2026)."""
+	if not vai:
+		return False
+	if vai == "owner":
+		return True
+	if quyen_rieng and "inventory.cost.read" in quyen_rieng:
+		return bool(quyen_rieng["inventory.cost.read"])
+	o = set(GIA_VON_MAC_DINH.get(vai, ()))
+	for (v, mo_dun, hanh_dong), duoc in (dong_vai or {}).items():
+		if v == vai and mo_dun == "inventory.cost":
+			if duoc:
+				o.add(hanh_dong)
+			else:
+				o.discard(hanh_dong)
+	return bool(o)

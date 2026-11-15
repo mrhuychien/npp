@@ -108,3 +108,50 @@ class TestCongSanPham(IntegrationTestCase):
 			"loc": [{"op": "eq", "cot": "id", "gt": a}], "select": "id"}, self.nv)["data"], [])  # NVBH không sửa hàng
 		ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"status": "inactive"}, "loc": [{"op": "eq", "cot": "id", "gt": a}]}, self.chu)
 		self.assertEqual(frappe.db.get_value("Item", a, "npp_ngung_ban"), 1)
+
+	def test_gia_von_che_theo_quyen(self):
+		"""Chủ nhà 25/09/2026: NVBH "Không xem được các thông tin quan trọng của nhà phân phối" (`xemDuocGiaVon`). nppsale chỉ che ở
+		giao diện; cổng che luôn products.cost_price — chọn, `*`, lọc, sắp, bảng lồng, dòng trả lại sau khi ghi — và người không được xem
+		sửa mặt hàng thì không ghi đè giá vốn bằng số form gửi lại (form ẩn ô giá vốn nhưng vẫn gửi số đã nạp)."""
+		from frappe.utils import flt
+
+		a = self._sp("SPT-GV-01", self.ncc_a, cost_price=7000)
+		ql = _nv("0919000953", "manager")
+		cau = {"bang": "products", "select": "id, cost_price, sell_price", "loc": [{"op": "eq", "cot": "id", "gt": a}]}
+		self.assertEqual(flt(doc(cau, self.chu)["data"][0]["cost_price"]), 7000)
+		self.assertEqual(flt(doc(cau, ql)["data"][0]["cost_price"]), 7000)  # quản lý: mặc định được xem
+		r = doc(cau, self.nv)["data"][0]
+		self.assertIsNone(r["cost_price"])
+		self.assertEqual(flt(r["sell_price"]), 10000)  # giá bán vẫn thấy
+		self.assertIsNone(doc({"bang": "products", "select": "*", "loc": cau["loc"]}, self.nv)["data"][0]["cost_price"])
+		loc_gv = cau["loc"] + [{"op": "gt", "cot": "cost_price", "gt": 6000}]
+		self.assertEqual(doc({"bang": "products", "select": "id", "loc": loc_gv}, self.nv)["data"], [])  # lọc không dò ra giá vốn
+		self.assertEqual(len(doc({"bang": "products", "select": "id", "loc": loc_gv}, ql)["data"]), 1)
+		# bảng lồng: price_lists → product:products(cost_price)
+		frappe.get_doc({"doctype": "Item Price", "item_code": a, "price_list": "Gia chuan", "uom": "Lon thử",
+			"price_list_rate": 10000}).insert(ignore_permissions=True)
+		cau_long = {"bang": "price_lists", "select": "id, product:products(sku, cost_price)", "loc": [{"op": "eq", "cot": "product_id", "gt": a}]}
+		self.assertEqual(flt(doc(cau_long, ql)["data"][0]["product"]["cost_price"]), 7000)
+		lo = doc(cau_long, self.nv)["data"][0]["product"]
+		self.assertEqual((lo["sku"], lo["cost_price"]), (a, None))
+		# quyền riêng tắt ô giá vốn của quản lý → che; quản lý ấy sửa mặt hàng (form gửi lại cost_price 0) → giá vốn giữ nguyên
+		frappe.get_doc({"doctype": "NPP Quyen Rieng", "nhan_vien": ql.user, "khoa_quyen": "inventory.cost.read", "duoc_phep": 0}).insert(
+			ignore_permissions=True)
+		ql = NguCanh(user=ql.user, vai="manager")  # quyền nạp một lần mỗi request — ngữ cảnh mới
+		self.assertIsNone(doc(cau, ql)["data"][0]["cost_price"])
+		frappe.set_user(ql.user)
+		try:
+			ra = ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"sku": a, "name": "Hàng sửa tên", "cost_price": 0},
+				"loc": [{"op": "eq", "cot": "id", "gt": a}], "select": "id, name, cost_price"}, ql)["data"][0]
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual((ra["name"], ra["cost_price"]), ("Hàng sửa tên", None))  # dòng trả lại sau khi ghi cũng che
+		self.assertEqual(flt(frappe.db.get_value("Item", a, "valuation_rate")), 7000)
+		# chủ NPP sửa giá vốn thì ghi
+		frappe.set_user(self.chu.user)
+		try:
+			ghi({"bang": "products", "hanh_dong": "update", "gia_tri": {"cost_price": 8000}, "loc": [{"op": "eq", "cot": "id", "gt": a}]},
+				NguCanh(user=self.chu.user, vai="owner"))
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(flt(frappe.db.get_value("Item", a, "valuation_rate")), 8000)

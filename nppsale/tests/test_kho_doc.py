@@ -58,7 +58,7 @@ class TestKhoDoc(IntegrationTestCase):
 		return {x["batch_code"]: x for x in ds}
 
 	def test_lo_theo_kho_nhu_nen_nppsale(self):
-		lo = self._lo()
+		lo = self._lo("warehouse")  # thủ kho: được xem giá vốn lô (NVBH đọc ra NULL — test_gia_von_lo_che_theo_quyen)
 		hom_nay = getdate(XH.hom_nay())
 		for ma, sp, sl, nhan, han, gia, vung in self.vang["nen"]["lo"]:
 			x = lo[ma]
@@ -149,3 +149,20 @@ class TestKhoDoc(IntegrationTestCase):
 		ket = api.rpc(ten="committed_stock_by_product", tham_so={})
 		self.assertTrue(ket["error"]["message"].startswith("NO_ORG"), ket)
 		self.assertEqual(api.rpc(ten="ton_kho_trang", tham_so={})["data"], [])
+
+	def test_gia_von_lo_che_theo_quyen(self):
+		"""batches.unit_cost + giá trị tồn của RPC kho chỉ người được xem giá vốn (`xemDuocGiaVon`): NVBH đọc ra NULL (vẫn thấy tồn để
+		bán), sắp theo giá trị thành sắp theo tên (thứ tự cũng lộ giá vốn); thủ kho / chủ thấy số."""
+		cau = {"bang": "batches", "select": "batch_code, qty_on_hand, unit_cost, product:products(sku, cost_price)",
+			"loc": [{"op": "eq", "cot": "batch_code", "gt": "L1-CU"}]}
+		x = doc(cau, self._nc("warehouse"))["data"][0]
+		self.assertAlmostEqual(flt(x["unit_cost"]), 8000, places=4)
+		x = doc(cau, self._nc("sales_a"))["data"][0]
+		self.assertEqual((flt(x["qty_on_hand"]), x["unit_cost"], x["product"]["cost_price"]), (30, None, None))
+		self.assertIsNone(self._goi("sales_a", "stock_value_summary")["data"][0]["inventory_value"])
+		self.assertGreater(flt(self._goi("warehouse", "stock_value_summary")["data"][0]["inventory_value"]), 0)
+		ds = self._goi("sales_a", "ton_kho_trang", {"p_tim": "vtd", "p_sap": "gia-tri"})["data"]
+		# sắp theo tên ("Dau an VTD" trước "Nuoc ngot VTD") — theo giá trị thì P1 (810.000 đ) đứng trước
+		self.assertEqual([(x["sku"], x["sale_qty"], x["sale_value"], x["sum_total_value"]) for x in ds],
+			[(self.ma["P2"], 10, None, None), (self.ma["P1"], 80, None, None)])
+		self.assertEqual(self._goi("owner", "ton_kho_trang", {"p_tim": "vtd", "p_sap": "gia-tri"})["data"][0]["sale_value"], 30 * 8000 + 50 * 8200)

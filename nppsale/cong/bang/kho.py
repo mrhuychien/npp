@@ -7,12 +7,14 @@ batches: một dòng nppsale = một lô ở MỘT vùng → cổng dựng theo 
 - lô chưa phát sinh → một dòng tồn 0 ở `npp_kho_tao` (mặc định kho bán);
 - hàng KHÔNG lô (câu 14 B) → "lô ảo" mỗi (mặt hàng × kho) từ Bin: `~<mã hàng>::<vùng>`, mã lô "—", hạn 2099-12-31, tồn = Bin.actual_qty
   (âm được khi cho bán vượt tồn), giá vốn = Bin.valuation_rate.
-Hạn trống → 2099-12-31 (quy ước "không hạn" của giao diện, src/lib/pos/load.ts). RLS "Org members can view batches" (mig 002): mọi NV.
+Hạn trống → 2099-12-31 (quy ước "không hạn" của giao diện, src/lib/pos/load.ts). RLS "Org members can view batches" (mig 002): mọi NV;
+`unit_cost` chỉ người được xem giá vốn (`xemDuocGiaVon`) — người khác đọc ra NULL.
 Ghi (lô rỗng, đổi mã / hạn / vị trí / vùng — trigger mig 170) dựng ở bước kho (P4); hiện từ chối như RLS.
 """
 from __future__ import annotations
 
 from ..dang_ky import Bang, QuanHe, dang_ky
+from ..ngu_canh import xem_gia_von
 from ._chung import c, co_cot, org, rls_moi_nv
 
 KHO = ("(SELECT s.`value` AS kho, 'sale' AS vung FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'kho_ban' "
@@ -88,6 +90,7 @@ def nap():
 		quan_he=[QuanHe("products", "product_id", "id", False, ("batches_product_id_fkey", "product_id"))],
 		rls=rls_moi_nv,
 		ghi=_ChuaGhi(),
+		an_cot={"unit_cost": xem_gia_von},
 	))
 
 

@@ -5,7 +5,8 @@ Mỗi bảng nppsale mà giao diện gọi `.from("<bang>")` được khai một
 - cot: tên cột nppsale → CotDef(biểu thức SQL dùng "{t}" thay bí danh bảng, kiểu dữ liệu, trường DocType để ghi);
 - quan_he: để select lồng (customer:customers(...), lines:sales_order_lines(...));
 - rls(ngu_canh): vế lọc theo người — chép đúng chính sách RLS đang chạy của nppsale; None = không lọc, False = cấm hết;
-- ghi: bộ xử lý ghi (None = chỉ qua RPC — ghi thẳng bị từ chối như mig 214).
+- ghi: bộ xử lý ghi (None = chỉ qua RPC — ghi thẳng bị từ chối như mig 214);
+- an_cot: cột → hàm(ngu_canh) "được xem không" — không được thì cổng trả NULL ở mọi chỗ đọc cột ấy (chọn, lọc, sắp, bảng lồng).
 """
 from __future__ import annotations
 
@@ -55,6 +56,7 @@ class Bang:
 	rls: Callable[[NguCanh], Any] | None = None
 	ghi: Any = None
 	mo_ta: str = ""
+	an_cot: dict = field(default_factory=dict)
 
 	def cot_def(self, ten: str) -> CotDef | None:
 		return self.cot.get(ten)
@@ -72,6 +74,22 @@ def dang_ky(bang: Bang) -> Bang:
 
 def lay(ten: str) -> Bang | None:
 	return SO_DANG_KY.get(ten)
+
+
+def nhin(bang: Bang | None, nc: NguCanh) -> Bang | None:
+	"""Bảng như người gọi được thấy: cột trong `an_cot` mà người gọi không được xem → biểu thức NULL (giữ kiểu, không ghi thẳng).
+	Mọi chỗ dựng câu đọc lấy bảng qua đây (bảng gốc + bảng lồng) — lọc / sắp trên cột bị che thành lọc trên NULL, không lộ số."""
+	if bang is None or not bang.an_cot:
+		return bang  # không xét `bo_qua_rls`: dòng trả lại sau khi ghi bỏ vế RLS dòng nhưng cột vẫn che theo đúng người gọi
+	che = [ten for ten, duoc in bang.an_cot.items() if ten in bang.cot and not duoc(nc)]
+	if not che:
+		return bang
+	from dataclasses import replace
+
+	cot = dict(bang.cot)
+	for ten in che:
+		cot[ten] = CotDef("NULL", cot[ten].kieu, None)
+	return replace(bang, cot=cot)
 
 
 def tim_quan_he(bang: Bang, ten: str, goi_y: list[str]) -> QuanHe | None:

@@ -7,6 +7,7 @@ from __future__ import annotations
 import frappe
 
 from nppsale.luat.quyen import co_quyen as _co_quyen
+from nppsale.luat.quyen import xem_duoc_gia_von as _xem_duoc_gia_von
 
 from .dang_ky import NguCanh
 
@@ -28,12 +29,8 @@ def hien_tai() -> NguCanh:
 	return nc
 
 
-def co_quyen(nc: NguCanh, khoa: str) -> bool:
-	"""= public.user_has_permission(auth.uid(), khoa) (mig 166) — quyền riêng của người gọi + dòng quyền của vai, nạp một lần."""
-	if nc.bo_qua_rls:
-		return True
-	if not nc.vai:
-		return False
+def _bo_quyen(nc: NguCanh) -> tuple[dict, dict]:
+	"""(quyền riêng của người gọi, dòng quyền của vai) — nạp một lần mỗi request."""
 	bo = nc.them.get("_quyen")
 	if bo is None:
 		rieng = {r.khoa_quyen: bool(r.duoc_phep) for r in frappe.get_all("NPP Quyen Rieng", filters={"nhan_vien": nc.user},
@@ -41,4 +38,26 @@ def co_quyen(nc: NguCanh, khoa: str) -> bool:
 		vai = {(nc.vai, r.mo_dun, r.hanh_dong): bool(r.duoc_phep) for r in frappe.get_all("NPP Quyen Vai", filters={"vai": nc.vai},
 			fields=["mo_dun", "hanh_dong", "duoc_phep"])}
 		bo = nc.them["_quyen"] = (rieng, vai)
+	return bo
+
+
+def co_quyen(nc: NguCanh, khoa: str) -> bool:
+	"""= public.user_has_permission(auth.uid(), khoa) (mig 166) — quyền riêng của người gọi + dòng quyền của vai, nạp một lần."""
+	if nc.bo_qua_rls:
+		return True
+	if not nc.vai:
+		return False
+	bo = _bo_quyen(nc)
 	return _co_quyen(nc.vai, khoa, bo[0], bo[1])
+
+
+def xem_gia_von(nc: NguCanh) -> bool:
+	"""Được thấy giá vốn / giá trị tồn / lãi gộp (`xemDuocGiaVon`, ô `inventory.cost`). Cổng che cột giá vốn với người không được —
+	nppsale chỉ che ở giao diện, đọc thẳng PostgREST vẫn ra số. Administrator (việc nền) thấy hết; ngữ cảnh "trả lại dòng sau khi ghi"
+	(bỏ vế RLS dòng) vẫn xét đúng người gọi."""
+	if nc.user == "Administrator":
+		return True
+	if not nc.vai:
+		return False
+	bo = _bo_quyen(nc)
+	return _xem_duoc_gia_von(nc.vai, bo[0], bo[1])
