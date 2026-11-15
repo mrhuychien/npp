@@ -120,6 +120,27 @@ class TestKhoDoc(IntegrationTestCase):
 	_dong_xuat = XH.TestXuatHang._dong_xuat
 	_don_da_xuat = XH.TestXuatHang._don_da_xuat
 
+	def test_ton_kho_trang(self):
+		"""Màn Tồn kho (mig 255): tìm "vtd" → hai mặt hàng còn tồn (P3 hết hàng bị lọc), gộp vùng, tổng cả tập, sắp + chia trang."""
+		ds = self._goi("warehouse", "ton_kho_trang", {"p_tim": "VTD", "p_sap": "gia-tri"})["data"]
+		self.assertEqual([x["sku"] for x in ds], [self.ma["P1"], self.ma["P2"]])
+		p1, p2 = ds
+		self.assertEqual((p1["sale_qty"], p1["date_qty"], p1["total_qty"]), (80, 20, 100))
+		self.assertEqual((p1["sale_value"], p1["date_value"]), (30 * 8000 + 50 * 8200, 20 * 7900))
+		self.assertEqual((p2["sale_qty"], p2["date_qty"], p2["sale_value"], p2["date_value"]), (10, 6, 10 * 4000, 6 * 3900))
+		self.assertEqual(p1["total_count"], 2)
+		self.assertEqual(p1["sum_total_qty"], 116)
+		self.assertEqual(p1["sum_total_value"], 650000 + 158000 + 40000 + 23400)
+		self.assertEqual(p1["units"], [{"unit_name": "Thung", "conversion": 24}, {"unit_name": "Loc", "conversion": 6}])
+		self.assertEqual(p1["base_unit"], "Lon")
+		# trang 2 cỡ 1 → P2; sắp theo số lượng vẫn P1 trước; tắt "còn tồn" → có cả P3
+		self.assertEqual([x["sku"] for x in self._goi("warehouse", "ton_kho_trang", {"p_tim": "vtd", "p_sap": "so-luong", "p_offset": 1,
+			"p_limit": 1})["data"]], [self.ma["P2"]])
+		ca = self._goi("warehouse", "ton_kho_trang", {"p_tim": "vtd", "p_con_ton": False, "p_limit": 50})["data"]
+		self.assertIn(self.ma["P3"], [x["sku"] for x in ca])
+		self.assertEqual(ca[0]["total_count"], 3)
+		self.assertEqual(self._goi("warehouse", "ton_kho_trang", {"p_tim": "vtd khong co"})["data"], [])
+
 	def test_khong_phai_nv(self):
 		"""Không phải NV của NPP (user_org_id() NULL): tồn bán rỗng, giá trị 0, hàng đã đặt báo NO_ORG."""
 		frappe.local._npp_ngu_canh = None
@@ -127,3 +148,4 @@ class TestKhoDoc(IntegrationTestCase):
 		self.assertEqual(api.rpc(ten="stock_value_summary", tham_so={})["data"], [{"inventory_value": 0, "batch_count": 0}])
 		ket = api.rpc(ten="committed_stock_by_product", tham_so={})
 		self.assertTrue(ket["error"]["message"].startswith("NO_ORG"), ket)
+		self.assertEqual(api.rpc(ten="ton_kho_trang", tham_so={})["data"], [])
