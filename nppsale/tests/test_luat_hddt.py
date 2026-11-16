@@ -381,12 +381,16 @@ class TestPhanHoi(unittest.TestCase):
 			'MISA token lỗi 500: {"Data":{"AccessToken":"***"}}')
 		self.assertEqual(H.doc_phan_hoi_token(401, '{"error":"invalid_token","error_description":"Token ' + jwt + ' expired"}')["loi"],
 			"MISA token lỗi 401: Token *** expired (invalid_token)")
-		# JWT vắt qua mốc cắt 500 của `loi_misa` (mốc rơi giữa phần thân JWT — nửa còn lại không còn "dạng JWT" để bắt) vẫn che trọn: che TRƯỚC khi cắt
-		dai = '{"x":"' + "a" * 450 + '","sess":"' + jwt + '"}'
-		loi = H.doc_phan_hoi_token(500, dai)["loi"]
-		self.assertEqual(len(loi), len("MISA token lỗi 500: ") + 500)
-		self.assertNotIn("eyJhbGci", loi)
-		self.assertNotIn("eyJhbGci", H.doc_phan_hoi_token(200, dai)["loi"])  # nhánh "không thấy access_token" (cắt 300) cũng vậy
+		# JWT vắt qua mốc cắt — 500 của `loi_misa` (nhánh HTTP lỗi), 300 của nhánh "không thấy access_token" — mốc rơi giữa phần thân JWT (nửa còn lại
+		# không còn "dạng JWT" để bắt) vẫn che trọn: che TRƯỚC khi cắt. Thân sau khi che vẫn dài hơn mốc ⇒ câu cắt ĐÚNG mốc trên bản đã che.
+		for moc, ma, dau in ((500, 500, "MISA token lỗi 500: "), (300, 200, "MISA token: không thấy access_token trong response. Raw: ")):
+			with self.subTest(moc=moc):
+				dai = '{"x":"' + "a" * (moc - 34) + '","sess":"' + jwt + '","y":"' + "b" * 100 + '"}'
+				self.assertLess(dai.index(jwt), moc)
+				self.assertGreater(dai.index(jwt) + len(jwt), moc)
+				loi = H.doc_phan_hoi_token(ma, dai)["loi"]
+				self.assertEqual(loi, dau + dai.replace(jwt, "***")[:moc])
+				self.assertNotIn("eyJ", loi)
 
 	def test_co_ban_ghi_that(self):
 		"""[Sửa cuối — phát hiện 9] bản ghi `GET ?refID=` RỖNG (`{}` — `data: '{}'` / `'[]'`) không nói "MISA có tờ"; RefID trùng (hoa thường) hoặc một

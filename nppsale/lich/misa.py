@@ -538,8 +538,8 @@ def khop_snapshot(tu: _dt.date, den: _dt.date) -> dict:
 	(`lap_chi_muc` / `khop_mot` / `quyet_ket_qua_khop` — một chỗ khai, Gotcha #9).
 
 	- Đọc HẾT sổ và snapshot (không trần 1.000 dòng của PostgREST — bản cũ của nppsale chỉ thấy 1.000 tờ và CẮT LIÊN KẾT đúng của mọi tờ khác) ⇒
-	  `book_truncated` / `snap_truncated` luôn False. Ngày khớp của sổ = `misa_inv_date` ∥ NGÀY VN của `phat_hanh_luc` [≠ nppsale: 10 ký tự đầu chuỗi
-	  `issued_at` PostgREST trả — thường UTC ⇒ tờ 00:00–07:00 VN lệch một ngày ở tầng 4].
+	  `book_truncated` / `snap_truncated` luôn False. Ngày khớp của sổ = `misa_inv_date` ∥ NGÀY VN của `phat_hanh_luc` ∥ NGÀY VN của `misa_sent_at`
+	  (`_ngay_khop_so`) [≠ nppsale: 10 ký tự đầu chuỗi `issued_at` PostgREST trả — thường UTC ⇒ tờ 00:00–07:00 VN lệch một ngày ở tầng 4].
 	- KHÔNG HẠ CẤP KHI THIẾU CĂN CỨ: không khớp được mà snapshot đang trỏ tờ KHÔNG nằm trong phần sổ vừa đọc (tờ ghi sổ ngoài khung ngày) ⇒
 	  `skipped_unlink`, không ghi gì. Còn lại ghi `hddt` = tờ khớp ∥ NULL (cắt liên kết cũ khi không khớp), cách / độ tin / kết quả / ghi chú,
 	  `khop_luc`. Trước khi ghi đọc lại dòng CÓ KHOÁ: người nối tay giữa lúc đọc và lúc ghi thì máy không đè, không đếm.

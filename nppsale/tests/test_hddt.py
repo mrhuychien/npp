@@ -1922,6 +1922,16 @@ class TestSuaCuoi(_NenPhatHanh):
 		with self.assertRaises(frappe.TimestampMismatchError):
 			cu2.save(ignore_permissions=True)
 		self.assertEqual((self.dong(e2).misa_status, bool(self.dong(e2).misa_ref_id)), ("sent", True))
+		# chỉ CÂU SQL THÔ (`SQL_DOI_MODIFIED` — H5 `xu_ly_misa_khong_co`): bản form cũ (pending, chưa câu lỗi) lưu đè là tờ quay về "Chờ gửi" (H2 khoá
+		# Huỷ HĐ mãi) + mất câu "lượt đẩy trước chưa tới MISA" — validate không chặn (RefID / người mua / tiền không đổi), chỉ `modified` chặn được
+		e3 = dong_hddt(nguoi_mua="Tờ treo Desk", misa_status="pending", misa_ref_id="R-desk", misa_sent_at=LUC - datetime.timedelta(minutes=11))
+		cu3 = frappe.get_doc("NPP HDDT", e3)
+		self.mang(RONG)
+		self.assertEqual(self.lam_moi(e3), (404, {"error": "MISA không trả về dữ liệu HD."}))
+		cu3.misa_note = "ghi chú của người"
+		with self.assertRaises(frappe.TimestampMismatchError):
+			cu3.save(ignore_permissions=True)
+		self.assertEqual((self.dong(e3).misa_status, self.dong(e3).misa_error, self.dong(e3).misa_note), ("error", M.LOI_LM_TREO, None))
 
 
 class TestCauHinhDiaChi(_NenHddt):

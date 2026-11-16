@@ -1331,7 +1331,7 @@ def _khoa_tien(mst: str, ngay, tien) -> str:
 
 def lap_chi_muc(so_: list) -> dict:
 	"""buildIndex (reconcile.ts:115–152). Mỗi dòng sổ: {id, misa_ref_id, misa_lookup_code, misa_inv_series, misa_inv_no, mst, ngay
-	(= misa_inv_date ∥ ngày VN của phat_hanh_luc, 'YYYY-MM-DD'), tong_tien}. RefID / mã tra cứu / (ký hiệu chặt, số) — tờ ĐẦU TIÊN giữ khoá
+	(= misa_inv_date ∥ ngày VN của phat_hanh_luc ∥ ngày VN của misa_sent_at, 'YYYY-MM-DD' — `lich/misa.py::_ngay_khop_so`), tong_tien}. RefID / mã tra cứu / (ký hiệu chặt, số) — tờ ĐẦU TIÊN giữ khoá
 	(hai tờ cùng khoá là dữ liệu hỏng, ghi đè im lặng là giấu nó); khoá lỏng / MST + ngày + tiền giữ DANH SÁCH. Tờ chỉ có số gõ tay không vào
 	chỉ mục số."""
 	cm = {"by_ref": {}, "by_txn": {}, "by_no": {}, "by_loose": {}, "by_base": {}, "by_full": {}}

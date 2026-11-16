@@ -1928,7 +1928,9 @@ Không submit. Lập → sửa (lập lại bút toán) → xoá (huỷ bút to�
   Thay thế ≠ điều chỉnh (Gotcha #5): đọc `OrgRefID` của bản thay thế ⇒ đánh dấu tờ gốc `replaced`; HĐ điều chỉnh miễn so tiền và nói ra lý do.
 - **Hai lượt quét** (Gotcha #3): lượt 1 — có `misa_ref_id`, chưa `misa_inv_no`; lượt 2 — đã có số, `misa_status` ∉ {cancelled, replaced},
   `misa_no_locked` = 0; cửa sổ 60 ngày, mỗi lượt ≤ 200 tờ, sắp `misa_last_checked_at` trống trước. Lỗi một tờ không kéo cả lượt; mỗi lượt
-  ghi **một dòng nhật ký lượt** (`NPP MISA Log`, `nguon` = `sync_run`).
+  ghi **một dòng nhật ký lượt** (`NPP MISA Log`, `nguon` = `sync_run`). [Vòng soát mã] MISA TRẢ LỜI lỗi cho một tờ vẫn ghi `misa_last_checked_at` (hàng
+  đợi xoay vòng — tờ bị MISA từ chối giữ RefID 60 ngày); lượt đêm có hạn (quét 40 phút, kéo snapshot 55 phút tính từ đầu lượt, việc RQ trần 3600 s), 5 tờ
+  liền lỗi đường truyền thì dừng; RQ cắt việc vẫn để lại một dòng nhật ký lượt `failed`.
 - **Không ghi `null` đè giá trị đúng** (Gotcha #7); MISA không trả gì cho tờ đã có số ⇒ chỉ cập nhật `misa_last_checked_at`.
 - **HĐĐT ở DocType riêng, không ở Sales Invoice**: Sửa HĐ = huỷ + amend (CFD-01), mà amend chép mọi trường (Gotcha #2) — nếu trường MISA
   nằm trên Sales Invoice thì tờ `HD-0042-1` mang RefID / số HĐĐT của tờ đã huỷ. Tách bảng thì lỗi ấy không thể xảy ra; bản 3.4 của bàn bạc có "mã lỗi
@@ -1936,7 +1938,8 @@ Không submit. Lập → sửa (lập lại bút toán) → xoá (huỷ bút to�
 - **Tiền HĐĐT lấy từ HĐ bán**, không từ đơn (`ensureEInvoiceRow`, mig 124: "đợt xuất một nửa vẫn khai thuế cho cả đơn").
 - **Khoá HĐ đã phát hành** (mig 125 `cancel_invoice`, `reissueLock`): có dòng `NPP HDDT` với `hoa_don_ban` = HĐ và (`trang_thai` = issued ∨
   `misa_inv_no` có ∨ `misa_status` ∈ {signed, replaced}) ⇒ method Sửa HĐ / Huỷ HĐ ném `LOCKED_EINVOICE` (đúng chuỗi nppsale). Thêm vế "đang chờ MISA"
-  (có `misa_ref_id` ∧ `misa_status` ∈ {pending, sent, waiting_code} — §7.1 điểm 20, H2, đã dựng tạm). Đọc có khoá (`LOCK IN SHARE MODE`) sau khoá HĐ bán;
+  (có `misa_ref_id` ∧ `misa_status` ∈ {pending, sent, waiting_code, amount_mismatch} — §7.1 điểm 20, H2, đã dựng tạm; `amount_mismatch` chưa số = MISA đang
+  giữ nháp lệch tiền, thêm ở vòng soát mã). Đọc có khoá (`LOCK IN SHARE MODE`) sau khoá HĐ bán;
   thứ tự: sau `LOCKED_HAS_PAYMENT`, trước `LOCKED_RETURN_DONE` (`nppsale/rpc/xuat_hang.py::_khoa_hddt`).
 - **VAT trên HĐĐT**: giữ cách bộ đẩy hôm nay (làm tròn VAT từng dòng, `src/lib/misa/mapper.ts:108–110`) — câu 19 tạm chọn (c), cờ
   `NPP Cai Dat.luat_vat_hddt` (Q3). Chọn (e) thì chỉ đổi bộ đẩy, không đổi DocType.
@@ -2008,7 +2011,9 @@ trống)" (Gotcha #11.3) **không** đặt ở validate (bản trước ghi vậ
   (`HDDT_KHOA_SUA`) [ĐX H24 — bản trước ghi "draft và chưa có `misa_ref_id`", viết khi RefID còn ghi **sau** khi MISA nhận; nay RefID ghi **trước** khi gửi (§7.3
   dòng 10) nên tờ tay bị MISA từ chối (vd MST người mua sai — `error` có RefID) phải sửa được để đẩy lại cùng RefID; `pending` / `sent` có RefID thì khoá]. (3) `nguoi_mua`
   sau strip rỗng ⇒ `23502` (trên). (4) `misa_ref_id` / `misa_inv_no` trống ⇒ NULL; có số mà ký hiệu NULL ⇒ `''`. Các trường `misa_*` khác **không** chặn (System Manager
-  xoá dấu MISA trên Desk để phát hành lại tờ mất RefID — §6.4 đặc tả; trình duyệt không ghi được `misa_*` vì cổng cấm — §6.1).
+  xoá dấu MISA trên Desk để phát hành lại tờ mất RefID — §6.4 đặc tả; trình duyệt không ghi được `misa_*` vì cổng cấm — §6.1). [Vòng soát mã] Mọi lần MÁY ghi
+  trường nghiệp vụ (giành tờ, kết quả phát hành, kéo về, H5, đánh dấu tờ gốc — SQL / `set_value`) ĐỔI `modified` (`nppsale.api.misa.SQL_DOI_MODIFIED`): bản form
+  Desk mở TRƯỚC lần máy ghi mà bấm Lưu thì lõi chặn (`TimestampMismatchError`) — không ghi đè số / trạng thái MISA vừa kéo về; chỉ mốc hỏi thì không đổi.
 - **before_save**: `tim_kd` (bảng Fields).
 - **Lập dòng** (method `nppsale.api.misa.dam_bao_dong` — thay `ensureEInvoiceRow`; trình duyệt vẫn gọi `ensureEInvoiceRow` → cổng `invoices` INSERT → bộ ghi gọi
   `dam_bao_dong`, không phủ giao diện — §9.3-9 đặc tả): khoá dòng HĐ bán, tìm dòng theo `hoa_don_ban`; chưa có thì tạo `trang_thai` = draft, `nguoi_mua` /
@@ -2052,7 +2057,8 @@ trống)" (Gotcha #11.3) **không** đặt ở validate (bản trước ghi vậ
   mọi trạng thái chưa cuối → amount_mismatch / cancelled / replaced (vòng quét); signed giữ nguyên khi MISA trả bản ghi chưa có số [ĐX H8]; error → pending (đẩy
   lại, cùng RefID).
 - Khoá HĐ bán: luật `LOCKED_EINVOICE` ở §4.6.0 + vế "đang chờ MISA" (§7.1 điểm 20 — đã dựng tạm theo đề xuất, H2: dòng có `misa_ref_id` ∧ `misa_status` ∈ {pending,
-  sent, waiting_code} ⇒ `LOCKED_EINVOICE: HĐĐT đang chờ MISA — bấm Làm mới trạng thái trước`). Đọc có khoá (`LOCK IN SHARE MODE`) sau khi đã khoá HĐ bán `FOR UPDATE`.
+  sent, waiting_code, amount_mismatch} ⇒ `LOCKED_EINVOICE: HĐĐT đang chờ MISA — bấm Làm mới trạng thái trước`; `amount_mismatch` CHƯA số — nháp lệch tiền
+  của mọi HĐ có giảm giá cả đơn (H10): chủ "Huỷ" HĐĐT nội bộ không huỷ gì bên MISA, có số thì vế "đã phát hành" đã khoá). Đọc có khoá (`LOCK IN SHARE MODE`) sau khi đã khoá HĐ bán `FOR UPDATE`.
 
 ---
 
@@ -2067,11 +2073,11 @@ trống)" (Gotcha #11.3) **không** đặt ở validate (bản trước ghi vậ
 | nha_cung_cap | Nhà cung cấp | Data |  | ✓ |  |  | `provider` (mig 072), default `misa`, read_only. Dòng `tabSingles` của trường này = dấu "đã lưu" (dưới) |
 | dang_dung | Đang dùng | Check |  |  |  |  | `is_active` (mig 072), default 1; tắt → phát hành báo "chưa cấu hình", vòng quét bỏ qua |
 | moi_truong_thu | Môi trường thử | Check |  |  |  |  | `sandbox` (mig 072), default 1 (chỉ để hiển thị — môi trường thật do `dia_chi_api` quyết) |
-| dia_chi_api | Địa chỉ API | Data | URL | ✓ |  |  | `api_base` (mig 072 / 077), default `https://testapp.meinvoice.vn/api/v2`; thật: `https://app.meinvoice.vn/api/v2` |
+| dia_chi_api | Địa chỉ API | Data | URL | ✓ |  |  | `api_base` (mig 072 / 077), default `https://testapp.meinvoice.vn/api/v2`; thật: `https://app.meinvoice.vn/api/v2`. [H28 — vòng soát mã] chỉ nhận `https://` tới máy chủ MISA (hai máy trên + `site_config.json` `npp_misa_may_chu`), kiểm ở method lưu (400 câu tiếng Việt) và mỗi lần đọc cấu hình để gọi MISA (bản sửa tay trên Desk); `duong_lay_token` / `duong_phat_hanh` phải là đường dẫn `/…`. Đổi MÁY mà không gõ lại tài khoản / mật khẩu ⇒ hai trường bí mật bị xoá (không gửi tài khoản máy cũ sang máy mới) |
 | duong_lay_token | Đường lấy token | Data |  |  |  |  | `token_path` (mig 075 / 077), default `/oauth` |
 | duong_phat_hanh | Đường phát hành | Data |  |  |  |  | `publish_path` (mig 075 / 078), default `/v3sainvoice`; Thử kết nối ghi theo `IsInvoiceWithCode` (dưới); `misa_is_invoice_with_code` = 1 thì method dùng `/v3sainvoice/Code` |
 | tai_khoan | Tài khoản MISA | Password |  |  |  |  | `username_enc` (mig 072 — nppsale mã hoá cả tài khoản, giữ như vậy). Lưu bằng `encryption_key` của site; không bao giờ trả về trình duyệt — method cấu hình chỉ trả `has_username` |
-| mat_khau | Mật khẩu MISA | Password |  |  |  |  | `password_enc` (mig 072). Như trên, trả `has_password`; lưu với ô trống = giữ nguyên. Mất `encryption_key` (`site_config.json`) = mất hai trường này → sao lưu phải kèm `site_config.json` (3.11, `NPP Sao Luu` — §4.1). Không nhập từ Supabase (mục 4 của `01_business_model.md`): chủ / KT nhập lại |
+| mat_khau | Mật khẩu MISA | Password |  |  |  |  | `password_enc` (mig 072). Như trên, trả `has_password`; lưu với ô trống = giữ nguyên (trừ khi đổi máy MISA — H28). Mất `encryption_key` (`site_config.json`) = mất hai trường này → sao lưu phải kèm `site_config.json` (3.11, `NPP Sao Luu` — §4.1). Không nhập từ Supabase (mục 4 của `01_business_model.md`): chủ / KT nhập lại |
 | mst_nguoi_ban | MST người bán | Data |  |  |  |  | `tax_code` (mig 072); trống → `NPP Cai Dat.ma_so_thue` (= `Company.tax_id`) |
 | ten_nguoi_ban | Tên người bán | Data |  |  |  |  | `seller_name` (mig 072); trống → `NPP Cai Dat.ten_npp` (= `organizations.name`; không lấy tên Company) |
 | dia_chi_nguoi_ban | Địa chỉ người bán | Small Text |  |  |  |  | `seller_address` (mig 072) |
@@ -3971,7 +3977,8 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
     nhận chưa) vẫn Sửa / Huỷ được → có thể ra HĐĐT cho HĐ đã huỷ. Bản Frappe ghi RefID trước khi gửi (sửa lỗi Gotcha #1) nên biết tờ nào đang treo (`misa_status`
     = pending khi hết giờ). *Đề xuất*: thêm vế "có `misa_ref_id` và `misa_status` ∈ {pending, sent, waiting_code}" vào `LOCKED_EINVOICE` với câu "HĐĐT đang chờ
     MISA — bấm Làm mới trạng thái trước". — **Đã dựng tạm theo đề xuất** (H2 — `nppsale/rpc/xuat_hang.py::_khoa_hddt`, đọc có khoá; bài
-    `nppsale/tests/test_hddt_khoa.py`), chờ anh chốt (Q8).
+    `nppsale/tests/test_hddt_khoa.py`), chờ anh chốt (Q8). Vòng soát mã (16/11/2026) thêm `amount_mismatch` chưa số vào vế ấy: nháp lệch tiền (H10 — mọi HĐ có
+    giảm giá cả đơn) mà chủ "Huỷ" HĐĐT nội bộ (không huỷ gì bên MISA) thì trước đó lọt cả hai vế.
 
 **Nhân sự**
 
