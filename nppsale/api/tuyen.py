@@ -48,7 +48,7 @@ def _nap():
 	import importlib
 
 	for ten in ("nppsale.api.do_nap", "nppsale.api.loi_trinh_duyet", "nppsale.api.nguoi_dung", "nppsale.api.qr",
-			"nppsale.api.anh"):
+			"nppsale.api.anh", "nppsale.api.misa"):  # misa: /api/einvoice/* (đặc tả HĐĐT §6.2 — thiếu là 501)
 		try:
 			importlib.import_module(ten)
 		except ModuleNotFoundError:
