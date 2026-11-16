@@ -361,7 +361,8 @@ def ghi_ket_qua_keo_ve(ten: str, raw, *, xac_nhan_day: bool = False, luc=None, c
 			from nppsale.npp_hddt.doctype.npp_hddt.npp_hddt import khoa_tim_hddt
 
 			cap["tim_kd"] = khoa_tim_hddt({**r, "misa_inv_no": so_moi})
-		frappe.db.set_value("NPP HDDT", ten, cap, update_modified=False)
+		if cap:  # I10 bỏ mốc hỏi mà MISA không cho gì mới → không có gì để ghi (set_value với {} là câu SQL rỗng — MariaDB 1065)
+			frappe.db.set_value("NPP HDDT", ten, cap, update_modified=False)
 	except Exception as e:
 		frappe.db.rollback(save_point=diem)
 		if _la_trung_khoa(e) and r is not None:
@@ -477,9 +478,11 @@ def xu_ly_misa_khong_co(ten: str, luc=None) -> bool:
 	→ `error` + câu "lượt đẩy trước chưa tới MISA…" + mốc hỏi — bấm Phát hành là đẩy lại CÙNG RefID (H3 hỏi trước). Còn trong 10 phút (MISA có thể
 	chưa ghi xong) hoặc dòng không `pending` → không ghi gì. Một luật cho Làm mới (§4.3 bước 6) và vòng quét (§5.2 bước 4). → đã đổi dòng?"""
 	luc = luc or bay_gio()
-	frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %s, `misa_last_checked_at` = %s
+	# mốc hỏi không lùi (I10): lượt quét song song có thể đã ghi mốc muộn hơn
+	frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %s,
+			`misa_last_checked_at` = GREATEST(IFNULL(`misa_last_checked_at`, %s), %s)
 		WHERE `name` = %s AND `misa_status` = 'pending' AND (`misa_sent_at` IS NULL OR `misa_sent_at` < %s)""",
-		(LOI_LM_TREO, luc, ten, luc - _dt.timedelta(minutes=PHUT_TREO)))
+		(LOI_LM_TREO, luc, luc, ten, luc - _dt.timedelta(minutes=PHUT_TREO)))
 	return bool(frappe.db._cursor.rowcount)
 
 
@@ -601,18 +604,26 @@ def _nguoi_mua_va_dong(r) -> tuple[dict, list]:
 	return nguoi_mua, dong
 
 
-def _hd_ban_cua_dong(r) -> str | None:
-	return r.hoa_don_ban or r.get("hoa_don_ban_ls") or None
+def _hd_ban_hieu_luc(r, *, khoa: bool = False) -> tuple[bool, str]:
+	"""[ĐX H6] HĐ bán của dòng còn hiệu lực → (đúng?, mã HĐ cho câu lỗi) — đúng chữ §4.1.1 bước 5 / 9: có `hoa_don_ban` → `docstatus` của Sales
+	Invoice phải 1 (theo TÊN, không lọc tờ ghi có / tờ đầu kỳ: dòng chuyển sang ở P8 có thể kèm `hoa_don_ban` là tờ đầu kỳ cùng mã — §4.1.2 (a),
+	§9.5; `doc_hd_ban` của lập dòng lọc hai loại ấy nên không dùng ở đây); CHỈ có `hoa_don_ban_ls` → `NPP LS Hoa Don.status = 'posted'` (mã =
+	`invoice_code`). Dòng chỉ có đơn / không gắn gì: không kiểm [=]. Tờ HUỶ NỘI BỘ (`trang_thai = cancelled`) vẫn đẩy được [=].
+	`khoa=True` (bước 9): `SELECT … FOR UPDATE` dòng Sales Invoice — đọc bản đã commit MỚI NHẤT và giữ khoá tới hết giao dịch giành tờ (thứ tự HĐ
+	bán → dòng HĐĐT, cùng `_huy`: Huỷ HĐ song song xếp hàng sau, rồi thấy `pending` + RefID ⇒ LOCKED_EINVOICE — H2). Bản lưu trữ chỉ đọc."""
+	if r.hoa_don_ban:
+		x = frappe.db.sql("SELECT `docstatus` FROM `tabSales Invoice` WHERE `name` = %s" + (" FOR UPDATE" if khoa else ""), r.hoa_don_ban)
+		return (bool(x) and cint(x[0][0]) == 1, r.hoa_don_ban)
+	ls = r.get("hoa_don_ban_ls")
+	if ls and _co_luu_tru():
+		x = frappe.db.sql("SELECT `status`, `invoice_code` FROM `tabNPP LS Hoa Don` WHERE `name` = %s", ls)
+		return (bool(x) and x[0][0] == "posted", (x[0][1] if x and x[0][1] else ls))
+	return True, ""
 
 
 def _con_hieu_luc(r) -> tuple[bool, str]:
-	"""[ĐX H6] HĐ bán của dòng còn hiệu lực (Sales Invoice docstatus 1 / bản lưu trữ `posted`) → (đúng?, mã HĐ cho câu lỗi). Dòng chỉ có đơn /
-	không gắn gì: không kiểm [=]. Tờ HUỶ NỘI BỘ (`trang_thai = cancelled`) vẫn đẩy được [=]."""
-	hd = _hd_ban_cua_dong(r)
-	if not hd:
-		return True, ""
-	h = doc_hd_ban(hd)
-	return (bool(h and h["con_hieu_luc"]), h["ma"] if h else hd)
+	"""Bước 5 (đọc thường, trước khi gọi /oauth) — xem `_hd_ban_hieu_luc`; bước 9 đọc lại CÓ KHOÁ (HĐ có thể bị huỷ trong lúc lấy token)."""
+	return _hd_ban_hieu_luc(r)
 
 
 def _ghi_ket_qua_phat_hanh(ten: str, kq: dict) -> dict:
@@ -720,11 +731,9 @@ def _phat_hanh(yc: YeuCauCu) -> tuple:
 		commit_giua_chung()
 		return _loi(500, cau)
 	# 9. giành tờ: khoá HĐ bán → dòng HĐĐT (cùng thứ tự `_huy`), RefID (giữ cũ ∥ mới) + pending + mốc gửi, COMMIT trước khi gọi MISA
-	hd = _hd_ban_cua_dong(r)
-	if hd:
-		h = doc_hd_ban(hd, khoa=True)
-		if not (h and h["con_hieu_luc"]):
-			return _loi(400, CAU_HET_HIEU_LUC.format(ma=h["ma"] if h else hd))
+	ok, ma_hd = _hd_ban_hieu_luc(r, khoa=True)
+	if not ok:
+		return _loi(400, CAU_HET_HIEU_LUC.format(ma=ma_hd))
 	x = doc_dong_hddt(ten, khoa=True)
 	if x is None:
 		return _loi(404, CAU_PH_KHONG_CO)
@@ -750,11 +759,15 @@ def _da_co_tren_misa(ten: str, raw, ch, *, gui_di, don_hang) -> tuple:
 
 def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau) -> tuple:
 	"""§4.1.1 bước 10–15 — dòng đã `pending` + RefID trong sổ (đã commit). Ngoại lệ lọt (bước 15): chưa gửi → `error` + câu; đã gửi → giữ `pending`;
-	nhật ký `failed` best-effort (nếu lượt này chưa có nhật ký) → 500."""
+	nhật ký `failed` best-effort (nếu lượt này chưa có nhật ký) → 500.
+
+	"Đã gửi" gồm cả khi MISA ĐÃ XÁC NHẬN có tờ mang RefID này (bước 10 hỏi trước / H27 hỏi trước lần POST 2) mà ghi kết quả hỏng: tờ nằm trên MISA
+	⇒ GIỮ `pending` (Làm mới / vòng quét gỡ theo RefID). Đặt `error` là mở khoá Huỷ / Sửa HĐ bán (vế H2 chỉ khoá pending / sent / waiting_code — §6.1)
+	cho một HĐ đã có nháp trên MISA, và cổng che RefID (H3b) cho một tờ đã tới MISA [ĐX — §4.1.1 bước 15 chỉ phân "tới bước 12 chưa"]."""
 	don_hang = x.don_hang or x.get("don_hang_ls")
 	diem = "npp_misa_sau_gianh"
 	frappe.db.savepoint(diem)
-	da_gui, da_ghi_nhat_ky, payload = False, False, None
+	da_gui, da_ghi_nhat_ky, payload, ban_ghi_misa = False, False, None, None
 	try:
 		# 10. [ĐX H3] đẩy lại (đã có RefID): hỏi MISA trước — có ⇒ không POST
 		if ref_cu:
@@ -766,6 +779,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 				commit_giua_chung()
 				return _loi(502, cau)
 			if raw is not None:
+				ban_ghi_misa = raw
 				return _da_co_tren_misa(ten, raw, ch, gui_di={"source": "hoi_truoc_khi_day_lai", "ref_id": ref}, don_hang=don_hang)
 		# 11. payload (RefID truyền từ ngoài vào — đã commit)
 		payload = dung_payload(nguoi_mua, dong, ref, ch.cau_hinh_payload, che_do, po if isinstance(po, str) else None, _co_mui(bay_gio()))
@@ -773,6 +787,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 		da_gui = True
 		kq = MM.day_hd(ch, payload, truoc_khi_thu_lai=lambda: MM.lay_hd(ch, ref), bat_dau=bat_dau)
 		if kq.get("da_co") is not None:  # hỏng giữa chừng → bước 15 ghi MỘT nhật ký failed cho lần POST này (I5)
+			ban_ghi_misa = kq["da_co"]
 			return _da_co_tren_misa(ten, kq["da_co"], ch, gui_di=payload, don_hang=don_hang)
 		# 13. nhật ký (best-effort) — commit: sống kể cả khi bước 14 hỏng
 		ket_qua = "success" if kq["ok"] else ("pending" if kq.get("chua_biet") else "failed")
@@ -804,17 +819,22 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 		_ket_qua_loi_day(ten, "error", cau)
 		commit_giua_chung()
 		return _loi(502, cau)
-	except LoiTrungSoHddt as e:  # đẩy lại thấy trên MISA mà số đụng tờ khác (H13 — như Làm mới)
+	except LoiTrungSoHddt as e:
+		# MISA CÓ tờ (bước 10 / H27) mà số MISA cấp đụng chỉ mục (ký hiệu, số) của tờ khác trong sổ (H13 — như Làm mới): dòng không đổi gì ngoài
+		# câu lỗi, GIỮ `pending` (xem docstring), nhật ký `failed` — lần POST của lượt này (H27) phải có đúng một nhật ký (I5).
 		_lui(diem)
-		_ket_qua_loi_day(ten, "error", str(e))
+		cau = str(e)
+		_ket_qua_loi_day(ten, "pending", cau)
+		_ghi_nhat_ky_an_toan("publish", "failed", hddt=ten, don_hang=don_hang, gui_di=payload if payload is not None else
+			{"source": "hoi_truoc_khi_day_lai", "ref_id": ref}, nhan_ve=ban_ghi_misa, loi=cau)
 		commit_giua_chung()
-		return _loi(409, str(e))
+		return _loi(409, cau)
 	except Exception as e:  # bước 15
 		_ghi_loi("HĐĐT MISA: phát hành lỗi sau khi giành tờ")
 		cau = str(e) or CAU_PH_KHONG_XAC_DINH
 		_lui(diem)
 		try:
-			if not da_gui:
+			if not da_gui and ban_ghi_misa is None:  # chưa gửi ∧ MISA chưa xác nhận có tờ
 				_ket_qua_loi_day(ten, "error", cau)
 			if not da_ghi_nhat_ky:
 				_ghi_nhat_ky_an_toan("publish", "failed", hddt=ten, don_hang=don_hang, gui_di=payload, loi=cau)
