@@ -239,7 +239,6 @@ def khoan_no_cu_nhat(ncc: str):
 			GROUP BY `against_voucher_no` HAVING SUM(`amount`) > 0.005) x
 		JOIN `tabPurchase Invoice` pi ON pi.`name` = x.`ct`
 		WHERE pi.`docstatus` = 1 AND pi.`is_return` = 0 AND pi.`grand_total` >= 0""", {"n": ncc}, as_dict=True)
-	ds = [r for r in ds if loai_cua_pi(r.npp_loai, r.name, r.is_return, r.is_opening) != "tra_ncc"]
 	ds.sort(key=lambda r: (loai_cua_pi(r.npp_loai, r.name, r.is_return, r.is_opening) != "dau_ky", str(get_datetime(r.tao)), r.name))
 	return ds[0] if ds else None
 

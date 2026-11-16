@@ -94,15 +94,16 @@ class TestCongNoNcc(IntegrationTestCase):
 		pe.submit()
 		return pe
 
-	def _je(self, ve: list[tuple], loai: str, voucher_type: str = "Journal Entry", phieu_nhap: str | None = None):
-		"""ve: [(tài khoản, nợ, có, NCC | None, PI tham chiếu | None)]."""
+	def _je(self, ve: list[tuple], loai: str | None, voucher_type: str = "Journal Entry", phieu_nhap: str | None = None):
+		"""ve: [(tài khoản, nợ, có, NCC | None, tham chiếu | None)] — tham chiếu: tên PI hoặc (loại, tên)."""
 		je = frappe.new_doc("Journal Entry")
 		je.update({"voucher_type": voucher_type, "company": self.cd.cong_ty, "posting_date": nowdate(), "npp_loai": loai,
 			"npp_phieu_nhap": phieu_nhap})
 		for tk, no, co, ncc, ref in ve:
+			loai_ref, ten_ref = ref if isinstance(ref, tuple) else ("Purchase Invoice" if ref else None, ref)
 			je.append("accounts", {"account": tk, "debit_in_account_currency": no, "credit_in_account_currency": co,
-				"party_type": "Supplier" if ncc else None, "party": ncc, "reference_type": "Purchase Invoice" if ref else None,
-				"reference_name": ref, "cost_center": self.cc})
+				"party_type": "Supplier" if ncc else None, "party": ncc, "reference_type": loai_ref, "reference_name": ten_ref,
+				"cost_center": self.cc})
 		je.flags.ignore_permissions = True
 		je.insert()
 		je.submit()
@@ -206,6 +207,7 @@ class TestCongNoNcc(IntegrationTestCase):
 		self.assertEqual(N.loai_cua_pi(None, "ACC-PINV-2026-00002", 0, "Yes"), "dau_ky")
 		self.assertEqual(N.loai_cua_pi("", "PTNCC-0009", 0, "No"), "tra_ncc")
 		self.assertEqual(N.loai_cua_pi(None, "X-1", 0, "No"), "phieu_nhap")
+		self.assertEqual(N.loai_cua_pi("lap_tay", "PN-0042", 0, "No"), "lap_tay")  # npp_loai của app thắng tiền tố tên
 
 	# ------------------------------------------------------------------------------------------------ trả trước + dồn
 	def test_phieu_chi_tra_truoc_va_don_no_dau_ky_truoc(self):
@@ -301,24 +303,74 @@ class TestCongNoNcc(IntegrationTestCase):
 		self.assertEqual((self._so(f"Purchase Invoice:{pn.name}"), self._so(f"Purchase Invoice:{tra.name}")),
 			((100000, 0, 100000, "open"), (-30000, 0, -30000, "open")))
 
+	def test_but_toan_tro_phieu_chi_tra_truoc(self):
+		"""Bút toán vế NCC trỏ phiếu chi (vd. NCC hoàn lại một phần tiền trả trước — làm tay trên Desk): dòng trả trước của phiếu chiếu lại."""
+		pe = self._pe(self.ncc, 120000)
+		khoa = f"Payment Entry:{pe.name}"
+		je = self._je([(self.tk_tien, 20000, 0, None, None), (self.tk_no, 0, 20000, self.ncc, ("Payment Entry", pe.name))], None)
+		self.assertEqual(self._so(khoa), (0, 100000, -100000, "open"))
+		je.reload()
+		je.flags.ignore_permissions = True
+		je.cancel()
+		self.assertEqual(self._so(khoa), (0, 120000, -120000, "open"))
+
+	def test_khoa_ncc_giu_khoa_dong_ncc_va_dong_no(self):
+		"""`khoa_ncc` khoá dòng Supplier + mọi dòng công nợ của NCC: kết nối THỨ HAI `FOR UPDATE NOWAIT` bị chặn — hai lượt chi / dồn / huỷ cùng NCC
+		xếp hàng (nppsale `_don_tra_truoc_ncc`: khoá cả sổ nợ của NCC). NCC phải là dòng đã commit sẵn trên site (dòng chèn trong bài tự mang khoá
+		ngầm — không phân biệt được)."""
+		ncc = frappe.db.sql(f"""SELECT s.`name` FROM `tabSupplier` s WHERE s.`name` NOT IN %(bo)s AND EXISTS (SELECT 1 FROM `tab{N.DT}` c
+			WHERE c.`nha_cung_cap` = s.`name`) ORDER BY s.`name` LIMIT 1""", {"bo": (self.ncc, self.ncc_b)})
+		if not ncc:
+			self.skipTest("site chưa có NCC đã commit kèm dòng công nợ NCC")
+		ncc = ncc[0][0]
+		chinh = frappe.local.db
+		frappe.connect(set_admin_as_user=False)
+		kn2 = frappe.local.db
+		frappe.local.db = chinh
+		self.addCleanup(kn2.close)
+
+		def thu(cau):
+			frappe.local.db = kn2
+			try:
+				kn2.sql(cau, ncc)
+				return "được"
+			except Exception:  # NOWAIT gặp khoá → ném ngay
+				return "bị chặn"
+			finally:
+				kn2.rollback()
+				frappe.local.db = chinh
+
+		ncc_kh = "SELECT `name` FROM `tabSupplier` WHERE `name` = %s FOR UPDATE NOWAIT"
+		no_kh = f"SELECT `name` FROM `tab{N.DT}` WHERE `nha_cung_cap` = %s FOR UPDATE NOWAIT"
+		try:
+			self.assertEqual((thu(ncc_kh), thu(no_kh)), ("được", "được"))
+			self.assertTrue(N.khoa_ncc(ncc))
+			self.assertEqual((thu(ncc_kh), thu(no_kh)), ("bị chặn", "bị chặn"))
+		finally:
+			frappe.db.rollback()  # nhả khoá (lui về điểm lưu KHÔNG nhả khoá dòng); dựng lại điểm lưu cho tearDown
+			frappe.db.savepoint("npp_test")
+
 	# ------------------------------------------------------------------------------------------------ khám sổ
 	def test_kham_so_ncc(self):
 		from nppsale.kham_so import kham_so_cong_no_ncc, quet_cong_no_ncc
 
 		pn = self._pi(self.ncc, 100000)
-		self._pi(self.ncc, 30000, "tra_ncc")
+		tra = self._pi(self.ncc, 30000, "tra_ncc")
 		pe = self._pe(self.ncc, 50000)
 		N.don_tra_truoc_ncc(self.ncc)
 		self._pe(self.ncc_b, 9000)  # NCC B chỉ có trả trước
 		self.assertEqual(quet_cong_no_ncc([self.ncc, self.ncc_b]), [])
-		# chiếu cũ / dòng mất / chứng từ ngoài nhóm
+		# chiếu cũ (21) / chứng từ ghi sổ mất dòng — PI lẫn phiếu chi (22) / dòng mồ côi (22) / chứng từ ngoài nhóm (20)
 		frappe.db.set_value(N.DT, {"khoa_nguon": f"Purchase Invoice:{pn.name}"}, {"con_no": 1, "trang_thai": "paid"}, update_modified=False)
-		frappe.db.delete(N.DT, {"khoa_nguon": f"Payment Entry:{self._pe(self.ncc_b, 1000).name}"})
+		frappe.db.delete(N.DT, {"khoa_nguon": f"Purchase Invoice:{tra.name}"})
+		pe_b = self._pe(self.ncc_b, 1000).name
+		frappe.db.delete(N.DT, {"khoa_nguon": f"Payment Entry:{pe_b}"})
+		mo_coi = frappe.get_doc({"doctype": N.DT, "khoa_nguon": "Purchase Invoice:KHONG-CO", "loai": "phieu_nhap", "nha_cung_cap": self.ncc_b,
+			"trang_thai": "open"}).insert(ignore_permissions=True).name
 		gtn = self._pe(self.ncc, 7000, "ghi_tra_ncc")  # Ghi trả không phân bổ: tiền không thuộc dòng nào → lệch tổng NCC
 		nhom = sorted({(x["nhom"], x["chung_tu"]) for x in quet_cong_no_ncc([self.ncc, self.ncc_b])})
 		dong_pn = frappe.db.get_value(N.DT, {"khoa_nguon": f"Purchase Invoice:{pn.name}"}, "name")
-		self.assertEqual(nhom, sorted([(20, self.ncc), (20, self.ncc_b), (21, dong_pn), (22, frappe.get_all("Payment Entry",
-			filters={"party": self.ncc_b, "paid_amount": 1000, "docstatus": 1}, pluck="name")[0])]))
+		self.assertEqual(nhom, sorted([(20, self.ncc), (20, self.ncc_b), (21, dong_pn), (22, tra.name), (22, pe_b), (22, mo_coi)]))
 		self.assertIn(pe.name, frappe.get_all("Payment Entry", filters={"party": self.ncc, "npp_loai": "phieu_chi_ncc"}, pluck="name"))
 		# việc đêm: chiếu lại NCC có Payment Ledger đổi → còn đúng lệch "tiền ngoài nhóm" (không tự sửa chứng từ; commit bị chặn ở setUp)
 		kham_so_cong_no_ncc()
@@ -401,6 +453,9 @@ class TestCongNoNcc(IntegrationTestCase):
 		pn.flags.ignore_permissions = True
 		pn.insert()
 		pn.submit()
+		# dòng mang gói lô do app lập: use_serial_batch_fields = 0, không batch_no (PoC 1c / 9) — lõi giữ nguyên sau ghi sổ
+		self.assertEqual({(x.use_serial_batch_fields, x.batch_no) for x in frappe.get_all("Purchase Invoice Item", filters={"parent": pn.name},
+			fields=["use_serial_batch_fields", "batch_no"])}, {(0, None)})
 		self.assertEqual({(x.batch_no, x.warehouse, flt(x.qty)) for x in frappe.get_all("Serial and Batch Entry", filters={"parent": ("in",
 			[r.serial_and_batch_bundle for r in pn.items])}, fields=["batch_no", "warehouse", "qty"])},
 			{("VTD-M0-GAN", self.cd.kho_can_date, 10), ("VTD-M0-XA", self.cd.kho_ban, 5), ("VTD-M0-GAN2", self.cd.kho_can_date, 4)})
