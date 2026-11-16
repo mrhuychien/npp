@@ -1,0 +1,205 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "loai",
+  "nha_cung_cap",
+  "ten_ncc",
+  "chung_tu",
+  "phieu_chi",
+  "khoa_nguon",
+  "khoa_cho",
+  "so_hd_ncc",
+  "tim_kd",
+  "phieu_kho",
+  "so_tien",
+  "da_tra",
+  "con_no",
+  "han_thanh_toan",
+  "trang_thai",
+  "qua_han_tay",
+  "ghi_chu",
+  "tao_luc",
+  "tinh_luc"
+ ],
+ "fields": [
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Loại khoản",
+   "options": "phieu_nhap\ntra_ncc\ndau_ky\nlap_tay\ntra_truoc",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "nha_cung_cap",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Nhà cung cấp",
+   "options": "Supplier",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ten_ncc",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tên NCC",
+   "read_only": 1
+  },
+  {
+   "fieldname": "chung_tu",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Chứng từ nợ",
+   "options": "Purchase Invoice",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "phieu_chi",
+   "fieldtype": "Link",
+   "label": "Phiếu chi (trả trước)",
+   "options": "Payment Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "khoa_nguon",
+   "fieldtype": "Data",
+   "label": "Khoá nguồn",
+   "read_only": 1,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "khoa_cho",
+   "fieldtype": "Data",
+   "label": "Khoá một dòng đầu kỳ",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "so_hd_ncc",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Số HĐ NCC",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tim_kd",
+   "fieldtype": "Data",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "phieu_kho",
+   "fieldtype": "Data",
+   "label": "Phiếu kho",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "so_tien",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Số nợ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "da_tra",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Đã trả",
+   "read_only": 1
+  },
+  {
+   "fieldname": "con_no",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Còn nợ",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "han_thanh_toan",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Hạn thanh toán",
+   "read_only": 1
+  },
+  {
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái",
+   "options": "open\npartial\npaid\noverdue",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "qua_han_tay",
+   "fieldtype": "Check",
+   "label": "Đánh dấu quá hạn",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tao_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Ngày ghi nợ",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "tinh_luc",
+   "fieldtype": "Datetime",
+   "label": "Tính lại lúc",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Kho Mua",
+ "name": "NPP Cong No NCC",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "nha_cung_cap,chung_tu,so_hd_ncc",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "ten_ncc"
+}

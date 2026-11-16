@@ -615,6 +615,14 @@
    "module": "NPP Kho Mua"
   },
   {
+   "allow_on_submit": 1,
+   "fieldname": "npp_ghi_chu_no",
+   "fieldtype": "Small Text",
+   "insert_after": "npp_qua_han_tay",
+   "label": "Ghi chú công nợ",
+   "module": "NPP Kho Mua"
+  },
+  {
    "fieldname": "npp_phieu_kho_loai",
    "fieldtype": "Link",
    "insert_after": "bill_date",

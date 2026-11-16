@@ -1616,7 +1616,7 @@ trùng mã đã có → §7.1 điểm 14.
 | ten_ncc | Tên NCC | Data | | | ✓ | | tên NCC của chứng từ nguồn (`supplier_name` của PI / `party_name` của PE) — `chieu_cong_no_ncc` ghi mỗi lần tính lại (Title Field; như `NPP Cong No.ten_khach` — hàm chiếu ghi bằng SQL, `fetch_from` không chạy); RO |
 | chung_tu | Chứng từ nợ | Link | Purchase Invoice | | ✓ | ✓ | **mới** — PN / PTNCC / DKN / NTN của dòng; RO; idx |
 | phieu_chi | Phiếu chi (trả trước) | Link | Payment Entry | | | | **mới** — loại `tra_truoc` (`supplier_payments.prepay_payable_id` trỏ ngược về dòng này); RO |
-| khoa_nguon | Khoá nguồn | Data | | ✓ | | | **mới**; unique; `Purchase Invoice:<tên>` / `Payment Entry:<tên>` |
+| khoa_nguon | Khoá nguồn | Data | | ✓ | | | **mới**; unique; RO; `Purchase Invoice:<tên>` / `Payment Entry:<tên>` |
 | khoa_cho | Khoá một dòng đầu kỳ | Data | | | | | **mới**; unique; RO: `dau_ky:<nha_cung_cap>` khi `loai = dau_ky`, trống (NULL) với loại khác — thay `uq_payables_opening` (`UNIQUE (org_id, supplier_id) WHERE opening_balance`, mig 102: mỗi NCC đúng MỘT dòng nợ đầu kỳ — nhập lại file nợ đầu kỳ là cập nhật, không nhân đôi) theo khuôn `khoa_cho` của §2.9; lưới an toàn sau phép kiểm của method lập tờ `DKN-` (§6.1 `payables`); hàm chiếu xoá dòng tờ cũ trước khi chèn dòng tờ `DKN-…-n` |
 | so_hd_ncc | Số HĐ NCC | Data | | | ✓ | | `invoice_number`: PN / DKN / NTN = `bill_no` của PI; PTNCC = `bill_no` khi đã sửa ở màn công nợ, không thì `name` của tờ (nppsale ghi mã phiếu trả — `complete_supplier_return`, mig 228 / 240); `tra_truoc` = `name` của PE `PCNCC-…` (`chi_tra_ncc`, mig 242) — `tim_kd` tính trên số này; RO |
 | tim_kd | Khoá tìm | Data | | | | | **mới khi gộp**: `payables.tim_kd` (mig 249 — khoá tìm của `invoice_number`) mà ô tìm danh sách công nợ NCC hỏi (`BANG_TIM_KD_TINH`); `chieu_cong_no_ncc` ghi; RO; idx |
@@ -1627,7 +1627,7 @@ trùng mã đã có → §7.1 điểm 14.
 | han_thanh_toan | Hạn thanh toán | Date | | | ✓ | ✓ | `due_date` = `npp_han_thanh_toan` của PI (sửa được ở màn chi tiết — §5.9); RO |
 | trang_thai | Trạng thái | Select | `open`↵`partial`↵`paid`↵`overdue` | ✓ | ✓ | ✓ | `status`; cùng luật §4.3.0 (dòng âm / trả trước còn tiền = `open` để tổng NCC trừ nó — mig 242); RO |
 | qua_han_tay | Đánh dấu quá hạn | Check | | | | | **mới**; chép `npp_qua_han_tay` của PI; RO |
-| ghi_chu | Ghi chú | Small Text | | | | | `notes` = `npp_ghi_chu` của PI / PE; RO |
+| ghi_chu | Ghi chú | Small Text | | | | | `notes` (chữ hệ thống "Phiếu nhập hàng PN-…" / "Hoàn trả NCC — phiếu PTNCC-…" / "Trả trước NCC — phiếu chi PCNCC-…", sửa riêng ở `/payables/[id]`) = `npp_ghi_chu_no` của PI — trống (NULL) thì chữ hệ thống theo loại; dòng `tra_truoc` = chữ hệ thống của PE (đặc tả kho_mua §7.3 điểm 14 — tách khỏi ghi chú phiếu, quyết định tạm Q9); RO |
 | tao_luc | Ngày ghi nợ | Datetime | | | ✓ | | `created_at` = `npp_hoan_thanh_luc` của PI (lúc ghi nợ, như `complete_purchase_invoice`), PE (`tra_truoc`): lúc chi theo luật `v_luc` của `chi_tra_ncc` (mig 242 ghi `created_at` = `v_luc` — cùng luật `payable_payments.paid_at`, §6.1); RO; idx — thứ tự "cũ nhất trước" của `chi_tra_ncc` (nợ đầu kỳ trước, rồi theo ngày) |
 | tinh_luc | Tính lại lúc | Datetime | | | | | **mới**; RO |
 
@@ -3468,7 +3468,7 @@ tự dồn trả trước (§6.4, `complete_purchase_invoice`).
 | purchase_invoices · supplier_returns | Purchase Invoice | npp_giam_dau_phieu | Giảm đầu phiếu | Currency |  | discount_amount | `discount` (trừ **sau** thuế, không vào giá vốn — mig 145 / 146); method dựng dòng thuế Actual + Deduct đúng số này; `discount_amount` / `apply_discount_on` của lõi để trống |
 | purchase_invoices · supplier_returns | Purchase Invoice | npp_co_thue_go_tay | Có thuế gõ tay | Check |  | taxes_and_charges | `vat_override IS NOT NULL` (Currency của Frappe không NULL — §2.7) |
 | purchase_invoices · supplier_returns | Purchase Invoice | npp_thue_go_tay | Thuế gõ tay | Currency |  | npp_co_thue_go_tay | `vat_override` (mig 145 / 146) → một dòng thuế Actual vào `tk_thue_dau_vao` thay các dòng VAT; depends_on `npp_co_thue_go_tay` |
-| purchase_invoices · supplier_returns · payables | Purchase Invoice | npp_ghi_chu | Ghi chú | Small Text |  | remarks | `notes`; **AOS** (màn công nợ NCC sửa ghi chú của mọi khoản; `remarks` của lõi `no_copy`) |
+| purchase_invoices · supplier_returns | Purchase Invoice | npp_ghi_chu | Ghi chú | Small Text |  | remarks | `notes` của phiếu; **AOS** (`remarks` của lõi `no_copy`) |
 | supplier_returns | Purchase Invoice | npp_ly_do | Lý do trả | Small Text |  | npp_ghi_chu | `reason` (chữ tự do) |
 | purchase_invoices · supplier_returns | Purchase Invoice | npp_hoan_thanh_luc | Hoàn thành lúc | Datetime |  | amended_from | `completed_at`; RO; đặt lúc ghi sổ — mốc "ngày ghi nợ" của công nợ NCC |
 | supplier_returns | Purchase Invoice | npp_hoan_thanh_boi | Người hoàn thành | Link | NPP Nhan Vien | npp_hoan_thanh_luc | `completed_by`; RO |
@@ -3477,6 +3477,7 @@ tự dồn trả trước (§6.4, `complete_purchase_invoice`).
 | purchase_invoices | Purchase Invoice | npp_huy_boi | Người huỷ | Link | NPP Nhan Vien | npp_huy_luc | `cancelled_by`; **AOS**; RO |
 | payables | Purchase Invoice | npp_han_thanh_toan | Hạn nợ | Date |  | due_date | `payables.due_date` — màn công nợ NCC sửa hạn của **mọi** khoản (`payables/[id]/page.tsx:156`, trigger mig 227 không chặn); **AOS**; lõi `due_date` giữ ≥ ngày HĐ NCC (`party.py:753`) |
 | payables | Purchase Invoice | npp_qua_han_tay | Đánh dấu quá hạn | Check |  | npp_han_thanh_toan | `payables.status = 'overdue'` đặt tay (chỉ khi còn nợ — trigger mig 227); **AOS** |
+| payables | Purchase Invoice | npp_ghi_chu_no | Ghi chú công nợ | Small Text |  | npp_qua_han_tay | **mới** (đặc tả kho_mua §7.3 điểm 14, quyết định tạm Q9): `payables.notes` tách khỏi ghi chú phiếu — màn công nợ NCC sửa ghi chú của mọi khoản (`payables/[id]/page.tsx:156`); trống (NULL) = chưa ai sửa → bản chiếu `NPP Cong No NCC` dùng chữ hệ thống như nppsale ("Phiếu nhập hàng <PN>" / "Hoàn trả NCC — phiếu <PTNCC>"); tờ amend chép theo; **AOS** |
 | payables | Purchase Invoice | npp_phieu_kho_loai | Loại phiếu kho | Link | DocType | bill_date | **mới** — Stock Entry hoặc Purchase Invoice: nguồn của `stock_entry_id` (cổng `stock_entries` gộp cả PI — §6.1); RO |
 | payables | Purchase Invoice | npp_phieu_kho | Phiếu nhập kho | Dynamic Link | npp_phieu_kho_loai | npp_phieu_kho_loai | `payables.stock_entry_id` của khoản lập tay gắn một phiếu nhập kho (`payables/new` chọn từ `stock_entries` `type = import` của NCC — gồm cả `IN-…` lẫn `PN-…`, nên Link cố định `Stock Entry` sẽ từ chối tên `PN-…`); RO |
 | supplier_returns | Purchase Invoice | npp_ma_cu | Mã cũ | Data |  | npp_loai | `return_code_cu` (mã `TH-…` trước khi đánh lại `PTNCC-` — mig 240); RO; chỉ dữ liệu chuyển sang |

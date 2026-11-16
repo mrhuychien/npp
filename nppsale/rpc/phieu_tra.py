@@ -659,8 +659,8 @@ def _lo_nhan(doc, hang: str, zone: str, kho: str) -> str | None:
 
 def _lap_phieu_nhap(doc, kho: str, zone: str, luc, cd) -> str:
 	"""Stock Entry Material Receipt `NL-` (phiếu tự sinh; phiếu tự lập chỉ hàng đổi): mọi dòng SL > 0 kể cả hàng đổi, giá vốn mỗi đơn vị
-	kho, gói lô Inward do app lập (lô hết hạn vẫn nhận — PoC 9)."""
-	from erpnext.stock.serial_batch_bundle import SerialBatchCreation
+	kho, gói lô Inward do app lập (lô hết hạn vẫn nhận — PoC 9) — hàm dùng chung `nppsale.rpc.goi_lo`."""
+	from .goi_lo import gan_goi_lo, lap_goi_lo
 
 	se = frappe.new_doc("Stock Entry")
 	se.update({"naming_series": "NL-.####", "stock_entry_type": "Material Receipt", "company": cd.cong_ty, "to_warehouse": kho,
@@ -675,11 +675,8 @@ def _lap_phieu_nhap(doc, kho: str, zone: str, luc, cd) -> str:
 			"basic_rate": _gia_von_nhap_lai(doc, d.mat_hang), "set_basic_rate_manually": 1, "allow_zero_valuation_rate": 0})
 		lo = _lo_nhan(doc, d.mat_hang, zone, kho)
 		if lo:
-			b = SerialBatchCreation({"item_code": d.mat_hang, "warehouse": kho, "posting_date": se.posting_date, "posting_time": se.posting_time,
-				"voucher_type": "Stock Entry", "qty": flt(d.so_luong) * hs, "type_of_transaction": "Inward", "company": cd.cong_ty,
-				"batches": frappe._dict({lo: flt(d.so_luong) * hs}), "do_not_submit": True}).make_serial_and_batch_bundle()
-			r.serial_and_batch_bundle = b.name
-			r.use_serial_batch_fields = 0
+			gan_goi_lo(r, lap_goi_lo("Inward", "Stock Entry", d.mat_hang, kho, {lo: flt(d.so_luong) * hs}, se.posting_date, se.posting_time,
+				cd.cong_ty))
 	se.flags.ignore_permissions = True
 	se.insert()
 	se.submit()

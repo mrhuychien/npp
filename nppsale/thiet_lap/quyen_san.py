@@ -34,6 +34,9 @@ SAN: dict[str, tuple[str, ...]] = {
 	# Payment Entry.validate → set_missing_ref_details(force=True) → get_reference_details gọi has_permission(HĐ, "read", throw=True)
 	# (payment_entry.py:182, :3010) — cờ ignore_permissions của PE không lan sang (phiếu thu lập dưới chính người thu — đặc tả phiếu thu §0.4)
 	"Sales Invoice": ("read", "select"),
+	# cùng đường ấy phía NCC: dồn trả trước (reconcile_against_document → PE.set_missing_ref_details → get_reference_details) chạy trong method
+	# của kế toán / chủ (chi_tra_ncc, huỷ phiếu nhập…) — đo bằng tests/test_cong_no_ncc.py::test_don_duoi_vai_ke_toan (17/11/2026)
+	"Purchase Invoice": ("read", "select"),
 	# Payment Entry.validate → set_missing_values → get_account_details gọi has_permission("Payment Entry", throw=True) (payment_entry.py:649,
 	# :2922) — vai NPP phải ĐỌC được loại chứng từ (ghi vẫn chỉ qua method create_cash_receipt / void_cash_receipt)
 	"Payment Entry": ("read", "select"),

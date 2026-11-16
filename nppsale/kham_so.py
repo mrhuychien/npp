@@ -16,6 +16,11 @@ Nhóm 5 / 8 của nppsale (cấn phiếu trả ở phiếu thu kiểu cũ — ap
 
 cong_no(): bản ERPNext của `scripts/sql/quet/phieu-thu-cong-no.sql` (mig 164) + bất biến bản chiếu công nợ (đặc tả phiếu thu §1.7).
 
+cong_no_ncc(): bất biến bản chiếu công nợ NCC (`NPP Cong No NCC` — đặc tả kho_mua §2.8; nhóm 20–22). Phần khám sổ P4 còn lại (đặc tả kho_mua §8.1:
+dòng 66 / 67 / 70–74 / 77–82 của `scripts/sql/kham-so-that.sql` — dòng `payable_payments`, tồn lô ↔ Bin, phiếu chi) dựng ở M9.
+
+	bench --site <site> execute nppsale.kham_so.cong_no_ncc
+
 hddt(): hoá đơn điện tử MISA — bản Frappe của `supabase/diagnostics/einvoice_lost_refid.sql` + `einvoice_unknown_enums.sql` (đặc tả HĐĐT §6.4,
 + [Soát thiếu 2]) và các bất biến riêng của bản Frappe (tờ treo, nhật ký lượt đêm, trùng số đã chuẩn hoá, khoá Huỷ HĐ). Trả {can_xem, thong_ke}.
 
@@ -233,6 +238,88 @@ def kham_so_cong_no() -> None:
 	frappe.db.commit()
 	if lech:
 		frappe.log_error(title=f"Khám sổ công nợ: {len(lech)} chỗ lệch", message=frappe.as_json(lech[:200], indent=1))
+	kham_so_cong_no_ncc()
+
+
+# ================================================================================================ công nợ NCC (P4)
+def _dong_ncc(nhom: int, loai: str, chung_tu: str, ncc: str | None, tien, chi_tiet: str, nen_lam: str) -> dict:
+	return {"nhom": nhom, "loai": loai, "chung_tu": chung_tu, "ncc": ncc, "tien": flt(tien), "chi_tiet": chi_tiet, "nen_lam": nen_lam}
+
+
+@frappe.whitelist()
+def cong_no_ncc() -> list[dict]:
+	frappe.only_for(("System Manager", "Administrator"))
+	return quet_cong_no_ncc()
+
+
+def quet_cong_no_ncc(ncc: list[str] | None = None) -> list[dict]:
+	"""Bất biến bản chiếu công nợ NCC (đặc tả kho_mua §2.8; blueprint 02 §4.3.0 "việc đêm so Σ còn nợ với Σ Payment Ledger theo đối tác"):
+	  20. Σ còn nợ các dòng của NCC ≠ Σ Payment Ledger (`delinked = 0`, tài khoản phải trả) của NCC — chứng từ tiền / nợ không thuộc nhóm nào
+	      (PE Ghi trả còn tiền chưa phân bổ, bút toán tay không tham chiếu…) hoặc dòng thiếu / thừa.
+	  21. Dòng lệch sổ (chiếu cũ): số nợ / còn nợ / trạng thái khác số tính lại từ chứng từ.
+	  22. Chứng từ đang ghi sổ thiếu dòng (PI docstatus 1; phiếu chi NCC còn tiền chưa phân bổ) / dòng mồ côi (nguồn thôi ghi sổ / phiếu chi hết tiền)."""
+	from nppsale.su_kien import cong_no_ncc as N
+
+	ra: list[dict] = []
+	if not frappe.db.exists("DocType", N.DT):
+		return ra
+	ten = dict(frappe.db.sql("SELECT `name`, `supplier_name` FROM `tabSupplier`"))
+	so_cai = dict(frappe.db.sql("""SELECT `party`, SUM(`amount`) FROM `tabPayment Ledger Entry` WHERE `party_type` = 'Supplier' AND `delinked` = 0
+		AND `account_type` = 'Payable' GROUP BY `party`"""))
+	chieu: dict[str, float] = {}
+	co: set[str] = set()
+	for r in frappe.get_all(N.DT, filters={"nha_cung_cap": ("in", ncc)} if ncc else {}, fields=["name", "khoa_nguon", "loai", "nha_cung_cap",
+			"chung_tu", "phieu_chi", "so_tien", "con_no", "trang_thai"]):
+		chieu[r.nha_cung_cap] = chieu.get(r.nha_cung_cap, 0.0) + flt(r.con_no)
+		co.add(r.khoa_nguon)
+		mong = N.gia_tri_tra_truoc(r.phieu_chi) if r.loai == "tra_truoc" else N.gia_tri_pi(r.chung_tu) if r.chung_tu else None
+		if mong is None:
+			ra.append(_dong_ncc(22, "Dòng công nợ NCC mồ côi (nguồn thôi ghi sổ / phiếu chi hết tiền)", r.name, ten.get(r.nha_cung_cap),
+				r.con_no, f"{r.loai}: {r.chung_tu or r.phieu_chi or '—'}", "Chiếu lại dòng (cong_no_ncc.chieu_dong)"))
+		elif (abs(flt(mong["con_no"]) - flt(r.con_no)) >= 0.5 or abs(flt(mong["so_tien"]) - flt(r.so_tien)) >= 0.5
+				or mong["trang_thai"] != r.trang_thai):
+			ra.append(_dong_ncc(21, "Dòng công nợ NCC lệch sổ (chiếu cũ)", r.name, ten.get(r.nha_cung_cap), r.con_no,
+				f"{r.loai} {r.chung_tu or r.phieu_chi}: số nợ {flt(r.so_tien):g} / sổ {flt(mong['so_tien']):g}; còn nợ {flt(r.con_no):g} / sổ "
+				f"{flt(mong['con_no']):g}; trạng thái {r.trang_thai} / đúng {mong['trang_thai']}", "Chiếu lại dòng (cong_no_ncc.chieu_dong)"))
+	loc = {"supplier": ("in", ncc)} if ncc else {}
+	for pi in frappe.get_all("Purchase Invoice", filters={"docstatus": 1, **loc}, fields=["name", "supplier", "grand_total"]):
+		if f"Purchase Invoice:{pi.name}" not in co:
+			ra.append(_dong_ncc(22, "Phiếu nhập / trả NCC / nợ NCC ghi sổ mà không có dòng công nợ", pi.name, ten.get(pi.supplier), pi.grand_total,
+				"thiếu dòng NPP Cong No NCC", "Chiếu lại (cong_no_ncc.chieu_phieu_nhap)"))
+	if frappe.get_meta("Payment Entry").has_field("npp_loai"):
+		loc = {"party": ("in", ncc)} if ncc else {}
+		for pe in frappe.get_all("Payment Entry", filters={"docstatus": 1, "party_type": "Supplier", "npp_loai": "phieu_chi_ncc", **loc},
+				fields=["name", "party"]):
+			mong = N.gia_tri_tra_truoc(pe.name)
+			if mong and f"Payment Entry:{pe.name}" not in co:
+				ra.append(_dong_ncc(22, "Phiếu chi NCC còn tiền chưa phân bổ mà không có dòng trả trước", pe.name, ten.get(pe.party), mong["con_no"],
+					f"chưa phân bổ {-flt(mong['con_no']):g}", "Chiếu lại (cong_no_ncc.chieu_tra_truoc)"))
+	for n in sorted(set(chieu) | {k for k in so_cai if not ncc or k in ncc}):
+		if abs(chieu.get(n, 0.0) - flt(so_cai.get(n))) >= 0.5:
+			ra.append(_dong_ncc(20, "Công nợ NCC lệch sổ cái", n, ten.get(n), chieu.get(n, 0.0),
+				f"Σ dòng công nợ NCC {chieu.get(n, 0.0):g} — Σ sổ cái {flt(so_cai.get(n)):g}",
+				"Chạy kham_so_cong_no_ncc; còn lệch thì tìm chứng từ tiền / nợ của NCC không thuộc nhóm nào (PE Ghi trả còn tiền, bút toán tay)"))
+	ra.sort(key=lambda x: (x["nhom"], x["chung_tu"]))
+	return ra
+
+
+def kham_so_cong_no_ncc() -> None:
+	"""Việc đêm (cùng lượt `kham_so_cong_no` 01:00): NCC có Payment Ledger đổi trong ngày → chiếu lại mọi PI / phiếu chi / dòng của NCC, rồi khám;
+	còn lệch → Error Log (không tự sửa chứng từ)."""
+	from frappe.utils import add_days, now_datetime
+
+	from nppsale.su_kien import cong_no_ncc as N
+
+	if not frappe.db.exists("DocType", N.DT):
+		return
+	ncc = frappe.db.sql_list("""SELECT DISTINCT `party` FROM `tabPayment Ledger Entry` WHERE `party_type` = 'Supplier'
+		AND `modified` >= %s""", add_days(now_datetime(), -1))
+	for n in ncc:
+		N.chieu_ncc(n)
+	lech = quet_cong_no_ncc(ncc) if ncc else []
+	frappe.db.commit()
+	if lech:
+		frappe.log_error(title=f"Khám sổ công nợ NCC: {len(lech)} chỗ lệch", message=frappe.as_json(lech[:200], indent=1))
 
 
 # ================================================================================================ hoá đơn điện tử MISA (HĐĐT)

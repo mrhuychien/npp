@@ -204,13 +204,20 @@ doc_events = {
 		"on_cancel": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",
 		"on_update_after_submit": "nppsale.su_kien.cong_no.sau_ghi_so_hoa_don",
 	},
+	# Công nợ NCC = bản chiếu (đặc tả kho_mua §2.8, blueprint 02 §4.4 `NPP Cong No NCC`): PN / PTNCC / DKN / NTN ghi sổ / huỷ / đổi trường AOS
+	"Purchase Invoice": {
+		"on_submit": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",
+		"on_cancel": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",
+		"on_update_after_submit": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",
+	},
+	# Payment Entry / Journal Entry: nhánh khách (cong_no) rồi nhánh NCC (cong_no_ncc) — mỗi hàm tự lọc theo party_type
 	"Payment Entry": {
-		"on_submit": "nppsale.su_kien.cong_no.sau_thanh_toan",
-		"on_cancel": "nppsale.su_kien.cong_no.sau_thanh_toan",
+		"on_submit": ["nppsale.su_kien.cong_no.sau_thanh_toan", "nppsale.su_kien.cong_no_ncc.sau_thanh_toan"],
+		"on_cancel": ["nppsale.su_kien.cong_no.sau_thanh_toan", "nppsale.su_kien.cong_no_ncc.sau_thanh_toan"],
 	},
 	"Journal Entry": {
-		"on_submit": "nppsale.su_kien.cong_no.sau_but_toan",
-		"on_cancel": "nppsale.su_kien.cong_no.sau_but_toan",
+		"on_submit": ["nppsale.su_kien.cong_no.sau_but_toan", "nppsale.su_kien.cong_no_ncc.sau_but_toan"],
+		"on_cancel": ["nppsale.su_kien.cong_no.sau_but_toan", "nppsale.su_kien.cong_no_ncc.sau_but_toan"],
 	},
 }
 

@@ -169,3 +169,91 @@ snapshot (`nppsale/lich/misa.py`), khám sổ HĐĐT (`nppsale.kham_so.hddt`); b
 | H29 — Bản nhớ token MISA (vòng soát mã) | khoá theo địa chỉ + MST + tài khoản: một tiến trình phục vụ MỌI NPP của bench (mỗi NPP một site) ⇒ NPP B nhập MST + tài khoản MISA của NPP A với mật khẩu bất kỳ là dùng được token của A ~29 phút; mật khẩu sai vẫn chạy bằng token cũ | khoá thêm site + mật khẩu (băm) |
 | H30 — MISA trả 502 / 504 sau khi gửi (cổng trước MISA hết giờ — máy sau có thể đã ghi nháp) | lỗi rõ → "Lỗi" ⇒ mở khoá Huỷ / Sửa HĐ trong lúc MISA có thể đang giữ nháp | "chưa biết" như hết giờ: giữ "Chờ gửi", không gửi lại; Làm mới / vòng quét gỡ theo RefID (MISA không có sau 10 phút → "Lỗi"); 500 / 503 vẫn lỗi rõ |
 | (vòng quét đêm — vòng soát mã) MISA trả LỖI cho một tờ (vd không tìm thấy RefID) | không ghi mốc "đã hỏi" ⇒ tờ ấy đứng đầu hàng mỗi đêm | vẫn ghi mốc "đã hỏi" để hàng đợi xoay vòng (lỗi đường truyền thì không); lượt đêm có hạn giờ (40 phút quét, 55 phút kéo snapshot) và dừng khi 5 tờ liền mất kết nối — luôn để lại một dòng nhật ký lượt, kể cả khi việc nền bị cắt |
+
+## Q9. Kho / mua hàng / công nợ NCC (P4) — chỗ em tạm quyết, chờ anh chốt
+
+Đặc tả P4 (đọc thẳng 51 hàm + trigger đang chạy của nppsale, đối chiếu blueprint 02; soát thiếu 16/11/2026) có 28 điểm bản ERPNext khác nppsale có
+chủ ý / mâu thuẫn giữa blueprint, CLAUDE.md và mã (§7.2) và 41 điểm chờ chốt / cần đo (§7.3). Em dựng theo cột phải (= "đề xuất" của đặc tả).
+**In đậm** = cần anh chốt trước khi dựng mốc ghi trong dòng; còn lại em làm theo đề xuất, đổi được một chỗ khi anh chốt khác. Mỗi mốc M0–M9 chỉ THÊM
+dòng / ghi "đã dựng" vào bảng này.
+
+**M0 (nền) đã dựng**: DocType `NPP Cong No NCC` (bản chiếu công nợ NCC từ sổ — `nppsale/su_kien/cong_no_ncc.py`, hook Purchase Invoice / Payment
+Entry / Journal Entry), dồn trả trước NCC `don_tra_truoc_ncc` (method gọi tường minh), khám sổ NCC (`nppsale.kham_so.cong_no_ncc`, nhóm 20–22, chạy
+cùng việc đêm 01:00), cài đặt site §2.11 + bộ kiểm cài đặt (`nppsale.thiet_lap.kho_mua.kiem_cai_dat`), luật thuần `nppsale/luat/kho_mua.py`, hàm kho dùng
+chung `nppsale/rpc/goi_lo.py` (gói lô Inward / Outward — Xuất hàng và phiếu nhập lại `NL-` của P3 dùng chung), Custom Field `Purchase Invoice.npp_ghi_chu_no`,
+DocPerm sàn đọc Purchase Invoice cho vai NPP; bài `test_luat_kho_mua` (thuần), `test_cong_no_ncc`, `test_do_kho_mua` (ghim hành vi lõi đã đo).
+
+| Câu | nppsale hôm nay | Bản ERPNext (tạm) |
+|---|---|---|
+| §7.2 #1 — Số phiếu nhập | cấp lúc **hoàn thành** = MAX + 1, không lỗ số (mig 142 / 237) | cấp lúc lập nháp `PN-.####` (câu 18 — đã chốt); nháp xoá để lỗ số; POS hiện mã lô dự kiến từ nháp. Dãy `PN-` / `PTNCC-` / `DKN-` / `NTN-` / `SGN-` đặt ở M0 (P8 đặt số bắt đầu sau MAX nppsale) |
+| **§7.2 #2 — Sửa / khôi phục phiếu nhập, phiếu trả NCC** (trước M2) | sửa tại chỗ / khôi phục giữ số + giữ id (mig 235 / 241); CLAUDE.md (anh 13/10/2026): "Sửa phiếu trả NCC đã xuất giữ nguyên số phiếu" | huỷ + amend `-1` (CFD-01 "Duyệt tất cả"); giao diện thêm lớp phủ điều hướng theo id mới — **mâu thuẫn CLAUDE.md ↔ CFD-01 ở phiếu trả NCC, anh chốt lại** |
+| **§7.2 #3 — Sửa phiếu nhập đã bán** (trước M7) | đổi được SL (≥ đã xuất), thêm / bỏ dòng, NCC, kho, số / ngày HĐ, giảm, VAT (mig 235 — anh 06/10/2026 "tao muốn sửa được") | chỉ sửa GIÁ (LCV `SGN-` + bút toán `DCN-`, CFD-06); đổi SL / lô / NCC / kho → lỗi — **hẹp hơn lời anh, anh xác nhận** (V67 / V68 / V70 ra khác) |
+| §7.2 #4 — Xuất / huỷ vượt tồn | `allow_oversell` cho âm ở xuất lẻ, trả NCC, huỷ phiếu nhập (mig 222 / 238) | hàng theo lô không bao giờ âm (CFD-05 B); chỉ hàng không lô (`Item.allow_negative_stock` + `NPP Cai Dat.cho_ban_vuot_ton`); câu `HANG_DA_XUAT` cho hàng lô — §7.3 điểm 12 |
+| §7.2 #5 — Nhập kho tay có NCC + tiền | `IN-` + dòng nợ, hai giá (đơn giá → nợ, giá vốn gõ riêng → lô) | thành phiếu nhập `PN-` (CFD-13, câu 17) — một `rate`; hai giá xử lý ở §7.3 điểm 3 |
+| §7.2 #6 — Kiểm kê | `stock_entries stocktake`, áp lô tại chỗ, `expenses` | `NPP Kiem Ke` + `DCK-` Issue / Receipt + `NPP Phieu Chi` (CFD-09); thừa có bút toán (M6) |
+| §7.2 #7 — Rà soát kho date | lật cờ vùng, không phiếu, không lịch | phiếu `CKL-` `chuyen_date_tu_dong` + việc đêm 01:00 (bàn bạc 3.9); huỷ PN có lô đã rà — §7.3 điểm 8 |
+| §7.2 #8 — Nhận diện nguồn khi huỷ phiếu kho | khoá ngoại + **ghi chú** (sửa ghi chú là lách được — V54) | trường thật (`npp_loai`, `npp_phieu_tra`, `PI.npp_loai`…) — đóng lỗ, giữ nguyên câu lỗi |
+| §7.2 #9 — Ghi thẳng phiếu nhập / trả NCC | RLS `FOR ALL` mọi cột kể cả `status`; xoá phiếu đã xuất được (K25) | chỉ phiếu nháp; đổi trạng thái → `USE_RPC` (BP §6.1; CLAUDE.md "trạng thái chứng từ chỉ đổi qua RPC") |
+| §7.2 #10 — Huỷ phiếu nháp | giữ dòng `cancelled` + lý do | như §7.3 điểm 1 |
+| §7.2 #11 — Tiền | không làm tròn (`13332.60`) | làm tròn đồng — chênh < 1 đ / phiếu (BP §7.2 điểm 3); Property Setter precision 4 cho `rate` / `net_rate` / `discount_amount` của dòng PI — **đã đặt M0** |
+| §7.2 #12 — Ngày | `CURRENT_DATE` / `now()` UTC ở trigger kho date, rà soát, `HANG_GAN_HAN`, chi phí hao hụt, mặc định `return_date` (mig 140 ghi nhận, cố ý chưa sửa) | ngày VN mọi nơi; bài vàng chạy 07:00–23:59 VN |
+| §7.2 #13 — Thẻ kho | gồm nháp, đổi vùng hồi tố, dòng âm ảo, cặp xuất + đảo | sổ kho lõi: chỉ chứng từ ghi sổ, không hồi tố, chứng từ huỷ biến mất — khác có chủ đích |
+| §7.2 #14 — Phiếu kho của PN / PTNCC | bản ghi `stock_entries` riêng (`entry_code` = mã PN / `XK-…`), dòng một lô | = chính Purchase Invoice, dòng = dòng PI (cổng `stock_entries` gộp nguồn — M4) |
+| §7.2 #15 — "Thử lại khi lô âm" (BP §4.4.0) | — | `_goi_co_khoa` chỉ thử lại deadlock / quá hạn khoá; sửa BP: có khoá Bin thì lô âm là dữ liệu sai — không thử lại, ghi log |
+| §7.2 #16 — Ngày tương lai (CFD-12) | `chi_tra_ncc` có `NGAY_TUONG_LAI`; nhập kho tay lùi ngày được | lõi 16.53 không chặn ở Stock Entry / PI → method tự chặn ở `post_stock_import`, trả NCC, `DKN-` / `NTN-`: `NGAY_TUONG_LAI: Ngày chứng từ không được sau hôm nay.` |
+| §7.2 #17 — `return_date` → `posting_date` (BP §5.9) | `return_date` không dùng cho kho / nợ (ghi lúc bấm) | như §7.3 điểm 11 |
+| §7.2 #18 — Xoá khoản nợ của phiếu nhập qua cổng | hỏng 23503 khoá ngoại (cả PN lẫn PTNCC); chỉ nợ `IN-` / lập tay / đầu kỳ xoá được | chặn bằng đúng câu 23503 của nppsale (§7.3 điểm 38) |
+| §7.2 #19 — `bill_date` không AOS | đổi ngày HĐ NCC trên phiếu đã bán được | nhánh sửa giá không đổi được ngày HĐ NCC — Property Setter riêng hoặc chấp nhận (M7) |
+| §7.2 #20 — `DA_TRA_TIEN` | tính cả Bù trừ (`offset`) vào `paid` | gồm cả JE `bu_tru_ncc` (BP §6.4 chỉ kể PE Ghi trả) |
+| §7.2 #21 — Bảng mã lỗi BP §6.4 | — | bổ sung 12 mã của phiếu nhập, bốn câu `FORBIDDEN` khác nhau, `KHONG_DU_QUYEN_GIA_NHAP` là P0001 — trước khi viết method (M1) |
+| §7.2 #22 — Mã đang chạy lệch nppsale | — | `NCC_XOA_QUA_RPC` sai câu (`cong/bang/nha_cung_cap.py:33`); `purchase_price_lists` thiếu quan hệ `invoice:purchase_invoices` (PGRST200 → POS mất giá gợi ý); phiếu `NL-` ghi "Nhập lại từ phiếu trả …" vào `remarks` thay `npp_ghi_chu` — sửa ở M1 / M4 / M8 |
+| §7.2 #23 — Gộp NCC | chuyển nợ đầu kỳ của NCC bị gộp thành nợ thường; `ON CONFLICT` phân công | thêm hai bước ấy vào `gop_nha_cung_cap` (M8) |
+| §7.2 #24 — Trạng thái công nợ NCC | `sua_phieu_nhap` trả dư → `partial`; RPC thanh toán ghi đè `overdue` | như §7.3 điểm 13 — **đã dựng M0** |
+| §7.2 #25 — Giá vốn kỳ báo cáo đọc cổng | mọi phiếu `export` ghi sổ: HĐ + **trả NCC** (giá lô) + xuất lẻ (dòng giá 0) | như §7.3 điểm 36 |
+| §7.2 #26 — Lô sau khi mọi gói lô bị huỷ (huỷ PN) | dòng lô giữ `qty_initial`, giá, vùng, `status 'cancelled'` | cổng `batches` ra dòng "lô chưa phát sinh" (kho bán, `qty_initial 0`, giá `npp_gia_von_lo_rong` / 0) — §7.3 điểm 35 |
+| §7.2 #27 — Sửa lô ở màn | sửa MỘT dòng lô (một vùng); `UPDATE OF expires_at` chạy cả khi hạn không đổi | một Batch cho cả hai kho (M5, V82) |
+| §7.2 #28 — `v_stock_movements` hiển thị | đơn vị giao dịch của dòng ("+2 thùng (= +48)") | sổ kho lõi chỉ có đơn vị cơ sở — §7.3 điểm 39 |
+| **§7.3 điểm 1 — Huỷ phiếu NHÁP** (PN, PTNCC, phiếu kho, kiểm kê) | giữ dòng `cancelled` + lý do; khôi phục về nháp được (mig 241) | giữ nháp + `npp_huy_luc / npp_huy_boi / npp_ly_do_huy` cho PN / PTNCC (cổng trả `cancelled`, mọi method coi như đã huỷ); Stock Entry nháp: xoá như BP (chỉ màn xuất lẻ dọn nháp hỏng) |
+| **§7.3 điểm 2 — Sửa phiếu trả NCC đã xuất + điều hướng sau sửa / khôi phục** (trước M2) | POS / màn sửa: huỷ → ghi thẳng `draft` → dòng → gửi (bốn lời gọi, không cùng giao dịch) | RPC `sua_phieu_tra_ncc` MỘT giao dịch + lớp phủ `save.ts`, `purchase-returns/[id]/edit`, POS; sau sửa / khôi phục điều hướng theo `id` trả về |
+| **§7.3 điểm 3 — `post_stock_import` nhánh phiếu nhập** (trước M4) | `IN-` mang hai giá: giá vốn lô và tiền nợ | dòng `rate` = giá vốn × hệ số + MỘT dòng thuế `Actual` / `Total` bù chênh tới tiền nợ (TK chờ §7.3 điểm 17); không ghi giá nhập (như nppsale); tên lô theo mã trình duyệt (`LOT-IN-…`) |
+| §7.3 điểm 4 — Nhận diện tồn đầu kỳ ở `post_stock_import` | không có cờ | `entry_code` bắt đầu `DK-` → `ton_dau_ky`, `is_opening`; còn lại `nhap_kho` |
+| §7.3 điểm 5 — Hạn trống khi nhập kho tay | `2099-12-31` | để trống (CFD-10 bỏ hạn giả; cổng trả `2099-12-31`); mặt hàng `has_expiry_date` mà trống — đo ở M4 |
+| **§7.3 điểm 6 — Mã lô người gõ trùng** (trước M5) | nhận (mã lô không duy nhất) | chặn — câu mới `LO_TRUNG_MA: …` (BP §7.1 điểm 14) |
+| **§7.3 điểm 7 — `sua_phieu_nhap` chi tiết** (trước M7) | sửa tại chỗ; ép kiểu sai → lỗi Postgres thô 22P02 | mã + câu "chỉ sửa giá" `PHIEU_DA_XUAT_CHI_SUA_GIA: …` (đề xuất); TK chênh giảm đầu phiếu / thuế ở `DCN-`; tên lô dòng mới nhánh A `<PN gốc>-<NNN>` theo MỌI Batch; ngày ghi sổ tờ amend = tờ gốc (repost); phân bổ lại tiền + trả dư nằm lại PE; ép kiểu sai → `BAD_PAYLOAD: dữ liệu phiếu sai kiểu.` |
+| **§7.3 điểm 8 — Lô đã bị rà sang kho cận date chặn huỷ PN / `IN-`** (trước M5) | huỷ được (chỉ lật cờ vùng) | method huỷ trước các `CKL-` `chuyen_date_tu_dong` của đúng lô (khi lô không động gì khác) rồi mới huỷ — hoặc chấp nhận chặn |
+| §7.3 điểm 9 — `DA_TRA_TIEN` gồm Bù trừ; lý do huỷ NULL | gồm `offset`; nhận NULL | gồm JE `bu_tru_ncc`; nhận NULL như nppsale (không thêm `REASON_REQUIRED`) |
+| **§7.3 điểm 10 — Bù trừ (`offset`) + `method` NULL ở Ghi trả** (trước M3) | `offset` trừ thẳng `paid`; `method` NULL được | JE `CTN-` Debit Note; hết khoản giảm → `BU_TRU_KHONG_CON: NCC không còn khoản giảm để bù trừ.`; NULL / '' → tiền mặt (cổng trả `cash`) |
+| **§7.3 điểm 11 — `return_date` ↔ ngày ghi sổ trả NCC** (trước M2) | kho / nợ ghi lúc bấm; `return_date` chỉ hiển thị | ghi sổ lúc bấm (như nppsale); `return_date` là trường hiển thị (`npp_ngay_tra` mới hoặc `bill_date`) |
+| **§7.3 điểm 12 — Câu `HANG_DA_XUAT` với hàng theo lô** | khuyên "bật Cho phép bán vượt tồn…" | giữ mã, câu riêng: `HANG_DA_XUAT: Không huỷ được vì hàng của phiếu đã xuất bớt — %. Lập phiếu trả hàng NCC hoặc phiếu điều chỉnh kho.` |
+| §7.3 điểm 13 — Trạng thái công nợ NCC | trả dư sau `sua_phieu_nhap` → `partial`; các RPC thanh toán ghi đè `overdue` | **đã dựng M0**: MỘT luật với phải thu (BP §4.3.0, `cong_no.trang_thai`): trả dư → `open` (dư có, trừ vào tổng NCC); dấu quá hạn tay giữ tới khi đủ; RPC thanh toán không xoá `npp_qua_han_tay` |
+| §7.3 điểm 14 — Ghi chú công nợ NCC | `payables.notes` = chữ hệ thống ("Phiếu nhập hàng PN-…" / "Hoàn trả NCC — phiếu …" / "Nhập kho …" / "Trả trước NCC — phiếu chi …"), sửa riêng ở `/payables/[id]` | **đã dựng M0**: Custom Field `Purchase Invoice.npp_ghi_chu_no` (AOS) tách khỏi ghi chú phiếu; trống (NULL) → bản chiếu dùng chữ hệ thống như nppsale; người dùng xoá → rỗng; dòng trả trước = "Trả trước NCC — phiếu chi <PE>"; cổng dựng chuỗi "Phiếu chi …" cho dòng chi (M3). Lệch nhỏ: tờ amend (khôi phục) chép ghi chú cũ (nppsale lập dòng nợ mới mang chữ hệ thống); ghi chú dòng trả trước chưa sửa riêng được |
+| **§7.3 điểm 15 — Kiểm kê chi tiết** (trước M6) | `shrink_value` một giá / dòng; thừa vào lô hạn xa nhất; giờ `ALREADY_POSTED` UTC; toast in mã trình duyệt | `shrink_value` theo luật nppsale (sổ kho đúng từng lô); kho nhận thừa = nơi lô có tồn lớn nhất, không đâu có → `npp_kho_tao`; `basic_rate` = giá lô hiện tại; khoá số tiền phiếu chi hao hụt; giờ VN; cổng trả `entry_code` = tên Frappe (toast lệch — chấp nhận) |
+| §7.3 điểm 16 — DocType chưa có | — | `NPP Cong No NCC` **đã dựng M0**; `NPP Kiem Ke` (+ `Dong`), `NPP Danh Muc Chi Phi`, `NPP Phieu Chi` ở M6 |
+| **§7.3 điểm 17 — Tài khoản kế toán app tự lập** (BP §7.1 điểm 16) | — | bảng TK mặc định theo TT200, kế toán duyệt một lần (đề xuất BP); M0 chỉ trỏ `tk_thue_dau_vao` = TK thuế GTGT đầu vào của mẫu "VAT n%"; TK giảm đầu phiếu nhập (M1), xuất lẻ / nhập không HĐ (M4), thừa kiểm kê (M6), trung gian sửa giá (M7), nợ lập tay (M3) lập ở mốc dùng; chênh giá trả NCC ↔ giá lô vào `Company.default_expense_account` của lõi (đo M0) |
+| §7.3 điểm 18 — Gộp NCC | — | đổi `npp_loai` tờ `DKN-` (db_set sau ghi sổ), dồn trùng `NPP Nhan Vien Cong Ty`, dựng `da_chuyen` như §3.13 (M8) |
+| §7.3 điểm 19 — Hệ số quy đổi dòng PN / PTNCC | tin hệ số trình duyệt gửi | **đã đo M0**: lõi GIỮ hệ số dòng (thùng ×20 dù danh mục ×24) và nhận đơn vị không khai trong `Item.uoms` — như nppsale, không cần gán lại (`test_do_kho_mua`) |
+| §7.3 điểm 20 — Xoá lô đã có lịch sử | 23503 khoá ngoại thô | trả đúng câu 23503 của nppsale |
+| §7.3 điểm 21 — Che giá vốn ở `bao_cao_ton_kho`, dòng phiếu kho, `v_stock_movements`, đơn giá dòng phiếu nhập | chỉ che ở giao diện | che theo `inventory.cost` như cổng `batches` |
+| **§7.3 điểm 22 — `refresh_warehouse_zones` không kiểm vai** | NVBH gọi được | giữ như nppsale (chỉ chuyển lô theo luật — vô hại) |
+| **§7.3 điểm 23 — Dòng SL ≤ 0, giá 0, giá / giảm âm ở phiếu nháp** (trước M1) | máy chủ không chặn (K12, V25) | cổng ghi nháp chặn bằng câu của `sua_phieu_nhap`: `SO_LUONG_KHONG_HOP_LE: Dòng % có số lượng không lớn hơn 0.` / `GIA_KHONG_HOP_LE: Dòng % có giá / giảm giá âm.` — **đo M0: lõi từ chối PI nháp có dòng SL 0** (phiếu nhập "Quantity … cannot be zero", tờ trả có kho "'0' qty Items are not allowed") nên buộc chặn ở cổng |
+| §7.3 điểm 24 — `payables_summary(p_since)` chuỗi không múi giờ | hiểu UTC | hiểu giờ VN |
+| §7.3 điểm 25 — `so_chung_tu_ncc` | thủ kho thấy `con_no` (definer); nhãn `supplier_payments` thô | giữ y nppsale |
+| §7.3 điểm 26 — `INSUFFICIENT_STOCK \|` (trả NCC) in "còn" SAU khi trừ | gần như luôn `0.000000` | chép y nguyên (giao diện tách theo `\|`) |
+| §7.3 điểm 27 — Chỗ nppsale không dồn trả trước | gộp NCC, `sua_phieu_nhap` tăng nợ, sửa số nợ đầu kỳ, Ghi trả | giữ y; riêng sửa số đầu kỳ (tờ `DKN-` amend là tờ mới ghi sổ) → GỌI dồn (nợ ròng không đổi). M0: `don_tra_truoc_ncc` do method gọi tường minh, KHÔNG gắn doc_events (thứ tự với phân bổ lại tiền của sửa / huỷ PN do method quyết) |
+| **§7.3 điểm 28 — Cột `stock_entry_lines.created_at`** | không có (nút Excel một phiếu hỏng 42703) | không thêm (giữ hành vi) — hoặc thêm để nút Excel chạy |
+| §7.3 điểm 29 — Nhãn đơn vị `MIN(unit_name)` trong `KHONG_DU_TON` | sai đơn vị với số cơ sở | chép y nguyên |
+| §7.3 điểm 30 — `return_date` / ngày màn điện thoại theo ngày UTC | `toISOString` | cổng mặc định hôm nay VN; lớp phủ không cần |
+| §7.3 điểm 31 — Hành vi lõi cần đo | — | **đã đo M0 (phần PI)**: PI nháp dòng SL 0 bị từ chối; huỷ tờ trả NCC vào lô `disabled` VẪN ĐƯỢC (hàng về lô đang tắt — method mở lại lô như mig 235); tờ trả NCC độc lập xuất theo GIÁ LÔ (`incoming_rate` của gói lô / `valuation_rate` SLE), chênh với giá trả vào `default_expense_account`, `PI Item.valuation_rate` = giá trả (cổng đọc sổ kho — S2). Chuyển kho giữ giá lô: đo ở M4 (V47) |
+| §7.3 điểm 32 — Kịch bản vùng ① / ④ chưa chạy trên nppsale | — | chạy khi dựng `tools/vang_kho_mua.py`; sửa kỳ vọng nếu lệch |
+| §7.3 điểm 33 — Dữ liệu cũ (phiếu `completed` thiếu `stock_entry_id` / `payable_id`, lô `cancelled` còn tồn, mã `XK-` trùng) | — | đếm trên sổ thật trước P8 |
+| **§7.3 điểm 34 — `sua_phieu_nhap` đổi NCC khi phiếu đã có tiền trả** (trước M7) | giữ `paid` (cả tiền phiếu chi của NCC cũ) trên khoản nợ nay của NCC mới | chặn — gợi ý `NCC_DA_TRA_TIEN: Phiếu đã trả NCC % — không đổi nhà cung cấp được. Gỡ phiếu chi / Ghi trả trước.` (mã + câu chờ anh chốt) |
+| §7.3 điểm 35 — Dòng cổng `batches` của Batch đã mất mọi gói lô | lô `cancelled` giữ số cũ | ghi `npp_kho_tao` + `npp_gia_von_lo_rong` lúc tạo Batch (PN, `IN-`); cân nhắc `disabled = 1` khi huỷ, bật lại khi khôi phục / amend |
+| **§7.3 điểm 36 — `stock_entry_lines.unit_cost` của xuất lẻ / chuyển kho trên cổng** | dòng giữ 0 → giá vốn kỳ không tính xuất lẻ; trả NCC tính vào giá vốn | trả 0 như nppsale (giá vốn kỳ giữ số); giá trị thật ở sổ kho / GL cho P6 — kèm câu hỏi "trả NCC có nên tính vào giá vốn bán?" |
+| §7.3 điểm 37 — Sửa lô: kiểm "lô đang có tồn" | theo dòng lô (một vùng) | theo cả Batch (mọi kho); vẫn ghi `npp_gia_von_lo_rong` |
+| §7.3 điểm 38 — Câu khi xoá khoản nợ PN / PTNCC qua cổng | 23503 (`purchase_invoices_payable_id_fkey` / `supplier_returns_payable_credit_id_fkey`) | đúng câu 23503 của nppsale thay `NO_NCC_KHOA` |
+| §7.3 điểm 39 — `v_stock_movements`: đơn vị giao dịch | có | nối SLE → dòng chứng từ qua `voucher_detail_no` |
+| §7.3 điểm 40 — RPC luồng cũ chưa đăng ký (`confirm_driver_handover`) | còn hàm | đăng ký, ném `LEGACY_FLOW_REMOVED: chức năng đã gỡ` |
+| §7.3 điểm 41 — POS trả NCC tìm lô của phiếu gốc bằng `LIKE '<mã PN>-%'` khi gốc là tờ amend | — | lớp phủ `loadReceiptLinesForReturn` cắt đuôi amend trước `LIKE` |
+| M0 — Tờ PI lập ngoài app (Desk, không `npp_loai`) | không có | vẫn có dòng công nợ NCC (loại theo tiền tố tên rồi `is_return` / `is_opening`) để Σ dòng của NCC bằng sổ cái; khoá một-dòng-đầu-kỳ (`khoa_cho`) chỉ cho tờ app `npp_loai = dau_ky` |
+| M0 — Thứ tự dồn trả trước khi hai phiếu chi cùng "lúc chi" | hoà theo uuid dòng tiền (ngẫu nhiên) | hoà theo số phiếu `PCNCC-` |
+| M0 — Khám sổ công nợ NCC | `scripts/sql/kham-so-that.sql` dòng 66 / 70 / 78 / 81 / 82 | nhóm 20 (Σ dòng ≠ sổ cái theo NCC — bắt cả tiền ngoài nhóm như Ghi trả còn chưa phân bổ), 21 (dòng chiếu cũ), 22 (thiếu / mồ côi); phần còn lại của §8.1 (dòng `payable_payments`, tồn lô ↔ Bin, phiếu chi) dựng ở M9 |

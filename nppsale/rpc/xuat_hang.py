@@ -211,16 +211,10 @@ def _phan_bo_kho(dong: list[dict], cd) -> tuple[dict, Decimal, int]:
 
 
 def _goi_lo(si, r, lay: list, cd):
-	"""Gói lô Outward do app lập cho một dòng (một dòng một gói — PoC 1c)."""
-	from erpnext.stock.serial_batch_bundle import SerialBatchCreation
+	"""Gói lô Outward do app lập cho một dòng (một dòng một gói — PoC 1c) — hàm dùng chung `nppsale.rpc.goi_lo`."""
+	from .goi_lo import gan_goi_lo, lap_goi_lo
 
-	b = SerialBatchCreation({"item_code": r.item_code, "warehouse": cd.kho_ban, "posting_date": si.posting_date,
-		"posting_time": si.posting_time, "voucher_type": "Sales Invoice", "qty": float(sum(sl for _m, sl in lay)),
-		"type_of_transaction": "Outward", "company": si.company, "do_not_submit": True,
-		"batches": frappe._dict({m: float(sl) for m, sl in lay})}).make_serial_and_batch_bundle()
-	r.serial_and_batch_bundle = b.name
-	r.use_serial_batch_fields = 0
-	r.batch_no = None
+	gan_goi_lo(r, lap_goi_lo("Outward", "Sales Invoice", r.item_code, cd.kho_ban, lay, si.posting_date, si.posting_time, si.company))
 
 
 def _nv_giu_no(nv: str | None) -> tuple[str | None, object]:
