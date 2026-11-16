@@ -62,9 +62,9 @@ def js_dung(v) -> bool:
 		return False
 	if v is True:
 		return True
-	if isinstance(v, float):
-		return not (v == 0 or math.isnan(v))
-	if isinstance(v, (int, Decimal)):
+	if isinstance(v, (float, Decimal)):
+		return not (v.is_nan() if isinstance(v, Decimal) else math.isnan(v)) and v != 0
+	if isinstance(v, int):
 		return v != 0
 	if isinstance(v, str):
 		return v != ""
@@ -501,17 +501,16 @@ PUBLISH_STATUS_DA_CAP_MA = 3  # mốc DUY NHẤT chắc chắn "đã cấp mã" 
 PUBLISH_STATUS_NHAP = 0
 DUNG_SAI_TIEN = 1  # AMOUNT_TOLERANCE (status.ts:262): lệch đúng 1 đ bỏ qua, 2 đ báo
 
-_QUAN_HE = {1: "new", 3: "replacement", 4: "adjustment", 7: "replaced", 8: "adjusted"}
+_QUAN_HE = {"1": "new", "3": "replacement", "4": "adjustment", "7": "replaced", "8": "adjusted"}
 
 
 def quan_he(einvoice_status) -> str | None:
 	"""readRelation (status.ts:40–52): None → None (không ghi, giữ cũ); 1/3/4/7/8 → new/replacement/adjustment/replaced/adjusted; số
-	khác (kể cả 3,5) → 'unknown' — KHÔNG đoán."""
+	khác (kể cả 3,5) → 'unknown' — KHÔNG đoán. Tra như thuộc tính đối tượng JS (`RELATION_BY_CODE[x]` — khoá là `String(x)`): 7.0 → "7"
+	→ replaced; chuỗi '7' (cột Data `einvoice_status` của snapshot) cũng vậy, '07' / '7.0' thì không."""
 	if einvoice_status is None:
 		return None
-	if _la_so_js(einvoice_status):
-		return _QUAN_HE.get(einvoice_status, "unknown")
-	return "unknown"
+	return _QUAN_HE.get(_chuoi_js(einvoice_status), "unknown")
 
 
 def suy_trang_thai(bg: dict, co_ma, dang) -> tuple:
@@ -776,9 +775,9 @@ _GIO_VN = _dt.timezone(_dt.timedelta(hours=7))
 
 def gio_vn(luc: _dt.datetime) -> str:
 	"""vnInvoiceDate (mapper.ts:70–80): giờ VN `YYYY-MM-DDTHH:MM:SS+07:00` tính từ thời điểm tuyệt đối (UTC + 7 giờ) — không phụ thuộc múi
-	giờ site. `luc` PHẢI có múi giờ (vd `datetime.now(timezone.utc)`): datetime trần thì không biết là giờ nào ⇒ ValueError."""
+	giờ site. `luc` PHẢI có múi giờ (vd `datetime.now(UTC)`): datetime trần thì không biết là giờ nào ⇒ ValueError."""
 	if not isinstance(luc, _dt.datetime) or luc.utcoffset() is None:
-		raise ValueError("gio_vn: luc phải là datetime có múi giờ (vd datetime.now(timezone.utc)).")
+		raise ValueError("gio_vn: luc phải là datetime có múi giờ (vd datetime.now(UTC)).")
 	return luc.astimezone(_GIO_VN).strftime("%Y-%m-%dT%H:%M:%S") + "+07:00"
 
 
@@ -815,7 +814,7 @@ def dung_payload(nguoi_mua: dict, dong: list, ref_id: str, cau_hinh: dict, che_d
 	`tron` là Math.round của JS. Người bán KHÔNG có trong payload (MST người bán đi ở header HTTP `TaxCode`)."""
 	box = che_do == "box"
 	sinh = sinh_uuid or (lambda: str(uuid.uuid4()))
-	bay_gio = gio_vn(luc if luc is not None else _dt.datetime.now(_dt.timezone.utc))
+	bay_gio = gio_vn(luc if luc is not None else _dt.datetime.now(_dt.UTC))
 	ty_gia = 1
 
 	chi_tiet = []
@@ -1286,9 +1285,17 @@ def dong_snapshot(raw) -> dict | None:
 # §2.9 Khớp bốn tầng (reconcile.ts:94–288) — chỉ quyết, KHÔNG ghi gì (module khớp chỉ ghi snapshot; không bao giờ ghi NPP HDDT)
 # =====================================================================================================================================
 
+def _chuoi_ngay(ngay) -> str:
+	"""Ngày khớp tầng 4 dạng 'YYYY-MM-DD': chuỗi giữ nguyên; `date` của Frappe → isoformat; `datetime` → phần ngày (người gọi đổi
+	`phat_hanh_luc` sang giờ VN trước — giờ site là giờ VN)."""
+	if isinstance(ngay, _dt.datetime):
+		ngay = ngay.date()
+	return ngay.isoformat() if isinstance(ngay, _dt.date) else _chuoi_js(ngay)
+
+
 def _khoa_tien(mst: str, ngay, tien) -> str:
 	"""amtKey (reconcile.ts:112–113): `{MST}|{ngày}|{Math.round(|tiền|)}` — trị tuyệt đối vì HĐ điều chỉnh giảm mang tiền ÂM trên MISA."""
-	return f"{mst}|{_chuoi_js(ngay) if not isinstance(ngay, _dt.date) else ngay.isoformat()}|{so_js(_lam_tron_js(abs(_thuc(tien))))}"
+	return f"{mst}|{_chuoi_ngay(ngay)}|{so_js(_lam_tron_js(abs(_thuc(tien))))}"
 
 
 def lap_chi_muc(so_: list) -> dict:
@@ -1320,9 +1327,17 @@ def lap_chi_muc(so_: list) -> dict:
 	return cm
 
 
+def _tien_snapshot(snap: dict):
+	"""`total_amount` của snapshot: `tong_tien` khi MISA có trả tổng (`co_tong_tien`), ngược lại None (§5.4 — Frappe ép Currency NOT NULL 0,
+	nên 0 của dòng `co_tong_tien = 0` là "không có số", không phải 0 đ). Dict không có khoá `co_tong_tien` → đọc thẳng `tong_tien`."""
+	if "co_tong_tien" in snap and not js_dung(snap.get("co_tong_tien")):
+		return None
+	return _so_so(snap.get("tong_tien"))
+
+
 def khop_mot(snap: dict, cm: dict):
 	"""matchOne (reconcile.ts:160–233) → (id, cach_khop, do_tin, ghi_chu) | None, dừng ở tầng đầu trúng. `snap` = trường NPP MISA Snapshot:
-	ref_id, ma_tra_cuu, ky_hieu, so_hddt, ngay_phat_hanh, mst_nguoi_mua, tong_tien (None khi `co_tong_tien` = 0).
+	ref_id, ma_tra_cuu, ky_hieu, so_hddt, ngay_phat_hanh, mst_nguoi_mua, tong_tien (+ co_tong_tien: 0 ⇒ coi như MISA không trả tổng).
 	1 RefID → 2 mã tra cứu → 3 (ký hiệu chặt, số) — chắc chắn; 3b ký hiệu bỏ chữ số đầu, đúng MỘT ứng viên — cần review; 4 MST + ngày + tiền:
 	MST đủ đúng một → review, NHIỀU → dừng (None); rồi MST gốc đúng một → review."""
 	ref = snap.get("ref_id")
@@ -1345,7 +1360,7 @@ def khop_mot(snap: dict, cm: dict):
 			return (lo[0], "inv_no_loose", "review",
 				f"Khớp sau khi bỏ chữ số đầu của ký hiệu (MISA: {_chuoi_js(kh)}). Xác nhận đúng mẫu số trước khi chốt.")
 	ngay = ngay_khop(snap.get("ngay_phat_hanh"))
-	tien = _so_so(snap.get("tong_tien"))
+	tien = _tien_snapshot(snap)
 	if ngay and tien is not None:
 		du = mst_du(snap.get("mst_nguoi_mua"))
 		if du:
@@ -1362,6 +1377,35 @@ def khop_mot(snap: dict, cm: dict):
 					f"Suy đoán từ MST gốc {goc} (đã bỏ đuôi chi nhánh) + ngày {ngay} + tiền. "
 					"Duy nhất một hoá đơn trùng — kiểm lại đúng chi nhánh trước khi chốt.")
 	return None
+
+
+def canh_bao_noi_tay(misa_inv_no, misa_inv_series, so_hddt, ky_hieu) -> tuple:
+	"""Nối tay snapshot vào một tờ sổ (reconcile-action/route.ts:163–184, `link`) → (canh_bao, ket_qua_khop, ghi_chu_khop). Sổ đã ghi
+	số / ký hiệu KHÁC MISA (so qua `cung_so` / `cung_ky_hieu`) → cảnh báo, không chặn (bản thay thế mang số mới là chuyện đúng) nhưng phải NÓI
+	RA: có cảnh báo → needs_review + "Người nối tay. {cảnh báo nối dấu cách}", không → matched + "Người nối tay."."""
+	canh_bao = []
+	if js_dung(misa_inv_no) and js_dung(so_hddt) and not cung_so(misa_inv_no, so_hddt):
+		canh_bao.append(f"Sổ đang ghi số {so_js(misa_inv_no)}, MISA là {so_js(so_hddt)}.")
+	if js_dung(misa_inv_series) and js_dung(ky_hieu) and not cung_ky_hieu(misa_inv_series, ky_hieu):
+		canh_bao.append(f"Sổ đang ghi ký hiệu {so_js(misa_inv_series)}, MISA là {so_js(ky_hieu)}.")
+	if canh_bao:
+		return canh_bao, "needs_review", "Người nối tay. " + " ".join(canh_bao)
+	return canh_bao, "matched", "Người nối tay."
+
+
+def trung_so(ky_hieu_a, so_a, ky_hieu_b, so_b) -> bool:
+	"""[ĐX §1.6 — dùng ở hàm ghi kéo về, §4.8 bước 4] Hai tờ "trùng số sau chuẩn hoá": cùng `chuan_so` (khác rỗng) VÀ (cùng `ky_hieu_chat`
+	HOẶC một bên trống ký hiệu). Chỉ mục duy nhất (ký hiệu, số) so NGUYÊN VĂN nên không bắt '00000123' vs '123', hay ('', '123') vs
+	('1C26TAA', '123') — có trùng thì vẫn ghi số MISA (nguồn sự thật) và thêm `ghi_chu_trung_so`, không đổi trạng thái."""
+	if not cung_so(so_a, so_b):
+		return False
+	a, b = ky_hieu_chat(ky_hieu_a), ky_hieu_chat(ky_hieu_b)
+	return a == b or not a or not b
+
+
+def ghi_chu_trung_so(so_hddt, ten_khac) -> str:
+	"""Câu ghi chú trùng số (§1.6, Phụ lục B [F])."""
+	return f"Số HĐĐT {so_js(so_hddt)} trùng (sau chuẩn hoá) với hoá đơn {so_js(ten_khac)} — cần kiểm tra."
 
 
 def quyet_ket_qua_khop(snap: dict, hit, so_theo_id: dict) -> tuple:
@@ -1381,7 +1425,7 @@ def quyet_ket_qua_khop(snap: dict, hit, so_theo_id: dict) -> tuple:
 		return "matched", "Hoá đơn điều chỉnh mang số chênh — không so tiền với sổ."
 	dong = so_theo_id.get(hit[0])
 	tien_so = _so_so(dong.get("tong_tien")) if dong else None
-	tien_misa = _so_so(snap.get("tong_tien"))
+	tien_misa = _tien_snapshot(snap)
 	if tien_so is not None and tien_misa is not None:
 		if abs(abs(tien_misa) - abs(tien_so)) > DUNG_SAI_TIEN:
 			return "amount_diff", f"Lệch tiền — sổ {tien_vn(tien_so)}, MISA {tien_vn(tien_misa)}."

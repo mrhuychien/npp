@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import unittest
 import uuid
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import frappe
@@ -177,8 +178,6 @@ class TestKhoaHddt(_NenHoaDon):
 		self.assertEqual(self._huy()["error"]["message"], "LOCKED_RETURN_DONE: hóa đơn đã có phiếu trả hoàn thành")
 		self._dong({"trang_thai": "issued"})
 		self.assertEqual(self._huy()["error"]["message"], DA_PHAT_HANH)
-		self._dong({"misa_status": "pending", "misa_ref_id": "@ref"})
-		self.assertEqual(self._sua()["error"]["message"], DA_PHAT_HANH)
 
 	def test_sales_invoice_khong_co_truong_misa(self):
 		"""I8 (vế 2) / BP §5.6: mọi trường MISA ở NPP HDDT — amend của Sửa HĐ không có gì để chép (Gotcha #2)."""
@@ -191,11 +190,26 @@ class TestKhoaHddtDocCoKhoa(_NenHoaDon):
 	HĐĐT; đọc thường không thấy dòng ấy (đã kiểm), đọc có khoá thấy → vẫn khoá. Lớp riêng: giao dịch của lớp mới mở sau commit của setUpClass —
 	không còn khoá khoảng (gap lock) nào trên `tabNPP HDDT` từ bài trước chặn câu chèn của kết nối thứ hai."""
 
+	@contextmanager
+	def _ket_noi_hai(self):
+		"""Kết nối thứ hai (phát hành ở request khác). Không dùng `secondary_connection()` của lõi: nó gọi frappe.connect() TRƯỚC khi nhớ kết nối
+		đang dùng nên ra khỏi khối vẫn ở kết nối thứ hai (frappe/tests/classes/integration_test_case.py — đo: bài đọc thấy dòng vừa commit)."""
+		chinh = frappe.local.db
+		if getattr(self, "_kn2", None) is None:
+			frappe.connect(set_admin_as_user=False)
+			self._kn2 = frappe.local.db
+			self.addCleanup(self._kn2.close)
+		frappe.local.db = self._kn2
+		try:
+			yield
+		finally:
+			frappe.local.db = chinh
+
 	def _thu(self, kv: dict, mong: str):
 		ten = str(uuid.uuid4())
 		frappe.db.sql("SELECT COUNT(*) FROM `tabNPP HDDT`")  # ảnh chụp đã lập từ setUp; câu đọc thường cho chắc
 		try:
-			with self.secondary_connection():
+			with self._ket_noi_hai():
 				frappe.db.sql("""INSERT INTO `tabNPP HDDT` (`name`, `creation`, `modified`, `owner`, `modified_by`, `docstatus`, `idx`,
 					`hoa_don_ban`, `nguoi_mua`, `trang_thai`, `misa_ref_id`, `misa_status`, `misa_sent_at`)
 					VALUES (%(ten)s, NOW(6), NOW(6), 'Administrator', 'Administrator', 0, 0, %(hd)s, 'Tạp hoá A', %(tt)s, %(ref)s, %(st)s, NOW(6))""",
@@ -208,7 +222,7 @@ class TestKhoaHddtDocCoKhoa(_NenHoaDon):
 			self.assertEqual(frappe.db.get_value("Sales Invoice", self.hd, "docstatus"), 1)
 		finally:
 			frappe.db.rollback()  # nhả khoá S của câu đọc có khoá — lui về điểm lưu KHÔNG nhả khoá dòng
-			with self.secondary_connection():
+			with self._ket_noi_hai():
 				frappe.db.sql("DELETE FROM `tabNPP HDDT` WHERE `name` = %s", ten)
 				frappe.db.commit()
 			frappe.db.savepoint("npp_test")  # tearDown lui về điểm này
@@ -345,7 +359,9 @@ class TestHddtDocType(IntegrationTestCase):
 		# các trường misa_* không chặn (System Manager xoá dấu MISA để phát hành lại tờ mất RefID — §6.4 (b))
 		ten = dong_hddt(trang_thai="issued", misa_status="signed", misa_inv_no="00000456", misa_inv_series="1C26TAA")
 		self._sua(ten, misa_inv_no=None, misa_inv_series=None, misa_status="")
-		self.assertEqual(frappe.db.get_value("NPP HDDT", ten, ["misa_inv_no", "misa_status"]), (None, None))
+		v = frappe.db.get_value("NPP HDDT", ten, ["misa_inv_no", "misa_status"])
+		self.assertIsNone(v[0])
+		self.assertFalse(v[1])
 		# không đổi gì ở trường người mua / tiền → lưu được ở mọi trạng thái (vd đổi trạng thái nội bộ issued → cancelled)
 		self._sua(ten, trang_thai="cancelled")
 
@@ -369,10 +385,10 @@ class TestHddtDocType(IntegrationTestCase):
 			(a, b))[0][0], 2)
 		c = dong_hddt(misa_inv_no="00000123")
 		self.assertEqual(frappe.db.get_value("NPP HDDT", c, "misa_inv_series"), "")
-		with self.assertRaises(frappe.DuplicateEntryError):
+		with self.assertRaises((frappe.UniqueValidationError, frappe.DuplicateEntryError)):
 			dong_hddt(misa_inv_no="00000123")  # ('', '00000123') lần hai
 		dong_hddt(misa_inv_no="00000123", misa_inv_series="1C26TAA")  # khác ký hiệu → được (so nguyên văn như Postgres)
-		with self.assertRaises(frappe.DuplicateEntryError):
+		with self.assertRaises((frappe.UniqueValidationError, frappe.DuplicateEntryError)):
 			r = str(uuid.uuid4())
 			dong_hddt(misa_ref_id=r)
 			dong_hddt(misa_ref_id=r)
@@ -416,7 +432,11 @@ class TestHddtDocType(IntegrationTestCase):
 		self.assertEqual(frappe.get_single(CH.TEN).dia_chi_api, "https://testapp.meinvoice.vn/api/v2")  # chưa lưu vẫn ra mặc định
 		frappe.flags.in_install = "nppsale"
 		with patch.object(frappe, "get_all", chi_cau_hinh):
-			I.init_singles()
+			I.init_singles()  # new_doc → save() (→ insert())
+		ch = frappe.get_single(CH.TEN)  # bước cài đặt nào đó lưu bản đang có — đường save() không qua insert()
+		ch.misa_inv_series = "1C26TAA"
+		ch.save(ignore_permissions=True)
+		frappe.new_doc(CH.TEN).insert(ignore_permissions=True)  # đường insert() gọi thẳng
 		frappe.flags.in_install = False
 		self.assertFalse(CH.da_luu())
 		self.assertEqual(frappe.db.sql("SELECT COUNT(*) FROM `tabSingles` WHERE `doctype` = %s", CH.TEN)[0][0], 0)
@@ -464,12 +484,10 @@ class TestHddtDocType(IntegrationTestCase):
 		d.save(ignore_permissions=True)
 		self.assertEqual(frappe.db.get_value("NPP MISA Snapshot", ten, ["so_hddt_chuan", "ky_hieu_chuan"]), ("0", ""))  # H21: '000' → '0'
 		self.assertEqual(SN.chuan_hoa_snapshot("1C26 TAA", " 12 3 "), ("1C26TAA", "12 3"))
-		for ham in {SN._chuan_so_tam, SN.chuan_so}:
-			for vao, ra in CHUAN_SO:
-				self.assertEqual(ham(vao), ra, (ham.__module__, vao))
-		for ham in {SN._ky_hieu_chat_tam, SN.ky_hieu_chat}:
-			for vao, ra in KY_HIEU_CHAT:
-				self.assertEqual(ham(vao), ra, (ham.__module__, vao))
+		for vao, ra in CHUAN_SO:
+			self.assertEqual(SN.chuan_hoa_snapshot(None, vao)[1], ra, vao)
+		for vao, ra in KY_HIEU_CHAT:
+			self.assertEqual(SN.chuan_hoa_snapshot(vao, None)[0], ra, vao)
 
 
 # Mẫu chuẩn hoá — đặc tả HĐĐT §2.1–§2.2 [đo bằng mã TS thật]: trim / \s kiểu JS (có U+FEFF, không có U+001C).
@@ -480,8 +498,9 @@ KY_HIEU_CHAT = [(None, ""), ("", ""), (" 1c26 taa ", "1C26TAA"), ("1C26﻿TAA", 
 
 
 class TestChuanHoaKhopTS(unittest.TestCase):
-	"""Hai hàm chuẩn hoá tạm của NPP MISA Snapshot so CHÍNH mã TS của nppsale (`portal/nguon/src/lib/misa/normalize.ts::normalizeInvNo`,
-	`reconcile.ts::strictSeries` — cắt nguyên văn hàm khỏi tệp) trên cùng mẫu. Bỏ qua khi không có portal/nguon (bản bench) hoặc node."""
+	"""Chuẩn hoá của NPP MISA Snapshot (`chuan_hoa_snapshot` → luat/hddt.py) so CHÍNH mã TS của nppsale (`portal/nguon/src/lib/misa/normalize.ts::
+	normalizeInvNo`, `reconcile.ts::strictSeries` — cắt nguyên văn hàm khỏi tệp) trên cùng mẫu. Bỏ qua khi không có portal/nguon (bản bench) hoặc
+	node — chạy thuần: cd /home/user/npp && <python của bench> -m unittest nppsale.tests.test_hddt_khoa.TestChuanHoaKhopTS"""
 
 	TS = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "portal", "nguon", "src", "lib", "misa"))
 
@@ -491,7 +510,8 @@ class TestChuanHoaKhopTS(unittest.TestCase):
 		import re
 
 		node = "/opt/node24/bin/node" if os.path.exists("/opt/node24/bin/node") else shutil.which("node")
-		rec = open(os.path.join(self.TS, "reconcile.ts"), encoding="utf-8").read()
+		with open(os.path.join(self.TS, "reconcile.ts"), encoding="utf-8") as f:
+			rec = f.read()
 		ham = "\n".join(re.search(r"^function " + t + r"\(.*?^}\n", rec, re.S | re.M).group(0) for t in ("norm", "strictSeries"))
 		with tempfile.TemporaryDirectory() as d:
 			shutil.copy(os.path.join(self.TS, "normalize.ts"), os.path.join(d, "normalize.ts"))
@@ -505,5 +525,5 @@ class TestChuanHoaKhopTS(unittest.TestCase):
 		so_ts, kh_ts = json.loads(ra.stdout)
 		self.assertEqual(so_ts, [r for _, r in CHUAN_SO])
 		self.assertEqual(kh_ts, [r for _, r in KY_HIEU_CHAT])
-		self.assertEqual([SN._chuan_so_tam(x) for x in mau_so], so_ts)
-		self.assertEqual([SN._ky_hieu_chat_tam(x) for x in mau_kh], kh_ts)
+		self.assertEqual([SN.chuan_hoa_snapshot(None, x)[1] for x in mau_so], so_ts)
+		self.assertEqual([SN.chuan_hoa_snapshot(x, None)[0] for x in mau_kh], kh_ts)

@@ -124,3 +124,41 @@ giá vốn lô nền sau khi nhập lại do lõi định giá theo lô (nppsale
 | Mã phiếu thu | `PT-YYMMDD-NNNN` 4 số ngẫu nhiên | `PTH-YYMMDD-####` chạy liên tục (câu 13); Payment Entry mang đúng số phiếu |
 | Q3 — nguồn dư có mất / đổi sau khi đã bị rút (sửa / huỷ phiếu trả nguồn, Sửa HĐ được đắp) | nợ "tự tăng lại" trên CHÍNH dòng nguồn (dòng phiếu trả `amount 0, paid −take`), số payments không đổi | bút toán cấn trừ `CTR-` huỷ trước rồi lập lại `CTR-…-n` GIỮ số từng vế, chỉ trỏ sang chứng từ còn hiệu lực cùng dòng (tờ ghi có mới của cùng phiếu / HĐ mới); phiếu trả độc lập bị huỷ → vế Nợ giữ tờ ghi có ĐÃ HUỶ của phiếu (lõi không kiểm docstatus với bút toán Credit Note) → dòng phiếu trả còn nợ đúng số đã rút như nppsale |
 | Q9 — Huỷ / Sửa tờ nợ đầu kỳ `DK-` qua RPC Huỷ HĐ | không phải `sales_invoices` → `INVOICE_NOT_FOUND` | như nppsale (lọc `is_opening`) |
+
+## Q8. Hoá đơn điện tử MISA (P3d) — chỗ em tạm quyết, chờ anh chốt
+
+Đặc tả HĐĐT (đọc thẳng `src/lib/misa/*`, 7 route `/api/einvoice/*`, bốn bảng + `cancel_invoice` đang chạy của nppsale; số vàng chạy từ chính mã TS)
+có 27 câu (H1–H27, §0.3 của đặc tả + vòng soát thiếu 2). Em dựng theo cột phải; mỗi chỗ khác nppsale có kịch bản vàng khai lệch, đổi được một chỗ
+khi anh chốt khác. **Bốn câu cần anh chốt** (em đang giữ như nppsale): **H10, H11, H12, H16** (in đậm). Đã dựng ở bước này: bốn DocType + khoá
+Huỷ / Sửa HĐ (H2, H12, H21, H24 phần DocType — bài `nppsale/tests/test_hddt_khoa.py`); phần còn lại dựng ở các bước sau của HĐĐT.
+
+| Câu | nppsale hôm nay | Bản ERPNext (tạm) |
+|---|---|---|
+| H1 — HĐĐT lập từ danh sách Đơn hàng / màn "Tạo HĐĐT" có chọn đơn | lập theo ĐƠN: người mua + tiền của đơn (giao thiếu vẫn khai cả đơn), không gắn HĐ bán ⇒ không khoá Sửa / Huỷ HĐ; quản lý bấm Phát hành ở HĐ chưa có dòng HĐĐT thì hỏng (quyền dữ liệu chỉ cho chủ / KT ghi) | gắn HĐ ghi sổ của đơn, người mua + ba số tiền lấy từ HĐ; đơn chưa xuất → "Đơn chưa có hóa đơn bán nào — xuất hàng trước rồi mới phát hành hoá đơn điện tử."; đơn nhiều HĐ → từ chối, phát hành từng HĐ; quản lý lập được dòng gắn HĐ (blueprint §7.1 điểm 19) |
+| H2 — Huỷ / Sửa HĐ khi HĐĐT **đang chờ MISA** trả kết quả | không khoá (chỉ khoá khi đã phát hành / có số / signed / replaced) ⇒ có thể ra HĐĐT nháp trên MISA cho HĐ đã huỷ | khoá thêm: có RefID ∧ trạng thái MISA pending / sent / waiting_code → `LOCKED_EINVOICE: HĐĐT đang chờ MISA — bấm Làm mới trạng thái trước` (blueprint §7.1 điểm 20) — **đã dựng** |
+| H3 — Đẩy lại tờ đã có RefID (lần trước lỗi rõ / hết giờ) | RefID mới mỗi lần đẩy (RefID chỉ ghi khi MISA nhận) | dùng lại RefID và **hỏi MISA trước** (`GET ?refID=`): MISA đã có → không gửi lại, cập nhật như Làm mới; chưa có → gửi cùng RefID |
+| H3b — Màn chi tiết HĐĐT rẽ nhánh theo RefID | RefID chỉ có khi đã tới MISA | cổng trả RefID rỗng khi trạng thái MISA trống / lỗi (tờ chưa chắc tới MISA) ⇒ màn vẫn hiện "Đẩy lại lên MISA" như cũ, không sửa giao diện; mất link "Mở MISA" của tờ lỗi ở danh sách |
+| H4 — Bấm Phát hành khi tờ đang "Chờ gửi" | 409 "Hoá đơn đang được xử lý…" | giữ đúng 409 + câu ấy (blueprint cũ ghi trả kết quả cũ) |
+| H5 — Làm mới / vòng quét gặp tờ đang chờ mà MISA chưa có; hoặc MISA đã có tờ đang chờ / lỗi | 404, không ghi gì | chuyển "Lỗi" **chỉ khi** đã gửi quá 10 phút (MISA có thể chưa ghi xong); MISA đã có ⇒ coi như đẩy thành công (tờ "đã phát hành nội bộ", xoá lỗi) |
+| H6 — Phát hành dòng HĐĐT trỏ HĐ bán **đã huỷ** | cho (phát hành thật cho lần bán đã huỷ) | chặn 400 "Hóa đơn {mã} không còn hiệu lực — không phát hành hoá đơn điện tử được."; tờ huỷ nội bộ vẫn đẩy được |
+| H7 — Ghi chú đối chiếu (`misa_note`) khi có ghi chú mới | thay cả ô (mất ghi chú "MẤT RefID" / ghi chú người) | chỉ thêm dòng chưa có (không phình mỗi đêm) |
+| H8 — MISA trả bản ghi chưa có số cho tờ sổ đã có số | hạ "Đã phát hành" → "Đã gửi MISA" | giữ trạng thái + ghi chú "… giữ nguyên trạng thái, cần kiểm tra tay." |
+| H9 — Dựng HĐĐT từ đối soát khi MISA còn `<Chưa cấp số>` | ghi chuỗi giữ chỗ vào ô số | để trống số (trạng thái "Đã gửi MISA") |
+| **H10 — Giảm giá cả đơn không lên HĐĐT** | không gửi ⇒ MISA khai cao hơn sổ đúng khoản giảm; tờ thành "Lệch với MISA" | **giữ như nppsale — anh chốt**: giữ, hay đưa giảm giá đơn lên HĐĐT (dòng chiết khấu / chiết khấu tổng của MISA — chưa đo MISA nhận dạng nào) |
+| **H11 — Hàng đổi (đơn giá 0) lên HĐĐT như một dòng hàng 0 đ** | có | **giữ như nppsale — anh chốt**: giữ / bỏ dòng hàng đổi khỏi HĐĐT / đánh dấu hàng khuyến mại |
+| **H12 — HĐĐT đã huỷ trên MISA (còn số) vẫn khoá Huỷ / Sửa HĐ bán mãi** | có | **giữ như nppsale (đã dựng) — anh chốt**: giữ khoá, hay mở khoá khi MISA báo đã huỷ |
+| H13 — Ghi kết quả hỏng ở Làm mới / Thử kết nối | chỉ ghi log máy chủ, vẫn báo thành công | báo lỗi (không toast "thành công" mà sổ không đổi) |
+| H14 — Cửa sổ 60 ngày của vòng quét đêm | theo ngày phát hành nội bộ — tờ chưa có ngày ấy không bao giờ được quét | theo ngày muộn hơn của (phát hành nội bộ, lần gửi MISA gần nhất) |
+| H15 — Token MISA hỏng trong vòng quét | lấy token lại cho TỪNG tờ (tới 400 lượt / đêm — nguy cơ MISA khoá tài khoản) | lấy token một lần đầu lượt; hỏng ⇒ bỏ lượt, một dòng lỗi |
+| **H16 — Kế toán không thấy nút "Phát hành HĐ điện tử" ở màn HĐ bán** | như vậy (nút gác quyền `orders.approve` — mặc định chủ / quản lý) dù máy chủ + quyền dữ liệu cho kế toán phát hành | **giữ như nppsale — anh chốt**: cho kế toán thấy nút (gieo `orders.approve` cho KT, hoặc sửa màn) |
+| H17 — Số gõ tay khác số MISA cấp | không nói gì | thêm ghi chú "sổ ghi X, MISA cấp Y", không đổi trạng thái; ⚠ màn "Tạo HĐĐT" tự sinh số `INV-YYYYMMDD-xxxx` ⇒ mọi tờ lập tay sẽ mang ghi chú này khi có số — anh cho bỏ qua số đúng khuôn ấy không |
+| H18 — Tên hàng đẩy lên MISA | tên hàng hiện hành lúc đẩy | giữ: tên mặt hàng (Item) lúc đẩy |
+| H19 — Thứ tự dòng hàng gửi MISA | thứ tự cơ sở dữ liệu trả (không sắp) | theo thứ tự dòng của HĐ |
+| H20 — Phát hành đọc được mã tra cứu ⇒ "Đã phát hành" | có, nhưng với dạng phản hồi tài liệu mô tả thì không bao giờ đọc được (luôn "Đã gửi MISA") | chép nguyên bộ đọc; đo phản hồi thật khi anh cho phép dùng tài khoản thử |
+| H21 — Hai cột chuẩn hoá của ảnh chụp MISA | cột tính sẵn của Postgres (`'000'` giữ `'000'`) | đúng hàm khớp số / ký hiệu (`'000'` → `'0'`) — app không đọc hai cột này — **đã dựng** |
+| H22 — Kéo về: số MISA khác số đang có trên tờ | ghi đè im lặng | vẫn ghi số MISA + ghi chú "Số HĐĐT đổi từ … sang … theo MISA — cần kiểm tra." |
+| H23 — Phát hành tờ **mất RefID** (có số, không RefID — dữ liệu mig 099) | đẩy nháp thứ hai lên MISA cho tờ đã có số | có số ⇒ trả kết quả cũ, không đẩy; xử lý tay qua Desk (gán RefID tìm lại / xoá dấu MISA rồi phát hành lại) |
+| H24 — Sửa người mua / tiền của tờ bị MISA từ chối (vd MST người mua sai) | sửa được (RefID chưa ghi khi lỗi) | RefID nay ghi TRƯỚC khi gửi ⇒ luật sửa = "nháp ∧ trạng thái MISA trống hoặc Lỗi" (không còn "chưa có RefID"); xoá dòng nháp đã gửi MISA báo "Chỉ xoá được hoá đơn điện tử nháp chưa gửi MISA." — **đã dựng phần DocType** |
+| H25 — Câu lỗi lấy token mang 300 ký tự thân trả về của MISA | có (MISA đổi tên khoá là token lọt vào câu lỗi, nhật ký) | giữ câu, che giá trị mọi khoá có chữ `token` |
+| H26 — MISA trả ngày không có thật (`2026-02-30`) | Postgres từ chối cả câu ghi — sổ không đổi gì, lỗi bị nuốt | bỏ ngày + ghi chú "… không phải ngày có thật — bỏ qua, cần kiểm tra tay."; ảnh chụp để trống ngày |
+| H27 — Thử gửi lại khi lỗi có chữ token / expired / unauthorized (cả lỗi 400 / 500) | gửi lại nguyên tờ cùng RefID | hỏi MISA trước lần gửi thứ hai; MISA đã có ⇒ không gửi lại |
