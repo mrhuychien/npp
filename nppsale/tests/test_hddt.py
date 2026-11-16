@@ -30,10 +30,12 @@ from urllib.parse import parse_qsl
 
 import frappe
 import requests
+from frappe.tests import IntegrationTestCase
 
 from nppsale.api import misa as M
 from nppsale.api import misa_mang as MM
 from nppsale.api.tuyen import YeuCauCu
+from nppsale.cong.dang_ky import NguCanh
 from nppsale.luat import hddt as H
 from nppsale.npp_hddt.doctype.npp_misa_cau_hinh import npp_misa_cau_hinh as CH
 from nppsale.tests.test_cong_hddt import _NenCong
@@ -746,6 +748,17 @@ class TestPhatHanh(_NenPhatHanh):
 			self.assertEqual(self.phat_hanh(e), (409, {"error": "Hoá đơn đang được xử lý hoặc đã phát hành. Thử lại sau giây lát."}))
 		self.assertEqual(gon(a), ["POST /oauth"])
 		self.assertEqual((self.dong(e).misa_status, self.dong(e).misa_ref_id), ("sent", "R-khac"))
+		e2 = dong_hddt(nguoi_mua="Tờ có số giữa chừng", tien_hang=1000, tien_thue=100, tong_tien=1100)
+
+		def doc_so(ten, *, khoa=False):  # H23 ở chốt giành tờ: số vừa được ghi (trạng thái vẫn trống) → không giành
+			if khoa:
+				frappe.db.sql("UPDATE `tabNPP HDDT` SET `misa_inv_no` = '00000888', `misa_inv_series` = '' WHERE `name` = %s", ten)
+			return goc(ten, khoa=khoa)
+
+		a = self.mang()
+		with patch.object(M, "doc_dong_hddt", doc_so):
+			self.assertEqual(self.phat_hanh(e2)[0], 409)
+		self.assertEqual((a.goi, self.dong(e2).misa_status, self.dong(e2).misa_ref_id), ([], "", None))
 
 	def test_loi_khong_luong_sau_gianh_to(self):
 		"""Bước 15: ngoại lệ lọt sau khi giành tờ — chưa gửi → `error` + câu, nhật ký failed; đã gửi → giữ `pending`; 500 câu."""
@@ -921,7 +934,7 @@ class TestLamMoi(_NenPhatHanh):
 		"""KV-33 (a) [≠ đuôi câu] mất RefID → 409; (b) [=] nháp chưa đẩy → 400; (c) [=] MISA không có (tờ sent) → 404, dòng không đổi; (d) [=] GET 401 →
 		502, không lấy token mới; (e) [=] NVBH / kho → 403 "Không có quyền"; thiếu invoiceId → 400; không có → 404. 0 lời gọi ở (a)(b)(e)."""
 		a = self.mang()
-		mat = dong_hddt(misa_inv_no="00000456", misa_inv_series="1C26TAA", misa_status="signed", trang_thai="issued")
+		mat = dong_hddt(misa_inv_no="00000456", misa_inv_series="1C26TAA", misa_status="signed", trang_thai="issued", misa_lookup_code="TX-cu")
 		self.assertEqual(self.lam_moi(mat)[0], 409)
 		nhap = self.lap()
 		self.assertEqual(self.lam_moi(nhap), (400, {"error": "HD chưa đẩy lên MISA — không có RefID để tra cứu."}))
@@ -947,7 +960,7 @@ class TestLamMoi(_NenPhatHanh):
 
 		from nppsale.tests.test_misa_mang import _khoa_site
 
-		e, ref = self._da_gui()
+		e, _ref = self._da_gui()
 		self.cau_hinh(is_active=False)
 		self.mang(TOK, get_ban_ghi(**ban_ghi_ky()))
 		self.assertEqual(self.lam_moi(e)[0], 200)
@@ -962,7 +975,7 @@ class TestLamMoi(_NenPhatHanh):
 		chú (giữ dòng "MẤT RefID"); trả `original_marked_replaced = G`. Lần hai → G không đổi. Bản ĐIỀU CHỈNH (EInvoiceStatus 4) → tờ gốc không đổi."""
 		g = dong_hddt(misa_ref_id="goc-1", misa_status="signed", misa_inv_no="00000100", misa_inv_series="1C26TAA", trang_thai="issued",
 			misa_note="MẤT RefID: …")
-		t, ref = self._da_gui()
+		t, _ref = self._da_gui()
 		bg = {"InvNo": "00000124", "InvSeries": "1C26TAA", "PublishStatus": 3, "EInvoiceStatus": 3, "OrgRefID": "goc-1", "TotalAmount": 26020}
 		self.mang(TOK, get_ban_ghi(**bg), get_ban_ghi(**bg))
 		ma, kq = self.lam_moi(t)
@@ -1004,7 +1017,7 @@ class TestLamMoi(_NenPhatHanh):
 	def test_kv36_trung_so_khi_keo_ve(self):
 		"""KV-36 [≠ H13, §1.6]: tờ F đã giữ (1C26TAA, 00000123); làm mới E, MISA trả đúng cặp ấy → 409 câu trùng số, E KHÔNG đổi gì (nppsale 200, sổ
 		không đổi); F giữ ('', '123') → E vẫn ghi số MISA + ghi chú trùng sau chuẩn hoá (không đổi trạng thái vì trùng)."""
-		e, ref = self._da_gui()
+		e, _ref = self._da_gui()
 		f = dong_hddt(nguoi_mua="F", misa_inv_no="00000123", misa_inv_series="1C26TAA", misa_status="signed", misa_ref_id="ref-f",
 			trang_thai="issued")
 		truoc = self.dong(e)
@@ -1022,7 +1035,7 @@ class TestLamMoi(_NenPhatHanh):
 	def test_kv53_ngay_khong_co_that(self):
 		"""KV-53 [≠ H26]: InvDate 2026-02-30 → 200; signed + số + ký hiệu ghi, `misa_inv_date` NULL, mốc hỏi ghi, THÊM ghi chú; `notes` của phản hồi có
 		câu ấy SAU ghi chú của ap_dung (nppsale: Postgres từ chối cả câu, vẫn 200 — sổ không đổi gì)."""
-		e, ref = self._da_gui()
+		e, _ref = self._da_gui()
 		self.mang(TOK, get_ban_ghi(**ban_ghi_ky(InvDate="2026-02-30T00:00:00", TotalAmount=26030)))
 		ma, kq = self.lam_moi(e)
 		ngay = "MISA trả InvDate=2026-02-30T00:00:00 không phải ngày có thật — bỏ qua, cần kiểm tra tay."
@@ -1035,7 +1048,7 @@ class TestLamMoi(_NenPhatHanh):
 	def test_h22_h8_h17_va_h7(self):
 		"""Ghi chú của luật kéo về qua route: [ĐX H22] số đổi theo MISA (tờ không khoá) → ghi số MISA + ghi chú; [ĐX H8] MISA trả bản ghi chưa có số cho
 		tờ đã có số → GIỮ signed + ghi chú; [BP H17] số gõ tay khác số MISA → ghi chú; H7: ghi chú cũ giữ, ghi chú trùng không thêm lần hai."""
-		e, ref = self._da_gui(misa_status="signed", misa_inv_no="00000123", misa_inv_series="1C26TAA", so_hd_go_tay="INV-20261115-1234",
+		e, _ref = self._da_gui(misa_status="signed", misa_inv_no="00000123", misa_inv_series="1C26TAA", so_hd_go_tay="INV-20261115-1234",
 			misa_note="Ghi chú người.")
 		self.mang(TOK, get_ban_ghi(**ban_ghi_ky(InvNo="00000999")), get_ban_ghi(**ban_ghi_ky(InvNo="00000999")), get_ban_ghi())
 		ma, kq = self.lam_moi(e)
@@ -1052,25 +1065,27 @@ class TestLamMoi(_NenPhatHanh):
 		h8 = "MISA trả bản ghi chưa có số trong khi sổ đã ghi số 00000999 — giữ nguyên trạng thái, cần kiểm tra tay."
 		self.assertEqual((ma, kq["misa"]["status"], kq["misa"]["notes"]), (200, None, [h8]))
 		r = self.dong(e)
-		self.assertEqual((r.misa_status, r.misa_inv_no), ("signed", "00000999"))
+		self.assertEqual((r.misa_status, r.misa_inv_no, r.misa_inv_series, r.misa_lookup_code, r.misa_invoice_code, r.misa_relation,
+			r.misa_inv_date, r.misa_last_checked_at), ("signed", "00000999", "1C26TAA", "TX1", "M1-26-XYZ", "new", datetime.date(2026, 11, 15),
+			LUC))  # Gotcha #7: MISA không trả gì → không ghi null đè; mốc hỏi vẫn ghi
 		self.assertTrue(r.misa_note.endswith(h8))
 
 	def test_xac_nhan_day_chi_khi_treo_hoac_loi(self):
 		"""[ĐX H5] Xác nhận đẩy (issued + phat_hanh_luc + xoá misa_error) chỉ khi dòng ĐANG pending / error: tờ `error` có RefID mà MISA có → issued; tờ
 		`sent` còn draft (dữ liệu chuyển sang) → giữ draft."""
-		e, ref = self._da_gui(trang_thai="draft", misa_status="error", misa_error="MISA publish lỗi 500: x", phat_hanh_luc=None)
+		e, _ref = self._da_gui(trang_thai="draft", misa_status="error", misa_error="MISA publish lỗi 500: x", phat_hanh_luc=None)
 		self.mang(TOK, get_ban_ghi(**DA_CO, TotalAmount=26020))
 		self.assertEqual(self.lam_moi(e)[0], 200)
 		r = self.dong(e)
 		self.assertEqual((r.trang_thai, r.phat_hanh_luc, r.misa_error, r.misa_status), ("issued", LUC, None, "sent"))
-		e2, ref2 = self._da_gui(dong_hddt(nguoi_mua="Cũ"), trang_thai="draft", phat_hanh_luc=None)
+		e2, _ref2 = self._da_gui(dong_hddt(nguoi_mua="Cũ"), trang_thai="draft", phat_hanh_luc=None)
 		self.mang(get_ban_ghi(**DA_CO))
 		self.assertEqual(self.lam_moi(e2)[0], 200)
 		self.assertEqual((self.dong(e2).trang_thai, self.dong(e2).phat_hanh_luc), ("draft", None))
 
 	def test_i10_moc_hoi_khong_giam(self):
 		"""I10: mốc hỏi không lùi khi lượt chạy chậm hơn ghi sau (lượt quét song song đã ghi mốc muộn hơn)."""
-		e, ref = self._da_gui(misa_last_checked_at=LUC + datetime.timedelta(days=1))
+		e, _ref = self._da_gui(misa_last_checked_at=LUC + datetime.timedelta(days=1))
 		self.mang(TOK, get_ban_ghi(**ban_ghi_ky()))
 		self.assertEqual(self.lam_moi(e)[0], 200)
 		r = self.dong(e)
@@ -1081,7 +1096,7 @@ class TestLamMoi(_NenPhatHanh):
 		ghi hỏng vì lỗi khác → 500 "Không ghi được kết quả làm mới: …" [ĐX H13]."""
 		g = dong_hddt(misa_ref_id="goc-3", misa_status="signed", misa_inv_no="00000300", misa_inv_series="1C26TAA", trang_thai="issued")
 		dong_hddt(nguoi_mua="F", misa_inv_no="00000301", misa_inv_series="1C26TAA", misa_ref_id="ref-f3", misa_status="signed")
-		t, ref = self._da_gui()
+		t, _ref = self._da_gui()
 		truoc = self.dong(g)
 		self.mang(TOK, get_ban_ghi(InvNo="00000301", InvSeries="1C26TAA", PublishStatus=3, EInvoiceStatus=3, OrgRefID="goc-3", TotalAmount=26020),
 			get_ban_ghi(**ban_ghi_ky()))
@@ -1093,7 +1108,7 @@ class TestLamMoi(_NenPhatHanh):
 	def test_danh_dau_goc_hong_van_giu_phan_ghi(self):
 		"""Đánh dấu tờ gốc hỏng: phần ghi của tờ thay thế giữ; `loi_danh_dau` trả cho vòng quét; Error Log; phản hồi `original_marked_replaced` null."""
 		g = dong_hddt(misa_ref_id="goc-4", misa_status="signed", misa_inv_no="00000400", misa_inv_series="1C26TAA", trang_thai="issued")
-		t, ref = self._da_gui()
+		t, _ref = self._da_gui()
 		bg = {"InvNo": "00000401", "InvSeries": "1C26TAA", "PublishStatus": 3, "EInvoiceStatus": 3, "OrgRefID": "goc-4", "TotalAmount": 26020}
 		self.mang(TOK, get_ban_ghi(**bg))
 		with patch.object(M, "danh_dau_goc", side_effect=frappe.QueryDeadlockError("deadlock")):
@@ -1472,7 +1487,7 @@ class TestTuyen(_NenHddt):
 # =====================================================================================================================================
 # KV-18 (b), KV-30 (b) — kết nối / luồng THẬT, commit THẬT
 # =====================================================================================================================================
-class TestHaiKetNoi(_NenMot := __import__("frappe.tests", fromlist=["IntegrationTestCase"]).IntegrationTestCase):
+class TestHaiKetNoi(IntegrationTestCase):
 	"""KV-18 (b) [=] + KV-30 (b) [≠ BP §7.3-10] (khuôn PoC 1d / TestDamBaoDongDocCoKhoa của test_cong_hddt): dữ liệu TỐI THIỂU (cấu hình MISA + một
 	tờ tay) commit trước, dọn sạch trong cleanup (dòng, nhật ký, Version, cấu hình, Error Log của bài). Site đã có cấu hình MISA thật → bỏ qua (không
 	đụng). Vai: `misa.hien_tai` → chủ (bài không dựng người)."""
@@ -1485,8 +1500,7 @@ class TestHaiKetNoi(_NenMot := __import__("frappe.tests", fromlist=["Integration
 		self.bat_dau = frappe.db.sql("SELECT NOW(6)")[0][0]
 		MM.xoa_token_nho()
 		self.addCleanup(MM.xoa_token_nho)
-		p = patch.object(M, "hien_tai", lambda: __import__("nppsale.cong.dang_ky", fromlist=["NguCanh"]).NguCanh(user=frappe.session.user,
-			vai="owner"))
+		p = patch.object(M, "hien_tai", lambda: NguCanh(user=frappe.session.user, vai="owner"))
 		p.start()
 		self.addCleanup(p.stop)
 		self.addCleanup(self._don)
