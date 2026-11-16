@@ -242,6 +242,16 @@ class _NenPhatHanh(_NenHddt):
 		self.cau_hinh()
 
 
+def _hong(cau: str):
+	"""Hàm thay thế ném lỗi — hàm thường (không MagicMock: khung của mock giữ `args` dưới tên KHÔNG nhạy cảm, traceback có biến sẽ in token thật
+	truyền vào — giả lỗi của bài, không phải của mã)."""
+
+	def ham(*_a_token, **_k_token):
+		raise RuntimeError(cau)
+
+	return ham
+
+
 def _vn(gio: datetime.datetime) -> datetime.datetime:
 	from zoneinfo import ZoneInfo
 
@@ -776,6 +786,15 @@ class TestPhatHanh(_NenPhatHanh):
 			self.assertEqual(self.phat_hanh(e2), (500, {"error": "đứt giữa chừng"}))
 		self.assertEqual(self.dong(e2).misa_status, "pending")
 		self.assertTrue(frappe.db.exists("Error Log", {"method": "HĐĐT MISA: phát hành lỗi sau khi giành tờ"}))
+		# H27 thấy tờ trên MISA nhưng ghi kéo về hỏng (lỗi khác trùng số) → 500; lần POST ấy có ĐÚNG MỘT nhật ký failed mang payload (I5)
+		e3 = dong_hddt(nguoi_mua="Tờ 3", tien_hang=1000, tien_thue=100, tong_tien=1100)
+		a = self.mang({"status": 401, "body": {"message": "Token expired"}}, TOK2, get_ban_ghi(**DA_CO, TotalAmount=1100))
+		with patch.object(M, "ghi_ket_qua_keo_ve", side_effect=RuntimeError("ghi hỏng")):
+			self.assertEqual(self.phat_hanh(e3), (500, {"error": "ghi hỏng"}))
+		self.assertEqual([g for g in gon(a) if g == "POST /v3sainvoice"], ["POST /v3sainvoice"])
+		(nk,) = self.nhat_ky(hddt=e3)
+		self.assertEqual((nk.ket_qua, nk.loi, json.loads(nk.gui_di)[0]["RefID"]), ("failed", "ghi hỏng", self.dong(e3).misa_ref_id))
+		self.assertEqual(self.dong(e3).misa_status, "pending")  # đã gửi → giữ pending (Làm mới gỡ)
 
 
 class TestPhatHanhNhomK(_NenPhatHanh):
@@ -1007,6 +1026,7 @@ class TestLamMoi(_NenPhatHanh):
 		self.mang(TOK, RONG, RONG)
 		self.assertEqual(self.lam_moi(e), (404, {"error": "MISA không trả về dữ liệu HD."}))
 		self.assertEqual((self.dong(e).misa_status, self.dong(e).misa_last_checked_at), ("pending", None))
+		self.assertFalse(M.xu_ly_misa_khong_co(e, LUC))  # hàm dùng chung với vòng quét: chưa quá 10 phút → không đổi
 		frappe.db.set_value("NPP HDDT", e, "misa_sent_at", LUC - datetime.timedelta(minutes=11), update_modified=False)
 		self.assertEqual(self.lam_moi(e), (404, {"error": "MISA không trả về dữ liệu HD."}))
 		r = self.dong(e)
@@ -1248,6 +1268,20 @@ class TestDoiSoat(_NenPhatHanh):
 		self.assertEqual(self.doi_soat({"action": "create", "snapshotId": s}), (400, {"error": "Chưa cấu hình MISA"}))
 		self.assertEqual(frappe.db.count("NPP HDDT"), n + 1)
 
+	def test_kv45_dua_hai_luot_dung(self):
+		"""Dựng gọi MISA KHÔNG giữ khoá; lượt khác nối / dựng xong trong lúc chờ HTTP → đọc lại snapshot CÓ KHOÁ → 409 "đã nối", không thêm dòng."""
+		s = self.snap(ref_id="misa-14", ky_hieu="1C26TAA", so_hddt="00000214")
+		khac = dong_hddt(nguoi_mua="Lượt khác")
+
+		def khi_goi(req):
+			if "refID=" in req.url:
+				frappe.db.sql("UPDATE `tabNPP MISA Snapshot` SET `hddt` = %s, `cach_khop` = 'manual' WHERE `name` = %s", (khac, s))
+
+		self.mang(TOK, get_ban_ghi(InvNo="00000214", InvSeries="1C26TAA", PublishStatus=3, TotalAmount=900), khi_goi=khi_goi)
+		n = frappe.db.count("NPP HDDT")
+		self.assertEqual(self.doi_soat({"action": "create", "snapshotId": s}), (409, {"error": "Dòng này đã nối với một hoá đơn trong sổ rồi."}))
+		self.assertEqual((frappe.db.count("NPP HDDT"), self.s(s).hddt), (n, khac))
+
 	def test_kv45g_h_cho_cap_so_va_tien_0(self):
 		"""(g) [≠ H9] chi tiết còn `<Chưa cấp số>` + PublishStatus 0 → số NULL (cả số gõ tay), `sent`; (h) [=] TotalAmountWithoutVAT 0.0 → tiền hàng 0;
 		[ĐX H26] ngày không có thật → không ghi ngày, kỳ = hôm nay + ghi chú; người mua trống → "Khách lẻ"."""
@@ -1411,6 +1445,52 @@ class TestCauHinh(_NenHddt):
 		self.assertEqual((ma, kq["template"], kq["template_count"]), (200, None, 0))
 		frappe.db.sql("DELETE FROM `__Auth` WHERE `doctype` = %s AND `fieldname` = 'mat_khau'", CH.TEN)
 		self.assertEqual(self.goi("owner", M.thu_ket_noi, {}), (400, {"error": "Thiếu username/password. Nhập rồi bấm test lại."}))
+
+	def test_loi_khong_luong_khong_lo_bi_mat(self):
+		"""I6: lỗi không lường ở Cấu hình / Thử kết nối khi bật developer_mode (traceback CÓ biến) → 500 câu lỗi; Error Log KHÔNG mang tài khoản /
+		mật khẩu vừa gõ (thân nằm trong `YeuCauCu` — bộ che của lõi không che thuộc tính dataclass, không che "username") hay token."""
+		self.goi("owner", M.cau_hinh_luu, CAU_HINH_CHUAN)
+		dev = frappe.conf.get("developer_mode")
+		frappe.conf.developer_mode = 1
+		try:
+			with patch.object(M, "_loai_hd", _hong("hỏng")):
+				self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**CAU_HINH_CHUAN, "username": "u-BIMAT-9", "password": "p-BIMAT-9"}),
+					(500, {"error": "hỏng"}))
+			self.mang(self._tra_tk())
+			with patch.object(MM, "lay_mau", _hong("hỏng 2")):
+				self.assertEqual(self.goi("owner", M.thu_ket_noi, {"username": "u-BIMAT-9", "password": "p-BIMAT-9"}), (500, {"error": "hỏng 2"}))
+		finally:
+			frappe.conf.developer_mode = dev
+		el = frappe.db.sql("SELECT `method`, `error` FROM `tabError Log` WHERE `creation` > %s", self.loi_truoc)
+		self.assertEqual(sorted(x[0] for x in el), ["HĐĐT MISA: lưu cấu hình lỗi", "HĐĐT MISA: thử kết nối lỗi"])
+		self.assertTrue(all("Traceback" in x[1] for x in el))
+		self._i6("u-BIMAT-9", "p-BIMAT-9", "T9")
+
+	def test_hai_lop_che_bi_mat_trong_error_log(self):
+		"""Hai lớp, thử TỪNG lớp (mỗi lớp một mình phải đủ): (1) `_ghi_loi` không kèm biến cục bộ — biến bí mật mang tên KHÔNG nhạy cảm ở khung gọi
+		vẫn không vào Error Log; (2) tên biến giữ bí mật của route Cấu hình / Thử kết nối có `secret` / `password` / `token` — kể cả khi Error Log kèm biến
+		(developer_mode) thì bộ che của lõi vẫn che."""
+		dev = frappe.conf.get("developer_mode")
+		frappe.conf.developer_mode = 1
+		try:
+			try:
+				mat_khau_go = "p-BIMAT-LOP1"  # tên tiếng Việt: bộ che của lõi KHÔNG nhận
+				raise RuntimeError(f"x{len(mat_khau_go)}")
+			except RuntimeError:
+				M._ghi_loi("HĐĐT MISA: thử lớp 1")
+			self.goi("owner", M.cau_hinh_luu, CAU_HINH_CHUAN)
+			self.mang(self._tra_tk())
+			with patch.object(M, "_ghi_loi", lambda t: frappe.log_error(title=t)), patch.object(MM, "lay_mau", _hong("hỏng 3")):
+				self.assertEqual(self.goi("owner", M.thu_ket_noi, {"username": "u-BIMAT-LOP2", "password": "p-BIMAT-LOP2"}), (500, {"error": "hỏng 3"}))
+			with patch.object(M, "_ghi_loi", lambda t: frappe.log_error(title=t)), patch.object(M, "_loai_hd", _hong("hỏng 4")):
+				self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**CAU_HINH_CHUAN, "username": "u-BIMAT-LOP2", "password": "p-BIMAT-LOP2"}),
+					(500, {"error": "hỏng 4"}))
+		finally:
+			frappe.conf.developer_mode = dev
+		el = frappe.db.sql("SELECT `method`, `error` FROM `tabError Log` WHERE `creation` > %s", self.loi_truoc)
+		self.assertEqual(len(el), 3)
+		self.assertTrue(any("Traceback with variables" in x[1] for x in el))  # lớp 2 thật sự chạy với traceback CÓ biến
+		self._i6("p-BIMAT-LOP1", "u-BIMAT-LOP2", "p-BIMAT-LOP2", "T9")
 
 	def test_kv47_giai_ma_va_chu_vua_go(self):
 		"""[Soát thiếu 2] Khoá site đổi: thân có CẢ tài khoản lẫn mật khẩu → không giải mã, thử bình thường (200) và LƯU hai chữ vừa gõ (sau khi /oauth

@@ -227,6 +227,13 @@ def _json_chuoi(v):
 	return None if v is None else json.dumps(v, ensure_ascii=False, default=str)
 
 
+def _ghi_loi(tieu_de: str) -> None:
+	"""Error Log KHÔNG kèm biến cục bộ (I6): traceback thường. Thân yêu cầu của Cấu hình / Thử kết nối (tài khoản + mật khẩu vừa gõ) nằm trong
+	khung route (`YeuCauCu.than`); bộ che của lõi (`frappe/utils/__init__.py:340–385`, chỉ khi developer_mode) che theo TÊN biến / khoá dict, KHÔNG
+	che thuộc tính của một dataclass ⇒ traceback có biến sẽ in nguyên mật khẩu, và "username" không nằm trong danh sách che."""
+	frappe.log_error(title=tieu_de, message=frappe.get_traceback(with_context=False) or tieu_de)
+
+
 def ghi_nhat_ky(nguon: str, ket_qua: str, *, hddt=None, don_hang=None, gui_di=None, nhan_ve=None, loi=None, misa_lookup_code=None,
 		misa_inv_no=None) -> str:
 	"""Một dòng NPP MISA Log (= einvoice_logs; chỉ thêm) — `owner` = người bấm (Administrator ở việc nền). KHÔNG BAO GIỜ đưa token / tài khoản /
@@ -247,7 +254,7 @@ def _ghi_nhat_ky_an_toan(nguon: str, ket_qua: str, **kw) -> str | None:
 		return ghi_nhat_ky(nguon, ket_qua, **kw)
 	except Exception:  # nhật ký không được làm hỏng kết quả (đã ghi vào Error Log)
 		frappe.db.rollback(save_point="npp_misa_nhat_ky")
-		frappe.log_error(title="HĐĐT MISA: không ghi được nhật ký")
+		_ghi_loi("HĐĐT MISA: không ghi được nhật ký")
 		return None
 
 
@@ -368,7 +375,7 @@ def ghi_ket_qua_keo_ve(ten: str, raw, *, xac_nhan_day: bool = False, luc=None, c
 			goc = danh_dau_goc(kq["danh_dau_goc"], ten)
 		except Exception as e:  # nppsale chỉ console.error; ở đây Error Log + trả lỗi cho vòng quét
 			frappe.db.rollback(save_point="npp_misa_danh_dau_goc")
-			frappe.log_error(title="HĐĐT MISA: không đánh dấu được tờ gốc bị thay thế")
+			_ghi_loi("HĐĐT MISA: không đánh dấu được tờ gốc bị thay thế")
 			loi_danh_dau = str(e) or type(e).__name__
 	return {"tom_tat": kq["tom_tat"], "ghi_chu": ghi_chu, "cap_nhat": cap, "so_that": kq["tom_tat"]["InvNo"], "goc": goc,
 		"loi_danh_dau": loi_danh_dau}
@@ -465,10 +472,21 @@ def _co_mui(luc):
 	return luc if luc.tzinfo is not None else luc.replace(tzinfo=ZoneInfo(get_system_timezone()))
 
 
+def xu_ly_misa_khong_co(ten: str, luc=None) -> bool:
+	"""[ĐX H5] MISA KHÔNG có tờ mang RefID của dòng `ten` (GET ?refID= ra None): dòng `pending` đã gửi quá `PHUT_TREO` phút (hoặc không có mốc gửi)
+	→ `error` + câu "lượt đẩy trước chưa tới MISA…" + mốc hỏi — bấm Phát hành là đẩy lại CÙNG RefID (H3 hỏi trước). Còn trong 10 phút (MISA có thể
+	chưa ghi xong) hoặc dòng không `pending` → không ghi gì. Một luật cho Làm mới (§4.3 bước 6) và vòng quét (§5.2 bước 4). → đã đổi dòng?"""
+	luc = luc or bay_gio()
+	frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %s, `misa_last_checked_at` = %s
+		WHERE `name` = %s AND `misa_status` = 'pending' AND (`misa_sent_at` IS NULL OR `misa_sent_at` < %s)""",
+		(LOI_LM_TREO, luc, ten, luc - _dt.timedelta(minutes=PHUT_TREO)))
+	return bool(frappe.db._cursor.rowcount)
+
+
 def _bao_loi_route(ten_route: str, e: Exception, mac_dinh: str) -> tuple:
 	"""Ngoại lệ không lường của một route → 500 {error} (nppsale: `errorMessage(err, …)` qua catch ngoài cùng) + Error Log. Câu trả về là
 	`str(e)` — không có bí mật (lớp mạng không đưa tài khoản / token vào câu lỗi)."""
-	frappe.log_error(title=f"HĐĐT MISA: {ten_route} lỗi")
+	_ghi_loi(f"HĐĐT MISA: {ten_route} lỗi")
 	return _loi(500, str(e) or mac_dinh)
 
 
@@ -667,7 +685,7 @@ def _phat_hanh(yc: YeuCauCu) -> tuple:
 		try:
 			ghi_loi_truoc_gui(ten, cau)
 		except Exception:  # CSDL đang hỏng: báo lỗi đọc là đủ
-			frappe.log_error(title="HĐĐT MISA: phát hành — không ghi được lỗi cấu hình")
+			_ghi_loi("HĐĐT MISA: phát hành — không ghi được lỗi cấu hình")
 		return _loi(500, cau)
 	if ch is None or not ch.dang_dung:
 		ghi_loi_truoc_gui(ten, LOI_PH_CHUA_CAU_HINH)
@@ -748,15 +766,13 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 				commit_giua_chung()
 				return _loi(502, cau)
 			if raw is not None:
-				da_ghi_nhat_ky = True
 				return _da_co_tren_misa(ten, raw, ch, gui_di={"source": "hoi_truoc_khi_day_lai", "ref_id": ref}, don_hang=don_hang)
 		# 11. payload (RefID truyền từ ngoài vào — đã commit)
 		payload = dung_payload(nguoi_mua, dong, ref, ch.cau_hinh_payload, che_do, po if isinstance(po, str) else None, _co_mui(bay_gio()))
 		# 12. POST + 1 lần thử lại khi lỗi xác thực; [ĐX H27] trước lần thử lại hỏi MISA
 		da_gui = True
 		kq = MM.day_hd(ch, payload, truoc_khi_thu_lai=lambda: MM.lay_hd(ch, ref), bat_dau=bat_dau)
-		if kq.get("da_co") is not None:
-			da_ghi_nhat_ky = True
+		if kq.get("da_co") is not None:  # hỏng giữa chừng → bước 15 ghi MỘT nhật ký failed cho lần POST này (I5)
 			return _da_co_tren_misa(ten, kq["da_co"], ch, gui_di=payload, don_hang=don_hang)
 		# 13. nhật ký (best-effort) — commit: sống kể cả khi bước 14 hỏng
 		ket_qua = "success" if kq["ok"] else ("pending" if kq.get("chua_biet") else "failed")
@@ -766,6 +782,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 			misa_inv_no=None if la_so_cho(so_tra) else so_tra)
 		da_ghi_nhat_ky = True
 		commit_giua_chung()
+		frappe.db.savepoint(diem)  # lui ở bước 15 chỉ bỏ phần CHƯA commit (bài thử không commit — cùng ngữ nghĩa)
 		# 14. ghi kết quả
 		if kq["ok"]:
 			frappe.db.savepoint("npp_misa_ket_qua")
@@ -774,7 +791,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 				commit_giua_chung()
 			except Exception:  # MISA ĐÃ nhận: không để người dùng bấm lại (dòng còn pending + RefID ⇒ Làm mới gỡ được)
 				frappe.db.rollback(save_point="npp_misa_ket_qua")
-				frappe.log_error(title="HĐĐT MISA: MISA đã nhận nhưng chưa ghi được kết quả")
+				_ghi_loi("HĐĐT MISA: MISA đã nhận nhưng chưa ghi được kết quả")
 				lookup = kq.get("lookup_code") or None
 				return 500, {"success": False, "error": CAU_PH_DA_PHAT_HANH, "misa": {"lookup_code": lookup, "invoice_url": url_tra_cuu(lookup)}}
 			return 200, {"success": True, "lookup_code": ma["lookup_code"], "inv_no": kq.get("inv_no"), "invoice_url": ma["invoice_url"],
@@ -793,7 +810,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 		commit_giua_chung()
 		return _loi(409, str(e))
 	except Exception as e:  # bước 15
-		frappe.log_error(title="HĐĐT MISA: phát hành lỗi sau khi giành tờ")
+		_ghi_loi("HĐĐT MISA: phát hành lỗi sau khi giành tờ")
 		cau = str(e) or CAU_PH_KHONG_XAC_DINH
 		_lui(diem)
 		try:
@@ -833,7 +850,7 @@ def _lam_moi(yc: YeuCauCu) -> tuple:
 	try:
 		r = doc_dong_hddt(ten)
 	except Exception:
-		frappe.log_error(title="HĐĐT MISA: làm mới — đọc hoá đơn lỗi")
+		_ghi_loi("HĐĐT MISA: làm mới — đọc hoá đơn lỗi")
 		return _loi(500, CAU_LM_LOI_DOC)
 	if r is None:
 		return _loi(404, CAU_LM_KHONG_CO)
@@ -843,7 +860,7 @@ def _lam_moi(yc: YeuCauCu) -> tuple:
 	try:
 		ch = MM.lay_cau_hinh()
 	except Exception:
-		frappe.log_error(title="HĐĐT MISA: làm mới — đọc cấu hình lỗi")
+		_ghi_loi("HĐĐT MISA: làm mới — đọc cấu hình lỗi")
 		return _loi(500, CAU_LM_LOI_CAU_HINH)
 	if ch is None:  # không xét `dang_dung` [=]
 		return _loi(400, CAU_CHUA_CAU_HINH)
@@ -856,18 +873,14 @@ def _lam_moi(yc: YeuCauCu) -> tuple:
 	except MM.MisaLoi as e:
 		return _loi(502, str(e))
 	if raw is None:
-		if r.misa_status == "pending":  # [ĐX H5] treo quá 10 phút mà MISA không có ⇒ lượt đẩy trước chưa tới MISA
-			luc = bay_gio()
-			frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %s, `misa_last_checked_at` = %s
-				WHERE `name` = %s AND `misa_status` = 'pending' AND (`misa_sent_at` IS NULL OR `misa_sent_at` < %s)""",
-				(LOI_LM_TREO, luc, ten, luc - _dt.timedelta(minutes=PHUT_TREO)))
+		xu_ly_misa_khong_co(ten)  # [ĐX H5]; dòng khác `pending` / còn trong 10 phút: không ghi gì [=]
 		return _loi(404, CAU_LM_MISA_RONG)
 	try:
 		kq = ghi_ket_qua_keo_ve(ten, raw, xac_nhan_day=(r.misa_status in ("pending", "error")), luc=bay_gio(), co_ma=ch.co_ma)
 	except LoiTrungSoHddt as e:
 		return _loi(409, str(e))
 	except Exception as e:  # [ĐX H13] nppsale console.error rồi vẫn 200
-		frappe.log_error(title="HĐĐT MISA: làm mới — ghi kết quả lỗi")
+		_ghi_loi("HĐĐT MISA: làm mới — ghi kết quả lỗi")
 		return _loi(500, CAU_LM_GHI_HONG.format(msg=str(e)))
 	if kq["ghi_chu"]:  # [BP] nhật ký khi có ghi chú (nppsale không ghi log cho lượt bấm tay)
 		_ghi_nhat_ky_an_toan("refresh", "success", hddt=ten, don_hang=r.don_hang or r.get("don_hang_ls"),
@@ -896,6 +909,13 @@ def _gio_iso(v):
 
 @tuyen("GET", r"^/api/einvoice/config$")
 def cau_hinh_doc(yc: YeuCauCu):
+	try:
+		return _cau_hinh_doc(yc)
+	except Exception as e:
+		return _bao_loi_route("đọc cấu hình", e, CAU_TK_KHONG_XAC_DINH)
+
+
+def _cau_hinh_doc(yc: YeuCauCu):
 	"""GET /api/einvoice/config (`config/route.ts:31–60`): chưa lưu → `{config: null}`; có → mọi trường trừ tài khoản / mật khẩu (kể cả `*****`) +
 	`has_username` / `has_password` (đọc `__Auth`, KHÔNG giải mã — GET không được hỏng vì khoá site sai)."""
 	if not _vai_cau_hinh():
@@ -921,7 +941,7 @@ def cau_hinh_doc(yc: YeuCauCu):
 			"has_username": co_bi_mat("tai_khoan"), "has_password": co_bi_mat("mat_khau"),
 		}}
 	except Exception as e:
-		frappe.log_error(title="HĐĐT MISA: đọc cấu hình lỗi")
+		_ghi_loi("HĐĐT MISA: đọc cấu hình lỗi")
 		return _loi(500, CAU_DOC_CAU_HINH.format(msg=str(e)))
 
 
@@ -976,7 +996,14 @@ def _khoa_ma_hoa_dung() -> bool:
 
 
 @tuyen("POST", r"^/api/einvoice/config$")
-def cau_hinh_luu(yc: YeuCauCu):
+def cau_hinh_luu(yeu_cau_secret: YeuCauCu):
+	try:
+		return _cau_hinh_luu(yeu_cau_secret)
+	except Exception as e:
+		return _bao_loi_route("lưu cấu hình", e, CAU_TK_KHONG_XAC_DINH)
+
+
+def _cau_hinh_luu(yeu_cau_secret: YeuCauCu):
 	"""POST /api/einvoice/config (`config/route.ts:62–131`): màn gửi CẢ đối tượng form (kể cả `has_*`, `id`, `org_id`…) — chỉ đọc khoá dưới, bỏ
 	khoá lạ. Chuỗi trim kiểu JS, rỗng → mặc định / trống; `ke_thua_mau_cu` vắng → 0, `moi_truong_thu` / `dang_dung` vắng → 1, có thì truthy kiểu JS
 	(chuỗi "false" là ĐÚNG). KHÔNG ghi `misa_is_invoice_with_code`, `misa_app_id`, `kieu_ky`. Tài khoản / mật khẩu (trim — nppsale cắt khoảng trắng
@@ -984,16 +1011,16 @@ def cau_hinh_luu(yc: YeuCauCu):
 	set_single_value cho hai trường Password (bỏ qua mã hoá — lưu chữ thường). Lưu qua `doc.save()` (mã hoá vào `__Auth`, `tabSingles` chỉ còn `*`)."""
 	if not _vai_cau_hinh():
 		return _loi(403, CAU_CH_QUYEN)
-	if not isinstance(yc.than, dict):
+	if not isinstance(yeu_cau_secret.than, dict):
 		return _loi(400, CAU_BODY)
-	b = yc.than
+	than_secret = yeu_cau_secret.than  # tên có `secret`: bộ che traceback của lõi che theo tên biến
 
 	def s(k):
-		v = b.get(k)
+		v = than_secret.get(k)
 		return (js_trim(v) or None) if isinstance(v, str) else None
 
-	tk, mk = s("username"), s("password")
-	if (tk or mk) and not _khoa_ma_hoa_dung():
+	tai_khoan_secret, password_moi = s("username"), s("password")
+	if (tai_khoan_secret or password_moi) and not _khoa_ma_hoa_dung():
 		return _loi(500, CAU_CH_MA_HOA)
 	try:
 		with _sach_message_log():
@@ -1007,17 +1034,17 @@ def cau_hinh_luu(yc: YeuCauCu):
 					("misa_user_id", "misa_user_id"), ("misa_inv_series", "misa_inv_series")):
 				d.set(truong, s(k))
 			d.misa_inv_template_no = s("misa_inv_template_no") or "1"
-			d.loai_hd = _loai_hd(b.get("invoice_type"))
-			d.ke_thua_mau_cu = 1 if "is_inherit_from_old_template" in b and js_dung(b["is_inherit_from_old_template"]) else 0
-			d.moi_truong_thu = 1 if "sandbox" not in b or js_dung(b["sandbox"]) else 0
-			d.dang_dung = 1 if "is_active" not in b or js_dung(b["is_active"]) else 0
-			if tk:
-				d.tai_khoan = tk
-			if mk:
-				d.mat_khau = mk
+			d.loai_hd = _loai_hd(than_secret.get("invoice_type"))
+			d.ke_thua_mau_cu = 1 if "is_inherit_from_old_template" in than_secret and js_dung(than_secret["is_inherit_from_old_template"]) else 0
+			d.moi_truong_thu = 1 if "sandbox" not in than_secret or js_dung(than_secret["sandbox"]) else 0
+			d.dang_dung = 1 if "is_active" not in than_secret or js_dung(than_secret["is_active"]) else 0
+			if tai_khoan_secret:
+				d.tai_khoan = tai_khoan_secret
+			if password_moi:
+				d.mat_khau = password_moi
 			d.save(ignore_permissions=True)
 	except Exception as e:
-		frappe.log_error(title="HĐĐT MISA: lưu cấu hình lỗi")
+		_ghi_loi("HĐĐT MISA: lưu cấu hình lỗi")
 		return _loi(500, str(e) or CAU_TK_KHONG_XAC_DINH)
 	return 200, {"success": True}
 
@@ -1031,38 +1058,38 @@ def _chu(v):
 
 
 @tuyen("POST", r"^/api/einvoice/test-connection$")
-def thu_ket_noi(yc: YeuCauCu):
+def thu_ket_noi(yeu_cau_secret: YeuCauCu):
 	"""POST /api/einvoice/test-connection `{username?, password?}` (`test-connection/route.ts:35–159`, đặc tả §4.5)."""
 	try:
-		return _thu_ket_noi(yc)
+		return _thu_ket_noi(yeu_cau_secret)
 	except Exception as e:
 		return _bao_loi_route("thử kết nối", e, CAU_TK_KHONG_XAC_DINH)
 
 
-def _thu_ket_noi(yc: YeuCauCu) -> tuple:
-	b = _than(yc)
+def _thu_ket_noi(yeu_cau_secret: YeuCauCu) -> tuple:
+	than_secret = _than(yeu_cau_secret)  # tên có `secret` / `password` / `token`: bộ che traceback của lõi che theo tên
 	if not _vai_cau_hinh():
 		return _loi(403, CAU_TK_QUYEN)
 	try:
 		ch = MM.lay_cau_hinh()  # token_path ∥ "/oauth"; không xét `dang_dung`
 	except Exception:
-		frappe.log_error(title="HĐĐT MISA: thử kết nối — đọc cấu hình lỗi")
+		_ghi_loi("HĐĐT MISA: thử kết nối — đọc cấu hình lỗi")
 		return _loi(500, CAU_LM_LOI_CAU_HINH)
 	if ch is None:
 		return _loi(400, CAU_TK_CHUA_LUU)
-	tk_go = b.get("username") if isinstance(b.get("username"), str) else None
-	mk_go = b.get("password") if isinstance(b.get("password"), str) else None
+	tai_khoan_secret = than_secret.get("username") if isinstance(than_secret.get("username"), str) else None
+	password_go = than_secret.get("password") if isinstance(than_secret.get("password"), str) else None
 	try:
-		ch.giai_ma(tk_go, mk_go)  # [Soát thiếu 2] chỉ giải mã trường thân KHÔNG có chữ (`||` ngắn mạch — route.ts:80–81)
+		ch.giai_ma(tai_khoan_secret, password_go)  # [Soát thiếu 2] chỉ giải mã trường thân KHÔNG có chữ (`||` ngắn mạch — route.ts:80–81)
 	except MM.LoiGiaiMa as e:
 		return _loi(500, str(e))
 	if not ch.tai_khoan or not ch.mat_khau:
 		return _loi(400, CAU_TK_THIEU)
 	try:
-		token, tho = MM.lay_token(ch, ep=True, tra_tho=True)  # MỘT lời /oauth (nppsale gọi hai lần — client.ts:259–283 [≠ nhỏ])
+		token, tho_token = MM.lay_token(ch, ep=True, tra_tho=True)  # MỘT lời /oauth (nppsale gọi hai lần — client.ts:259–283 [≠ nhỏ])
 	except MM.MisaLoi as e:
 		return _loi(502, str(e))
-	ids = tach_dinh_danh(tho)
+	ids = tach_dinh_danh(tho_token)
 	ch.co_ma = bool(ids["isInvoiceWithCode"])
 	mau, loi_mau = [], None
 	try:
@@ -1089,13 +1116,13 @@ def _thu_ket_noi(yc: YeuCauCu) -> tuple:
 				d.misa_inv_template_no = _chu(chon.get("InvTemplateNo")) if js_dung(chon.get("InvTemplateNo")) else "1"
 				d.loai_hd = cint(chon.get("InvoiceType")) if js_dung(chon.get("InvoiceType")) else 1
 				d.ke_thua_mau_cu = 1 if js_dung(chon.get("IsInheritFromOldTemplate")) else 0
-			if tk_go and js_trim(tk_go):
-				d.tai_khoan = js_trim(tk_go)
-			if mk_go and js_trim(mk_go):
-				d.mat_khau = js_trim(mk_go)
+			if tai_khoan_secret and js_trim(tai_khoan_secret):
+				d.tai_khoan = js_trim(tai_khoan_secret)
+			if password_go and js_trim(password_go):
+				d.mat_khau = js_trim(password_go)
 			d.save(ignore_permissions=True)  # `modified` luôn đổi (nppsale `updated_at`)
 	except Exception as e:  # [ĐX H13] nppsale console.error rồi vẫn 200
-		frappe.log_error(title="HĐĐT MISA: thử kết nối — lưu cấu hình lỗi")
+		_ghi_loi("HĐĐT MISA: thử kết nối — lưu cấu hình lỗi")
 		return _loi(500, CAU_TK_CHUA_LUU_DUOC.format(msg=str(e)))
 	tom_tat = {k: chon[k] for k in ("IPTemplateID", "TemplateName", "InvSeries", "InvTemplateNo", "InvoiceType") if k in chon} if chon else None
 	ket_qua = {"success": True, "tenant": ids, "template": tom_tat, "template_count": len(con_dung), "template_error": loi_mau}
