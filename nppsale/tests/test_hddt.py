@@ -31,7 +31,6 @@ import threading
 import uuid
 from contextlib import contextmanager
 from unittest.mock import patch
-from urllib.parse import parse_qsl
 
 import frappe
 import requests
