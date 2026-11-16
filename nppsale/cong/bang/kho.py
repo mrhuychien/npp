@@ -83,7 +83,9 @@ def nap():
 			"manufactured_at": c("manufacturing_date", "ngay"),
 			"expires_at": c(f"COALESCE({{t}}.`expiry_date`, '{KHONG_HAN}')", "ngay"),
 			"location": c("npp_vi_tri"), "qty_initial": c("nhap", "so"), "qty_on_hand": c("ton", "so"), "unit_cost": c("gia_von", "so"),
-			"status": c("CASE WHEN IFNULL({t}.`disabled`, 0) = 1 THEN 'disabled' ELSE 'available' END"),
+			# Batch tắt (huỷ phiếu nhập làm lô hết hàng — §7.3 điểm 35; đóng lô) = `status 'cancelled'` của nppsale (giá trị dùng: available / cancelled;
+			# màn chọn lô lọc `eq status available`)
+			"status": c("CASE WHEN IFNULL({t}.`disabled`, 0) = 1 THEN 'cancelled' ELSE 'available' END"),
 			"warehouse_zone": c("vung"), "zone_moved_at": c("npp_chuyen_vung_luc", "gio"), "zone_moved_by": c("npp_chuyen_vung_boi"),
 			"received_at": c("npp_ngay_nhap", "gio"), "created_at": c("creation", "gio"), "tim_kd": c("npp_tim_kd"),
 		},

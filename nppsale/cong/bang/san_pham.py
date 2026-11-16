@@ -307,8 +307,11 @@ dang_ky(Bang(
 	ten="purchase_price_lists",
 	nguon=f"(SELECT * FROM `tabItem Price` WHERE `price_list` = {BANG_GIA_NHAP_SQL})",
 	cot={"id": c("{t}.`name`"), "org_id": org(), "product_id": c("item_code"), "unit_name": c("uom"), "price": c("price_list_rate", "tien"),
-		"effective_date": c("valid_from", "ngay"), "source_invoice_id": c("reference"), "updated_by": c("modified_by"),
+		"effective_date": c("valid_from", "ngay"), "source_invoice_id": c("NULLIF({t}.`reference`, '')"), "updated_by": c("modified_by"),
 		"updated_at": c("modified", "gio")},
-	quan_he=[QuanHe("products", "product_id", "id", False, ("purchase_price_lists_product_id_fkey",))],
+	# 🔧 M1 (đặc tả kho_mua §2.9): `invoice:purchase_invoices(receipt_code)` của bảng giá nhập (src/lib/purchasing/bang-gia-nhap.ts CHON_GIA_NHAP) —
+	# thiếu quan hệ thì cổng trả PGRST200 và giao diện hiểu là "Sổ chưa có bảng giá nhập", POS mất giá gợi ý
+	quan_he=[QuanHe("products", "product_id", "id", False, ("purchase_price_lists_product_id_fkey",)),
+		QuanHe("purchase_invoices", "source_invoice_id", "id", False, ("purchase_price_lists_source_invoice_id_fkey", "source_invoice_id"))],
 	rls=lambda nc: None if nc.vai in ("owner", "manager", "accountant", "warehouse") or nc.bo_qua_rls else False,
 ))

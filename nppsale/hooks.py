@@ -206,6 +206,7 @@ doc_events = {
 	},
 	# Công nợ NCC = bản chiếu (đặc tả kho_mua §2.8, blueprint 02 §4.4 `NPP Cong No NCC`): PN / PTNCC / DKN / NTN ghi sổ / huỷ / đổi trường AOS
 	"Purchase Invoice": {
+		"validate": "nppsale.su_kien.phieu_nhap.validate",
 		"on_submit": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",
 		"on_cancel": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",
 		"on_update_after_submit": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",

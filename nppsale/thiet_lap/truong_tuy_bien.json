@@ -539,6 +539,15 @@
    "module": "NPP Kho Mua"
   },
   {
+   "fieldname": "npp_kho_nhap",
+   "fieldtype": "Link",
+   "insert_after": "set_warehouse",
+   "label": "Kho của phiếu",
+   "module": "NPP Kho Mua",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
    "allow_on_submit": 1,
    "fieldname": "npp_ghi_chu",
    "fieldtype": "Small Text",

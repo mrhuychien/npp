@@ -232,5 +232,86 @@ class TestVaiTrangThai(unittest.TestCase):
 		self.assertEqual([K.trang_thai_phieu_kho(x) for x in (0, 1, 2, None)], ["draft", "posted", "cancelled", "draft"])
 
 
+class TestPhieuNhap(unittest.TestCase):
+	"""M1 — câu lỗi dòng / HANG_DA_XUAT, mã lô, bảng giá nhập (mig 234; V11, V15, V16 của tệp vàng)."""
+
+	def test_cau_loi_dong(self):
+		self.assertEqual(K.loi_dong_so_luong(2).ma, "SO_LUONG_KHONG_HOP_LE: Dòng 2 có số lượng không lớn hơn 0.")
+		self.assertEqual(K.loi_dong_gia(1).ma, "GIA_KHONG_HOP_LE: Dòng 1 có giá / giảm giá âm.")
+
+	def test_kiem_dong_tung_dong_du_bon_kiem(self):
+		"""Thứ tự `sua_phieu_nhap` bước 10: đủ kiểm của MỘT dòng rồi mới sang dòng sau; SL ≤ 0 / hệ số ≤ 0 trước giá âm."""
+		K.kiem_dong_phieu([(1, 1, 0, 0), (2.5, 1, 30000, 0), (2, 24, 240000, 12000)])  # giá 0 (hàng tặng) được
+		for dong, mong in (
+				([(10, 1, 10000, 0), (0, 1, 5000, 0)], "SO_LUONG_KHONG_HOP_LE: Dòng 2"),
+				([(1, 1, -1, 0), (0, 1, 5000, 0)], "GIA_KHONG_HOP_LE: Dòng 1"),
+				([(1, 0, 100, 0)], "SO_LUONG_KHONG_HOP_LE: Dòng 1"),
+				([(-1, 1, -100, 0)], "SO_LUONG_KHONG_HOP_LE: Dòng 1"),
+				([(1, 1, 100, -5)], "GIA_KHONG_HOP_LE: Dòng 1"),
+				([(1, None, 100, 0), (1, 1, 100, -1)], "GIA_KHONG_HOP_LE: Dòng 2")):
+			with self.assertRaises(NppLoi) as e:
+				K.kiem_dong_phieu(dong)
+			self.assertTrue(e.exception.ma.startswith(mong), (dong, e.exception.ma))
+
+	def test_ma_lo(self):
+		self.assertEqual([K.ma_lo_phieu_nhap("PN-0001", 1), K.ma_lo_phieu_nhap("PN-10000", 12), K.ma_lo_phieu_nhap("PN-0042", 1000)],
+			["PN-0001-001", "PN-10000-012", "PN-0042-1000"])
+
+	def test_hang_da_xuat_dung_cau(self):
+		muc = [("Hàng A", K.muc_hang_da_xuat("Hàng A", 48, 18.0))]
+		self.assertEqual(K.loi_hang_da_xuat(muc, False).ma, "HANG_DA_XUAT: Không huỷ được vì hàng của phiếu đã xuất bớt — Hàng A (nhập "
+			"48.000000, còn 18.000000). Lập phiếu trả hàng NCC hoặc phiếu điều chỉnh kho — hoặc bật \"Cho phép bán vượt tồn kho\" (Cài đặt › Đơn vị) "
+			"để huỷ: phần đã xuất thành tồn âm.")  # V11 (nppsale nguyên văn)
+		self.assertEqual(K.loi_hang_da_xuat(muc, True).ma, "HANG_DA_XUAT: Không huỷ được vì hàng của phiếu đã xuất bớt — Hàng A (nhập "
+			"48.000000, còn 18.000000). Lập phiếu trả hàng NCC hoặc phiếu điều chỉnh kho.")  # §7.3 điểm 12
+		hai = [("Hàng D", K.muc_hang_da_xuat("Hàng D", 6, 0)), ("Hàng C", K.muc_hang_da_xuat("Hàng C", "2.5", "1.25"))]
+		self.assertIn("— Hàng C (nhập 2.500000, còn 1.250000) · Hàng D (nhập 6.000000, còn 0.000000).", K.loi_hang_da_xuat(hai, False).ma)
+
+	def test_chu_json_nhu_jsonb(self):
+		self.assertEqual([K.chu_json(x) for x in (None, "abc", " 12 ", True, False, 240000, 12345.6, 1e-7, -5, Decimal("1.50"), [1, "a"])],
+			[None, "abc", " 12 ", "true", "false", "240000", "12345.6", "0.0000001", "-5", "1.50", '[1, "a"]'])
+
+	def test_so_numeric_va_lam_tron(self):
+		self.assertEqual([K.so_numeric(x) for x in ("12", "-5", "1e3", ".5", "5.", "1.50")],
+			[Decimal(12), Decimal(-5), Decimal("1E+3"), Decimal("0.5"), Decimal(5), Decimal("1.50")])
+		self.assertEqual([K.so_numeric(x) for x in ("abc", "", "1,5", "NaN", "Infinity", "--1", "1e", " 1")], [None] * 8)
+		self.assertEqual([K.tron_dong(x) for x in ("12345.6", "2.5", "2.4", "-2.5", 0)], [12346, 3, 2, -3, 0])
+
+	def test_dong_gia_nhap(self):
+		self.assertEqual(K.dong_gia_nhap({"product_id": "SPA", "unit_name": " thùng ", "price": 240000}), ("SPA", "thùng", "240000"))
+		self.assertEqual(K.dong_gia_nhap({"product_id": "SPA", "unit_name": "hộp", "price": None}), ("SPA", "hộp", None))
+		self.assertEqual(K.dong_gia_nhap({"product_id": "SPA", "unit_name": "hộp"}), ("SPA", "hộp", None))
+		self.assertEqual(K.dong_gia_nhap({"product_id": "SPA", "unit_name": "hộp", "price": "  "}), ("SPA", "hộp", ""))
+		for d in ({"product_id": "", "unit_name": "hộp"}, {"product_id": "SPA", "unit_name": "  "}, {"unit_name": "hộp"}, "SPA", None):
+			with self.assertRaises(NppLoi) as e:
+				K.dong_gia_nhap(d)
+			self.assertEqual(e.exception.ma, "GIA_NHAP_SAI: thiếu mặt hàng / đơn vị")
+
+	def test_gia_nhap_so(self):
+		self.assertEqual([K.gia_nhap_so(x) for x in (None, "", "0", "12345.6", "240000")], [None, None, 0, 12346, 240000])
+		for chu, mong in (("abc", 'GIA_NHAP_SAI: giá "abc" không phải số'), ("-5", "GIA_NHAP_AM: giá nhập không được âm"),
+				("true", 'GIA_NHAP_SAI: giá "true" không phải số'), ("-0.4", "GIA_NHAP_AM: giá nhập không được âm")):
+			with self.assertRaises(NppLoi) as e:
+				K.gia_nhap_so(chu)
+			self.assertEqual(e.exception.ma, mong)
+
+	def test_ngay_gia_tay_va_de_gia(self):
+		self.assertEqual(K.ngay_gia_tay(None, "2026-11-16"), date(2026, 11, 16))
+		self.assertEqual(K.ngay_gia_tay("2026-10-01", "2026-11-16"), date(2026, 11, 16))
+		self.assertEqual(K.ngay_gia_tay("2026-12-01", "2026-11-16"), date(2026, 12, 1))  # GREATEST(cũ, hôm nay)
+		self.assertTrue(K.duoc_de_gia(None, "2026-10-01"))
+		self.assertTrue(K.duoc_de_gia("2026-10-01", "2026-10-01"))  # ≤
+		self.assertTrue(K.duoc_de_gia("2026-09-20", "2026-10-05"))
+		self.assertFalse(K.duoc_de_gia("2026-10-05", "2026-09-20"))  # V15: P0 cũ hơn không đè
+
+	def test_dong_ghi_gia_duoi_cung(self):
+		"""V15: (A, hộp) dòng 0 đ (tặng) bỏ, (B, gói) lấy dòng sort lớn nhất (4.800 — không phải 5.000)."""
+		dong = [{"product_id": "SPA", "unit_name": "hộp", "unit_price": 10000}, {"product_id": "SPA", "unit_name": "thùng", "unit_price": 230000},
+			{"product_id": "SPA", "unit_name": "hộp", "unit_price": 0}, {"product_id": "SPB", "unit_name": "gói", "unit_price": 5000},
+			{"product_id": "SPB", "unit_name": "gói", "unit_price": "4800"}, {"product_id": "SPB", "unit_name": " ", "unit_price": 9},
+			{"product_id": None, "unit_name": "gói", "unit_price": 9}]
+		self.assertEqual(K.dong_ghi_gia(dong), {("SPA", "hộp"): 10000, ("SPA", "thùng"): 230000, ("SPB", "gói"): 4800})
+
+
 if __name__ == "__main__":
 	unittest.main()
