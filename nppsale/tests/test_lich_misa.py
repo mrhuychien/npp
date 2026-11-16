@@ -445,8 +445,9 @@ class TestChayDongBo(_NenLich):
 		`sync_run` trước `pull_snapshots`."""
 		dong_hddt(misa_ref_id="cd-1", misa_status="sent", phat_hanh_luc=LUC - NGAY)
 		a = self.misa(misa_gia(trang=lambda start: trang_ds([bg("ds-1", "00000301")] if start == 0 else [], tong=1)))
-		kq = L.chay_dong_bo()
+		kq = L.chay_dong_bo(days=7)
 		self.assertEqual([g.split("?")[0] for g in gon(a)], ["POST /oauth", "GET /v3sainvoice/", "POST /v3sainvoice/paging"])
+		self.assertEqual((kq["keo_snapshot"]["from"], kq["keo_snapshot"]["to"]), ("2026-11-08", "2026-11-15"))
 		self.assertEqual(sorted(kq), ["dong_bo", "keo_snapshot"])
 		nk = frappe.get_all("NPP MISA Log", filters={"nguon": ("in", ("sync_run", "pull_snapshots"))}, fields=["nguon", "ket_qua"],
 			order_by="creation asc")
@@ -601,11 +602,18 @@ class TestKeoSnapshot(_NenLich):
 				misa_status="signed", phat_hanh_luc=ngay["b7"]),
 			"b8": dong_hddt(mst_nguoi_mua="0304444444", tong_tien=77000, trang_thai="issued", phat_hanh_luc=datetime.datetime(2026, 11, 13, 3, 0)),
 			"b_cu": dong_hddt(misa_ref_id="rid-cu", tong_tien=9000, trang_thai="issued", phat_hanh_luc=LUC - 100 * NGAY),
+			# biên cửa sổ [từ 00:00:00, đến 23:59:59] giờ VN — hai đầu đều vào
+			"b_dau": dong_hddt(mst_nguoi_mua="0306666666", tong_tien=99000, trang_thai="issued",
+				phat_hanh_luc=datetime.datetime(2026, 9, 16, 0, 30)),
+			"b_cuoi": dong_hddt(mst_nguoi_mua="0305555555", tong_tien=88000, trang_thai="issued",
+				phat_hanh_luc=datetime.datetime(2026, 11, 15, 23, 30)),
 		}
 		cu = self.snapshot_san("r-cu", ngay_phat_hanh="2026-11-08", hddt=so["b_cu"], cach_khop="ref_id", do_tin="certain", ket_qua_khop="matched")
 		self.snapshot_san("s-cat", ngay_phat_hanh="2026-11-09", hddt=so["b2"], cach_khop="inv_no", do_tin="certain", ket_qua_khop="matched")
 		chot = {"hddt": so["b3"], "cach_khop": "manual", "do_tin": "certain", "ket_qua_khop": "matched", "ghi_chu_khop": "Người nối tay."}
 		self.snapshot_san("s-tay", ngay_phat_hanh="2026-11-10", **chot)
+		chot_cu = {**chot, "hddt": so["b_cu"]}  # chốt tay vào tờ NGOÀI cửa sổ: vòng khớp không đọc dòng manual — không cả `skipped_unlink`
+		self.snapshot_san("s-tay-cu", ngay_phat_hanh="2026-11-10", **chot_cu)
 		khong = {"InvSeries": "X9", "InvNo": "999"}
 		ds = [
 			bg("rid-1", None, ngay="2026-11-02T00:00:00", tong=212600),
@@ -625,7 +633,10 @@ class TestKeoSnapshot(_NenLich):
 			bg("r-cu", None, ngay="2026-11-08T00:00:00", tong=9000, **khong),
 			bg("s-cat", None, ngay="2026-11-09T00:00:00", tong=1000, **khong),
 			bg("s-tay", None, ngay="2026-11-10T00:00:00", tong=55000),
+			bg("s-tay-cu", None, ngay="2026-11-10T00:00:00", tong=9000, **khong),
 			bg("s-khong-ngay", "00000777", bo=("InvDate",)),
+			bg("s-dau", None, ngay="2026-09-16T00:00:00", tong=99000, AccountObjectTaxCode="0306666666"),
+			bg("s-cuoi", None, ngay="2026-11-15T00:00:00", tong=88000, AccountObjectTaxCode="0305555555"),
 		]
 		truoc = anh_hddt()
 		self.misa(misa_gia(trang=lambda start: trang_ds(ds if start == 0 else [])))
@@ -652,6 +663,11 @@ class TestKeoSnapshot(_NenLich):
 				"trùng."),
 			"s-cat": (None, None, None, "misa_only", "Không tìm được hoá đơn tương ứng trong sổ — hoá đơn phát hành ngoài app."),
 			"s-tay": tuple(chot[k] for k in COT_KHOP),
+			"s-tay-cu": tuple(chot_cu[k] for k in COT_KHOP),
+			"s-dau": (so["b_dau"], "tax_date_amount", "review", "needs_review", "Suy đoán từ MST 0306666666 + ngày 2026-09-16 + tiền. Duy nhất một "
+				"hoá đơn trùng."),
+			"s-cuoi": (so["b_cuoi"], "tax_date_amount", "review", "needs_review", "Suy đoán từ MST 0305555555 + ngày 2026-11-15 + tiền. Duy nhất "
+				"một hoá đơn trùng."),
 		}
 		sai = []
 		for ref, m in mong.items():
@@ -665,7 +681,7 @@ class TestKeoSnapshot(_NenLich):
 		self.assertEqual((self.snap("s-khong-ngay").ngay_phat_hanh, self.snap("s-khong-ngay").ket_qua_khop or None), (None, None))
 		self.assertEqual(self.snap("s13").khop_luc, LUC)
 		self.assertEqual({k: bao[k] for k in ("pulled", "matched", "misa_only", "needs_review", "skipped_unlink", "errors")},
-			{"pulled": 18, "matched": 6, "misa_only": 3, "needs_review": 4, "skipped_unlink": 1, "errors": []})
+			{"pulled": 21, "matched": 6, "misa_only": 3, "needs_review": 6, "skipped_unlink": 1, "errors": []})
 		self.assertEqual(self.luot("pull_snapshots")[1]["matched"], 6)
 
 	def test_kv53_kv57_trang_truot_so_la_ngay_khong_that(self):
