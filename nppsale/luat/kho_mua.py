@@ -19,9 +19,15 @@
 6. Lúc chi của phiếu chi NCC (luật `v_luc` của `chi_tra_ncc`, mig 242): chi hôm nay → lúc lập; ghi lùi → 12:00 của ngày chi.
 7. Vai + trạng thái (§1.3, §1.4): cửa vai của từng RPC P4 với ĐÚNG câu `FORBIDDEN` / `KHONG_DU_QUYEN…` và SQLSTATE của hàm nppsale (§7.2 #21 — bốn câu
    `FORBIDDEN` khác nhau; cửa `npp.via_rpc` chỉ ở các hàm có nó); trạng thái nppsale của Purchase Invoice / Stock Entry (§7.3 điểm 1).
+8. Phiếu nhập (M1 — §3.1, §3.2, §3.5, §2.9): câu lỗi dòng của phiếu (`SO_LUONG_KHONG_HOP_LE` / `GIA_KHONG_HOP_LE` — cổng ghi nháp chặn trước,
+   §7.3 điểm 23), câu `HANG_DA_XUAT` (§3.2 bước 8 + câu riêng cho hàng theo lô khi cờ bán vượt tồn đã bật — §7.3 điểm 12), mã lô `<PN>-NNN`,
+   bảng giá nhập: đọc một dòng `p_dong` của `luu_gia_nhap` (`d->>'k'` của jsonb, `text::numeric`, `round()` nửa ra xa 0) và chọn dòng ghi giá từ
+   phiếu (`_ghi_gia_nhap_tu_phieu`: dòng DƯỚI cùng mỗi (mặt hàng, đơn vị), giá > 0, không đè giá ngày mới hơn).
 """
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -401,3 +407,128 @@ def trang_thai_phieu_kho(docstatus) -> str:
 	"""`stock_entries.status` của Stock Entry (xuất lẻ `XKL-`, chuyển kho `CKL-`, nhập kho tay `IN-`…): 0 `draft` · 1 `posted` · 2 `cancelled`
 	(nháp huỷ = xoá như BP — §7.3 điểm 1)."""
 	return {1: "posted", 2: "cancelled"}.get(int(docstatus or 0), "draft")
+
+
+# ================================================================================================ 8. phiếu nhập (M1)
+def loi_dong_so_luong(stt: int) -> NppLoi:
+	"""`complete_purchase_invoice` bước 9 (dòng thứ `stt` theo `sort_order, id`, 1-based — KHÔNG phải giá trị sort_order) / `sua_phieu_nhap`
+	bước 10; cổng ghi nháp dùng lại (§7.3 điểm 23 — lõi không nhận PI nháp có dòng SL 0, đo M0)."""
+	return NppLoi(f"SO_LUONG_KHONG_HOP_LE: Dòng {stt} có số lượng không lớn hơn 0.")
+
+
+def loi_dong_gia(stt: int) -> NppLoi:
+	"""`sua_phieu_nhap` bước 10 (`unit_price < 0` hoặc `line_discount < 0`); cổng ghi nháp dùng lại (§7.3 điểm 23)."""
+	return NppLoi(f"GIA_KHONG_HOP_LE: Dòng {stt} có giá / giảm giá âm.")
+
+
+def kiem_dong_phieu(dong: Iterable) -> None:
+	"""Cổng ghi nháp (§7.3 điểm 23 — đề xuất): từng dòng theo thứ tự trên phiếu, SL ≤ 0 hoặc hệ số ≤ 0 → `SO_LUONG_KHONG_HOP_LE`, rồi giá / giảm
+	âm → `GIA_KHONG_HOP_LE` (thứ tự kiểm một dòng như `sua_phieu_nhap` bước 10), dừng ở lỗi đầu. `dong`: (SL, hệ số, đơn giá, giảm dòng)."""
+	for stt, (sl, hs, gia, giam) in enumerate(dong, 1):
+		if so(sl) <= 0 or so(hs if hs is not None else 1) <= 0:
+			raise loi_dong_so_luong(stt)
+		if so(gia) < 0 or so(giam) < 0:
+			raise loi_dong_gia(stt)
+
+
+def ma_lo_phieu_nhap(ma_pn: str, stt: int) -> str:
+	"""Mã lô dòng thứ `stt` của phiếu nhập: `<mã PN>-` + lpad(stt, 3, '0') (`complete_purchase_invoice` bước 10; > 999 không cắt — lpad của
+	Postgres CẮT về 3 ký tự, nhưng nppsale không có phiếu 1.000 dòng)."""
+	return f"{ma_pn}-{stt:03d}"
+
+
+CAU_HANG_DA_XUAT = ("HANG_DA_XUAT: Không huỷ được vì hàng của phiếu đã xuất bớt — {muc}. Lập phiếu trả hàng NCC hoặc phiếu điều chỉnh kho — hoặc bật "
+	"\"Cho phép bán vượt tồn kho\" (Cài đặt › Đơn vị) để huỷ: phần đã xuất thành tồn âm.")
+# §7.3 điểm 12 (đề xuất, chờ chốt): hàng THEO LÔ không bao giờ âm (CFD-05 B) — cờ bán vượt tồn đã bật mà vẫn chặn thì bỏ lời khuyên "bật …"
+CAU_HANG_DA_XUAT_LO = "HANG_DA_XUAT: Không huỷ được vì hàng của phiếu đã xuất bớt — {muc}. Lập phiếu trả hàng NCC hoặc phiếu điều chỉnh kho."
+
+
+def muc_hang_da_xuat(ten, nhap, con) -> str:
+	"""Một mục của `HANG_DA_XUAT` (`p.name || ' (nhập ' || b.qty_initial || ', còn ' || b.qty_on_hand || ')'` — cột numeric(18,6))."""
+	return f"{ten} (nhập {so6(nhap)}, còn {so6(con)})"
+
+
+def loi_hang_da_xuat(muc: Iterable[tuple[str, str]], cho_vuot_ton: bool) -> NppLoi:
+	"""`cancel_purchase_invoice` bước 8: `muc` = [(tên hàng, câu mục)] nối ` · ` theo tên (ORDER BY p.name; hoà tên giữ thứ tự dòng). Cờ bán vượt
+	tồn TẮT → nguyên câu nppsale; BẬT (chỉ còn hàng theo lô / hàng không cho âm chặn) → câu riêng §7.3 điểm 12."""
+	ds = " · ".join(c for _t, c in sorted(muc, key=lambda x: x[0]))
+	return NppLoi((CAU_HANG_DA_XUAT_LO if cho_vuot_ton else CAU_HANG_DA_XUAT).format(muc=ds))
+
+
+# ------------------------------------------------------------------------------------------------ bảng giá nhập (mig 234)
+def chu_json(v) -> str | None:
+	"""`d->>'k'` của jsonb: thiếu khoá / JSON null → None; chuỗi → nguyên văn; bool → `true` / `false`; số → chữ số như jsonb in (không dạng
+	mũ: 12345.6 → `12345.6`, 1e-7 → `0.0000001`); mảng / object → JSON."""
+	if v is None:
+		return None
+	if isinstance(v, str):
+		return v
+	if isinstance(v, bool):
+		return "true" if v else "false"
+	if isinstance(v, (int, float, Decimal)):
+		return format(so(v), "f")
+	return json.dumps(v, ensure_ascii=False, separators=(", ", ": "))
+
+
+_SO_NUMERIC = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?")
+
+
+def so_numeric(chu: str) -> Decimal | None:
+	"""`text::numeric` của Postgres trên chữ đã btrim: số thập phân / dạng mũ; không phải số → None. (`NaN` / `Infinity` — numeric của PG16 nhận —
+	coi như không phải số: Currency của Frappe không giữ được.)"""
+	if not _SO_NUMERIC.fullmatch(chu or ""):
+		return None
+	return Decimal(chu)
+
+
+def tron_dong(x) -> Decimal:
+	"""`round(numeric)` của Postgres: về số nguyên, nửa ra xa 0 (12345.6 → 12346, 2.5 → 3)."""
+	return so(x).quantize(Decimal(1), rounding=ROUND_HALF_UP)
+
+
+def dong_gia_nhap(d) -> tuple[str, str, str | None]:
+	"""Một phần tử `p_dong` của `luu_gia_nhap` (mig 234 bước 3): (mặt hàng, đơn vị đã btrim, chữ giá đã btrim | None = thiếu khoá / JSON null).
+	Thiếu mặt hàng hoặc đơn vị → `GIA_NHAP_SAI: thiếu mặt hàng / đơn vị`. Phần tử không phải object → `->>` ra NULL ở mọi khoá."""
+	d = d if isinstance(d, Mapping) else {}
+	sp = chu_json(d.get("product_id"))
+	sp = None if sp in (None, "") else sp
+	dv = (chu_json(d.get("unit_name")) or "").strip()
+	if sp is None or dv == "":
+		raise NppLoi("GIA_NHAP_SAI: thiếu mặt hàng / đơn vị")
+	gia = chu_json(d.get("price"))
+	return sp, dv, None if gia is None else gia.strip()
+
+
+def gia_nhap_so(chu: str | None) -> Decimal | None:
+	"""Giá của một phần tử (sau khi đã kiểm mặt hàng / đơn vị — bước 4): None = xoá giá (chữ rỗng / thiếu / JSON null — bước 5); không phải số →
+	`GIA_NHAP_SAI: giá "<chữ>" không phải số`; âm → `GIA_NHAP_AM: giá nhập không được âm` (0 được); còn lại → `round()` về đồng."""
+	if chu is None or chu == "":
+		return None
+	g = so_numeric(chu)
+	if g is None:
+		raise NppLoi(f'GIA_NHAP_SAI: giá "{chu}" không phải số')
+	if g < 0:
+		raise NppLoi("GIA_NHAP_AM: giá nhập không được âm")
+	return tron_dong(g)
+
+
+def ngay_gia_tay(cu, hom_nay) -> date:
+	"""`luu_gia_nhap` sửa tay: `effective_date = GREATEST(cũ, hôm nay VN)` (giá tay là giá mới nhất — phiếu đề ngày trước không đè lại)."""
+	return max(_ngay(cu), _ngay(hom_nay)) if cu else _ngay(hom_nay)
+
+
+def dong_ghi_gia(dong: Iterable[Mapping]) -> dict[tuple[str, str], Decimal]:
+	"""`_ghi_gia_nhap_tu_phieu`: mỗi (mặt hàng, đơn vị) lấy dòng DƯỚI cùng (`sort_order DESC NULLS LAST, id DESC`) có mặt hàng, đơn vị khác rỗng
+	(btrim) và đơn giá > 0 (dòng 0 đ — hàng tặng — bỏ); giá = đơn giá TRƯỚC giảm dòng, chưa VAT, không làm tròn. `dong`: {product_id,
+	unit_name, unit_price, sort_order} theo thứ tự trên phiếu."""
+	ra: dict[tuple[str, str], Decimal] = {}
+	for d in dong:  # dòng sau đè dòng trước = "dòng dưới cùng" (sort_order tăng dần như thứ tự trên phiếu)
+		sp, dv, gia = d.get("product_id"), (d.get("unit_name") or "").strip(), so(d.get("unit_price"))
+		if sp and dv and gia > 0:
+			ra[(sp, d.get("unit_name"))] = gia
+	return ra
+
+
+def duoc_de_gia(ngay_dang_luu, ngay_phieu) -> bool:
+	"""Giá từ phiếu chỉ đè giá đang lưu khi `effective_date` đang lưu ≤ ngày phiếu (`ON CONFLICT … WHERE g.effective_date <= EXCLUDED…`)."""
+	return ngay_dang_luu is None or _ngay(ngay_dang_luu) <= _ngay(ngay_phieu)
