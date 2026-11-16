@@ -147,6 +147,26 @@ class TestSql(unittest.TestCase):
 			S.ke_hoach_doc({"bang": "khong_co_bang"}, D.NguCanh(user="a"))
 		self.assertEqual(e.exception.ma, "42P01")
 
+	def test_sap_theo_cot_bang_long_mot(self):
+		"""`.order('customer(store_name)')` (PostgREST: sắp theo cột bảng lồng NHIỀU-MỘT có trong select — đặc tả kho_mua §4.1, `/payables`
+		sắp `supplier(name)`): câu con lấy cột của dòng nối, kèm vế RLS của bảng đích; bảng lồng không trong select → PGRST108; một-nhiều →
+		PGRST118."""
+		nc = D.NguCanh(user="nv@x", vai="sales")
+		kh, _ = S.ke_hoach_doc({"bang": "sales_orders", "select": "id, customer:customers(store_name)", "range": [0, 9],
+			"thu_tu": [{"cot": "customer(store_name)", "tang": False, "null_dau": False}, {"cot": "id"}]}, nc)
+		self.assertIn("ORDER BY ((SELECT q_o0.`customer_name` FROM `tabCustomer` q_o0 WHERE q_o0.`name` = q_b.`customer` AND "
+			"(q_o0.`name` IN (SELECT customer FROM `tabNPP Phan Cong Khach` WHERE user = %(p1)s)) LIMIT 1) IS NULL) ASC, (SELECT q_o0.`customer_name`",
+			kh.sql)
+		self.assertIn("LIMIT 1) DESC, (q_b.`name` IS NULL) ASC, q_b.`name` ASC LIMIT 10 OFFSET 0", kh.sql)
+		self.assertEqual(kh.tham["p1"], "nv@x")
+		with self.assertRaises(S.LoiCong) as e:
+			S.ke_hoach_doc({"bang": "sales_orders", "select": "id", "thu_tu": [{"cot": "customer(store_name)"}]}, nc)
+		self.assertEqual((e.exception.ma, e.exception.thong_diep), ("PGRST108", "'customer' is not an embedded resource in this request"))
+		with self.assertRaises(S.LoiCong) as e:
+			S.ke_hoach_doc({"bang": "sales_orders", "select": "id, lines:sales_order_lines(quantity)",
+				"thu_tu": [{"cot": "lines(quantity)"}]}, nc)
+		self.assertEqual((e.exception.ma, e.exception.thong_diep), ("PGRST118", "A related order on 'lines' is not possible"))
+
 	def test_or_va_null_va_bool(self):
 		kh, _ = S.ke_hoach_doc({"bang": "users", "select": "id",
 			"loc": [{"op": "or", "bieu_thuc": "full_name.is.null,full_name.ilike.*an*"}, {"op": "eq", "cot": "enabled", "gt": True}]},

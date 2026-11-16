@@ -177,10 +177,20 @@ def _tt(doc) -> str:
 	return K.trang_thai_pi(doc.docstatus, doc.get("npp_huy_luc"))
 
 
+def han_lai(doc) -> None:
+	"""Hạn thanh toán của LÕI (`due_date` + lịch thanh toán) tính lại mỗi lần lưu: lõi chỉ tính khi trống, rồi giữ theo lịch đã lập — sửa ngày HĐ
+	NCC của phiếu tạm sang sau hạn cũ là lõi từ chối "Due Date cannot be before Supplier Invoice Date" (`party.py:753`, `accounts_controller.py:1165`).
+	nppsale không có hạn cho nợ phiếu nhập (`payables.due_date` NULL — hạn của app là `npp_han_thanh_toan`), nên để lõi tính lại theo ngày HĐ /
+	ngày ghi sổ hiện tại (§3.1 bước 7)."""
+	doc.due_date = None
+	doc.set("payment_schedule", [])
+
+
 def _luu_nhap(doc, cd) -> None:
 	"""Lưu phiếu tạm: kiểm dòng (§7.3 điểm 23) → dựng lại bảng thuế → lưu (PI nháp không dòng: bỏ kiểm bắt buộc của bảng items)."""
 	K.kiem_dong_phieu((d.qty, d.conversion_factor, d.price_list_rate, d.get("npp_giam_dong")) for d in sorted(doc.items, key=lambda x: x.idx))
 	doc.flags.ignore_permissions = True  # trước dung_thue: set_missing_values của lõi đọc Supplier theo quyền người gọi nếu không có cờ
+	han_lai(doc)
 	dung_thue(doc, cd)
 	doc.flags.ignore_mandatory = not doc.items
 	doc.save()
@@ -412,6 +422,7 @@ def _chuan_bi_pn(p_invoice_id=None, p_reason=None):
 
 def _da_chuan_bi(p_invoice_id) -> tuple[str | None, set]:
 	x = getattr(frappe.local, "_npp_pn", None)
+	frappe.local._npp_pn = None  # dùng MỘT lần — lời gọi nội bộ sau đó (cùng tiến trình) đọc lại, không lấy ảnh cũ của lượt trước
 	if x and x[0] == _chu(p_invoice_id):
 		return x[1], x[2]
 	ten = _hieu_luc(_chu(p_invoice_id))  # gọi nội bộ không qua cổng
@@ -500,6 +511,7 @@ def hoan_thanh(r, nc, cd) -> str:
 		gan_goi_lo(d, lap_goi_lo("Inward", DT, d.item_code, kho_lo, {ma: base}, ngay, gio, cd.cong_ty))
 	doc.update({"posting_date": ngay, "posting_time": gio, "set_posting_time": 1, "update_stock": 1, "disable_rounded_total": 1,
 		"ignore_pricing_rule": 1, "buying_price_list": cd.bang_gia_nhap, "npp_hoan_thanh_luc": luc, "npp_han_thanh_toan": None})
+	han_lai(doc)  # ngày ghi sổ đổi sang hôm nay — hạn của lõi tính lại
 	doc.flags.ignore_permissions = True
 	dung_thue(doc, cd)
 	doc.save()
@@ -557,6 +569,7 @@ def huy(ten: str, ly_do: str | None, nc, cd) -> None:
 	lo_dong = _lo_cua_dong(ten)
 	cho = bool(cd.get("cho_ban_vuot_ton"))
 	chan = []
+	khong_lo: dict = {}  # (mặt hàng, kho) → [tên hàng, Σ SL nhập, mặt hàng cho âm]
 	for d in sorted(doc.items, key=lambda x: x.idx):
 		it = frappe.db.get_value("Item", d.item_code, ["item_name", "has_batch_no", "allow_negative_stock"], as_dict=True) or frappe._dict()
 		nhap = flt(d.stock_qty) or flt(d.qty) * flt(d.conversion_factor or 1)
@@ -566,10 +579,15 @@ def huy(ten: str, ly_do: str | None, nc, cd) -> None:
 			con = _ton_lo(lo, d.warehouse)
 			if abs(con - nhap) > 1e-6:
 				chan.append((ten_hang, K.muc_hang_da_xuat(ten_hang, nhap, con)))
-		else:  # hàng không lô: Bin của kho dòng thiếu số nhập → chặn trừ khi mặt hàng cho âm + NPP cho bán vượt tồn (mig 238)
-			con = flt(frappe.db.get_value("Bin", {"item_code": d.item_code, "warehouse": d.warehouse}, "actual_qty"))
-			if con < nhap - 1e-6 and not (it.allow_negative_stock and cho):
-				chan.append((ten_hang, K.muc_hang_da_xuat(ten_hang, nhap, con)))
+		else:  # hàng không lô: gộp mọi dòng cùng (mặt hàng, kho) — Bin là MỘT số cho cả kho
+			x = khong_lo.setdefault((d.item_code, d.warehouse), [ten_hang, 0.0, bool(it.allow_negative_stock)])
+			x[1] += nhap
+	for (hang, kho), (ten_hang, nhap, cho_am) in khong_lo.items():
+		# Bin của kho thiếu số nhập → chặn, trừ khi mặt hàng cho âm + NPP cho bán vượt tồn (câu 14 B, mig 238); không gộp thì hai dòng cùng
+		# mặt hàng mỗi dòng "đủ" một mình mà cả phiếu thiếu — huỷ đẩy Bin âm, lõi báo NegativeStockError thay câu của app
+		con = flt(frappe.db.get_value("Bin", {"item_code": hang, "warehouse": kho}, "actual_qty"))
+		if con < nhap - 1e-6 and not (cho_am and cho):
+			chan.append((ten_hang, K.muc_hang_da_xuat(ten_hang, nhap, con)))
 	if chan:
 		raise K.loi_hang_da_xuat(chan, cho)
 	doc.update({"npp_ly_do_huy": ly_do, "npp_huy_luc": now_datetime(), "npp_huy_boi": _nv(nc)})

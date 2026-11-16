@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
-from frappe.utils import flt
+from frappe.utils import add_days, flt, nowdate
 
 from nppsale.cong import api
 from nppsale.cong import bang as B
@@ -132,6 +132,27 @@ class TestPhieuNhap(IntegrationTestCase):
 		self.assertEqual(ket["data"], [{"id": q}])
 		self.assertFalse(frappe.db.exists("Purchase Invoice", q))
 
+	def test_sua_ngay_hd_phieu_tam(self):
+		"""Hạn thanh toán của lõi tính lại mỗi lần lưu: lõi giữ hạn theo lịch thanh toán lập lúc tạo nháp, nên sửa ngày HĐ NCC của phiếu tạm sang SAU
+		hạn ấy từng hỏng "Due Date cannot be before Supplier Invoice Date" (nppsale không có hạn cho nợ phiếu nhập); phiếu tạm lập hôm trước,
+		hoàn thành hôm nay vẫn được."""
+		ten = self._phieu(dong=[("A", "hộp", 5, 1000, 0, 1)], invoice_date=add_days(nowdate(), -5))
+		loc = [{"op": "eq", "cot": "id", "gt": ten}]
+		ket = self._cong("TK", {"bang": "purchase_invoices", "hanh_dong": "update", "select": "id, invoice_date",
+			"gia_tri": {"invoice_date": add_days(nowdate(), 3)}, "loc": loc})
+		self.assertEqual(ket.get("data"), [{"id": ten, "invoice_date": add_days(nowdate(), 3)}], ket)
+		frappe.db.set_value("Purchase Invoice", ten, "posting_date", add_days(nowdate(), -2))  # nháp lập từ hôm trước
+		self.assertEqual(self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten}).get("data"), ten)
+		self.assertEqual([str(x) for x in frappe.db.get_value("Purchase Invoice", ten, ["posting_date", "bill_date", "due_date"])],
+			[nowdate(), add_days(nowdate(), 3), add_days(nowdate(), 3)])
+		# nháp lưu lần cuối hai ngày trước (hạn lõi = max(ngày HĐ, ngày lập) = hôm kia): Hoàn thành tính lại hạn theo ngày ghi sổ mới
+		hai = self._phieu(dong=[("B", "gói", 1, 5000, 0, 1)], invoice_date=add_days(nowdate(), -5))
+		frappe.db.set_value("Purchase Invoice", hai, {"posting_date": add_days(nowdate(), -2), "due_date": add_days(nowdate(), -2)})
+		frappe.db.set_value("Payment Schedule", {"parent": hai}, "due_date", add_days(nowdate(), -2))
+		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": hai})
+		self.assertEqual([str(x) for x in frappe.db.get_value("Purchase Invoice", hai, ["docstatus", "posting_date", "due_date"])],
+			["1", nowdate(), nowdate()])
+
 	def test_dong_sai_chan_luc_luu(self):
 		"""§7.3 điểm 23: lõi không nhận PI nháp dòng SL 0 → cổng chặn bằng câu của sua_phieu_nhap; giá / giảm âm cũng chặn (nppsale không)."""
 		ten = self._phieu()
@@ -165,6 +186,87 @@ class TestPhieuNhap(IntegrationTestCase):
 		self.assertEqual(ket["data"], [{"price": 12000, "source_invoice_id": None, "invoice": None}])
 		self.assertEqual(self._cong("NV", {"bang": "purchase_price_lists", "select": "id", "loc": [{"op": "eq", "cot": "product_id",
 			"gt": self.ma["A"]}]})["data"], [])
+
+	def test_cau_doc_giao_dien(self):
+		"""Đúng các câu đọc giao diện nppsale gửi (chuỗi select / lọc / sắp chép từ src/ — đặc tả §4.2, §4.4): không câu nào được hỏng ở cổng
+		(PGRST200 / 42703 là màn trắng), số trả về đúng phiếu."""
+		p1 = self._phieu(dong=[("A", "thùng", 2, 240000, 0, 24)], invoice_number="HD-1", invoice_date="2026-10-01")
+		p2 = self._phieu(supplier_id=self.ma["S2"], dong=[("B", "gói", 10, 5000, 0, 1)])
+		for x in (p1, p2):
+			self.assertEqual(self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": x})["data"], x)
+		p3 = self._phieu(dong=[("B", "gói", 1, 5000, 0, 1)])  # phiếu tạm
+		eq = lambda cot, gt: {"op": "eq", "cot": cot, "gt": gt}  # noqa: E731
+		# POS nạp phiếu (components/pos/purchase-screen.tsx:313–317)
+		r = self._cong("TK", {"bang": "purchase_invoices", "mot": "maybe", "loc": [eq("id", p1)], "select": "id, receipt_code, supplier_id, "
+			"invoice_number, invoice_date, warehouse_zone, discount, vat, vat_override, notes, status, supplier:suppliers(name, code), "
+			"lines:purchase_invoice_lines(id, product_id, unit_name, quantity, unit_price, line_discount, conversion_factor, notes, "
+			"product:products(name, sku))"})
+		self.assertNotIn("error", r, r)
+		self.assertEqual((r["data"]["receipt_code"], r["data"]["supplier"]["name"], r["data"]["status"], r["data"]["warehouse_zone"]),
+			(p1, "NCC Một", "completed", "sale"))
+		self.assertEqual([(x["quantity"], x["unit_price"], x["conversion_factor"], x["product"]["name"]) for x in r["data"]["lines"]],
+			[(2, 240000, 24, "Hàng A")])
+		# chi tiết (purchasing/receipts/[id]/page.tsx:85–90)
+		r = self._cong("KT", {"bang": "purchase_invoices", "mot": "maybe", "loc": [eq("id", p1)], "select": "id, receipt_code, invoice_number, "
+			"invoice_date, status, warehouse_zone, subtotal, vat, discount, total, notes, cancel_reason, completed_at, stock_entry_id, payable_id, "
+			"supplier:suppliers(name, code)"})
+		self.assertEqual((r["data"]["invoice_date"], r["data"]["total"], r["data"]["stock_entry_id"], bool(r["data"]["payable_id"])),
+			("2026-10-01", 480000, p1, True))
+		r = self._cong("KT", {"bang": "purchase_invoice_lines", "loc": [eq("invoice_id", p1)], "thu_tu": [{"cot": "sort_order"}],
+			"select": "id, sort_order, unit_name, quantity, unit_price, line_discount, vat_rate, conversion_factor, line_total, notes, "
+			"product:products(name, sku, base_unit)"})
+		self.assertEqual([(x["sort_order"], x["line_total"], x["product"]["base_unit"]) for x in r["data"]],
+			[(1, 480000, frappe.db.get_value("Item", self.ma["A"], "stock_uom"))])
+		# danh sách (purchasing/receipts/page.tsx:126–135): org, created_at giảm dần rồi id, đếm đủ
+		r = self._cong("QL", {"bang": "purchase_invoices", "count": "exact", "range": [0, 999], "loc": [eq("org_id", self.ma["org"])],
+			"thu_tu": [{"cot": "created_at", "tang": False}, {"cot": "id"}], "select": "id, receipt_code, invoice_number, invoice_date, status, "
+			"total, warehouse_zone, subtotal, vat, vat_override, discount, notes, created_by, created_at, completed_at, supplier:suppliers(name, code)"})
+		cua_bai = [x for x in r["data"] if x["id"] in (p1, p2, p3)]
+		self.assertEqual([(x["id"], x["status"], x["created_by"]) for x in cua_bai],
+			[(p3, "draft", self.ma["u:TK"]), (p2, "completed", self.ma["u:TK"]), (p1, "completed", self.ma["u:TK"])])
+		# báo cáo NCC (reports/suppliers/page.tsx:151–163) — chỉ phiếu hoàn thành trong kỳ, po_id luôn null
+		r = self._cong("KT", {"bang": "purchase_invoices", "count": "exact", "range": [0, 999], "thu_tu": [{"cot": "id"}],
+			"loc": [eq("org_id", self.ma["org"]), {"op": "gte", "cot": "invoice_date", "gt": "2026-09-01"},
+				{"op": "lte", "cot": "invoice_date", "gt": "2026-10-31"}, eq("status", "completed")],
+			"select": "id, supplier_id, invoice_number, invoice_date, total, status, po_id"})
+		self.assertEqual([(x["id"], x["po_id"]) for x in r["data"] if x["id"] in (p1, p2, p3)], [(p1, None)])
+		# phiếu gốc khi trả NCC (lib/pos/load.ts:254–275)
+		r = self._cong("TK", {"bang": "purchase_invoices", "limit": 50, "loc": [eq("supplier_id", self.ma["S1"]), eq("status", "completed")],
+			"thu_tu": [{"cot": "invoice_date", "tang": False}], "select": "id, receipt_code, invoice_date"})
+		self.assertIn({"id": p1, "receipt_code": p1, "invoice_date": "2026-10-01"}, r["data"])
+		self.assertNotIn(p3, [x["id"] for x in r["data"]])
+		# sổ nợ NCC tra ngược phiếu theo khoản nợ (lib/payables/so-no-ncc.ts:171)
+		no1 = frappe.db.get_value("NPP Cong No NCC", {"chung_tu": p1}, "name")
+		r = self._cong("KT", {"bang": "purchase_invoices", "count": "exact", "range": [0, 999], "thu_tu": [{"cot": "id"}],
+			"loc": [{"op": "in", "cot": "payable_id", "gt": [no1]}], "select": "id, payable_id, receipt_code"})
+		self.assertEqual(r["data"], [{"id": p1, "payable_id": no1, "receipt_code": p1}])
+		# ô tìm /payables tra mã phiếu nhập → khoản nợ (lib/search/list-search.ts:259–266)
+		r = self._cong("KT", {"bang": "purchase_invoices", "limit": 201, "thu_tu": [{"cot": "payable_id"}], "select": "payable_id",
+			"loc": [{"op": "or", "bieu_thuc": f"receipt_code.ilike.*{p1}*"}, eq("org_id", self.ma["org"])]})
+		self.assertEqual(r["data"], [{"payable_id": no1}])
+
+	def test_cong_no_ncc_sap_theo_ten_ncc(self):
+		"""§4.1: `/payables` sắp theo cột bảng lồng nhiều-một `.order('supplier(name)')` (SAP_XEP_CONG_NO_NCC) — thiếu thì bấm cột "Nhà cung cấp"
+		là màn báo 42703. Bảng lồng không có trong select → PGRST108 như PostgREST."""
+		p1 = self._phieu(dong=[("A", "hộp", 1, 10000, 0, 1)])
+		p2 = self._phieu(supplier_id=self.ma["S2"], dong=[("B", "gói", 1, 5000, 0, 1)])
+		for x in (p1, p2):
+			self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": x})
+		ncc = [self.ma["S1"], self.ma["S2"]]
+		chon = "id, invoice_number, amount, paid, due_date, status, opening_balance, supplier:suppliers(name, code)"
+		for tang, mong in ((True, ["NCC Hai", "NCC Một"]), (False, ["NCC Một", "NCC Hai"])):
+			r = self._cong("CHU", {"bang": "payables", "select": chon, "count": "exact", "range": [0, 49],
+				"loc": [{"op": "in", "cot": "supplier_id", "gt": ncc}],
+				"thu_tu": [{"cot": "supplier(name)", "tang": tang, "null_dau": False}, {"cot": "due_date"}, {"cot": "id"}]})
+			self.assertNotIn("error", r, r)
+			self.assertEqual(([x["supplier"]["name"] for x in r["data"]], r["count"]), (mong, 2), tang)
+		r = self._cong("CHU", {"bang": "payables", "select": "id, amount", "thu_tu": [{"cot": "supplier(name)"}]})
+		self.assertEqual((r["error"]["code"], r["error"]["message"]), ("PGRST108", "'supplier' is not an embedded resource in this request"))
+		# bốn ô tổng (payables/page.tsx:104–110): khoản chưa trả, không kẹp
+		r = self._cong("KT", {"bang": "payables", "count": "exact", "range": [0, 999], "thu_tu": [{"cot": "id"}],
+			"loc": [{"op": "neq", "cot": "status", "gt": "paid"}, {"op": "in", "cot": "supplier_id", "gt": ncc}],
+			"select": "amount, paid, due_date, supplier_id, status"})
+		self.assertEqual(sorted(x["amount"] for x in r["data"]), [5000, 10000])
 
 	def test_cong_no_ncc_doc_theo_vai(self):
 		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)], invoice_number="HD-9")
@@ -206,6 +308,17 @@ class TestPhieuNhap(IntegrationTestCase):
 			"hoặc phiếu điều chỉnh kho.")
 		self.assertEqual(self.repost, [])
 
+	def test_huy_hang_khong_lo_gop_dong_cung_hang(self):
+		"""Hai dòng cùng mặt hàng không lô trong một phiếu: Bin là MỘT số cho cả kho → so với TỔNG nhập (20), không từng dòng (10 — mỗi dòng
+		"đủ" một mình mà cả phiếu thiếu)."""
+		ten = self._phieu(dong=[("X", "cai", 10, 10000, 0, 1), ("X", "cai", 10, 12000, 0, 1)])
+		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})
+		frappe.db.set_value("Bin", {"item_code": self.ma["X"], "warehouse": self.cd.kho_ban}, "actual_qty", 15)  # như đã bán 5
+		self._loi(self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": ten, "p_reason": "x"}), "P0001",
+			"HANG_DA_XUAT: Không huỷ được vì hàng của phiếu đã xuất bớt — Hàng không lô (nhập 20.000000, còn 15.000000). Lập phiếu trả hàng NCC "
+			"hoặc phiếu điều chỉnh kho — hoặc bật \"Cho phép bán vượt tồn kho\" (Cài đặt › Đơn vị) để huỷ: phần đã xuất thành tồn âm.")
+		self.assertEqual(frappe.db.get_value("Purchase Invoice", ten, "docstatus"), 1)
+
 	def test_huy_tat_lo_xep_repost_khoi_phuc_mo_lai(self):
 		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1), ("C", "chai", 2, 15000, 0, 1)])
 		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})
@@ -224,6 +337,40 @@ class TestPhieuNhap(IntegrationTestCase):
 			{"id": f"{ten}-1", "trang_thai": "completed", "da_khoi_phuc": False, "so_lo": 0})
 		self.assertEqual(self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})["data"], f"{ten}-1")
 		self.assertEqual(frappe.db.get_value("Purchase Invoice", f"{ten}-1", ["npp_kho_nhap", "set_warehouse"]), (self.cd.kho_ban, None))
+		# tờ khôi phục ghi sổ đúng NGÀY + GIỜ gốc (thẻ kho giữ chỗ cũ — nppsale đặt lại phiếu kho `posted` giữ `posted_at`), mốc hoàn thành gốc
+		goc, moi = (frappe.db.get_value("Purchase Invoice", x, ["posting_date", "posting_time", "npp_hoan_thanh_luc"]) for x in (ten, f"{ten}-1"))
+		self.assertEqual([str(x) for x in moi], [str(x) for x in goc])
+
+	def test_khoa_theo_chuoi_amend(self):
+		"""Tên BẤT KỲ tờ nào của chuỗi amend → làm trên tờ CUỐI: bước chuẩn bị (đọc thường — khoá Bin đúng mặt hàng của tờ cuối) VÀ lúc khoá (đi
+		tiếp theo `amended_from` dưới khoá — tờ amend lập đúng lúc giữa hai bước)."""
+		from nppsale.rpc import phieu_nhap as P
+
+		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)])
+		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})
+		self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": ten, "p_reason": "x"})
+		self._rpc("TK", "khoi_phuc_phieu_nhap", {"p_invoice_id": ten})
+		P._chuan_bi_pn(ten)
+		self.assertEqual(frappe.local._npp_pn, (ten, f"{ten}-1", {self.ma["A"]}))
+		self.assertEqual(P._da_chuan_bi(ten), (f"{ten}-1", {self.ma["A"]}))
+		self.assertIsNone(frappe.local._npp_pn)  # dùng một lần
+		r = P._khoa(ten, set(), self.cd)  # tên cũ đưa thẳng vào bước khoá (như tờ amend vừa lập sau bước chuẩn bị)
+		self.assertEqual((r.name, r.docstatus), (f"{ten}-1", 1))
+		self.assertIsNone(P._khoa("PN-KHONG-CO", set(), self.cd))
+
+	def test_huy_vai(self):
+		"""Cửa vai của cancel_purchase_invoice (mig 166): ngoài bốn vai mua hàng → FORBIDDEN 42501, KỂ CẢ phiếu tạm; quản lý / kế toán huỷ được."""
+		cau = "FORBIDDEN: vai trò của bạn không được làm thao tác kho / mua hàng này."
+		tam = self._phieu(dong=[("A", "hộp", 1, 10000, 0, 1)])
+		xong = self._phieu(dong=[("B", "gói", 1, 5000, 0, 1)])
+		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": xong})
+		for x in (tam, xong):
+			self._loi(self._rpc("NV", "cancel_purchase_invoice", {"p_invoice_id": x, "p_reason": "x"}), "42501", cau)
+		self.assertEqual([frappe.db.get_value("Purchase Invoice", x, ["docstatus", "npp_huy_luc"]) for x in (tam, xong)], [(0, None), (1, None)])
+		self.assertEqual(self._rpc("QL", "cancel_purchase_invoice", {"p_invoice_id": tam, "p_reason": None})["data"], tam)
+		self.assertEqual(self._rpc("KT", "cancel_purchase_invoice", {"p_invoice_id": xong, "p_reason": "y"})["data"], xong)
+		self._loi(self._rpc("NV", "cancel_purchase_invoice", {"p_invoice_id": "PN-KHONG-CO"}), "P0001",
+			"PHIEU_KHONG_TON_TAI: Không tìm thấy phiếu nhập này.")  # không thấy phiếu báo trước cửa vai (thứ tự nppsale)
 
 	def test_gia_nhap_khong_tang_phien(self):
 		"""Bảng giá nhập không phải nguồn tăng phiên danh mục bán (BP — `thay_doi_gia_ban` chỉ dòng bán)."""
@@ -255,6 +402,39 @@ class TestPhieuNhap(IntegrationTestCase):
 			"SO_LUONG_KHONG_HOP_LE: Dòng 2 có số lượng không lớn hơn 0.")
 		self.assertEqual((frappe.db.count("Batch", {"reference_name": ten}), frappe.db.count("NPP Cong No NCC", {"chung_tu": ten})), (0, 0))
 
+	def _phieu_chi(self, tien) -> str:
+		"""Phiếu chi trả NCC `PCNCC-` (S1, tiền mặt) lập thẳng — `chi_tra_ncc` dựng ở M3."""
+		pe = frappe.new_doc("Payment Entry")
+		pe.update({"naming_series": "PCNCC-.####", "payment_type": "Pay", "company": self.cd.cong_ty, "mode_of_payment": self.cd.hinh_thuc["cash"],
+			"party_type": "Supplier", "party": self.ma["S1"], "npp_loai": "phieu_chi_ncc", "paid_amount": tien, "received_amount": tien,
+			"paid_from": frappe.get_cached_value("Company", self.cd.cong_ty, "default_cash_account"),
+			"paid_to": frappe.get_cached_value("Company", self.cd.cong_ty, "default_payable_account"), "source_exchange_rate": 1,
+			"target_exchange_rate": 1})
+		pe.flags.ignore_permissions = True
+		pe.insert()
+		pe.submit()
+		return pe.name
+
+	@staticmethod
+	def _no(pi):
+		r = frappe.db.get_value("NPP Cong No NCC", {"chung_tu": pi}, ["so_tien", "da_tra", "trang_thai"], as_dict=True)
+		return (flt(r.so_tien), flt(r.da_tra), r.trang_thai) if r else None
+
+	def test_hoan_thanh_va_khoi_phuc_don_tra_truoc(self):
+		"""§2.8 / mig 242 (`trg_tra_truoc_vao_no_moi`): tiền phiếu chi NCC trả trước (chưa có khoản nợ) dồn vào khoản nợ MỚI lúc Hoàn thành phiếu
+		nhập; huỷ phiếu trả tiền về trả trước; khôi phục (tờ amend ghi sổ) dồn lại."""
+		pe = self._phieu_chi(60000)
+		self.assertEqual(frappe.db.get_value("NPP Cong No NCC", {"phieu_chi": pe}, "da_tra"), 60000)  # dòng trả trước
+		pn = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)])
+		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": pn})
+		self.assertEqual(self._no(pn), (100000, 60000, "partial"))
+		self.assertFalse(frappe.db.exists("NPP Cong No NCC", {"phieu_chi": pe}))  # dồn hết
+		self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": pn, "p_reason": "x"})
+		self.assertEqual((self._no(pn), frappe.db.get_value("NPP Cong No NCC", {"phieu_chi": pe}, "da_tra")), (None, 60000))
+		moi = self._rpc("TK", "khoi_phuc_phieu_nhap", {"p_invoice_id": pn})["data"]["id"]
+		self.assertEqual((moi, self._no(moi)), (f"{pn}-1", (100000, 60000, "partial")))
+		self.assertFalse(frappe.db.exists("NPP Cong No NCC", {"phieu_chi": pe}))
+
 	def test_huy_tien_phieu_chi_don_sang_no_khac(self):
 		"""mig 242: phần phiếu chi NCC đã trừ vào phiếu → lõi gỡ khi huỷ, method dồn sang khoản nợ khác còn mở của NCC (cũ nhất trước)."""
 		from nppsale.su_kien import cong_no_ncc as N
@@ -263,22 +443,10 @@ class TestPhieuNhap(IntegrationTestCase):
 		pn2 = self._phieu(dong=[("B", "gói", 12, 5000, 0, 1)])
 		for x in (pn1, pn2):
 			self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": x})
-		pe = frappe.new_doc("Payment Entry")
-		pe.update({"naming_series": "PCNCC-.####", "payment_type": "Pay", "company": self.cd.cong_ty, "mode_of_payment": self.cd.hinh_thuc["cash"],
-			"party_type": "Supplier", "party": self.ma["S1"], "npp_loai": "phieu_chi_ncc", "paid_amount": 60000, "received_amount": 60000,
-			"paid_from": frappe.get_cached_value("Company", self.cd.cong_ty, "default_cash_account"),
-			"paid_to": frappe.get_cached_value("Company", self.cd.cong_ty, "default_payable_account"), "source_exchange_rate": 1,
-			"target_exchange_rate": 1})
-		pe.flags.ignore_permissions = True
-		pe.insert()
-		pe.submit()
+		pe = self._phieu_chi(60000)
 		N.don_tra_truoc_ncc(self.ma["S1"])
-
-		def so(pi):
-			r = frappe.db.get_value("NPP Cong No NCC", {"chung_tu": pi}, ["so_tien", "da_tra", "trang_thai"], as_dict=True)
-			return (flt(r.so_tien), flt(r.da_tra), r.trang_thai) if r else None
-
+		so = self._no
 		self.assertEqual((so(pn1), so(pn2)), ((60000, 60000, "paid"), (60000, 0, "open")))
 		self.assertEqual(self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": pn1, "p_reason": "x"})["data"], pn1)
 		self.assertEqual((so(pn1), so(pn2)), (None, (60000, 60000, "paid")))
-		self.assertFalse(frappe.db.exists("NPP Cong No NCC", {"phieu_chi": pe.name}))  # dồn hết — không còn dòng trả trước
+		self.assertFalse(frappe.db.exists("NPP Cong No NCC", {"phieu_chi": pe}))  # dồn hết — không còn dòng trả trước

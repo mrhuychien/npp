@@ -147,7 +147,7 @@ def _cot_chon(bang: D.Bang, nut_chon: list, bd: str, ts_unused=None):
 def _sap_xep(bang: D.Bang, thu_tu: list[dict], bd: str) -> str:
 	phan = []
 	for o in thu_tu or []:
-		e, _ = _bieu(bang, o["cot"], bd)
+		e = o["_bieu"] if o.get("_bieu") else _bieu(bang, o["cot"], bd)[0]
 		tang = o.get("tang", True)
 		null_dau = o.get("null_dau")
 		if null_dau is None:
@@ -155,6 +155,40 @@ def _sap_xep(bang: D.Bang, thu_tu: list[dict], bd: str) -> str:
 		phan.append(f"({e} IS NULL) {'DESC' if null_dau else 'ASC'}")
 		phan.append(f"{e} {'ASC' if tang else 'DESC'}")
 	return (" ORDER BY " + ", ".join(phan)) if phan else ""
+
+
+def _thu_tu_long_mot(bang: D.Bang, thu_tu: list[dict], nut_long: list, nc: D.NguCanh, ts: BoThamSo, bd: str) -> list[dict]:
+	"""`.order('supplier(name)')` — PostgREST sắp bảng gốc theo cột của bảng lồng NHIỀU-MỘT có trong select (`supplier:suppliers(name, code)`;
+	đặc tả kho_mua §4.1: `/payables`, `/purchasing/invoices` — `SAP_XEP_CONG_NO_NCC`, `SAP_XEP_HD_MUA` của src/lib/list/sap-xep-may-chu.ts).
+	Biểu thức sắp = câu con lấy cột ấy của dòng nối (kèm vế RLS của bảng đích — dòng không thấy được thì NULL như PostgREST). Bảng lồng không
+	có trong select → PGRST108; lồng một-nhiều → PGRST118 (lời PostgREST 12)."""
+	ra = []
+	for i, o in enumerate(thu_tu):
+		cot = o.get("cot") or ""
+		if not (cot.endswith(")") and "(" in cot):
+			ra.append(o)
+			continue
+		ten, _, con = cot[:-1].partition("(")
+		nl = next((x for x in nut_long if ten in (x.khoa_ra, x.ten)), None)
+		if nl is None:
+			raise LoiCong("PGRST108", f"'{ten}' is not an embedded resource in this request",
+				f"Verify that '{ten}' is included in the 'select' query parameter.")
+		qh = D.tim_quan_he(bang, nl.ten, nl.goi_y)
+		if qh is None:
+			raise LoiCong("PGRST200", f"Could not find a relationship between '{bang.ten}' and '{nl.ten}' in the schema cache")
+		if qh.nhieu:
+			raise LoiCong("PGRST118", f"A related order on '{ten}' is not possible",
+				f"'{bang.ten}' and '{qh.bang}' do not form a many-to-one or one-to-one relationship")
+		bang_dich = D.nhin(D.lay(qh.bang), nc)
+		if bang_dich is None:
+			raise LoiCong("42P01", f'relation "public.{qh.bang}" does not exist', http=404)
+		al = f"q_o{i}"
+		e_nay, _ = _bieu(bang, qh.cot_nay, bd)
+		e_kia, _ = _bieu(bang_dich, qh.cot_kia, al)
+		e_cot, _ = _bieu(bang_dich, con.strip(), al)
+		ra.append({**o, "_bieu": f"(SELECT {e_cot} FROM {bang_dich.nguon} {al} WHERE {e_kia} = {e_nay} AND {vế_rls(bang_dich, nc, al, ts)} "
+			"LIMIT 1)"})
+	return ra
 
 
 def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
@@ -211,6 +245,7 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 		sql += _sap_xep(bang, thu_tu_goc, bd) if thu_tu_goc and all(bang.cot_def(o['cot']) for o in thu_tu_goc) else ""
 		return KeHoach(sql, ts.gia_tri, None, None, cot_ra, [], co_gop=True), bang
 
+	thu_tu_goc = _thu_tu_long_mot(bang, thu_tu_goc, nut_long, nc, ts, bd)
 	if not cot:
 		cot.append((bang.cot[bang.khoa].sql.replace("{t}", bd), "c__" + bang.khoa, None, bang.cot[bang.khoa].kieu))
 	chon = [f"{c[0]} AS `{c[1]}`" for c in cot]
