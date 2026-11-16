@@ -13,11 +13,20 @@ phieu_tra(): bản ERPNext của `scripts/sql/kiem-phieu-tra.sql` (nppsale — c
 Nhóm 5 / 8 của nppsale (cấn phiếu trả ở phiếu thu kiểu cũ — applied_receipt_id) không port: bản ERPNext không có lối ấy.
 
 	bench --site <site> execute nppsale.kham_so.phieu_tra
+
+cong_no(): bản ERPNext của `scripts/sql/quet/phieu-thu-cong-no.sql` (mig 164) + bất biến bản chiếu công nợ (đặc tả phiếu thu §1.7).
+
+hddt(): hoá đơn điện tử MISA — bản Frappe của `supabase/diagnostics/einvoice_lost_refid.sql` + `einvoice_unknown_enums.sql` (đặc tả HĐĐT §6.4,
++ [Soát thiếu 2]) và các bất biến riêng của bản Frappe (tờ treo, nhật ký lượt đêm, trùng số đã chuẩn hoá, khoá Huỷ HĐ). Trả {can_xem, thong_ke}.
+
+	bench --site <site> execute nppsale.kham_so.hddt
 """
 from __future__ import annotations
 
+import json
+
 import frappe
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 DT = "NPP Phieu Tra"
 
@@ -224,3 +233,224 @@ def kham_so_cong_no() -> None:
 	frappe.db.commit()
 	if lech:
 		frappe.log_error(title=f"Khám sổ công nợ: {len(lech)} chỗ lệch", message=frappe.as_json(lech[:200], indent=1))
+
+
+# ================================================================================================ hoá đơn điện tử MISA (HĐĐT)
+NHOM_HDDT = ("1", "2", "2a", "2b", "2c", "3a", "3b", "4", "5a", "5b", "5c", "5d")  # thứ tự in
+TRAN_DONG_HDDT = 500  # mỗi nhóm in tối đa (như LIMIT 500 của einvoice_lost_refid.sql); quy mô đủ ở `thong_ke`
+QUAN_HE_DA_BIET = ("1", "3", "4", "7", "8")  # EInvoiceStatus đã đo (status.ts:40–52) — lưu bằng so_js nên so chữ
+PHAT_HANH_DA_BIET = ("0", "3")  # PublishStatus đã đo: 0 nháp, 3 đã cấp mã
+GIO_LUOT_DEM = 26  # dòng sync_run mới nhất cũ hơn 26 giờ ⇒ lịch 01:00 không chạy (scheduler tắt / hàng long không có worker)
+NGAY_TREO = 1  # `pending` gửi quá 1 ngày ⇒ vòng quét đêm không gỡ được
+
+
+def _dong_hddt(nhom: str, loai: str, chung_tu, chi_tiet: str, nen_lam: str, **them) -> dict:
+	return {"nhom": nhom, "loai": loai, "chung_tu": chung_tu, "chi_tiet": chi_tiet, "nen_lam": nen_lam, **them}
+
+
+def _ngay_vn_hddt(gio):
+	"""Giờ site → ngày VN (như `nppsale.lich.misa._ngay_vn`) — None giữ None."""
+	if not gio:
+		return None
+	from nppsale.lich.misa import _ngay_vn
+
+	return _ngay_vn(gio)
+
+
+def _ky_so(ky_hieu, so) -> str:
+	return f"{ky_hieu or '?'} · {so or '?'}"
+
+
+@frappe.whitelist()
+def hddt() -> dict:
+	frappe.only_for(("System Manager", "Administrator"))
+	return quet_hddt()
+
+
+def quet_hddt(luc=None) -> dict:
+	"""Khám sổ HĐĐT (chỉ đọc) → {can_xem: [dòng {nhom, loai, chung_tu, chi_tiet, nen_lam, …}] — rỗng là sổ sạch; thong_ke: quy mô / đếm}.
+
+	1. Tờ MẤT RefID (`misa_inv_no` có ∧ `misa_ref_id` trống — mig 099 bước 4b: cột `misa_invoice_id` kiêm hai vai, Làm mới ghi số ĐÈ RefID): không
+	   còn đường hỏi MISA (huỷ / thay thế sau này không ai biết; vòng quét bỏ qua — quét bằng khoá sai còn tệ hơn không quét). [1b] RefID TÌM LẠI ĐƯỢC
+	   từ nhật ký (truy vấn 3 của einvoice_lost_refid.sql): NPP MISA Log `publish` / `success` mới nhất có `gui_di` là MẢNG mang `[0].RefID` → cột
+	   `refid_tim_duoc` (xác nhận bằng GET ?refID= trước khi gán). [1c] quy mô (truy vấn 1) ở `thong_ke.mat_refid`.
+	   Đường xử lý (thay `UPDATE invoices SET misa_ref_id = …, misa_note = NULL` chạy tay của nppsale): (a) System Manager điền `misa_ref_id` trên
+	   Desk (validate cho điền khi đang trống — I1) rồi bấm Làm mới; KHÔNG xoá `misa_note` (dòng "MẤT RefID" ở lại làm vết — H7); (b) chắc tờ CHƯA
+	   phát hành trên MISA: xoá `misa_inv_no` / `misa_inv_series` / `misa_inv_date` / `misa_lookup_code` / `misa_invoice_code` / `misa_status` trên
+	   Desk rồi bấm Phát hành (thiếu bước xoá thì H23 trả kết quả cũ, không đẩy).
+	2. Enum MISA lạ (einvoice_unknown_enums.sql): [2] snapshot `einvoice_status` ∉ {1,3,4,7,8} (số tờ, ngày sớm / muộn nhất, 5 tờ mẫu, 3 RefID mẫu);
+	   [2c] `publish_status` ∉ {0,3} (số tờ, số tờ có mã CQT — manh mối mạnh nhất "đã phát hành", số tờ có số, 5 tờ mẫu); [2a] dòng sổ mang ghi chú
+	   "không rõ nghĩa" (đứng im ở trạng thái có thể đã cũ); [2b] cờ huỷ ĐÃ KÍCH HOẠT theo tên trường (`ban_ghi_tho.{IsInvoiceDeleted | IsInvoiceCanceled
+	   | IsCanceled | IsCancelled}` đúng `true` kiểu bool) — ra tên khác `IsInvoiceDeleted` là phải sửa thứ tự `_CO_HUY` (nppsale/luat/hddt.py). Đọc
+	   được nghĩa rồi thì khai vào nppsale/luat/hddt.py — chỗ DUY NHẤT (Làm mới + vòng quét cùng đi qua) — mở đúng tờ trên MISA, đừng đoán.
+	3. Tờ treo: [3a] `pending` gửi quá 1 ngày (vòng quét đêm không gỡ được: ngoài cửa sổ / MISA lỗi / lịch không chạy); [3b] `error` có RefID (MISA
+	   từ chối / lỗi kết nối — chờ người sửa rồi Phát hành lại cùng RefID).
+	4. Dòng `sync_run` mới nhất cũ hơn 26 giờ (hoặc chưa có) khi cấu hình MISA đã lưu + đang dùng — lịch 01:00 không chạy.
+	5. [5a] Trùng số đã chuẩn hoá giữa hai tờ (`trung_so`: cùng `chuan_so` ∧ cùng ký hiệu chặt ∨ một bên trống — chỉ mục duy nhất so nguyên văn
+	   không bắt); [5b] hai dòng cùng HĐ bán (nppsale đẻ được khi đua; Frappe khoá HĐ bán trong `dam_bao_dong`); [5c] dòng LẼ RA khoá Huỷ HĐ (đủ vế
+	   `LOCKED_EINVOICE` — §6.1) mà HĐ bán đã huỷ; [5d] `issued` thiếu cả `phat_hanh_luc` lẫn `misa_sent_at` — không bao giờ vào cửa sổ vòng quét (H14).
+	6. Sức khoẻ đối soát (truy vấn 5): số dòng + Σ |tổng tiền| theo `ket_qua_khop` (kể cả "(chưa đối soát)") ở `thong_ke.doi_soat`."""
+	from frappe.utils import add_to_date, now_datetime
+
+	from nppsale.luat.hddt import _CO_HUY, chuan_so, trung_so
+	from nppsale.npp_hddt.doctype.npp_misa_cau_hinh.npp_misa_cau_hinh import da_luu
+
+	ra: list[dict] = []
+	tk: dict = {}
+	if not frappe.db.exists("DocType", "NPP HDDT"):
+		return {"can_xem": ra, "thong_ke": tk}
+	luc = luc or now_datetime()
+
+	# 1 / 1b / 1c — mất RefID
+	mat = frappe.db.sql("""SELECT `name`, `so_hd_go_tay`, `misa_inv_series`, `misa_inv_no`, `misa_status`, `nguoi_mua`, `tong_tien`, `phat_hanh_luc`,
+			`misa_lookup_code` FROM `tabNPP HDDT` WHERE IFNULL(`misa_inv_no`, '') <> '' AND IFNULL(`misa_ref_id`, '') = ''
+		ORDER BY `phat_hanh_luc` IS NULL, `phat_hanh_luc` DESC, `name`""", as_dict=True)
+	tim = {}
+	if mat:
+		for nk in frappe.db.sql("""SELECT `hddt`, `gui_di`, `goi_luc` FROM `tabNPP MISA Log` WHERE `hddt` IN %(ds)s AND `nguon` = 'publish'
+				AND `ket_qua` = 'success' ORDER BY `goi_luc` DESC, `creation` DESC""", {"ds": tuple(m.name for m in mat)}, as_dict=True):
+			if nk.hddt in tim:
+				continue
+			try:
+				gui = json.loads(nk.gui_di) if nk.gui_di else None
+			except ValueError:
+				continue
+			ref = gui[0].get("RefID") if isinstance(gui, list) and gui and isinstance(gui[0], dict) else None
+			if ref not in (None, ""):
+				tim[nk.hddt] = (str(ref), nk.goi_luc)
+	ngay = [_ngay_vn_hddt(m.phat_hanh_luc) for m in mat if m.phat_hanh_luc]
+	tk["mat_refid"] = {"so_hoa_don": len(mat), "tong_tien": sum(flt(m.tong_tien) for m in mat), "cu_nhat": min(ngay) if ngay else None,
+		"moi_nhat": max(ngay) if ngay else None, "tim_lai_duoc": len(tim)}
+	for m in sorted(mat, key=lambda x: x.name not in tim)[:TRAN_DONG_HDDT]:  # tờ tìm lại được RefID lên trước (ổn định theo ngày phát hành)
+		ref = tim.get(m.name)
+		ra.append(_dong_hddt("1", "Hoá đơn điện tử MẤT RefID — không tra cứu lại được trên MISA", m.name,
+			f"{_ky_so(m.misa_inv_series, m.misa_inv_no)} · {m.misa_status or 'trống'} · {m.nguoi_mua} · {flt(m.tong_tien):g}",
+			(f"RefID tìm lại từ nhật ký phát hành ({ref[1]}): {ref[0]} — xác nhận bằng GET ?refID= rồi System Manager điền misa_ref_id trên Desk, bấm "
+				"Làm mới" if ref else "(a) Mở MISA tìm theo ký hiệu + số, chép RefID, System Manager điền misa_ref_id trên Desk rồi bấm Làm mới; (b) chắc "
+				"chưa phát hành trên MISA: xoá misa_inv_no / misa_inv_series / misa_inv_date / misa_lookup_code / misa_invoice_code / misa_status rồi "
+				"Phát hành") + " — không xoá misa_note",
+			so_noi_bo=m.so_hd_go_tay, ky_hieu=m.misa_inv_series, so_misa=m.misa_inv_no, trang_thai=m.misa_status, khach_hang=m.nguoi_mua,
+			tong_tien=flt(m.tong_tien), ngay_phat_hanh=_ngay_vn_hddt(m.phat_hanh_luc), ma_tra_cuu=m.misa_lookup_code,
+			refid_tim_duoc=ref[0] if ref else None))
+
+	# 2 / 2c — enum lạ trên snapshot
+	if frappe.db.exists("DocType", "NPP MISA Snapshot"):
+		def mau(cot: str, v: str, n: int, *truong) -> list:
+			return frappe.db.sql(f"""SELECT {', '.join(f'`{t}`' for t in truong)} FROM `tabNPP MISA Snapshot` WHERE `{cot}` = %s
+				ORDER BY `ngay_phat_hanh` IS NULL, `ngay_phat_hanh` DESC, `name` LIMIT {int(n)}""", v, as_dict=True)
+
+		for r in frappe.db.sql("""SELECT `einvoice_status` AS v, COUNT(*) AS n, MIN(`ngay_phat_hanh`) AS som, MAX(`ngay_phat_hanh`) AS muon
+				FROM `tabNPP MISA Snapshot` WHERE IFNULL(`einvoice_status`, '') <> '' AND `einvoice_status` NOT IN %(biet)s
+				GROUP BY `einvoice_status` ORDER BY n DESC, v""", {"biet": QUAN_HE_DA_BIET}, as_dict=True):
+			m5 = mau("einvoice_status", r.v, 5, "ky_hieu", "so_hddt", "ref_id")
+			ra.append(_dong_hddt("2", "EInvoiceStatus MISA chưa biết nghĩa (trục quan hệ)", f"EInvoiceStatus={r.v}",
+				f"{r.n} tờ, {r.som or '?'} → {r.muon or '?'}; mẫu: {', '.join(_ky_so(x.ky_hieu, x.so_hddt) for x in m5)}",
+				"Mở các tờ mẫu trên MISA, đọc ô 'Trạng thái hoá đơn' rồi khai nghĩa vào _QUAN_HE (nppsale/luat/hddt.py) — đừng đoán từ tên / số lượng",
+				gia_tri=r.v, so_hoa_don=r.n, som_nhat=r.som, muon_nhat=r.muon, hoa_don_mau=[_ky_so(x.ky_hieu, x.so_hddt) for x in m5],
+				ref_id_mau=[x.ref_id for x in m5[:3]]))
+		for r in frappe.db.sql("""SELECT `publish_status` AS v, COUNT(*) AS n, SUM(IFNULL(`ma_cqt`, '') <> '') AS co_ma,
+					SUM(IFNULL(`so_hddt`, '') <> '') AS co_so
+				FROM `tabNPP MISA Snapshot` WHERE IFNULL(`publish_status`, '') <> '' AND `publish_status` NOT IN %(biet)s
+				GROUP BY `publish_status` ORDER BY n DESC, v""", {"biet": PHAT_HANH_DA_BIET}, as_dict=True):
+			m5 = mau("publish_status", r.v, 5, "ky_hieu", "so_hddt")
+			ra.append(_dong_hddt("2c", "PublishStatus MISA chưa biết nghĩa (trục phát hành)", f"PublishStatus={r.v}",
+				f"{r.n} tờ, {int(r.co_ma or 0)} có mã CQT, {int(r.co_so or 0)} đã cấp số; mẫu: {', '.join(_ky_so(x.ky_hieu, x.so_hddt) for x in m5)}",
+				"Giá trị LUÔN đi kèm mã CQT gần như chắc là một dạng 'đã phát hành' — mở tờ mẫu trên MISA, đọc chữ trên màn rồi khai vào suy_trang_thai "
+				"(nppsale/luat/hddt.py); chưa khai thì tờ giữ nguyên trạng thái + ghi chú",
+				gia_tri=r.v, so_hoa_don=r.n, co_ma_cqt=int(r.co_ma or 0), da_cap_so=int(r.co_so or 0),
+				hoa_don_mau=[_ky_so(x.ky_hieu, x.so_hddt) for x in m5]))
+		# 2b — cờ huỷ theo tên trường: chỉ `true` kiểu bool (chuỗi "true" không tính — như doc_ban_ghi; MariaDB so JSON_EXTRACT với 'true' khớp cả
+		# chuỗi "true" nên phải xét JSON_TYPE)
+		dem = frappe.db.sql("SELECT " + ", ".join(
+			f"SUM(IFNULL(JSON_TYPE(JSON_EXTRACT(`ban_ghi_tho`, '$.{k}')) = 'BOOLEAN' AND JSON_EXTRACT(`ban_ghi_tho`, '$.{k}') = 'true', 0)) AS `{k}`"
+			for k in _CO_HUY) + " FROM `tabNPP MISA Snapshot`", as_dict=True)[0]
+		tk["co_huy_theo_ten"] = {k: int(dem[k] or 0) for k in _CO_HUY}
+		for k in _CO_HUY[1:]:
+			if tk["co_huy_theo_ten"][k]:
+				ra.append(_dong_hddt("2b", "Cờ huỷ của MISA mang tên khác IsInvoiceDeleted", k, f"{tk['co_huy_theo_ten'][k]} snapshot có {k} = true",
+					"Tài khoản MISA này dùng tên khác — sửa thứ tự _CO_HUY (nppsale/luat/hddt.py) cho đúng, rồi Làm mới các tờ liên quan"))
+		tk["doi_soat"] = [{"ro": r.ro, "so_dong": int(r.so_dong), "tong_tien_tuyet_doi": flt(r.tien)} for r in frappe.db.sql("""SELECT
+				IFNULL(NULLIF(`ket_qua_khop`, ''), '(chưa đối soát)') AS ro, COUNT(*) AS so_dong, SUM(ABS(IF(`co_tong_tien`, `tong_tien`, 0))) AS tien
+			FROM `tabNPP MISA Snapshot` GROUP BY ro ORDER BY so_dong DESC, ro""", as_dict=True)]
+	for r in frappe.db.sql(f"""SELECT `name`, `misa_inv_series`, `misa_inv_no`, `misa_status`, `tong_tien`, `misa_last_checked_at`, `misa_note`
+			FROM `tabNPP HDDT` WHERE `misa_note` LIKE %s ORDER BY `phat_hanh_luc` IS NULL, `phat_hanh_luc` DESC, `name` LIMIT {TRAN_DONG_HDDT}""",
+			"%không rõ nghĩa%", as_dict=True):
+		ra.append(_dong_hddt("2a", "Hoá đơn trong sổ mang ghi chú 'không rõ nghĩa' — đứng im ở trạng thái có thể đã cũ", r.name,
+			f"{_ky_so(r.misa_inv_series, r.misa_inv_no)} · {r.misa_status or 'trống'} · quét lần cuối {r.misa_last_checked_at or 'chưa'}",
+			"Xem nhóm 2 / 2c: khai nghĩa giá trị lạ rồi Làm mới", trang_thai_dang_ghi=r.misa_status, tong_tien=flt(r.tong_tien),
+			lan_quet_cuoi=r.misa_last_checked_at, misa_note=r.misa_note))
+
+	# 3a / 3b — tờ treo
+	for r in frappe.db.sql(f"""SELECT `name`, `hoa_don_ban`, `misa_ref_id`, `misa_sent_at`, `misa_error` FROM `tabNPP HDDT`
+			WHERE `misa_status` = 'pending' AND IFNULL(`misa_sent_at`, TIMESTAMP('1900-01-01')) < %s ORDER BY `misa_sent_at`, `name`
+			LIMIT {TRAN_DONG_HDDT}""", add_to_date(luc, days=-NGAY_TREO), as_dict=True):
+		ra.append(_dong_hddt("3a", "Đang chờ MISA quá 1 ngày (vòng quét đêm không gỡ được)", r.name,
+			f"HĐ bán {r.hoa_don_ban or '—'} · RefID {r.misa_ref_id or '—'} · gửi lúc {r.misa_sent_at or '—'} · {r.misa_error or ''}".rstrip(" ·"),
+			"Bấm 'Làm mới trạng thái' (MISA có ⇒ xác nhận đẩy; không có ⇒ Lỗi rồi Phát hành lại cùng RefID); vẫn kẹt thì xem nhật ký sync_run "
+			"(lịch / cửa sổ 60 ngày / lỗi MISA)", hoa_don_ban=r.hoa_don_ban, misa_ref_id=r.misa_ref_id, misa_sent_at=r.misa_sent_at))
+	for r in frappe.db.sql(f"""SELECT `name`, `hoa_don_ban`, `misa_ref_id`, `misa_sent_at`, `misa_error` FROM `tabNPP HDDT`
+			WHERE `misa_status` = 'error' AND IFNULL(`misa_ref_id`, '') <> '' ORDER BY `misa_sent_at` IS NULL, `misa_sent_at`, `name`
+			LIMIT {TRAN_DONG_HDDT}""", as_dict=True):
+		ra.append(_dong_hddt("3b", "Đẩy MISA lỗi (đã có RefID) — chờ người xử lý", r.name,
+			f"HĐ bán {r.hoa_don_ban or '—'} · {r.misa_error or 'không có câu lỗi'}",
+			"Đọc lỗi, sửa nguyên nhân (cấu hình / người mua — sửa được khi còn nháp, H24) rồi bấm Phát hành: hỏi MISA trước, dùng lại RefID (H3)",
+			hoa_don_ban=r.hoa_don_ban, misa_ref_id=r.misa_ref_id, misa_error=r.misa_error))
+
+	# 4 — lịch đêm có chạy không
+	luot = {}
+	for nguon in ("sync_run", "pull_snapshots"):
+		x = frappe.db.sql("""SELECT `name`, `goi_luc`, `ket_qua`, `loi` FROM `tabNPP MISA Log` WHERE `nguon` = %s ORDER BY `goi_luc` DESC,
+			`creation` DESC LIMIT 1""", nguon, as_dict=True)
+		luot[nguon] = x[0] if x else None
+	tk["luot_moi_nhat"] = luot
+	if da_luu() and cint(frappe.db.get_single_value("NPP MISA Cau Hinh", "dang_dung")):
+		moi = luot["sync_run"]
+		if moi is None or moi.goi_luc < add_to_date(luc, hours=-GIO_LUOT_DEM):
+			ra.append(_dong_hddt("4", "Vòng quét đêm HĐĐT không chạy (dòng sync_run mới nhất cũ hơn 26 giờ)", moi.name if moi else None,
+				f"sync_run mới nhất: {moi.goi_luc} ({moi.ket_qua})" if moi else "chưa có dòng sync_run nào",
+				"Kiểm scheduler của site (bench enable-scheduler), worker nghe hàng long (Procfile: bench worker), Scheduled Job Type "
+				"nppsale.lich.misa.dong_bo (cron 0 1 * * *); chạy tay: bench --site <site> execute nppsale.lich.misa.chay_dong_bo"))
+
+	# 5a — trùng số đã chuẩn hoá
+	theo_so: dict = {}
+	for r in frappe.db.sql("""SELECT `name`, `misa_inv_series`, `misa_inv_no` FROM `tabNPP HDDT` WHERE IFNULL(`misa_inv_no`, '') <> ''
+			ORDER BY `creation`, `name`""", as_dict=True):
+		theo_so.setdefault(chuan_so(r.misa_inv_no), []).append(r)
+	for nhom in theo_so.values():
+		for i, a in enumerate(nhom):
+			for b in nhom[i + 1:]:
+				if trung_so(a.misa_inv_series, a.misa_inv_no, b.misa_inv_series, b.misa_inv_no):
+					ra.append(_dong_hddt("5a", "Hai hoá đơn điện tử trùng số sau chuẩn hoá", a.name,
+						f"{_ky_so(a.misa_inv_series, a.misa_inv_no)} ↔ {b.name}: {_ky_so(b.misa_inv_series, b.misa_inv_no)}",
+						"Mở hai tờ trên MISA theo RefID (số của một RefID là bất biến) — tờ mang số sai thì tìm nguồn ghi (nhập tay / công cụ nhập)",
+						hddt_khac=b.name))
+	# 5b — hai dòng cùng HĐ bán
+	from nppsale.cong.bang._chung import co_cot
+
+	for cot in ("hoa_don_ban", "hoa_don_ban_ls"):
+		if cot != "hoa_don_ban" and not co_cot("NPP HDDT", cot):
+			continue
+		for r in frappe.db.sql(f"""SELECT `{cot}` AS hd, COUNT(*) AS n, GROUP_CONCAT(CONCAT(`name`, ' (', `trang_thai`, '/', IFNULL(`misa_status`, ''),
+				IF(IFNULL(`misa_inv_no`, '') <> '', CONCAT(' số ', `misa_inv_no`), ''), ')') ORDER BY `creation`, `name` SEPARATOR ', ') AS ds
+				FROM `tabNPP HDDT` WHERE IFNULL(`{cot}`, '') <> '' GROUP BY `{cot}` HAVING COUNT(*) > 1 ORDER BY `{cot}`""", as_dict=True):
+			ra.append(_dong_hddt("5b", "Một HĐ bán có nhiều dòng hoá đơn điện tử", r.hd, f"{r.n} dòng: {r.ds}",
+				"Giữ tờ có số / mới nhất (thứ tự màn HĐ bán), ghi chú các tờ còn lại — nppsale đẻ được hai dòng khi bấm song song (§9.5)"))
+	# 5c — dòng lẽ ra khoá Huỷ HĐ (đủ vế LOCKED_EINVOICE — nppsale.rpc.xuat_hang._khoa_hddt) mà HĐ bán đã huỷ
+	for r in frappe.db.sql("""SELECT h.`name`, h.`hoa_don_ban`, h.`trang_thai`, h.`misa_status`, h.`misa_inv_no` FROM `tabNPP HDDT` h
+			JOIN `tabSales Invoice` si ON si.`name` = h.`hoa_don_ban`
+			WHERE si.`docstatus` = 2 AND (h.`trang_thai` = 'issued' OR IFNULL(h.`misa_inv_no`, '') <> '' OR h.`misa_status` IN ('signed', 'replaced')
+				OR (IFNULL(h.`misa_ref_id`, '') <> '' AND h.`misa_status` IN ('pending', 'sent', 'waiting_code')))
+			ORDER BY h.`hoa_don_ban`, h.`name`""", as_dict=True):
+		ra.append(_dong_hddt("5c", "Hoá đơn điện tử còn hiệu lực / đang chờ MISA cho HĐ bán ĐÃ HUỶ", r.name,
+			f"HĐ bán {r.hoa_don_ban} (đã huỷ) · {r.trang_thai}/{r.misa_status or 'trống'}{' · số ' + r.misa_inv_no if r.misa_inv_no else ''}",
+			"Kế toán xử lý trên MISA (huỷ / thay thế / điều chỉnh theo quy định thuế) rồi Làm mới; tìm vì sao Huỷ HĐ lọt khoá LOCKED_EINVOICE",
+			hoa_don_ban=r.hoa_don_ban))
+	# 5d — issued thiếu cả hai mốc ⇒ không bao giờ vào cửa sổ vòng quét
+	for r in frappe.db.sql(f"""SELECT `name`, `misa_ref_id`, `misa_status`, `misa_inv_no` FROM `tabNPP HDDT` WHERE `trang_thai` = 'issued'
+			AND `phat_hanh_luc` IS NULL AND `misa_sent_at` IS NULL ORDER BY `name` LIMIT {TRAN_DONG_HDDT}""", as_dict=True):
+		ra.append(_dong_hddt("5d", "Đã phát hành nội bộ mà thiếu cả ngày phát hành lẫn lần gửi MISA — vòng quét không bao giờ hỏi (H14)", r.name,
+			f"RefID {r.misa_ref_id or '—'} · {r.misa_status or 'trống'}{' · số ' + r.misa_inv_no if r.misa_inv_no else ''}",
+			"Có RefID: bấm Làm mới tay khi cần; không bịa ngày phát hành (Gotcha #11.5)"))
+	thu_tu = {n: i for i, n in enumerate(NHOM_HDDT)}
+	ra.sort(key=lambda x: thu_tu[x["nhom"]])
+	return {"can_xem": ra, "thong_ke": tk}

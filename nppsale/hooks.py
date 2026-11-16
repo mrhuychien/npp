@@ -230,8 +230,9 @@ scheduler_events = {
 		# Dọn khoá chứng từ quá 10 phút không nhịp (nppsale: pg_cron mỗi phút + dọn lười trong acquire / heartbeat)
 		"* * * * *": ["nppsale.rpc.khoa_chung_tu.release_stale_entity_locks"],
 		# cron hằng ngày của nppsale (18:00 UTC = 01:00 giờ VN — giờ hệ thống của site): nhắc khách chưa có tuyến mỗi ngày,
-		# nhắc ảnh điểm bán thứ Hai
-		"0 1 * * *": ["nppsale.lich.nhac_khach.nhac_khach_chua_tuyen", "nppsale.kham_so.kham_so_cong_no"],
+		# nhắc ảnh điểm bán thứ Hai; HĐĐT MISA (đặc tả HĐĐT §5.1): MỘT mục — `dong_bo` chỉ xếp hàng `long` việc đồng bộ trạng thái RỒI kéo
+		# snapshot (hai mục riêng là hai Scheduled Job Type: thứ tự xáo, chạy song song được ⇒ vòng khớp đọc sổ chưa cập nhật số)
+		"0 1 * * *": ["nppsale.lich.nhac_khach.nhac_khach_chua_tuyen", "nppsale.kham_so.kham_so_cong_no", "nppsale.lich.misa.dong_bo"],
 		"0 1 * * 1": ["nppsale.lich.nhac_khach.nhac_anh_diem_ban"],
 	},
 }

@@ -1767,6 +1767,51 @@ class TestCauHinh(_NenHddt):
 
 
 # =====================================================================================================================================
+# Đọc sổ hỏng (lỗi CSDL) ở từng route — câu nguyên văn Phụ lục A; không gọi MISA; không câu tiếng Anh / bí mật
+# =====================================================================================================================================
+class TestDocHong(_NenPhatHanh):
+	def test_doc_dong_va_cau_hinh_hong(self):
+		"""Làm mới: đọc dòng hỏng → 500 "Lỗi truy vấn hoá đơn"; đọc cấu hình hỏng → 500 "Lỗi truy vấn cấu hình MISA" (Thử kết nối cùng câu). Phát hành:
+		đọc cấu hình hỏng → 500 "Không đọc được cấu hình MISA: {msg}" + dòng `error` mang câu ấy (nppsale đi qua catch); ngoại lệ không lời →
+		"Lỗi server không xác định khi gọi MISA". GET cấu hình hỏng → 500 "Không đọc được cấu hình MISA: {msg}". Dựng từ snapshot: đọc cấu hình hỏng →
+		500 cùng câu; snapshot RefID trắng → 400 "Dòng này không có RefID.". 0 lời gọi MISA."""
+		e = self.lap()
+		e2 = dong_hddt(nguoi_mua="Đã gửi", misa_status="sent", misa_ref_id=str(uuid.uuid4()), trang_thai="issued")
+		a = self.mang()
+		hong = frappe.QueryTimeoutError("Lock wait timeout exceeded")
+		with patch.object(M, "doc_dong_hddt", side_effect=hong):
+			self.assertEqual(self.lam_moi(e2), (500, {"error": "Lỗi truy vấn hoá đơn"}))
+		with patch.object(MM, "lay_cau_hinh", side_effect=hong):
+			self.assertEqual(self.lam_moi(e2), (500, {"error": "Lỗi truy vấn cấu hình MISA"}))
+			self.assertEqual(self.goi("owner", M.thu_ket_noi, {}), (500, {"error": "Lỗi truy vấn cấu hình MISA"}))
+			cau = "Không đọc được cấu hình MISA: Lock wait timeout exceeded"
+			self.assertEqual(self.phat_hanh(e), (500, {"error": cau}))
+			self.assertEqual((self.dong(e).misa_status, self.dong(e).misa_error, self.dong(e).misa_ref_id), ("error", cau, None))
+			s = frappe.get_doc({"doctype": "NPP MISA Snapshot", "ref_id": "misa-dh", "keo_luc": LUC}).insert(ignore_permissions=True).name
+			self.assertEqual(self.goi("owner", M.doi_soat, {"action": "create", "snapshotId": s}), (500, {"error": cau}))
+		with patch.object(M, "_gio_iso", side_effect=hong):  # hỏng giữa lúc dựng `config` (sau khi đã đọc Single)
+			self.assertEqual(self.goi("owner", M.cau_hinh_doc, pt="GET"), (500, {"error": "Không đọc được cấu hình MISA: Lock wait timeout exceeded"}))
+		with patch.object(M, "doc_dong_hddt", side_effect=RuntimeError()):
+			self.assertEqual(self.phat_hanh(e, kiem_i2=False), (500, {"error": "Lỗi server không xác định khi gọi MISA"}))
+		frappe.db.sql("UPDATE `tabNPP MISA Snapshot` SET `ref_id` = '   ' WHERE `name` = %s", s)
+		self.assertEqual(self.goi("owner", M.doi_soat, {"action": "create", "snapshotId": s}), (400, {"error": "Dòng này không có RefID."}))
+		self.assertEqual(a.goi, [])
+
+	def test_thu_ket_noi_luu_hong(self):
+		"""[ĐX H13] Thử kết nối: MISA trả định danh / mẫu nhưng lưu cấu hình hỏng → 500 "Đã kết nối MISA nhưng chưa lưu được thông tin vào cấu hình: {msg}"
+		(nppsale: console rồi vẫn 200); cấu hình không đổi; không nhật ký test_connection; message_log không thêm chữ Anh."""
+		self.mang({"body": {"access_token": "T9", "expires_in": 3600, "Data": '{"CompanyID":"c9"}'}},
+			{"body": {"success": True, "data": json.dumps([{"IPTemplateID": "t9", "InvSeries": "9C26TAA"}])}})
+		n = len(frappe.local.message_log)
+		with patch.object(M, "_chu", side_effect=frappe.ValidationError("hỏng lưu")):
+			self.assertEqual(self.goi("owner", M.thu_ket_noi, {}), (500, {"error": "Đã kết nối MISA nhưng chưa lưu được thông tin vào cấu hình: hỏng lưu"}))
+		d = frappe.get_doc(CH.TEN)
+		self.assertEqual((d.misa_company_id, d.misa_template_id, d.misa_inv_series), ("156217", None, "1C26TAA"))
+		self.assertEqual((self.nhat_ky(nguon="test_connection"), len(frappe.local.message_log)), ([], n))
+		self._i6("T9")
+
+
+# =====================================================================================================================================
 # Đường dẫn: `_nap()` có mô-đun MISA (§6.2); khách 401; route không port → 501; JSON trả đi qua tuyen._tra
 # =====================================================================================================================================
 class TestTuyen(_NenHddt):
