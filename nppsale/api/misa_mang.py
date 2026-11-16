@@ -136,17 +136,25 @@ class CauHinhMisa:
 
 
 def _doc_bi_mat(truong: str, password_vao) -> str:
+	"""⚠ Frappe v16: `get_decrypted_password(…, raise_exception=False)` NUỐT lỗi giải mã (`frappe/utils/password.py:36–43` — trả None như
+	"chưa nhập") nhưng thông điệp tiếng Anh "Encryption key is invalid…" của `frappe.throw` đã vào message_log ⇒ khoá site đổi thành "Chưa nhập
+	username/password" + chữ Anh về trình duyệt (`_server_messages`). Nên: hỏi `__Auth` có bản mã chưa (`co_bi_mat`, không giải mã) — không có →
+	''; có → giải mã với `raise_exception=True` để thấy lỗi (đặc tả §1.7 (3)–(4) viết "luôn raise_exception=False" — lệch có lý do)."""
 	if isinstance(password_vao, str) and js_trim(password_vao):
 		return js_trim(password_vao)
 	from frappe.utils.password import get_decrypted_password
 
+	from nppsale.npp_hddt.doctype.npp_misa_cau_hinh.npp_misa_cau_hinh import co_bi_mat
+
+	if not co_bi_mat(truong):
+		return ""
 	nhat_ky = getattr(frappe.local, "message_log", None)
 	n = len(nhat_ky) if nhat_ky is not None else 0
 	try:
-		password = get_decrypted_password(TEN_CAU_HINH, TEN_CAU_HINH, truong, raise_exception=False)
+		password = get_decrypted_password(TEN_CAU_HINH, TEN_CAU_HINH, truong, raise_exception=True)
 	except (frappe.ValidationError, ValueError) as e:
-		# decrypt(): InvalidToken → frappe.throw (ValidationError + msgprint "Encryption key is invalid…"); khoá sai định dạng → ValueError
-		# của Fernet. Dọn thông điệp tiếng Anh khỏi message_log (không về trình duyệt qua _server_messages).
+		# decrypt(): InvalidToken → frappe.throw (ValidationError + msgprint tiếng Anh); khoá sai định dạng → ValueError của Fernet. Dọn thông
+		# điệp tiếng Anh khỏi message_log (không về trình duyệt qua _server_messages).
 		if nhat_ky is not None:
 			del nhat_ky[n:]
 		raise LoiGiaiMa() from e
@@ -192,9 +200,18 @@ def _nap_bi_mat(ch: CauHinhMisa) -> None:
 # Truyền tải
 # =====================================================================================================================================
 
+def _khong_xac_thuc(r):
+	return r
+
+
 def _phien() -> requests.Session:
-	"""Mỗi lời gọi một phiên (đóng ngay — không giữ ổ cắm giữa các request của gunicorn). Bài thử thay hàm này bằng phiên gắn AdapterGia."""
-	return requests.Session()
+	"""Mỗi lời gọi một phiên (đóng ngay — không giữ ổ cắm giữa các request của gunicorn). Bài thử gắn AdapterGia vào phiên này.
+
+	Giữ `trust_env` (proxy / CA của môi trường máy chủ) nhưng đặt xác thực rỗng: phiên không có `auth` thì requests đọc `~/.netrc` — một dòng
+	netrc cho máy MISA là Basic auth ĐÈ `Authorization: Bearer …` (prepare_auth chạy sau header) và thêm header thứ ba cho `/oauth`."""
+	s = requests.Session()
+	s.auth = _khong_xac_thuc
+	return s
 
 
 def _dong_ho() -> float:

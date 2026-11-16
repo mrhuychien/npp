@@ -11,7 +11,9 @@ cài một app lên site) lưu mọi Single chưa có dòng (bỏ validate + b�
 Hai trường Password (`tai_khoan` / `mat_khau`) nằm ở `__Auth`, mã bằng `encryption_key` của site; bảng `tabSingles` chỉ giữ dấu `*`. `co_bi_mat`
 trả has_username / has_password mà KHÔNG giải mã (GET cấu hình không được hỏng vì khoá site sai). Bẫy của lõi cho nơi ghi (đặc tả §1.7): gán
 '' / None rồi save() là XOÁ bản mã (`Document._save_passwords`, `frappe/model/document.py:3399–3400`) ⇒ chỉ gán khi người gõ giá trị khác rỗng;
-`db_set` / `set_single_value` bỏ qua mã hoá (lưu chữ thường) ⇒ cấm cho hai trường này; `get_password(..., raise_exception=False)`.
+`db_set` / `set_single_value` bỏ qua mã hoá (lưu chữ thường) ⇒ cấm cho hai trường này. Nơi ĐỌC giải mã qua
+`nppsale.api.misa_mang.CauHinhMisa.giai_ma` — không `get_password(..., raise_exception=False)`: Frappe v16 nuốt lỗi giải mã thành None ("chưa nhập")
+mà chữ Anh "Encryption key is invalid…" vẫn nằm trong message_log (`frappe/utils/password.py:36–43`).
 """
 from __future__ import annotations
 

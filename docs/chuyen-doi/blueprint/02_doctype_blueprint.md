@@ -2098,7 +2098,9 @@ trống)" (Gotcha #11.3) **không** đặt ở validate (bản trước ghi vậ
 - Password (đặc tả §1.7): `has_username` / `has_password` đọc `__Auth` (có dòng `doctype = 'NPP MISA Cau Hinh'`, `fieldname` tương ứng) — **không giải mã** (GET cấu hình
   không được hỏng vì khoá sai) — hàm `co_bi_mat(truong)` của controller. Bẫy của lõi: gán `''` / `None` rồi `save()` là **xoá** bản mã (`Document._save_passwords`,
   `frappe/model/document.py:3399–3400`) ⇒ chỉ gán khi người gõ giá trị khác rỗng; `db_set` / `set_single_value` **bỏ qua** mã hoá (lưu chữ thường) ⇒ cấm cho hai
-  trường này; `get_password` luôn `raise_exception=False`; khoá site sai ⇒ `ValidationError` tiếng Anh "Encryption key is invalid…" ⇒ bắt, dịch tiếng Việt.
+  trường này; giải mã **chỉ** qua `nppsale.api.misa_mang.CauHinhMisa.giai_ma` (hỏi `co_bi_mat` trước — không có bản mã ⇒ `''`, không bao giờ `None`; có ⇒
+  `get_decrypted_password(…, raise_exception=True)`) — **không** `get_password(…, raise_exception=False)`: v16 **nuốt** lỗi giải mã thành `None` như "chưa nhập"
+  mà chữ Anh "Encryption key is invalid…" vẫn nằm trong `message_log` (`frappe/utils/password.py:36–43`, đo HĐĐT-3); khoá site sai ⇒ `LoiGiaiMa` câu tiếng Việt, dọn `message_log`.
 - Method Thử kết nối (`nppsale.api.misa.thu_ket_noi`, chủ / KT) ghi như route nppsale (`test-connection/route.ts:120–141`): `misa_is_invoice_with_code` +
   `duong_phat_hanh` (`/v3sainvoice/Code` hoặc `/v3sainvoice`) theo `IsInvoiceWithCode`; `misa_company_id` / `misa_org_unit_id` / `misa_user_id` lấy từ `/oauth`;
   mẫu đang dùng (`misa_template_id`, `misa_inv_series`, `misa_inv_template_no`, `loai_hd`, `ke_thua_mau_cu`) lấy từ danh sách mẫu (mẫu còn dùng, ưu tiên mẫu đã

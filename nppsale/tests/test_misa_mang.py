@@ -13,7 +13,9 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import json
+import os
 import socket
+import tempfile
 import threading
 import time
 import unittest
@@ -67,6 +69,16 @@ class AdapterGia(requests.adapters.BaseAdapter):
 		pass
 
 
+_PHIEN_THAT = M._phien  # phiên THẬT của lớp mạng (lấy trước mọi patch) — adapter giả gắn vào chính phiên ấy, nên mọi bài đi qua cấu hình của nó
+
+
+def phien_gia(a: AdapterGia) -> requests.Session:
+	s = _PHIEN_THAT()
+	s.mount("https://", a)
+	s.mount("http://", a)
+	return s
+
+
 def cau_hinh(**kv) -> M.CauHinhMisa:
 	return M.CauHinhMisa(**{"dia_chi_api": API, "mst": MST, "tai_khoan": "u-thu", "mat_khau": "p-thu", **kv})
 
@@ -93,9 +105,7 @@ class _NenMang(unittest.TestCase):
 
 	def mang(self, *kich_ban, khi_goi=None) -> AdapterGia:
 		a = AdapterGia(kich_ban, khi_goi)
-		s = requests.Session()
-		s.mount("https://", a)
-		s.mount("http://", a)
+		s = phien_gia(a)
 		p = patch.object(M, "_phien", lambda: s)
 		p.start()
 		self.addCleanup(p.stop)
@@ -189,7 +199,6 @@ class TestToken(_NenMang):
 		"""Thử kết nối: token + thân /oauth từ CÙNG một lời (nppsale gọi hai lần [≠ nhỏ]); `tach_dinh_danh` ra đúng KV-14; token vẫn được nhớ."""
 		than = {"access_token": "T9", "expires_in": 3600,
 			"Data": '{"CompanyID":156217,"OrganizationUnitID":"ou","UserID":"us","IsInvoiceWithCode":"True"}'}
-		a = self.mang({"body": than})
 		self.nap_token(cau_hinh(), "T-cu")
 		a = self.mang({"body": than})
 		token, tho = M.lay_token(cau_hinh(), ep=True, tra_tho=True)
@@ -250,6 +259,20 @@ class TestDay(_NenMang):
 		self.assertEqual(a.het_gio, [(5, 15), (5, 30)])
 		self.assertEqual(kq, {"ok": True, "raw": {"success": True, "TransactionID": "TXABC", "InvNo": "00000123"}, "error": None,
 			"lookup_code": "TXABC", "inv_no": "00000123", "ref_id": None, "chua_biet": False, "da_co": None})
+
+	def test_netrc_khong_de_header(self):
+		"""`~/.netrc` (trust_env của requests — giữ cho proxy / CA) có dòng cho máy MISA thì requests tự thêm Basic auth ĐÈ `Authorization:
+		Bearer` và thêm header thứ ba cho /oauth — phiên của lớp mạng đặt xác thực rỗng để requests bỏ qua netrc."""
+		with tempfile.NamedTemporaryFile("w", suffix=".netrc", delete=False) as f:
+			f.write("machine misa.gia login netrc-user password netrc-pass\n")
+		self.addCleanup(os.unlink, f.name)
+		self.assertEqual(requests.utils.get_netrc_auth(API + "/oauth"), None)  # chưa đặt NETRC: bài không dựa vào netrc của máy
+		with patch.dict(os.environ, {"NETRC": f.name}):
+			self.assertEqual(requests.utils.get_netrc_auth(API + "/oauth"), ("netrc-user", "netrc-pass"))  # requests THẤY netrc …
+			a = self.mang(TOK, {"body": {"success": True, "RefID": "R"}})
+			self.assertTrue(M.day_hd(cau_hinh(), HOA_DON)["ok"])
+		self.assertEqual(hd_app(a.goi[0][2]), [("Content-Type", "text/plain"), ("taxcode", MST)])  # … mà không dùng
+		self.assertEqual(dict(a.goi[1][2])["Authorization"], "Bearer T1")
 
 	def test_duong_day_va_mst_rong(self):
 		"""Đường đẩy theo cấu hình (có mã: /v3sainvoice/Code — C HOA); `TaxCode: ""` khi thiếu MST (`cfg.taxCode || ""`)."""
@@ -350,6 +373,20 @@ class TestDay(_NenMang):
 		self.assertEqual(gon(a), ["POST /oauth", "POST /v3sainvoice"])
 		self.assertEqual((kq["error"], kq["raw"]), ("MISA publish lỗi 500: <html>Bad gateway</html>", {"raw": "<html>Bad gateway</html>"}))
 
+	def test_2xx_co_chu_token_khong_thu_lai(self):
+		"""Thử lại CHỈ khi HTTP lỗi (`!res.ok && looksLikeAuthError` — client.ts:486): 2xx mà thân có chữ token / unauthorized (vd 200
+		`{"Success":false,"ErrorCode":"InvalidToken"}`) → MỘT POST — gửi lại là đẻ nháp thứ hai cho tờ MISA đã nhận."""
+		for tl, mong in (
+				({"body": {"Success": False, "ErrorCode": "InvalidToken"}}, "MISA publish thất bại: InvalidToken"),
+				({"body": {"success": True, "TransactionID": "TXT", "AccessToken": "x"}}, None),
+				({"status": 201, "body": {"success": True, "RefID": "R", "msg": "unauthorized retry not needed"}}, None)):
+			with self.subTest(tl=tl):
+				M.xoa_token_nho()
+				a = self.mang(TOK, tl, TOK2, {"body": {"success": True, "RefID": "R"}})
+				kq = M.day_hd(cau_hinh(), HOA_DON, lambda: self.fail("không được hỏi trước"))
+				self.assertEqual(gon(a), ["POST /oauth", "POST /v3sainvoice"])
+				self.assertEqual(kq["error"], mong)
+
 	def test_token_ep_hong(self):
 		"""Token ép hỏng ở lần thử lại → câu token (nppsale: ném ra khỏi publishInvoice), không POST lần 2."""
 		self.nap_token(cau_hinh())
@@ -391,21 +428,25 @@ class TestDay(_NenMang):
 		"""[ĐX] chuỗi thử lại (token ép + GET của H27 + POST lần 2) bị cắt hẹn ĐỌC cho vừa HAN_DAY_S (110 s) kể từ `bat_dau` — đặc tả chỉ tính
 		token + đẩy (55 s); thêm GET là quá 120 s. Ngoài day_hd không cắt."""
 		ch = cau_hinh()
+		self.gio = 3000.0
 		self.nap_token(ch)
 
 		def moi_loi_15s(_req):
 			self.gio += 15
 
 		a = self.mang(CAU_401, TOK2, {"body": {"success": True, "data": None}}, {"body": {"success": True, "RefID": "R"}}, khi_goi=moi_loi_15s)
-		self.gio = 3000.0
 		M.day_hd(ch, HOA_DON, lambda: M.lay_hd(ch, "R"), bat_dau=self.gio - 45)
-		# bắt đầu ở 45 s: POST1 (5, 30) → 60 s; token (5, 15) → 75 s; GET (5, min(15, 110−75−5)) → 90 s; POST2 (5, min(30, 110−90−5 = 15))
+		# bắt đầu ở 45 s: POST1 (5, 30) → 60 s (≤ 60: còn thử lại); token (5, 15) → 75 s; GET (5, min(15, 110−75−5)) → 90 s;
+		# POST2 (5, min(30, 110−90−5 = 15))
 		self.assertEqual(a.het_gio, [(5, 30), (5, 15), (5, 15), (5, 15)])
-		self.gio = 3100.0
-		a = self.mang(CAU_401, TOK2, {"body": {"success": True, "data": None}}, {"body": {"success": True, "RefID": "R"}},
-			khi_goi=lambda _r: setattr(self, "gio", self.gio + 30))
-		M.day_hd(ch, HOA_DON, lambda: M.lay_hd(ch, "R"), bat_dau=self.gio - 30)
-		self.assertEqual(a.het_gio, [(5, 30), (5, 15), (5, 1), (5, 1)])  # hết ngân sách → sàn 1 s
+
+		def token_cham(req):
+			self.gio += 40 if req.url.endswith("/oauth") else (10 if "refID" in req.url else 0)
+
+		a = self.mang(CAU_401, TOK2, {"body": {"success": True, "data": None}}, {"body": {"success": True, "RefID": "R"}}, khi_goi=token_cham)
+		M.day_hd(ch, HOA_DON, lambda: M.lay_hd(ch, "R"), bat_dau=self.gio - 60)
+		# 60 s: POST1 (5, 30); token ép +40 → 100 s; GET (5, 110−100−5 = 5) +10 → 110 s; POST2 hết ngân sách → sàn (5, 1)
+		self.assertEqual(a.het_gio, [(5, 30), (5, 15), (5, 5), (5, 1)])
 		a = self.mang({"body": {"success": True, "data": None}})
 		self.assertIsNone(M.lay_hd(ch, "R"))
 		self.assertEqual(a.het_gio, [(5, 15)])
@@ -413,7 +454,7 @@ class TestDay(_NenMang):
 	def test_kv23_kv22_truyen_tai(self):
 		"""Lời ĐẨY: không nối được / sai địa chỉ / TLS = CHƯA GỬI (route đặt error); hết giờ đọc / đứt giữa chừng = CHƯA BIẾT (`chua_biet`, route
 		giữ pending). Câu nguyên văn §3.1 / Phụ lục A."""
-		chua_biet = H.js_trim(M.CAU_CHUA_BIET)
+		chua_biet = M.CAU_CHUA_BIET
 		self.assertEqual(chua_biet, "Không nhận được trả lời của MISA (hết giờ / rớt mạng) — chưa biết MISA đã nhận hoá đơn chưa. ĐỪNG đẩy lại: "
 			"bấm 'Làm mới trạng thái từ MISA' sau ít phút.")
 		ket_noi = urllib3.exceptions.MaxRetryError(None, "/x", urllib3.exceptions.NewConnectionError(None, "refused"))
@@ -449,12 +490,18 @@ class TestDay(_NenMang):
 				self.assertEqual(kq["chua_biet"], cb)
 
 	def test_che_bi_mat_doi_lai(self):
-		"""[ĐX — I6] MISA dội lại tài khoản / mật khẩu / token đang dùng → `***` ở `error` lẫn `raw` (nhật ký `nhan_ve`)."""
-		self.mang({"body": {"access_token": "TOKEN-BIMAT-1"}},
-			{"status": 500, "body": {"errorMessage": "User u-thu-BIMAT / p-thu-BIMAT bị khoá (phiên TOKEN-BIMAT-1)"}})
+		"""[ĐX — I6] MISA dội lại tài khoản / mật khẩu / token đang dùng → `***` ở `error` lẫn `raw` (nhật ký `nhan_ve`). (Thân không có chữ
+		token / expired / unauthorized — không thì thành lỗi xác thực, thử lại.)"""
+		a = self.mang({"body": {"access_token": "JWT-BIMAT-9"}},
+			{"status": 500, "body": {"errorMessage": "User u-thu-BIMAT / p-thu-BIMAT bị khoá (phiên JWT-BIMAT-9)"}})
 		kq = M.day_hd(cau_hinh(tai_khoan="u-thu-BIMAT", mat_khau="p-thu-BIMAT"), HOA_DON)
+		self.assertEqual(gon(a), ["POST /oauth", "POST /v3sainvoice"])
 		self.assertEqual(kq["error"], "MISA publish lỗi 500: User *** / *** bị khoá (phiên ***)")
 		self.assertEqual(kq["raw"], {"errorMessage": "User *** / *** bị khoá (phiên ***)"})
+		self.mang(CAU_401, {"body": {"access_token": "JWT-BIMAT-2"}},
+			{"status": 403, "body": {"message": "Phiên JWT-BIMAT-9 / JWT-BIMAT-2 bị chặn"}})
+		kq = M.day_hd(cau_hinh(tai_khoan="u-thu-BIMAT", mat_khau="p-thu-BIMAT"), HOA_DON)
+		self.assertEqual(kq["error"], "MISA publish lỗi 403: Phiên *** / *** bị chặn")  # che cả token lần 1 lẫn token ép
 
 
 # =====================================================================================================================================
@@ -661,7 +708,7 @@ class TestMayChuGia(unittest.TestCase):
 	def setUp(self):
 		M.xoa_token_nho()
 		self.addCleanup(M.xoa_token_nho)
-		s = requests.Session()
+		s = _PHIEN_THAT()
 		s.trust_env = False  # không đi proxy của môi trường
 		p = patch.object(M, "_phien", lambda: s)
 		p.start()
@@ -773,8 +820,7 @@ class TestCauHinhMisa(IntegrationTestCase):
 
 	def _mang(self, *kich_ban) -> AdapterGia:
 		a = AdapterGia(kich_ban)
-		s = requests.Session()
-		s.mount("https://", a)
+		s = phien_gia(a)
 		p = patch.object(M, "_phien", lambda: s)
 		p.start()
 		self.addCleanup(p.stop)
@@ -849,9 +895,16 @@ class TestCauHinhMisa(IntegrationTestCase):
 		"""Khoá site đổi (InvalidToken → frappe.throw tiếng Anh) / khoá sai định dạng (ValueError của Fernet) → `LoiGiaiMa` câu tiếng Việt,
 		message_log sạch; lời gọi MISA không đi; gõ đủ cả hai thì vẫn thử được (KV-47 biến thể giải mã)."""
 		from cryptography.fernet import Fernet
+		from frappe.utils.password import get_decrypted_password
 
 		self._luu(dia_chi_api=API, tai_khoan="u-thu", mat_khau="p-thu")
 		a = self._mang()
+		with _khoa_site(Fernet.generate_key().decode()):
+			# Bẫy v16 (lý do không dùng raise_exception=False): lỗi giải mã bị NUỐT thành None ("chưa nhập") + chữ Anh nằm lại message_log.
+			n = len(frappe.local.message_log)
+			self.assertIsNone(get_decrypted_password(CH.TEN, CH.TEN, "mat_khau", raise_exception=False))
+			self.assertIn("Encryption key is invalid", str(frappe.local.message_log[n:]))
+			del frappe.local.message_log[n:]
 		for khoa in (Fernet.generate_key().decode(), "khong-phai-khoa-fernet"):
 			with self.subTest(khoa=khoa[:6]), _khoa_site(khoa):
 				n = len(frappe.local.message_log)
@@ -874,14 +927,15 @@ class TestCauHinhMisa(IntegrationTestCase):
 # =====================================================================================================================================
 
 BI_MAT = ("u-thu-BIMAT", "p-thu-BIMAT", "TOKEN-BIMAT-1")
+TIEU_DE_I6 = "I6 thử misa_mang"  # tabError Log là MyISAM — rollback KHÔNG gỡ được, tearDown xoá theo tiêu đề này
 
 
 def _ghi_loi(ham):
 	"""Gọi `ham`; ngoại lệ → frappe.log_error ngay trong khung bắt (như route / việc nền) — khung này không giữ adapter / bí mật."""
 	try:
 		ham()
-	except Exception as e:  # noqa: BLE001 — bài thử: ghi mọi lỗi như khung gọi thật
-		return str(e), frappe.log_error(title="I6 thử")
+	except Exception as e:  # bài thử: ghi mọi lỗi như khung gọi thật
+		return str(e), frappe.log_error(title=TIEU_DE_I6)
 	return None, None
 
 
@@ -898,12 +952,12 @@ class TestBiMatI6(IntegrationTestCase):
 	def tearDown(self):
 		frappe.conf.developer_mode = self.dev
 		frappe.db.rollback(save_point="npp_test")
+		frappe.db.delete("Error Log", {"method": TIEU_DE_I6})  # MyISAM: không theo giao dịch
 		M.xoa_token_nho()
 
 	def _mang(self, *kich_ban):
 		a = AdapterGia(kich_ban)
-		s = requests.Session()
-		s.mount("https://", a)
+		s = phien_gia(a)
 		p = patch.object(M, "_phien", lambda: s)
 		p.start()
 		self.addCleanup(p.stop)
@@ -921,20 +975,24 @@ class TestBiMatI6(IntegrationTestCase):
 	def test_traceback_khong_lo(self):
 		ch = cau_hinh(tai_khoan=BI_MAT[0], mat_khau=BI_MAT[1])
 		tok = {"body": {"access_token": BI_MAT[2], "expires_in": 3600}}
+		# (tên, token đã nhớ trước?, kịch bản, lời gọi, chữ phải thấy trong traceback — biến bí mật CÓ mặt nhưng bị che)
 		ca = [
-			("/oauth hết giờ nối", [requests.exceptions.ConnectTimeout("x")], lambda: M.lay_token(ch), ("password_form = ********", "than_secret")),
-			("/oauth sai mật khẩu", [{"body": {"error": "invalid_grant", "error_description": "Sai"}}], lambda: M.lay_token(ch, ep=True),
-				("password_form = ********", "cache_key = ********")),
-			("KV-55 token dưới khoá lạ", [{"body": {"Data": {"AccessToken": BI_MAT[2]}}}], lambda: M.lay_token(ch, ep=True),
-				("token_text = ********",)),
-			("mẫu hết giờ đọc", [tok, requests.exceptions.ReadTimeout("x")], lambda: M.lay_mau(ch), ("password_body = ********",)),
-			("GET 401", [{"status": 401, "body": "x"}], lambda: M.lay_hd(ch, "R"), ("token = ********",)),
-			("lỗi lạ trong chuỗi thử lại của đẩy", [CAU_401, tok], lambda: M.day_hd(ch, HOA_DON, lambda: 1 / 0), ("token_dau = ********",)),
+			("/oauth hết giờ nối", False, [requests.exceptions.ConnectTimeout("x")], lambda: M.lay_token(ch),
+				("password_form = ********", "than_secret = ********")),
+			("/oauth sai mật khẩu", False, [{"body": {"error": "invalid_grant", "error_description": "Sai"}}], lambda: M.lay_token(ch, ep=True),
+				("password_form = ********", "cache_key = ********", "token_text = ********")),
+			("KV-55 token dưới khoá lạ", False, [{"body": {"Data": {"AccessToken": BI_MAT[2]}}}], lambda: M.lay_token(ch, ep=True),
+				("token_kq = ********",)),
+			("mẫu hết giờ đọc", True, [requests.exceptions.ReadTimeout("x")], lambda: M.lay_mau(ch),
+				("password_body = ********", "than_secret = ********")),
+			("GET 401", True, [{"status": 401, "body": "x"}], lambda: M.lay_hd(ch, "R"), ("token = ********",)),
+			("lỗi lạ trong chuỗi thử lại của đẩy", True, [CAU_401, tok], lambda: M.day_hd(ch, HOA_DON, lambda: 1 / 0),
+				("token_dau = ********", "token = ********")),
 		]
-		for ten, kich_ban, ham, chu in ca:
+		for ten, nap, kich_ban, ham, chu in ca:
 			with self.subTest(ten=ten):
 				M.xoa_token_nho()
-				if ten.startswith(("mẫu", "GET", "lỗi lạ")):
+				if nap:
 					self._mang(tok)
 					M.lay_token(ch)
 				self._mang(*kich_ban)
