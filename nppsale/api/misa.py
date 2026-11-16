@@ -39,6 +39,7 @@ from nppsale.luat.hddt import (
 	ap_dung,
 	bo_ngay_khong_that,
 	canh_bao_noi_tay,
+	co_ban_ghi_that,
 	cung_so,
 	doc_ban_ghi,
 	dong_hang,
@@ -88,6 +89,28 @@ def commit_giua_chung() -> None:
 	`cong/api.py::_goi_co_khoa`). Không gọi trong doc_events / controller (lõi bỏ qua commit ở đó — `frappe/database/database.py:1190–1194`)."""
 	if not frappe.flags.in_test:
 		frappe.db.commit()
+
+
+# [Sửa cuối — phát hiện 16] Mọi lần MÁY ghi trường nghiệp vụ của NPP HDDT (giành tờ, lỗi trước gửi, kết quả phát hành, kéo về, H5, đánh dấu tờ gốc)
+# đổi `modified` (+ `modified_by`): System Manager mở tờ trên Desk (đường §6.4 / `misa_no_locked`) TRƯỚC một lần máy ghi rồi bấm Lưu sau đó là
+# `db_update` ghi lại MỌI cột của bản form cũ — số HĐĐT, mã tra cứu, trạng thái về bản cũ; `check_if_latest` của lõi chỉ so `modified` nên phải đổi
+# nó thì lõi mới chặn (TimestampMismatchError). Đặc tả §4.0 / §8.0 (3) giữ `modified` cho luồng kéo về — lệch có chủ ý. Ghi CHỈ mốc hỏi
+# (`misa_last_checked_at` — vòng quét mỗi đêm) không đổi `modified`: bản form cũ ghi đè mốc hỏi chỉ làm tờ được hỏi lại sớm.
+SQL_DOI_MODIFIED = "`modified` = %(_luc_sua)s, `modified_by` = %(_nguoi_sua)s"
+
+
+def tham_so_modified() -> dict:
+	"""Tham số cho `SQL_DOI_MODIFIED` (giờ thật như `set_value(update_modified=True)` — không theo `bay_gio()` bài thử ghim)."""
+	return {"_luc_sua": frappe.utils.now(), "_nguoi_sua": frappe.session.user or "Administrator"}
+
+
+def ban_ghi_cua_to(raw, misa_status, ref):
+	"""[Sửa cuối — phát hiện 9] Bản ghi `GET ?refID=` cho tờ đang `pending` / `error` mà KHÔNG nói gì (`{}` — `data: '{}'` / `'[]'`; xem
+	`co_ban_ghi_that`) → coi như MISA KHÔNG có (None): phát hành POST tiếp (H3 / H27), Làm mới / vòng quét đi nhánh H5 thay vì "xác nhận đẩy" một tờ
+	MISA chưa từng nhận. Tờ khác (`sent`, `signed`…) giữ nguyên bản ghi [=] — một luật cho phát hành, Làm mới, vòng quét."""
+	if raw is not None and (misa_status or "") in ("pending", "error") and not co_ban_ghi_that(raw, ref):
+		return None
+	return raw
 
 
 def _co_luu_tru() -> bool:
@@ -296,7 +319,7 @@ def danh_dau_goc(org_ref_id, ten_thay_the) -> str | None:
 		return None
 	r = r[0]
 	frappe.db.set_value("NPP HDDT", r.name, {"misa_status": "replaced", "misa_relation": "replaced",
-		"misa_note": gop_ghi_chu(r.misa_note, [ghi_chu_bi_thay_the(ten_thay_the)])}, update_modified=False)
+		"misa_note": gop_ghi_chu(r.misa_note, [ghi_chu_bi_thay_the(ten_thay_the)])})  # đổi `modified` (phát hiện 16)
 	return r.name
 
 
@@ -307,15 +330,17 @@ def ghi_ket_qua_keo_ve(ten: str, raw, *, xac_nhan_day: bool = False, luc=None, c
 	1. Đọc lại dòng `FOR UPDATE` (sau khi đã có `raw` — không giữ khoá lúc gọi MISA; Làm mới và vòng quét có thể chạm cùng tờ).
 	2. `ap_dung(raw, sổ, co_ma, luc)` (luật thuần — H8, H17, khoá gán tay, so tiền; chỉ khoá có giá trị — không ghi null đè).
 	3. [ĐX H5] Xác nhận đẩy: `xac_nhan_day` ∧ dòng (đọc có khoá) đang `pending` / `error` — MISA CÓ tờ ⇒ `trang_thai = issued` (+ `phat_hanh_luc =
-	   luc` nếu đang draft), `misa_error = NULL`. (Người gọi tính `xac_nhan_day` từ bản đọc trước; xét lại trên bản đọc có khoá để lượt chạy song
-	   song không "xác nhận" tờ đã thôi treo.)
+	   luc` nếu đang draft), `misa_error = NULL`, và [Sửa cuối — phát hiện 1] `misa_status` ít nhất `sent` khi `ap_dung` không kết luận được (None —
+	   vd PublishStatus lạ ở đơn vị KHÔNG mã mà đã có số): "giữ nguyên" với tờ treo / lỗi là kẹt `pending` / `error` vĩnh viễn trong khi MISA đã giữ
+	   tờ (Làm mới / quét lặp lại y hệt). `sent` = đúng thứ phát hành OK không mã tra cứu sẽ ghi — rồi luật kéo về áp trên đó như nppsale.
+	   (Người gọi tính `xac_nhan_day` từ bản đọc trước; xét lại trên bản đọc có khoá để lượt chạy song song không "xác nhận" tờ đã thôi treo.)
 	4. Có `misa_inv_no`: ký hiệu cuối cùng (mới ∥ cũ) trống ⇒ `''` (MariaDB coi NULL là khác nhau — chỉ mục duy nhất phải bắt); số đổi so với sổ
 	   (theo `cung_so`, tờ không khoá) ⇒ ghi chú [ĐX H22]; tờ khác trùng sau chuẩn hoá ⇒ ghi chú §1.6 (vẫn ghi số MISA, không đổi trạng thái).
 	4b. [ĐX H26] `misa_inv_date` không phải ngày có thật ('2026-02-30') ⇒ bỏ khoá ấy + ghi chú (MariaDB strict từ chối CẢ câu ghi).
 	5. `misa_note` = `gop_ghi_chu(cũ, ghi chú)` (H7 — chỉ thêm dòng chưa có); `tim_kd` tính lại khi `misa_inv_no` đổi (db_set không chạy before_save).
 	   `misa_last_checked_at` không giảm (I10 — lượt chạy chậm hơn không lùi mốc).
-	6. `set_value(update_modified=False)` trong điểm lưu (không validate, không Version; vết ở NPP MISA Log); trùng chỉ mục (ký hiệu, số) →
-	   `LoiTrungSoHddt` (dòng không đổi). Lỗi khác → nổi lên (dòng không đổi).
+	6. `set_value` trong điểm lưu (không validate, không Version; vết ở NPP MISA Log) — đổi `modified` khi có trường nghiệp vụ đổi (phát hiện 16;
+	   chỉ mốc hỏi thì không); trùng chỉ mục (ký hiệu, số) → `LoiTrungSoHddt` (dòng không đổi). Lỗi khác → nổi lên (dòng không đổi).
 	7. Ghi xong mới đánh dấu tờ gốc (`danh_dau_goc` — chỉ bản THAY THẾ; ghi hỏng thì KHÔNG đánh dấu — [Soát thiếu 2], nppsale Làm mới vẫn đánh).
 	   Đánh dấu hỏng: lui điểm lưu riêng, Error Log, trả `loi_danh_dau` (vòng quét đẩy vào `errors`) — phần ghi chính vẫn giữ.
 
@@ -340,6 +365,7 @@ def ghi_ket_qua_keo_ve(ten: str, raw, *, xac_nhan_day: bool = False, luc=None, c
 			if (r.trang_thai or "") == "draft":
 				cap["phat_hanh_luc"] = luc
 			cap["misa_error"] = None
+			cap.setdefault("misa_status", "sent")  # [Sửa cuối — phát hiện 1] MISA đã giữ tờ: không để kẹt pending / error
 		so_moi = cap.get("misa_inv_no")
 		if so_moi:
 			if not (cap.get("misa_inv_series") or r.misa_inv_series):
@@ -362,7 +388,8 @@ def ghi_ket_qua_keo_ve(ten: str, raw, *, xac_nhan_day: bool = False, luc=None, c
 
 			cap["tim_kd"] = khoa_tim_hddt({**r, "misa_inv_no": so_moi})
 		if cap:  # I10 bỏ mốc hỏi mà MISA không cho gì mới → không có gì để ghi (set_value với {} là câu SQL rỗng — MariaDB 1065)
-			frappe.db.set_value("NPP HDDT", ten, cap, update_modified=False)
+			# phát hiện 16: đổi `modified` khi có trường nghiệp vụ đổi — bản form Desk cũ lưu sau đó bị lõi chặn (không ghi đè số / trạng thái)
+			frappe.db.set_value("NPP HDDT", ten, cap, update_modified=bool(set(cap) - {"misa_last_checked_at"}))
 	except Exception as e:
 		frappe.db.rollback(save_point=diem)
 		if _la_trung_khoa(e) and r is not None:
@@ -479,10 +506,10 @@ def xu_ly_misa_khong_co(ten: str, luc=None) -> bool:
 	chưa ghi xong) hoặc dòng không `pending` → không ghi gì. Một luật cho Làm mới (§4.3 bước 6) và vòng quét (§5.2 bước 4). → đã đổi dòng?"""
 	luc = luc or bay_gio()
 	# mốc hỏi không lùi (I10): lượt quét song song có thể đã ghi mốc muộn hơn
-	frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %s,
-			`misa_last_checked_at` = GREATEST(IFNULL(`misa_last_checked_at`, %s), %s)
-		WHERE `name` = %s AND `misa_status` = 'pending' AND (`misa_sent_at` IS NULL OR `misa_sent_at` < %s)""",
-		(LOI_LM_TREO, luc, luc, ten, luc - _dt.timedelta(minutes=PHUT_TREO)))
+	frappe.db.sql(f"""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %(loi)s,
+			`misa_last_checked_at` = GREATEST(IFNULL(`misa_last_checked_at`, %(luc)s), %(luc)s), {SQL_DOI_MODIFIED}
+		WHERE `name` = %(ten)s AND `misa_status` = 'pending' AND (`misa_sent_at` IS NULL OR `misa_sent_at` < %(moc)s)""",
+		{"loi": LOI_LM_TREO, "luc": luc, "ten": ten, "moc": luc - _dt.timedelta(minutes=PHUT_TREO), **tham_so_modified()})
 	return bool(frappe.db._cursor.rowcount)
 
 
@@ -504,8 +531,9 @@ def ghi_loi_truoc_gui(ten: str, loi: str) -> None:
 	"""Lỗi TRƯỚC khi gửi (cấu hình / giải mã / token — §4.1.1 bước 6, 8): `misa_status = error` + câu, CHỈ khi dòng vẫn "chưa tới MISA" (trống /
 	error) ∧ chưa mã tra cứu ∧ chưa số ([Soát thiếu 2] cùng chốt H23 — không dán `error` lên tờ đã có số khi đua). Không đổi `misa_sent_at`,
 	không RefID. Commit ngay (route trả lỗi sau đó)."""
-	frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %s WHERE `name` = %s
-		AND IFNULL(`misa_status`, '') IN ('', 'error') AND IFNULL(`misa_lookup_code`, '') = '' AND IFNULL(`misa_inv_no`, '') = ''""", (loi, ten))
+	frappe.db.sql(f"""UPDATE `tabNPP HDDT` SET `misa_status` = 'error', `misa_error` = %(loi)s, {SQL_DOI_MODIFIED} WHERE `name` = %(ten)s
+		AND IFNULL(`misa_status`, '') IN ('', 'error') AND IFNULL(`misa_lookup_code`, '') = '' AND IFNULL(`misa_inv_no`, '') = ''""",
+		{"loi": loi, "ten": ten, **tham_so_modified()})
 	commit_giua_chung()
 
 
@@ -630,24 +658,32 @@ def _ghi_ket_qua_phat_hanh(ten: str, kq: dict) -> dict:
 	"""§4.1.1 bước 14 (MISA nhận): dòng → `issued` (`phat_hanh_luc` = bây giờ nếu ĐANG draft, giữ nếu khác — có thể NULL), mã tra cứu / link / ký
 	chỉ khi MISA trả mã (H20: dạng phản hồi tài liệu mô tả thì không bao giờ có ⇒ thực tế `sent`), `misa_error` NULL. KHÔNG ghi `misa_ref_id`
 	(đã ghi ở giành tờ — nguồn sự thật là thứ đã gửi), KHÔNG ghi số / ký hiệu / ngày / quan hệ (I2 — chỉ luồng kéo về). → {lookup_code,
-	invoice_url}. Đọc lại dòng CÓ KHOÁ (bản mới nhất)."""
+	invoice_url}. Đọc lại dòng CÓ KHOÁ (bản mới nhất).
+
+	[Sửa cuối — phát hiện 15] RefID đã commit trước POST ⇒ cổng trả RefID cho tờ `pending` ⇒ màn hiện "Làm mới": người khác / vòng quét có thể kéo
+	bản ghi MISA về TRONG LÚC POST còn chờ (≤ 110 s). Dòng không còn `pending` (kéo về đã áp bản ghi MISA — `sent` / `amount_mismatch` / `signed`…)
+	⇒ KHÔNG ghi `misa_status` (bản ghi MISA là sự thật, mới hơn phản hồi POST); mã tra cứu / link / mốc ký CHỈ ghi khi phản hồi có mã — không bao
+	giờ ghi NULL đè giá trị đang đúng (§0.2-7; trước giành tờ các cột ấy luôn trống nên lần đẩy thường không đổi gì)."""
 	luc = bay_gio()
 	ma = kq.get("lookup_code") or None
 	url = url_tra_cuu(ma)
 	r = doc_dong_hddt(ten, khoa=True)
-	cap = {"trang_thai": "issued", "misa_lookup_code": ma, "misa_invoice_url": url, "misa_status": "signed" if ma else "sent",
-		"misa_error": None, "misa_signed_at": luc if ma else None, "misa_published_at": luc if ma else None}
+	cap = {"trang_thai": "issued", "misa_error": None}
+	if ma:
+		cap.update({"misa_lookup_code": ma, "misa_invoice_url": url, "misa_signed_at": luc, "misa_published_at": luc})
+	if r is None or (r.misa_status or "") == "pending":
+		cap["misa_status"] = "signed" if ma else "sent"
 	if r is not None and (r.trang_thai or "") == "draft":
 		cap["phat_hanh_luc"] = luc
-	frappe.db.set_value("NPP HDDT", ten, cap, update_modified=False)
+	frappe.db.set_value("NPP HDDT", ten, cap)  # đổi `modified` (phát hiện 16)
 	return {"lookup_code": ma, "invoice_url": url}
 
 
 def _ket_qua_loi_day(ten: str, misa_status: str, misa_error: str) -> None:
 	"""MISA lỗi rõ / chưa gửi được (→ error) hoặc chưa biết (→ giữ pending): chỉ ghi khi dòng còn `pending` (lượt Làm mới song song đã thấy tờ trên
 	MISA thì không dán lại lỗi). RefID giữ."""
-	frappe.db.sql("UPDATE `tabNPP HDDT` SET `misa_status` = %s, `misa_error` = %s WHERE `name` = %s AND `misa_status` = 'pending'",
-		(misa_status, misa_error, ten))
+	frappe.db.sql(f"""UPDATE `tabNPP HDDT` SET `misa_status` = %(st)s, `misa_error` = %(loi)s, {SQL_DOI_MODIFIED}
+		WHERE `name` = %(ten)s AND `misa_status` = 'pending'""", {"st": misa_status, "loi": misa_error, "ten": ten, **tham_so_modified()})
 
 
 @tuyen("POST", r"^/api/einvoice/publish$")
@@ -691,6 +727,9 @@ def _phat_hanh(yc: YeuCauCu) -> tuple:
 	# 6. cấu hình (phát hành: token_path KHÔNG lùi về /oauth — publish/route.ts:329 [=])
 	try:
 		ch = MM.lay_cau_hinh(lui_duong_token=False)
+	except MM.LoiCauHinh as e:  # [Sửa cuối — phát hiện 6] địa chỉ / đường MISA không hợp lệ (sửa tay trên Desk): không giải mã, không gọi
+		ghi_loi_truoc_gui(ten, str(e))
+		return _loi(400, str(e))
 	except Exception as e:
 		cau = CAU_DOC_CAU_HINH.format(msg=str(e))
 		try:
@@ -739,19 +778,43 @@ def _phat_hanh(yc: YeuCauCu) -> tuple:
 		return _loi(404, CAU_PH_KHONG_CO)
 	if (x.misa_status or "") not in ("", "error") or x.misa_lookup_code or x.misa_inv_no:
 		return _loi(409, CAU_PH_DANG_XU_LY)
+	if _doi_truong_payload(r, x):
+		# [Sửa cuối — phát hiện 14] người mua / tiền vừa được sửa (H24 — cổng cho sửa dòng `error`) giữa bước 3 và bước 9: dựng lại từ bản ĐÃ KHOÁ —
+		# gửi bản cũ là MISA nhận dữ liệu cũ cùng RefID trong khi sổ ghi dữ liệu mới (nppsale dựng payload SAU khi giành tờ nên không có cửa sổ này)
+		try:
+			nguoi_mua, dong = _nguoi_mua_va_dong(x)
+		except _LoiDocHang as e:  # chưa ghi gì: dòng không đổi
+			return _loi(500, str(e))
 	ref_cu = (x.misa_ref_id or "").strip() or None
 	ref = ref_cu or str(uuid.uuid4())
-	frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'pending', `misa_ref_id` = %s, `misa_sent_at` = %s, `misa_error` = NULL
-		WHERE `name` = %s""", (ref, bay_gio(), ten))
+	frappe.db.sql(f"""UPDATE `tabNPP HDDT` SET `misa_status` = 'pending', `misa_ref_id` = %(ref)s, `misa_sent_at` = %(luc)s, `misa_error` = NULL,
+		{SQL_DOI_MODIFIED} WHERE `name` = %(ten)s""", {"ref": ref, "luc": bay_gio(), "ten": ten, **tham_so_modified()})
 	commit_giua_chung()
 	return _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
+
+
+# Trường của dòng HĐĐT mà payload đọc (§4.1.2: người mua + dòng tổng hợp của tờ tay; nguồn chứng từ)
+_COT_PAYLOAD = ("nguoi_mua", "dia_chi_nguoi_mua", "mst_nguoi_mua", "tien_hang", "tien_thue", "tong_tien", "hoa_don_ban", "don_hang",
+	"hoa_don_ban_ls", "don_hang_ls")
+
+
+def _doi_truong_payload(r, x) -> bool:
+	"""Bản đọc thường (bước 3) và bản đọc CÓ KHOÁ (bước 9) khác nhau ở một trường payload dùng (tiền so theo số — Decimal / float)."""
+	for k in _COT_PAYLOAD:
+		a, b = r.get(k), x.get(k)
+		if k in ("tien_hang", "tien_thue", "tong_tien"):
+			if flt(a) != flt(b):
+				return True
+		elif (a or "") != (b or ""):
+			return True
+	return False
 
 
 def _da_co_tren_misa(ten: str, raw, ch, *, gui_di, don_hang) -> tuple:
 	"""MISA ĐÃ có tờ mang RefID này (hỏi trước khi đẩy lại — H3; hỏi trước khi thử lại POST — H27): KHÔNG POST; áp kết quả như Làm mới + xác nhận
 	đẩy (H5), một nhật ký `success`, commit → 200 cached (đọc lại dòng)."""
 	kq = ghi_ket_qua_keo_ve(ten, raw, xac_nhan_day=True, luc=bay_gio(), co_ma=ch.co_ma)
-	ghi_nhat_ky("publish", "success", hddt=ten, don_hang=don_hang, gui_di=gui_di, nhan_ve=raw, loi=CAU_DA_CO_TREN_MISA,
+	ghi_nhat_ky("publish", "success", hddt=ten, don_hang=don_hang, gui_di=gui_di, nhan_ve=MM.che_ban_ghi(raw, ch), loi=CAU_DA_CO_TREN_MISA,
 		misa_lookup_code=kq["cap_nhat"].get("misa_lookup_code"), misa_inv_no=kq["so_that"])
 	commit_giua_chung()
 	return _ket_qua_cu(doc_dong_hddt(ten))
@@ -772,7 +835,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 		# 10. [ĐX H3] đẩy lại (đã có RefID): hỏi MISA trước — có ⇒ không POST
 		if ref_cu:
 			try:
-				raw = MM.lay_hd(ch, ref)
+				raw = ban_ghi_cua_to(MM.lay_hd(ch, ref), "pending", ref)  # bản ghi rỗng `{}` = MISA không có (phát hiện 9)
 			except MM.MisaLoi as e:
 				cau = CAU_PH_HOI_TRUOC.format(cau=str(e))
 				_ket_qua_loi_day(ten, "error", cau)
@@ -785,7 +848,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 		payload = dung_payload(nguoi_mua, dong, ref, ch.cau_hinh_payload, che_do, po if isinstance(po, str) else None, _co_mui(bay_gio()))
 		# 12. POST + 1 lần thử lại khi lỗi xác thực; [ĐX H27] trước lần thử lại hỏi MISA
 		da_gui = True
-		kq = MM.day_hd(ch, payload, truoc_khi_thu_lai=lambda: MM.lay_hd(ch, ref), bat_dau=bat_dau)
+		kq = MM.day_hd(ch, payload, truoc_khi_thu_lai=lambda: ban_ghi_cua_to(MM.lay_hd(ch, ref), "pending", ref), bat_dau=bat_dau)
 		if kq.get("da_co") is not None:  # hỏng giữa chừng → bước 15 ghi MỘT nhật ký failed cho lần POST này (I5)
 			ban_ghi_misa = kq["da_co"]
 			return _da_co_tren_misa(ten, kq["da_co"], ch, gui_di=payload, don_hang=don_hang)
@@ -826,7 +889,7 @@ def _sau_gianh_to(ten, x, ref, ref_cu, ch, nguoi_mua, dong, che_do, po, bat_dau)
 		cau = str(e)
 		_ket_qua_loi_day(ten, "pending", cau)
 		_ghi_nhat_ky_an_toan("publish", "failed", hddt=ten, don_hang=don_hang, gui_di=payload if payload is not None else
-			{"source": "hoi_truoc_khi_day_lai", "ref_id": ref}, nhan_ve=ban_ghi_misa, loi=cau)
+			{"source": "hoi_truoc_khi_day_lai", "ref_id": ref}, nhan_ve=MM.che_ban_ghi(ban_ghi_misa, ch), loi=cau)
 		commit_giua_chung()
 		return _loi(409, cau)
 	except Exception as e:  # bước 15
@@ -879,6 +942,8 @@ def _lam_moi(yc: YeuCauCu) -> tuple:
 		return _loi(409, CAU_LM_MAT_REFID) if r.misa_inv_no else _loi(400, CAU_LM_CHUA_DAY)
 	try:
 		ch = MM.lay_cau_hinh()
+	except MM.LoiCauHinh as e:  # [Sửa cuối — phát hiện 6] địa chỉ / đường MISA không hợp lệ: không giải mã, không gọi
+		return _loi(400, str(e))
 	except Exception:
 		_ghi_loi("HĐĐT MISA: làm mới — đọc cấu hình lỗi")
 		return _loi(500, CAU_LM_LOI_CAU_HINH)
@@ -889,7 +954,7 @@ def _lam_moi(yc: YeuCauCu) -> tuple:
 	except MM.LoiGiaiMa as e:
 		return _loi(500, str(e))
 	try:
-		raw = MM.lay_hd(ch, ref)
+		raw = ban_ghi_cua_to(MM.lay_hd(ch, ref), r.misa_status, ref)  # tờ treo / lỗi + bản ghi rỗng `{}` = MISA không có (phát hiện 9)
 	except MM.MisaLoi as e:
 		return _loi(502, str(e))
 	if raw is None:
@@ -904,12 +969,13 @@ def _lam_moi(yc: YeuCauCu) -> tuple:
 		return _loi(500, CAU_LM_GHI_HONG.format(msg=str(e)))
 	if kq["ghi_chu"]:  # [BP] nhật ký khi có ghi chú (nppsale không ghi log cho lượt bấm tay)
 		_ghi_nhat_ky_an_toan("refresh", "success", hddt=ten, don_hang=r.don_hang or r.get("don_hang_ls"),
-			gui_di={"source": "refresh", "ref_id": ref}, nhan_ve=raw, loi="\n".join(kq["ghi_chu"]), misa_inv_no=kq["so_that"])
+			gui_di={"source": "refresh", "ref_id": ref}, nhan_ve=MM.che_ban_ghi(raw, ch), loi="\n".join(kq["ghi_chu"]), misa_inv_no=kq["so_that"])
 	tho = raw if isinstance(raw, dict) else {}
 	tt = kq["tom_tat"]
 	return 200, {"success": True, "misa": {
 		"InvNo": tt["InvNo"], "TransactionID": kq["cap_nhat"].get("misa_lookup_code"), "PublishStatus": tho.get("PublishStatus"),
-		"EInvoiceStatus": tho.get("EInvoiceStatus"), "relation": tt["relation"], "status": tt["status"], "notes": kq["ghi_chu"],
+		# trạng thái ĐÃ GHI (= `ap_dung`, trừ xác nhận đẩy mặc định `sent` — phát hiện 1); null = giữ
+		"EInvoiceStatus": tho.get("EInvoiceStatus"), "relation": tt["relation"], "status": kq["cap_nhat"].get("misa_status"), "notes": kq["ghi_chu"],
 		"original_marked_replaced": kq["goc"]}}
 
 
@@ -1040,15 +1106,26 @@ def _cau_hinh_luu(yeu_cau_secret: YeuCauCu):
 		return (js_trim(v) or None) if isinstance(v, str) else None
 
 	tai_khoan_secret, password_moi = s("username"), s("password")
+	dia_chi = s("api_base") or "https://testapp.meinvoice.vn/api/v2"
+	duong_token, duong_day = s("token_path") or "/oauth", s("publish_path") or "/v3sainvoice"
+	loi = MM.kiem_cau_hinh(dia_chi, duong_token, duong_day)  # [Sửa cuối — phát hiện 6 (+3)] trước khi lưu: 400 câu tiếng Việt
+	if loi:
+		return _loi(400, loi)
 	if (tai_khoan_secret or password_moi) and not _khoa_ma_hoa_dung():
 		return _loi(500, CAU_CH_MA_HOA)
+	from nppsale.npp_hddt.doctype.npp_misa_cau_hinh.npp_misa_cau_hinh import da_luu
+
+	# [Sửa cuối — phát hiện 6 (2)] ĐỔI MÁY MISA mà không gõ lại tài khoản / mật khẩu ⇒ XOÁ bản đã lưu (gán trống rồi save — `_save_passwords`):
+	# tài khoản của máy cũ không bao giờ tự đi sang máy mới (thử ↔ thật là hai tài khoản khác nhau). Không từ chối: màn "Test kết nối" lưu trước mà
+	# không xem kết quả lưu — từ chối là lượt thử chạy bằng cấu hình CŨ; xoá thì lượt thử báo "Thiếu username/password" rõ ràng.
+	doi_may = da_luu() and MM.may_cua(frappe.db.get_single_value(TEN_CAU_HINH, "dia_chi_api") or "") != MM.may_cua(dia_chi)
 	try:
 		with _sach_message_log():
 			d = frappe.get_single(TEN_CAU_HINH)
 			d.nha_cung_cap = "misa"
-			d.dia_chi_api = s("api_base") or "https://testapp.meinvoice.vn/api/v2"
-			d.duong_lay_token = s("token_path") or "/oauth"
-			d.duong_phat_hanh = s("publish_path") or "/v3sainvoice"
+			d.dia_chi_api = dia_chi
+			d.duong_lay_token = duong_token
+			d.duong_phat_hanh = duong_day
 			for k, truong in (("tax_code", "mst_nguoi_ban"), ("seller_name", "ten_nguoi_ban"), ("seller_address", "dia_chi_nguoi_ban"),
 					("misa_company_id", "misa_company_id"), ("misa_org_unit_id", "misa_org_unit_id"), ("misa_template_id", "misa_template_id"),
 					("misa_user_id", "misa_user_id"), ("misa_inv_series", "misa_inv_series")):
@@ -1060,8 +1137,12 @@ def _cau_hinh_luu(yeu_cau_secret: YeuCauCu):
 			d.dang_dung = 1 if "is_active" not in than_secret or js_dung(than_secret["is_active"]) else 0
 			if tai_khoan_secret:
 				d.tai_khoan = tai_khoan_secret
+			elif doi_may:
+				d.tai_khoan = None
 			if password_moi:
 				d.mat_khau = password_moi
+			elif doi_may:
+				d.mat_khau = None
 			d.save(ignore_permissions=True)
 	except Exception as e:
 		_ghi_loi("HĐĐT MISA: lưu cấu hình lỗi")
@@ -1092,6 +1173,8 @@ def _thu_ket_noi(yeu_cau_secret: YeuCauCu) -> tuple:
 		return _loi(403, CAU_TK_QUYEN)
 	try:
 		ch = MM.lay_cau_hinh()  # token_path ∥ "/oauth"; không xét `dang_dung`
+	except MM.LoiCauHinh as e:  # [Sửa cuối — phát hiện 6] địa chỉ / đường MISA không hợp lệ: không giải mã, không gọi
+		return _loi(400, str(e))
 	except Exception:
 		_ghi_loi("HĐĐT MISA: thử kết nối — đọc cấu hình lỗi")
 		return _loi(500, CAU_LM_LOI_CAU_HINH)
@@ -1232,6 +1315,8 @@ def _dung_tu_snapshot(sn) -> tuple:
 		return 400, {"error": CAU_DS_KHONG_REFID}, None
 	try:
 		ch = MM.lay_cau_hinh()  # không xét `dang_dung`
+	except MM.LoiCauHinh as e:  # [Sửa cuối — phát hiện 6] địa chỉ / đường MISA không hợp lệ: không giải mã, không gọi
+		return 400, {"error": str(e)}, None
 	except Exception as e:
 		return 500, {"error": CAU_DOC_CAU_HINH.format(msg=str(e))}, None
 	if ch is None:

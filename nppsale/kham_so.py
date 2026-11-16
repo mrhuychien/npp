@@ -439,7 +439,7 @@ def quet_hddt(luc=None) -> dict:
 	for r in frappe.db.sql("""SELECT h.`name`, h.`hoa_don_ban`, h.`trang_thai`, h.`misa_status`, h.`misa_inv_no` FROM `tabNPP HDDT` h
 			JOIN `tabSales Invoice` si ON si.`name` = h.`hoa_don_ban`
 			WHERE si.`docstatus` = 2 AND (h.`trang_thai` = 'issued' OR IFNULL(h.`misa_inv_no`, '') <> '' OR h.`misa_status` IN ('signed', 'replaced')
-				OR (IFNULL(h.`misa_ref_id`, '') <> '' AND h.`misa_status` IN ('pending', 'sent', 'waiting_code')))
+				OR (IFNULL(h.`misa_ref_id`, '') <> '' AND h.`misa_status` IN ('pending', 'sent', 'waiting_code', 'amount_mismatch')))
 			ORDER BY h.`hoa_don_ban`, h.`name`""", as_dict=True):
 		ra.append(_dong_hddt("5c", "Hoá đơn điện tử còn hiệu lực / đang chờ MISA cho HĐ bán ĐÃ HUỶ", r.name,
 			f"HĐ bán {r.hoa_don_ban} (đã huỷ) · {r.trang_thai}/{r.misa_status or 'trống'}{' · số ' + r.misa_inv_no if r.misa_inv_no else ''}",

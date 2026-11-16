@@ -105,7 +105,8 @@ class GhiHddt:
 	  của NPP HDDT); `status` theo CHUYEN_DUOC (giá trị ngoài ba trạng thái → 23514 `invoices_status_check`); `issued_at` chỉ đi kèm draft → issued
 	  (→ `phat_hanh_luc`); `order_id` / `sales_invoice_id` / `misa_*` / `tim_kd` → 42501. Đọc dòng bằng `get_doc(for_update=True)`: bản ĐÃ COMMIT MỚI
 	  NHẤT + khoá dòng — `save()` ghi lại MỌI trường, đọc theo ảnh chụp cũ là đè mất `misa_status` / `misa_ref_id` mà bước giành tờ của phát hành
-	  vừa ghi bằng câu SQL (không đổi `modified` nên check_if_latest của lõi không bắt được).
+	  vừa ghi bằng câu SQL (máy ghi nay có đổi `modified` — `nppsale.api.misa.SQL_DOI_MODIFIED` — nhưng bản đọc theo ảnh chụp cũ mang cả `modified`
+	  cũ: check_if_latest của lõi so với bản `load_doc_before_save` cùng ảnh chụp nên vẫn không bắt; đọc CÓ KHOÁ mới chắc).
 	DELETE (vai chủ / KT): chỉ `draft` chưa có RefID; `draft` có RefID (tờ đã gửi / lỗi sau khi gửi) → P0001 "Chỉ xoá được hoá đơn điện tử nháp
 	  chưa gửi MISA." (H24 — thay vì 0 dòng); `issued` / `cancelled` → 0 dòng. `on_trash` của NPP HDDT gỡ `hddt` ở Log / Snapshot.
 	UPSERT: không khai `them_hoac_sua` → 42501 (cong/ghi.py)."""

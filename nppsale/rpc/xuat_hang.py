@@ -406,8 +406,10 @@ def _khoa_hddt(hd: str) -> None:
 	có dòng `NPP HDDT` gắn HĐ bán (`hoa_don_ban` — chỉ nối theo HĐ, dòng chỉ có `don_hang` không khoá) mà (a) `trang_thai` = issued ∨ có
 	`misa_inv_no` ∨ `misa_status` ∈ {signed, replaced} → "đã phát hành" (MỘT dòng thoả là khoá; Postgres khoá cả `misa_inv_no = ''` — Frappe coi
 	`''` là không số, công cụ nhập đổi `''` → NULL nên hai bên trùng; HĐĐT đã huỷ trên MISA mà còn số vẫn khoá — H12); (b) [H2 — blueprint
-	§7.1 điểm 20, chờ chủ nhà chốt] có `misa_ref_id` ∧ `misa_status` ∈ {pending, sent, waiting_code} → "đang chờ MISA" (không khoá thì có thể ra
-	HĐĐT nháp trên MISA cho một HĐ đã huỷ). Đọc CÓ KHOÁ (LOCK IN SHARE MODE) sau khi đã khoá HĐ bán FOR UPDATE: REPEATABLE READ chụp ảnh ở câu
+	§7.1 điểm 20, chờ chủ nhà chốt] có `misa_ref_id` ∧ `misa_status` ∈ {pending, sent, waiting_code, amount_mismatch} → "đang chờ MISA" (không
+	khoá thì có thể ra HĐĐT nháp trên MISA cho một HĐ đã huỷ). [Sửa cuối — phát hiện 13] `amount_mismatch` CHƯA số = MISA đang giữ nháp lệch tiền
+	(H10 — mọi HĐ có giảm giá cả đơn): chủ "Huỷ" HĐĐT nội bộ (issued → cancelled — không huỷ gì bên MISA) là lọt cả hai vế; có số thì vế (a) đã
+	khoá. Đọc CÓ KHOÁ (LOCK IN SHARE MODE) sau khi đã khoá HĐ bán FOR UPDATE: REPEATABLE READ chụp ảnh ở câu
 	đọc thường đầu tiên (PoC 1d) — đọc thường có thể không thấy tờ `phat_hanh` vừa commit; phát hành khoá HĐ bán ở bước giành tờ ⇒ hai đường
 	xếp hàng. Giao diện cắt tiền tố mã (`src/lib/orders/post-invoice.ts:218–220`) — người dùng đọc phần sau dấu hai chấm."""
 	if frappe.db.sql("""SELECT 1 FROM `tabNPP HDDT` WHERE `hoa_don_ban` = %s
@@ -415,7 +417,7 @@ def _khoa_hddt(hd: str) -> None:
 			LIMIT 1 LOCK IN SHARE MODE""", hd):
 		raise NppLoi("LOCKED_EINVOICE: hóa đơn đã phát hành hóa đơn điện tử")
 	if frappe.db.sql("""SELECT 1 FROM `tabNPP HDDT` WHERE `hoa_don_ban` = %s AND IFNULL(`misa_ref_id`, '') <> ''
-			AND `misa_status` IN ('pending', 'sent', 'waiting_code') LIMIT 1 LOCK IN SHARE MODE""", hd):
+			AND `misa_status` IN ('pending', 'sent', 'waiting_code', 'amount_mismatch') LIMIT 1 LOCK IN SHARE MODE""", hd):
 		raise NppLoi("LOCKED_EINVOICE: HĐĐT đang chờ MISA — bấm Làm mới trạng thái trước")
 
 

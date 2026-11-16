@@ -12,16 +12,19 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import io
 import json
 import os
+import shutil
 import socket
+import ssl
 import tempfile
 import threading
 import time
 import unittest
 from contextlib import contextmanager
 from unittest.mock import patch
-from urllib.parse import parse_qsl
+from urllib.parse import parse_qsl, quote_plus, urlencode
 
 import frappe
 import requests
@@ -62,7 +65,9 @@ class AdapterGia(requests.adapters.BaseAdapter):
 		r = requests.models.Response()
 		r.status_code, r.request, r.url = b.get("status", 200), request, request.url
 		than = b.get("body", {})
-		r._content = (than if isinstance(than, str) else json.dumps(than, ensure_ascii=False)).encode()
+		# thân như dòng byte (lớp mạng đọc `stream=True` theo khúc, có trần — `_doc_than_gioi_han`); `b["headers"]` → header trả lời
+		r.raw = io.BytesIO((than if isinstance(than, str) else json.dumps(than, ensure_ascii=False)).encode())
+		r.headers.update(b.get("headers") or {})
 		return r
 
 	def close(self):
@@ -77,6 +82,14 @@ def phien_gia(a: AdapterGia) -> requests.Session:
 	s.mount("https://", a)
 	s.mount("http://", a)
 	return s
+
+
+def cho_phep_misa_gia(tc) -> None:
+	"""Máy MISA giả của bài (`misa.gia`) vào danh sách máy cho phép (`MAY_CHU_MISA` — phát hiện 6): vá biến mô-đun (luồng khác của bài hai kết
+	nối cũng thấy — `frappe.local.conf` thì không)."""
+	p = patch.object(M, "MAY_CHU_MISA", M.MAY_CHU_MISA | {"misa.gia"})
+	p.start()
+	tc.addCleanup(p.stop)
 
 
 def cau_hinh(**kv) -> M.CauHinhMisa:
@@ -452,8 +465,8 @@ class TestDay(_NenMang):
 		self.assertEqual(a.het_gio, [(5, 15)])
 
 	def test_kv23_kv22_truyen_tai(self):
-		"""Lời ĐẨY: không nối được / sai địa chỉ / TLS = CHƯA GỬI (route đặt error); hết giờ đọc / đứt giữa chừng = CHƯA BIẾT (`chua_biet`, route
-		giữ pending). Câu nguyên văn §3.1 / Phụ lục A."""
+		"""Lời ĐẨY: không nối được / sai địa chỉ / TLS hỏng lúc bắt tay = CHƯA GỬI (route đặt error); hết giờ đọc / đứt giữa chừng / TLS hỏng sau
+		khi gửi = CHƯA BIẾT (`chua_biet`, route giữ pending). Câu nguyên văn §3.1 / Phụ lục A. Mọi lỗi ở đây mang `truyen_tai`."""
 		chua_biet = M.CAU_CHUA_BIET
 		self.assertEqual(chua_biet, "Không nhận được trả lời của MISA (hết giờ / rớt mạng) — chưa biết MISA đã nhận hoá đơn chưa. ĐỪNG đẩy lại: "
 			"bấm 'Làm mới trạng thái từ MISA' sau ít phút.")
@@ -464,8 +477,8 @@ class TestDay(_NenMang):
 				(requests.exceptions.ConnectionError(ket_noi), "Không kết nối được tới MISA (NewConnectionError) — hoá đơn chưa được gửi.", False),
 				(requests.exceptions.ConnectionError(phan_giai), "Không kết nối được tới MISA (NameResolutionError) — hoá đơn chưa được gửi.",
 					False),
-				(requests.exceptions.SSLError(urllib3.exceptions.MaxRetryError(None, "/x", urllib3.exceptions.SSLError("cert"))),
-					"Không kết nối được tới MISA (SSLError) — hoá đơn chưa được gửi.", False),
+				# [Sửa cuối — phát hiện 11] SSLError KHÔNG mang dấu bắt tay (khung do_handshake) → chưa biết (đo thật: TestMayChuTls)
+				(requests.exceptions.SSLError(urllib3.exceptions.MaxRetryError(None, "/x", urllib3.exceptions.SSLError("cert"))), chua_biet, True),
 				(requests.exceptions.ProxyError("p"), "Không kết nối được tới MISA (ProxyError) — hoá đơn chưa được gửi.", False),
 				(requests.exceptions.ReadTimeout("x"), chua_biet, True),
 				(requests.exceptions.ConnectionError(urllib3.exceptions.ProtocolError("Connection aborted.")), chua_biet, True),
@@ -644,6 +657,93 @@ class TestDoc(_NenMang):
 
 
 # =====================================================================================================================================
+# Sửa cuối (vòng soát 3 góc) — khoá token theo site + mật khẩu (H29), 502 / 504 chưa biết (H30), che bí mật dạng mã hoá, cờ lỗi đường truyền
+# =====================================================================================================================================
+
+class TestSuaCuoiMang(_NenMang):
+	def test_khoa_token_theo_site_va_mat_khau(self):
+		"""[phát hiện 5 — ≠ H29] Bản nhớ token khoá theo (site, api, MST, tài khoản, MẬT KHẨU, đường): mật khẩu sai không chạy bằng token cũ; site
+		khác cùng tiến trình gunicorn nhập y hệt api / MST / tài khoản của NPP A không mượn được token của A (nppsale khoá `api|mst|tài khoản`)."""
+		a = self.mang(TOK, TOK2)
+		self.assertEqual(M.lay_token(cau_hinh()), "T1")
+		self.assertEqual(M.lay_token(cau_hinh(mat_khau="sai-bat-ky")), "T2")  # khác mật khẩu → lời /oauth riêng
+		self.assertEqual(M.lay_token(cau_hinh()), "T1")  # đúng mật khẩu → bản nhớ
+		self.assertEqual(gon(a), ["POST /oauth", "POST /oauth"])
+		a = self.mang({"body": {"access_token": "T-B", "expires_in": 3600}})
+		with patch.object(frappe.local, "site", "site-b.local"):
+			self.assertEqual(M.lay_token(cau_hinh()), "T-B")
+		self.assertEqual(gon(a), ["POST /oauth"])
+		self.assertEqual(M.lay_token(cau_hinh()), "T1")
+		self.assertTrue(all(len(k) == 64 and "p-thu" not in k for k in M._TOKEN_NHO))  # khoá băm — không giữ chữ mật khẩu
+
+	def test_502_504_chua_biet_khong_thu_lai(self):
+		"""[phát hiện 12 — ≠ H30] POST → 502 / 504 (cổng trước MISA hết giờ — máy sau có thể đã ghi) ⇒ CHƯA BIẾT, KHÔNG thử lại kể cả thân có chữ
+		"token" (la_loi_xac_thuc); câu = câu MISA + đuôi "chưa biết … ĐỪNG đẩy lại". 500 / 503 giữ lỗi rõ [=]. 504 ở POST lần 2 cũng chưa biết."""
+		for st in (502, 504):
+			with self.subTest(st=st):
+				M.xoa_token_nho()
+				a = self.mang(TOK, {"status": st, "body": "<html>Gateway Time-out token</html>"})
+				kq = M.day_hd(cau_hinh(), HOA_DON, lambda: self.fail("502 / 504 không được thử lại"))
+				self.assertEqual(gon(a), ["POST /oauth", "POST /v3sainvoice"])
+				self.assertEqual((kq["ok"], kq["chua_biet"], kq["error"]), (False, True,
+					f"MISA publish lỗi {st}: <html>Gateway Time-out token</html> — chưa biết MISA đã nhận hoá đơn chưa. ĐỪNG đẩy lại: bấm 'Làm mới "
+					"trạng thái từ MISA' sau ít phút."))
+		for st in (500, 503):
+			with self.subTest(st=st):
+				M.xoa_token_nho()
+				self.mang(TOK, {"status": st, "body": "<html>x</html>"})
+				kq = M.day_hd(cau_hinh(), HOA_DON)
+				self.assertEqual((kq["chua_biet"], kq["error"]), (False, f"MISA publish lỗi {st}: <html>x</html>"))
+		M.xoa_token_nho()
+		self.nap_token(cau_hinh())
+		a = self.mang(CAU_401, TOK2, {"status": 504, "body": "x"})
+		kq = M.day_hd(cau_hinh(), HOA_DON, lambda: None)
+		self.assertEqual((gon(a), kq["chua_biet"]), (["POST /v3sainvoice", "POST /oauth", "POST /v3sainvoice"], True))
+
+	def test_che_bi_mat_dang_ma_hoa(self):
+		"""[phát hiện 8] MISA dội lại form /oauth (tài khoản / mật khẩu đã mã URL: '@' → %40, ' ' → '+') hoặc JSON thoát `\\"` → vẫn `***`."""
+		tk, mk = "ketoan@npp.vn", 'Abc@123 x"y'
+		ch = cau_hinh(tai_khoan=tk, mat_khau=mk)
+		form = urlencode({"grant_type": "password", "username": tk, "password": mk})
+		self.assertIn("Abc%40123+x%22y", form)
+		self.mang({"status": 400, "body": "Bad request: " + form})
+		with self.assertRaises(M.MisaLoi) as e:
+			M.lay_token(ch)
+		self.assertEqual(str(e.exception), "MISA token lỗi 400: Bad request: grant_type=password&username=***&password=***")
+		self.mang(TOK, {"status": 500, "body": {"errorMessage": "Sai " + json.dumps({"UserName": tk, "Password": mk})}})
+		kq = M.day_hd(ch, HOA_DON)
+		for chu in (kq["error"], json.dumps(kq["raw"], ensure_ascii=False)):
+			for bm in (tk, mk, quote_plus(tk), quote_plus(mk), json.dumps(mk)[1:-1]):
+				self.assertNotIn(bm, chu)
+		self.assertEqual(kq["error"], 'MISA publish lỗi 500: Sai {"UserName": "***", "Password": "***"}')
+
+	def test_che_ban_ghi_chi_ban_ghi_ra(self):
+		"""[phát hiện 8] Bản ghi MISA trả NGUYÊN cho luật kết luận (`lay_hd`); trước khi GHI ra nhật ký / snapshot thì `che_ban_ghi` che tài khoản /
+		mật khẩu / token đang dùng (mọi dạng) — bản gốc không đổi (mật khẩu yếu "1234" che vào bản kết luận là mất số HĐ "00001234")."""
+		ch = cau_hinh(tai_khoan="ketoan@npp.vn", mat_khau="p-thu-BIMAT")
+		self.mang({"body": {"access_token": "JWT-BIMAT-9", "expires_in": 3600}},
+			{"body": {"success": True, "data": json.dumps({"InvNo": "00000123", "CreatedBy": "ketoan@npp.vn"})}})
+		ban_ghi = M.lay_hd(ch, "R")
+		self.assertEqual(ban_ghi, {"InvNo": "00000123", "CreatedBy": "ketoan@npp.vn"})
+		them = {**ban_ghi, "Note": "ketoan%40npp.vn / JWT-BIMAT-9"}
+		self.assertEqual(M.che_ban_ghi(them, ch), {"InvNo": "00000123", "CreatedBy": "***", "Note": "*** / ***"})
+		self.assertEqual(them["CreatedBy"], "ketoan@npp.vn")
+		yeu = cau_hinh(tai_khoan="u", mat_khau="1234")
+		self.assertEqual(M.che_ban_ghi({"InvNo": "00001234"}, yeu), {"InvNo": "0000***"})  # vì thế chỉ che bản GHI ra, không bản kết luận
+
+	def test_co_loi_duong_truyen(self):
+		"""`truyen_tai` (vòng quét: xoay hàng đợi / ngắt lượt): đúng với lỗi đường truyền, sai với lỗi MISA TRẢ LỜI."""
+		self.nap_token(cau_hinh())
+		for kich_ban, mong in ((requests.exceptions.ReadTimeout("x"), True), (requests.exceptions.ConnectTimeout("x"), True),
+				({"status": 404, "body": "Not Found"}, False), ({"body": {"success": False, "ErrorCode": "NotFound"}}, False)):
+			with self.subTest(kich_ban=kich_ban):
+				self.mang(kich_ban)
+				with self.assertRaises(M.MisaLoi) as e:
+					M.lay_hd(cau_hinh(), "R")
+				self.assertIs(e.exception.truyen_tai, mong)
+
+
+# =====================================================================================================================================
 # Máy chủ giả 127.0.0.1 — byte thật trên dây + lỗi truyền tải THẬT của requests / urllib3
 # =====================================================================================================================================
 
@@ -784,6 +884,132 @@ class TestMayChuGia(unittest.TestCase):
 		with patch.object(M, "HET_GIO_MOT_HD", (2, 0.3)), self.assertRaises(M.MisaLoi) as e:
 			M.lay_hd(cau_hinh(dia_chi_api=mc.goc), "R")
 		self.assertEqual(str(e.exception), "Không nhận được trả lời của MISA (ReadTimeout) — thử lại sau ít phút.")
+		self.assertTrue(e.exception.truyen_tai)
+
+	def test_khong_theo_chuyen_huong_307(self):
+		"""[Sửa cuối — phát hiện 6] /oauth trả 307 sang máy khác: requests mặc định GỬI LẠI thân (form có tài khoản + mật khẩu) tới `Location` — lớp
+		mạng không theo chuyển hướng: 3xx là mã lỗi HTTP, máy kia không nhận byte nào."""
+		khac = _MayChuGia(lambda b, conn: _tra(conn, {"access_token": "T-LAY-CAP"}))
+		self.addCleanup(khac.dong)
+
+		def chuyen(b, conn):
+			conn.sendall(f"HTTP/1.1 307 Temporary Redirect\r\nLocation: {khac.goc}/oauth\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+				.encode())
+
+		mc = _MayChuGia(chuyen)
+		self.addCleanup(mc.dong)
+		with self.assertRaises(M.MisaLoi) as e:
+			M.lay_token(cau_hinh(dia_chi_api=mc.goc))
+		self.assertEqual((str(e.exception), e.exception.truyen_tai), ("MISA token lỗi 307: ", False))
+		time.sleep(0.3)
+		self.assertEqual((len(mc.yeu_cau), khac.yeu_cau), (1, []))
+
+	def test_tran_than_tra_loi(self):
+		"""[Sửa cuối — phát hiện 6] thân trả lời đọc dần, quá `TRAN_THAN` thì dừng — lời đẩy: CHƯA BIẾT (thân đã tới máy chủ)."""
+		mc = self.may_chu(lambda b, conn: _tra(conn, "x" * 20000))
+		with patch.object(M, "TRAN_THAN", 4096):
+			with self.assertRaises(M.MisaLoi) as e:
+				M.lay_hd(cau_hinh(dia_chi_api=mc.goc), "R")
+			self.assertEqual((str(e.exception), e.exception.chua_biet), ("MISA trả về quá 4 KB — dừng đọc (GET).", False))
+			kq = M.day_hd(cau_hinh(dia_chi_api=mc.goc), HOA_DON)
+			self.assertEqual((kq["error"], kq["chua_biet"]), ("MISA trả về quá 4 KB — dừng đọc (POST).", True))
+		self.assertEqual(M.day_hd(cau_hinh(dia_chi_api=mc.goc), HOA_DON)["error"], H.CAU_KHONG_CO_DU_LIEU)  # trần thật 2 MB: đọc trọn 20 KB
+
+
+def _chung_chi_tam(tc) -> tuple[str, str]:
+	"""Chứng chỉ tự ký cho 127.0.0.1 (cryptography — thư viện có sẵn của lõi) trong thư mục tạm của bài → (cert.pem, key.pem)."""
+	import ipaddress
+
+	from cryptography import x509
+	from cryptography.hazmat.primitives import hashes, serialization
+	from cryptography.hazmat.primitives.asymmetric import ec
+	from cryptography.x509.oid import NameOID
+
+	k = ec.generate_private_key(ec.SECP256R1())
+	ten = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1")])
+	c = (x509.CertificateBuilder().subject_name(ten).issuer_name(ten).public_key(k.public_key()).serial_number(x509.random_serial_number())
+		.not_valid_before(datetime.datetime(2020, 1, 1)).not_valid_after(datetime.datetime(2040, 1, 1))
+		.add_extension(x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address("127.0.0.1"))]), critical=False)
+		.sign(k, hashes.SHA256()))
+	d = tempfile.mkdtemp()
+	tc.addCleanup(shutil.rmtree, d, True)
+	cp, kp = os.path.join(d, "c.pem"), os.path.join(d, "k.pem")
+	with open(cp, "wb") as f:
+		f.write(c.public_bytes(serialization.Encoding.PEM))
+	with open(kp, "wb") as f:
+		f.write(k.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+	return cp, kp
+
+
+class _MayChuTls(_MayChuGia):
+	"""HTTPS giả 127.0.0.1: bắt tay TLS (chứng chỉ tự ký) rồi như `_MayChuGia` — ghi NGUYÊN yêu cầu, gọi `xu_ly(byte, tls)`. Khách bỏ bắt tay
+	(không tin chứng chỉ) → không có yêu cầu nào."""
+
+	def __init__(self, xu_ly, cp, kp):
+		self.ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+		self.ctx.load_cert_chain(cp, kp)
+		super().__init__(xu_ly)
+		self.goc = self.goc.replace("http://", "https://")
+
+	def _mot(self, conn):
+		with conn:
+			try:
+				tls = self.ctx.wrap_socket(conn, server_side=True)
+			except (ssl.SSLError, OSError):
+				return
+			try:
+				b = self._doc(tls)
+				self.yeu_cau.append(b)
+				self.xu_ly(b, tls)
+				time.sleep(0.2)
+			except OSError:
+				pass
+
+
+class TestMayChuTls(unittest.TestCase):
+	"""[Sửa cuối — phát hiện 11] `requests.exceptions.SSLError` gom CẢ lỗi bắt tay (chưa gửi) lẫn lỗi bản ghi TLS lúc đọc trả lời (thân ĐÃ tới máy chủ)
+	— đo bằng máy chủ TLS thật ở 127.0.0.1: nhận TRỌN thân POST rồi ghi một bản ghi TLS hỏng thẳng lên TCP ⇒ RECORD_LAYER_FAILURE ⇒ CHƯA BIẾT
+	(route giữ `pending`, H2 còn khoá Huỷ HĐ); khách không tin chứng chỉ ⇒ hỏng lúc bắt tay ⇒ CHƯA GỬI."""
+
+	def setUp(self):
+		M.xoa_token_nho()
+		self.addCleanup(M.xoa_token_nho)
+		self.cp, self.kp = _chung_chi_tam(self)
+
+	def phien(self, tin_chung_chi: bool):
+		s = _PHIEN_THAT()
+		s.trust_env = False
+		s.verify = self.cp if tin_chung_chi else True
+		p = patch.object(M, "_phien", lambda: s)
+		p.start()
+		self.addCleanup(p.stop)
+
+	def may_chu(self, xu_ly) -> _MayChuTls:
+		mc = _MayChuTls(xu_ly, self.cp, self.kp)
+		self.addCleanup(mc.dong)
+		return mc
+
+	def test_ban_ghi_tls_hong_sau_khi_gui_la_chua_biet(self):
+		def xu_ly(b, tls):
+			if b.split(b" ", 2)[1].endswith(b"/oauth"):
+				_tra(tls, {"access_token": "T1", "expires_in": 3600})
+			else:
+				os.write(tls.fileno(), b"\x17\x03\x03\x00\x20" + b"\x00" * 32)  # bản ghi TLS hỏng thay cho trả lời — ghi thẳng TCP
+
+		self.phien(tin_chung_chi=True)
+		mc = self.may_chu(xu_ly)
+		kq = M.day_hd(cau_hinh(dia_chi_api=mc.goc), HOA_DON)
+		self.assertTrue(mc.yeu_cau[-1].endswith('"Tạp hoá A","Quantity":2}]'.encode()))  # máy chủ ĐÃ nhận trọn thân
+		self.assertEqual((kq["error"], kq["chua_biet"]), (M.CAU_CHUA_BIET, True))
+
+	def test_bat_tay_hong_la_chua_gui(self):
+		self.phien(tin_chung_chi=False)  # chứng chỉ tự ký, khách dùng kho CA mặc định ⇒ CERTIFICATE_VERIFY_FAILED lúc bắt tay
+		mc = self.may_chu(lambda b, tls: _tra(tls, {"success": True}))
+		with self.assertRaises(M.MisaLoi) as e:
+			M._gui("POST", f"{mc.goc}/v3sainvoice", {"Content-Type": "application/json"}, b"[]", M.HET_GIO_DAY, la_day=True)
+		self.assertEqual((str(e.exception), e.exception.chua_biet, e.exception.truyen_tai),
+			("Không kết nối được tới MISA (SSLError) — hoá đơn chưa được gửi.", False, True))
+		self.assertEqual(mc.yeu_cau, [])
 
 
 # =====================================================================================================================================
@@ -802,6 +1028,7 @@ def _khoa_site(khoa: str):
 
 class TestCauHinhMisa(IntegrationTestCase):
 	def setUp(self):
+		cho_phep_misa_gia(self)
 		frappe.db.savepoint("npp_test")
 		frappe.db.sql("DELETE FROM `tabSingles` WHERE `doctype` = %s", CH.TEN)
 		frappe.db.sql("DELETE FROM `__Auth` WHERE `doctype` = %s", CH.TEN)

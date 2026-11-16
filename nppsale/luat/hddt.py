@@ -493,6 +493,23 @@ def doc_ban_ghi(raw) -> dict:
 	}
 
 
+def co_ban_ghi_that(raw, ref=None) -> bool:
+	"""[Sửa cuối — phát hiện 9 của vòng soát] Bản ghi `GET ?refID=` có THẬT SỰ nói "MISA đang giữ tờ này" không: dict mang RefID trùng `ref` (so
+	không phân biệt hoa thường, sau trim) HOẶC có ít nhất một trường nhận diện / trạng thái (InvNo — kể cả chỗ giữ chỗ '<Chưa cấp số>', InvSeries,
+	TransactionID, InvoiceCode, PublishStatus, EInvoiceStatus, TotalAmount) HOẶC cờ huỷ. `doc_phan_hoi_lay_hd` (parity JS — giữ nguyên) trả `{}` cho
+	`data: '{}'` / `'[]'` / `'1'`…: JS coi là "có dữ liệu" nhưng bản ghi ấy không nói gì — coi là "MISA có tờ" thì phát hành bỏ POST (H3 / H27) và
+	xác nhận đẩy (H5) một tờ MISA chưa từng nhận, kẹt `sent` + `issued` vĩnh viễn (RefID bất biến — mọi lần hỏi lại vẫn `{}`). Dạng "không có" thật của
+	MISA chưa đo (§9.4-2). Người gọi chỉ dùng cho tờ `pending` / `error` (nppsale không bao giờ hỏi RefID MISA chưa nhận — tờ khác giữ [=])."""
+	if not isinstance(raw, dict) or not raw:
+		return False
+	r = raw.get("RefID")
+	if isinstance(ref, str) and isinstance(r, str) and js_trim(r) and js_trim(r).casefold() == js_trim(ref).casefold():
+		return True
+	bg = doc_ban_ghi(raw)
+	return bool(bg["huy"]) or any(bg[k] is not None for k in ("inv_no", "inv_series", "transaction_id", "invoice_code", "publish_status",
+		"einvoice_status", "total_amount"))
+
+
 # =====================================================================================================================================
 # §2.4 Suy trạng thái — deriveState (status.ts:184–255). HAI TRỤC ở HAI trường: PublishStatus (phát hành) / EInvoiceStatus (quan hệ).
 # =====================================================================================================================================
@@ -1070,14 +1087,26 @@ def hieu_phan_hoi_day(http_status: int, text: str) -> dict:
 
 # --- /oauth ---------------------------------------------------------------------------------------------------------------------------
 
-_KHOA_TOKEN = re.compile(r'(?i)(\\?"?[A-Za-z0-9_]*token[A-Za-z0-9_]*\\?"?\s*[:=]\s*\\?"?)([^"\\,&\s}]+)')
+# (a) giá trị của MỌI khoá có chữ "token" — kể cả phần tử đầu của mảng (`"tokens":["…"]`); giá trị dừng ở nháy / phẩy / & / khoảng trắng / } / ]
+_KHOA_TOKEN = re.compile(r'(?i)(\\?"?[A-Za-z0-9_]*token[A-Za-z0-9_]*\\?"?\s*[:=]\s*(?:\[\s*)?\\?"?)([^"\\,&\s}\]]+)')
+# (b) chuỗi dạng JWT ở BẤT KỲ đâu (eyJ<đầu>.<thân>.<chữ ký>)
+_JWT = re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*")
+# (c) giá trị TRÔNG NHƯ token (≥ 20 ký tự base64url liền, không khoảng trắng) của khoá data / jwt / access / bearer / *key: API tích hợp của MISA trả
+#     `{"Success":true,"Data":"<token>"}` — tên khoá không có chữ "token" nên (a) không bắt
+_KHOA_GIONG_TOKEN = re.compile(
+	r'(?i)(\\?"?(?:data|jwt|access|bearer|[A-Za-z0-9_]*key)\\?"?\s*[:=]\s*(?:\[\s*)?\\?"?)([A-Za-z0-9_\-.+/=]{20,})(?=\\?"|[,&\s}\]]|$)')
 
 
 def che_token(text: str) -> str:
-	"""[ĐX H25] Che giá trị MỌI khoá có chữ "token" (không phân biệt hoa thường) trên CHUỖI THÔ — một luật cho JSON, JSON lồng trong chuỗi
-	(`\\"`) và dạng form; không parse rồi dựng lại (đổi khoảng trắng là câu lệch nppsale cả khi không có gì để che):
-	`{"Data":{"AccessToken":"T"}}` → `{"Data":{"AccessToken":"***"}}`, `access_token=a&token_type=b` → `access_token=***&token_type=***`."""
-	return _KHOA_TOKEN.sub(lambda m: m.group(1) + "***", text or "")
+	"""[ĐX H25] Che token trên CHUỖI THÔ — một luật cho JSON, JSON lồng trong chuỗi (`\\"`) và dạng form; không parse rồi dựng lại (đổi khoảng
+	trắng là câu lệch nppsale cả khi không có gì để che): (a) giá trị MỌI khoá có chữ "token" (không phân biệt hoa thường, kể cả trong mảng);
+	[Sửa cuối — phát hiện 7] (b) mọi chuỗi dạng JWT; (c) giá trị dạng token (≥ 20 ký tự base64url) của khoá data / jwt / access / bearer / *key.
+	`{"Data":{"AccessToken":"T"}}` → `{"Data":{"AccessToken":"***"}}`, `access_token=a&token_type=b` → `access_token=***&token_type=***`,
+	`{"tokens":["T"]}` → `{"tokens":["***"]}`, `{"success":true,"data":"eyJ….….…"}` → `{"success":true,"data":"***"}`. Thân không có gì giống token
+	giữ y nppsale (KV-14 `{"foo":1}`). Gọi lại trên chuỗi đã che không đổi gì (`***` che thành `***`)."""
+	t = _JWT.sub("***", text or "")
+	t = _KHOA_TOKEN.sub(lambda m: m.group(1) + "***", t)
+	return _KHOA_GIONG_TOKEN.sub(lambda m: m.group(1) + "***", t)
 
 
 def _lay_token(d: dict) -> str | None:
@@ -1106,7 +1135,9 @@ def doc_phan_hoi_token(http_status: int, text: str) -> dict:
 	if not _la_2xx(http_status) or co_loi:
 		st = d.get("status")
 		ma = so_js(st) if _la_so_js(st) else so_js(http_status)
-		return {"token": None, "expires_in": None, "loi": f"MISA token lỗi {ma}: {loi_misa(data, text)}", "tho": tho}
+		# [Sửa cuối — phát hiện 7] che cả nhánh HTTP lỗi: thân thô (500 ký tự của `loi_misa`) che TRƯỚC khi cắt (token nằm vắt qua mốc cắt không
+		# lọt nửa), câu lấy từ trường lỗi che SAU — câu không có gì giống token giữ y nppsale ("Sai tài khoản hoặc mật khẩu (invalid_grant)")
+		return {"token": None, "expires_in": None, "loi": f"MISA token lỗi {ma}: {che_token(loi_misa(data, che_token(text)))}", "tho": tho}
 	tok = _lay_token(d)
 	if not tok:
 		return {"token": None, "expires_in": None,

@@ -355,6 +355,54 @@ class TestPhanHoi(unittest.TestCase):
 		for t in ('{"foo":1}', '{"expires_in": 3600, "a": "b c"}', "", '{"access_token":""}'):
 			self.assertEqual(H.che_token(t), t)
 
+	def test_token_khong_lo_h25_mo_rong(self):
+		"""[Sửa cuối — phát hiện 7] token KHÔNG nằm dưới khoá chữ "token" vẫn bị che: JWT ở bất kỳ đâu (vỏ {success, data} của MISA), giá trị dạng token
+		của `Data` / `jwt` / `*key`, phần tử mảng (`"tokens":["…"]`), và nhánh HTTP lỗi của /oauth (trước: in thẳng 500 ký tự thân). Câu không có gì
+		giống token giữ y nppsale; che lại lần hai không đổi gì."""
+		jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1LXRodSJ9.SIGNATURE-BI-MAT"
+		ca = [
+			('{"success":true,"errorCode":null,"data":"' + jwt + '"}', '{"success":true,"errorCode":null,"data":"***"}'),
+			('{"Data":{"jwt":"' + jwt + '"}}', '{"Data":{"jwt":"***"}}'),
+			('{"tokens":["RAW-TOKEN-IN-ARRAY"]}', '{"tokens":["***"]}'),
+			('{"Success":true,"Data":"abcdefghijklmnopqrstuvwxyz0123","ErrorCode":null}', '{"Success":true,"Data":"***","ErrorCode":null}'),
+			('{"api_key":"ABCDEFGHIJKLMNOPQRSTUVWX"}', '{"api_key":"***"}'),
+			('Bearer ' + jwt + ' het han', "Bearer *** het han"),
+		]
+		for vao, ra in ca:
+			with self.subTest(vao=vao):
+				self.assertEqual(H.che_token(vao), ra)
+				self.assertEqual(H.che_token(ra), ra)
+		for giu in ('{"Success":true,"Data":"ngan"}', '{"metadata":"Mot cau co khoang trang dai hon hai muoi"}', "<html>x</html>",
+				'{"data":{"access_token":""}}'):
+			self.assertEqual(H.che_token(giu), giu)
+		r = H.doc_phan_hoi_token(200, '{"success":true,"errorCode":null,"data":"' + jwt + '"}')
+		self.assertEqual(r["loi"], 'MISA token: không thấy access_token trong response. Raw: {"success":true,"errorCode":null,"data":"***"}')
+		self.assertEqual(H.doc_phan_hoi_token(500, '{"Data":{"AccessToken":"TOKEN-IN-500"}}')["loi"],
+			'MISA token lỗi 500: {"Data":{"AccessToken":"***"}}')
+		self.assertEqual(H.doc_phan_hoi_token(401, '{"error":"invalid_token","error_description":"Token ' + jwt + ' expired"}')["loi"],
+			"MISA token lỗi 401: Token *** expired (invalid_token)")
+		# JWT vắt qua mốc cắt 500 của `loi_misa` (mốc rơi giữa phần thân JWT — nửa còn lại không còn "dạng JWT" để bắt) vẫn che trọn: che TRƯỚC khi cắt
+		dai = '{"x":"' + "a" * 450 + '","sess":"' + jwt + '"}'
+		loi = H.doc_phan_hoi_token(500, dai)["loi"]
+		self.assertEqual(len(loi), len("MISA token lỗi 500: ") + 500)
+		self.assertNotIn("eyJhbGci", loi)
+		self.assertNotIn("eyJhbGci", H.doc_phan_hoi_token(200, dai)["loi"])  # nhánh "không thấy access_token" (cắt 300) cũng vậy
+
+	def test_co_ban_ghi_that(self):
+		"""[Sửa cuối — phát hiện 9] bản ghi `GET ?refID=` RỖNG (`{}` — `data: '{}'` / `'[]'`) không nói "MISA có tờ"; RefID trùng (hoa thường) hoặc một
+		trường nhận diện / trạng thái / cờ huỷ thì có. `doc_phan_hoi_lay_hd` vẫn parity JS (trả `{}` cho mảng)."""
+		self.assertEqual(H.doc_phan_hoi_lay_hd(200, '{"success":true,"data":"[]"}')["ban_ghi"], {})
+		self.assertEqual(H.doc_phan_hoi_lay_hd(200, '{"success":true,"data":"{}"}')["ban_ghi"], {})
+		for raw, ref, mong in (
+			({}, "R", False), (None, "R", False), ([], "R", False), ({"foo": 1}, "R", False), ({"RefID": "X"}, "R", False),
+			({"RefID": "  r  "}, "R", True), ({"RefID": "R"}, None, False), ({"InvNo": "<Chưa cấp số>"}, "R", True), ({"InvNo": "  "}, "R", False),
+			({"PublishStatus": 0}, "R", True), ({"TotalAmount": 0}, "R", True), ({"EInvoiceStatus": "1"}, "R", True),
+			({"InvSeries": "1C26TAA"}, "R", True), ({"TransactionID": "TX1"}, "R", True), ({"InvoiceCode": "M1"}, "R", True),
+			({"IsInvoiceDeleted": True}, "R", True), ({"IsInvoiceDeleted": "true"}, "R", False),
+		):
+			with self.subTest(raw=raw, ref=ref):
+				self.assertIs(H.co_ban_ghi_that(raw, ref), mong)
+
 	def test_lay_hd_ds_mau_dinh_danh(self):
 		for muc, ham in (("doc_phan_hoi_lay_hd", H.doc_phan_hoi_lay_hd), ("doc_phan_hoi_ds", H.doc_phan_hoi_ds),
 				("doc_phan_hoi_mau", H.doc_phan_hoi_mau)):

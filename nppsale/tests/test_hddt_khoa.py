@@ -43,6 +43,12 @@ CA_KV48 = [
 	("draft, pending + RefID (H2)", {"misa_status": "pending", "misa_ref_id": "@ref"}, CHO_MISA),
 	("draft, sent + RefID — dữ liệu chuyển sang (H2)", {"misa_status": "sent", "misa_ref_id": "@ref"}, CHO_MISA),
 	("draft, waiting_code + RefID (H2)", {"misa_status": "waiting_code", "misa_ref_id": "@ref"}, CHO_MISA),
+	# [Sửa cuối — phát hiện 13] nháp lệch tiền chưa số (H10 — mọi HĐ có giảm giá cả đơn): MISA đang giữ nháp; chủ "Huỷ" HĐĐT nội bộ không huỷ gì bên MISA
+	("draft, amount_mismatch + RefID, chưa số (H2)", {"misa_status": "amount_mismatch", "misa_ref_id": "@ref"}, CHO_MISA),
+	("huỷ nội bộ, amount_mismatch + RefID, chưa số (H2)", {"trang_thai": "cancelled", "misa_status": "amount_mismatch", "misa_ref_id": "@ref"},
+		CHO_MISA),
+	("huỷ nội bộ, amount_mismatch, có số", {"trang_thai": "cancelled", "misa_status": "amount_mismatch", "misa_ref_id": "@ref",
+		"misa_inv_no": "00000789", "misa_inv_series": "1C26TAA"}, DA_PHAT_HANH),
 	("draft, error + RefID", {"misa_status": "error", "misa_ref_id": "@ref"}, None),
 	("draft trống", {}, None),
 	("huỷ nội bộ, không số", {"trang_thai": "cancelled"}, None),

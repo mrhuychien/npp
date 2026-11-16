@@ -61,6 +61,17 @@ CAU_DOC_SNAP = "Đọc snapshot MISA: {msg}"  # reconcile-org.ts:94
 CAU_GHI_KHOP_LOI = "Ghi kết quả khớp lỗi ({ref}): {msg}"  # [≠ nhỏ] nppsale chỉ console.error rồi VẪN đếm (reconcile-org.ts:116–126)
 CAU_DANH_DAU_LOI = "Không đánh dấu được tờ gốc bị thay thế: {msg}"  # §4.7: nppsale chỉ console.error — vòng quét đẩy vào errors
 
+# [Sửa cuối — phát hiện 17] Hạn của một lượt đêm (việc RQ trần 3600 s — `dong_bo`): MISA chậm (~15 s / lời GET) là 400 tờ × 15 s = 6.000 s ⇒ RQ cắt
+# việc giữa chừng, KHÔNG dòng nhật ký lượt, KHÔNG kéo snapshot (§0.2-8 "một dòng nhật ký mỗi lượt chạy"). Đồng bộ dừng nhận tờ mới sau
+# HAN_DONG_BO_S (phần còn lại → `bo_qua_vi_het_gio`, failed); kéo snapshot dừng nhận trang mới sau HAN_KEO_S tính từ đầu lượt (một lời gọi dở dang
+# thêm tối đa 5 + 60 s — vẫn dưới 3600 s + 60 s RQ chờ trước khi giết hẳn). Lỗi ĐƯỜNG TRUYỀN liên tiếp NGAT_LOI_MANG tờ (MISA sập / mạng đứt —
+# không phải MISA trả lỗi) ⇒ dừng lượt như H15 (phần còn lại → `bo_qua_vi_mang`) thay vì chờ hết giờ từng tờ.
+HAN_DONG_BO_S = 40 * 60
+HAN_KEO_S = 55 * 60
+NGAT_LOI_MANG = 5
+CAU_HET_HAN_KEO = "Kéo danh sách dừng vì quá hạn lượt đêm ({phut} phút) sau {trang} trang — bỏ khớp đêm nay."
+CAU_RQ_CAT = "RQ cắt việc (quá trần thời gian của việc nền) — lượt dở dang: {msg}"
+
 # §5.2 bước 3 — cửa sổ (H14): mốc muộn hơn của (phát hành nội bộ, lần gửi MISA gần nhất). `GREATEST` của MariaDB với NULL ra NULL nên phải
 # IFNULL; mốc 0 kiểu DATETIME (không chuỗi) để phép so là so ngày giờ. nppsale chỉ `issued_at ≥ now − 60` ⇒ tờ treo chưa có `issued_at` / tờ
 # "Khoá HĐ" cũ mới đẩy không bao giờ được quét; COALESCE thì tờ khoá cũ đẩy muộn cũng lọt.
@@ -175,9 +186,11 @@ def chay_dong_bo(days=NGAY_MAC_DINH) -> dict:
 			bao = {"orgs": 0, "bo_qua": CAU_BO_QUA_KHOA, "errors": [], "bat_dau": _bay_gio(), "ket_thuc": _bay_gio()}
 			_nhat_ky_luot("sync_run", "success", bao)
 			return {"bo_qua": CAU_BO_QUA_KHOA}
+		dau_luot = MM._dong_ho()
 		try:
-			kq["dong_bo"] = dong_bo_trang_thai()
-		except _HetGioViec:
+			kq["dong_bo"] = dong_bo_trang_thai(han=dau_luot + HAN_DONG_BO_S)
+		except _HetGioViec as e:  # [phát hiện 17] vẫn để lại MỘT dòng nhật ký lượt rồi mới ném (RQ chờ 60 s trước khi giết hẳn)
+			_ghi_rq_cat("sync_run", e)
 			raise
 		except Exception as e:  # lỗi không lường của cả lượt (vd đọc sổ hỏng giữa chừng) — vẫn kéo snapshot
 			_lui_het()
@@ -186,8 +199,9 @@ def chay_dong_bo(days=NGAY_MAC_DINH) -> dict:
 			_nhat_ky_luot("sync_run", "failed", bao)
 			kq["dong_bo"] = bao
 		try:
-			kq["keo_snapshot"] = keo_snapshot(days)
-		except _HetGioViec:
+			kq["keo_snapshot"] = keo_snapshot(days, han=dau_luot + HAN_KEO_S)
+		except _HetGioViec as e:
+			_ghi_rq_cat("pull_snapshots", e)
 			raise
 		except Exception as e:
 			_lui_het()
@@ -205,11 +219,21 @@ def _lui_het() -> None:
 		frappe.db.rollback()
 
 
+def _ghi_rq_cat(nguon: str, e: BaseException) -> None:
+	"""[Sửa cuối — phát hiện 17] RQ cắt việc (JobTimeoutException) — lượt đêm vẫn để lại MỘT dòng nhật ký `failed` (bằng chứng duy nhất việc đã chạy
+	— §5.1) trước khi ngoại lệ đi tiếp cho RQ. Hỏng ở đây (CSDL) thì thôi — không che lỗi gốc."""
+	try:
+		_lui_het()
+		_nhat_ky_luot(nguon, "failed", {"orgs": 0, "errors": [{"message": CAU_RQ_CAT.format(msg=_cau(e))}], "ket_thuc": _bay_gio()})
+	except Exception:  # đang bị RQ cắt: không để lỗi phụ đè lỗi gốc
+		pass
+
+
 # =====================================================================================================================================
 # §5.2 Vòng quét trạng thái — hai lượt (sync/route.ts:58–232)
 # =====================================================================================================================================
 
-def dong_bo_trang_thai() -> dict:
+def dong_bo_trang_thai(han: float | None = None) -> dict:
 	"""Hỏi MISA (`GET ?refID=`, KHÔNG BAO GIỜ bằng mã tra cứu / số) từng tờ của hai lượt, ghi bằng ĐÚNG hàm ghi của Làm mới
 	(`nppsale.api.misa.ghi_ket_qua_keo_ve` — hai đường không được kết luận khác nhau về một tờ). → báo cáo lượt (cũng là `nhan_ve` của MỘT dòng
 	nhật ký `sync_run`: {orgs, checked, updated, originals_marked_replaced, treo_thanh_loi, errors, luot_1, luot_2, bo_qua…, bat_dau, ket_thuc}).
@@ -228,10 +252,17 @@ def dong_bo_trang_thai() -> dict:
 	     sau; OK → `updated`; tờ gốc được đánh dấu bị thay thế → `originals_marked_replaced`; có ghi chú → nhật ký `sync` (KHÔNG best-effort: chỉ tờ
 	     có chuyện đáng nói mới có dòng — mất dòng là mất đúng ghi chú kế toán cần đọc ⇒ hỏng thì vào errors).
 	   - MISA / mạng ném → lui điểm lưu, errors {invoice_id, message}, chạy tiếp (ném ở đây là 199 tờ còn lại không bao giờ được hỏi).
+	     [Sửa cuối — phát hiện 10] MISA TRẢ LỜI lỗi cho tờ (HTTP lỗi / `success: false` — vd RefID MISA không có, nếu MISA báo "không có" theo kiểu
+	     ấy — §9.4-2 chưa đo) ⇒ VẪN ghi mốc hỏi (không giảm): RefID nay ghi TRƯỚC khi gửi và GIỮ khi MISA từ chối, nên tờ bị từ chối nằm lượt 1 suốt
+	     60 ngày — không xoay hàng đợi thì ≥ 200 tờ như vậy chiếm trọn lượt 1 mỗi đêm, tờ `sent` mới ký không bao giờ được kéo số. Lỗi ĐƯỜNG TRUYỀN
+	     không ghi mốc (đêm sau hỏi lại trước) [= nppsale].
 	   - commit sau MỖI tờ — một tờ hỏng không cuộn lại cả lượt; khoá dòng của hàm ghi nhả trước lời GET kế.
+	5. [Sửa cuối — phát hiện 17] `han` (mốc `misa_mang._dong_ho()`; mặc định lúc vào + HAN_DONG_BO_S): quá hạn ⇒ dừng nhận tờ mới, phần còn lại
+	   `bo_qua_vi_het_gio`, failed; NGAT_LOI_MANG tờ liên tiếp lỗi đường truyền ⇒ dừng như H15, phần còn lại `bo_qua_vi_mang`, failed.
 	Không ghi `misa_signed_at` / `misa_published_at` / `misa_invoice_url` khi tờ chuyển `signed` [=] (chỉ phát hành ghi ba cột ấy)."""
 	bao = {"orgs": 0, "checked": 0, "updated": 0, "originals_marked_replaced": 0, "treo_thanh_loi": 0, "errors": [], "luot_1": 0, "luot_2": 0,
 		"bat_dau": _bay_gio()}
+	han = MM._dong_ho() + HAN_DONG_BO_S if han is None else han
 	ket_qua = "success"
 	ch = _cau_hinh(bao)
 	if ch is None:
@@ -246,7 +277,12 @@ def dong_bo_trang_thai() -> dict:
 			ket_qua, ds = "failed", []
 		bao[f"luot_{so_luot}"] = len(ds)
 		hang += ds
+	loi_mang_lien_tiep = 0
 	for i, r in enumerate(hang):
+		if MM._dong_ho() > han:  # [phát hiện 17] để lại thời gian cho kéo snapshot + dòng nhật ký lượt
+			bao["bo_qua_vi_het_gio"] = len(hang) - i
+			ket_qua = "failed"
+			break
 		try:
 			MM.lay_token(ch)  # [ĐX H15] tờ đầu: MỘT lời /oauth cho cả lượt; sau đó RAM (hết hạn giữa lượt ⇒ một lời)
 		except MM.MisaLoi as e:
@@ -255,8 +291,12 @@ def dong_bo_trang_thai() -> dict:
 			ket_qua = "failed"
 			break
 		bao["checked"] += 1
-		_hoi_mot_to(ch, r, bao)
+		loi_mang_lien_tiep = loi_mang_lien_tiep + 1 if _hoi_mot_to(ch, r, bao) else 0
 		_commit()
+		if loi_mang_lien_tiep >= NGAT_LOI_MANG and i + 1 < len(hang):  # [phát hiện 17] MISA không trả lời liên tiếp — thôi chờ từng tờ
+			bao["bo_qua_vi_mang"] = len(hang) - i - 1
+			ket_qua = "failed"
+			break
 	return _xong_dong_bo(bao, ket_qua)
 
 
@@ -266,19 +306,31 @@ def _xong_dong_bo(bao: dict, ket_qua: str) -> dict:
 	return bao
 
 
-def _hoi_mot_to(ch, r, bao: dict) -> None:
-	"""Một tờ của vòng quét (§5.2 bước 4) — mọi lỗi vào `bao["errors"]`, không ném (trừ RQ cắt việc)."""
+def _hoi_mot_to(ch, r, bao: dict) -> bool:
+	"""Một tờ của vòng quét (§5.2 bước 4) — mọi lỗi vào `bao["errors"]`, không ném (trừ RQ cắt việc). → True khi lời hỏi hỏng vì ĐƯỜNG TRUYỀN (MISA
+	không trả lời — người gọi đếm để ngắt lượt)."""
 	ref = (r.misa_ref_id or "").strip()  # như Làm mới (nppsale.api.misa._lam_moi) — cùng tờ thì cùng lời hỏi
 	diem = "npp_lich_misa_to"
 	frappe.db.savepoint(diem)
 	try:
-		raw = MM.lay_hd(ch, ref)
+		# tờ treo / lỗi + bản ghi rỗng `{}` = MISA không có (phát hiện 9 — cùng luật Làm mới / phát hành)
+		raw = M.ban_ghi_cua_to(MM.lay_hd(ch, ref), r.misa_status, ref)
 	except _HetGioViec:
 		raise
 	except Exception as e:  # MISA / token / mạng — câu đã che bí mật (lớp mạng)
 		_lui(diem)
 		bao["errors"].append({"invoice_id": r.name, "message": _cau(e)})
-		return
+		if isinstance(e, MM.MisaLoi) and e.truyen_tai:
+			return True
+		if isinstance(e, MM.MisaLoi):  # [phát hiện 10] MISA TRẢ LỜI lỗi: vẫn ghi mốc hỏi để hàng đợi xoay vòng
+			try:
+				_ghi_moc_hoi(r.name, _bay_gio())
+			except _HetGioViec:
+				raise
+			except Exception as e2:
+				_lui(diem)
+				bao["errors"].append({"invoice_id": r.name, "message": CAU_MOC_LOI.format(msg=_cau(e2))})
+		return False
 	luc = _bay_gio()
 	if raw is None:
 		try:
@@ -291,7 +343,7 @@ def _hoi_mot_to(ch, r, bao: dict) -> None:
 		except Exception as e:  # mốc "đã hỏi lúc nào" là thứ xếp lượt sau — ghi hỏng mà im thì tờ này bị hỏi lại mãi, tờ khác không tới lượt
 			_lui(diem)
 			bao["errors"].append({"invoice_id": r.name, "message": CAU_MOC_LOI.format(msg=_cau(e))})
-		return
+		return False
 	try:
 		kq = M.ghi_ket_qua_keo_ve(r.name, raw, xac_nhan_day=(r.misa_status or "") in ("pending", "error"), luc=luc, co_ma=ch.co_ma)
 	except _HetGioViec:
@@ -299,7 +351,7 @@ def _hoi_mot_to(ch, r, bao: dict) -> None:
 	except Exception as e:  # trùng số (LoiTrungSoHddt — câu 409 của Làm mới) hoặc lỗi ghi: dòng không đổi, sang tờ sau (nppsale `continue`)
 		_lui(diem)
 		bao["errors"].append({"invoice_id": r.name, "message": _cau(e)})
-		return
+		return False
 	bao["updated"] += 1
 	if kq["goc"]:
 		bao["originals_marked_replaced"] += 1
@@ -308,13 +360,14 @@ def _hoi_mot_to(ch, r, bao: dict) -> None:
 	if kq["ghi_chu"]:  # chỉ tờ có chuyện đáng nói — không log tờ bình thường (einvoice_logs thành bãi rác thì không ai đọc)
 		frappe.db.savepoint("npp_lich_misa_nk")
 		try:
-			M.ghi_nhat_ky("sync", "success", hddt=r.name, don_hang=r.don_hang, gui_di={"source": "sync", "ref_id": ref}, nhan_ve=raw,
-				loi="\n".join(kq["ghi_chu"]), misa_inv_no=kq["so_that"])
+			M.ghi_nhat_ky("sync", "success", hddt=r.name, don_hang=r.don_hang, gui_di={"source": "sync", "ref_id": ref},
+				nhan_ve=MM.che_ban_ghi(raw, ch), loi="\n".join(kq["ghi_chu"]), misa_inv_no=kq["so_that"])  # che bí mật dội lại (phát hiện 8)
 		except _HetGioViec:
 			raise
 		except Exception as e:
 			_lui("npp_lich_misa_nk")
 			bao["errors"].append({"invoice_id": r.name, "message": CAU_NHAT_KY_LOI.format(msg=_cau(e))})
+	return False
 
 
 def _ghi_moc_hoi(ten: str, luc) -> None:
@@ -336,7 +389,7 @@ def so_ngay(days) -> int:
 	return int(min(max(n, 1), NGAY_TOI_DA))
 
 
-def keo_snapshot(days=NGAY_MAC_DINH) -> dict:
+def keo_snapshot(days=NGAY_MAC_DINH, han: float | None = None) -> dict:
 	"""Kéo danh sách MISA (`ds_hd`, cửa sổ ngày VN) về `NPP MISA Snapshot` theo `ref_id`, rồi khớp bốn tầng (`khop_snapshot`). MỘT dòng nhật ký
 	`pull_snapshots` {from, to, orgs, pulled, matched (gồm amount_diff), misa_only, needs_review, skipped_unlink, read_truncated, hit_page_cap,
 	short_pull, trung_ref_trong_luot, errors}. Đi ngược `dong_bo_trang_thai` (từ MISA về sổ) — cách duy nhất thấy HĐ phát hành THẲNG trên web MISA
@@ -350,8 +403,11 @@ def keo_snapshot(days=NGAY_MAC_DINH) -> dict:
 	4–5. `dong_snapshot` (luật thuần — thiếu RefID bỏ; ngày không có thật ⇒ NULL — H26) → khử trùng theo `ref_id` (trang trượt — bản gặp SAU thắng)
 	   → `INSERT … ON DUPLICATE KEY UPDATE` theo lô ≤ 500, trong MỘT điểm lưu (hỏng lô nào cũng lui hết — như một câu upsert của nppsale) →
 	   `Ghi snapshot lỗi: …`, bỏ khớp.
-	6. `khop_snapshot(tu, den)` — hỏng → `Đối soát lỗi: …`. Khớp chạy cả khi lượt này không kéo được dòng nào (nppsale)."""
+	6. `khop_snapshot(tu, den)` — hỏng → `Đối soát lỗi: …`. Khớp chạy cả khi lượt này không kéo được dòng nào (nppsale).
+	[Sửa cuối — phát hiện 17] `han` (mốc `misa_mang._dong_ho()`; mặc định lúc vào + HAN_KEO_S): quá hạn trước trang kế ⇒ dừng như lỗi kéo (bỏ phần
+	đã kéo + bỏ khớp, failed) — không để RQ cắt việc giữa chừng mà không có dòng nhật ký."""
 	n = so_ngay(days)
+	han = MM._dong_ho() + HAN_KEO_S if han is None else han
 	den = _ngay_vn(_bay_gio())
 	tu = den - _dt.timedelta(days=n)
 	bao = {"from": tu.isoformat(), "to": den.isoformat(), "orgs": 0, "pulled": 0, "matched": 0, "misa_only": 0, "needs_review": 0,
@@ -362,6 +418,8 @@ def keo_snapshot(days=NGAY_MAC_DINH) -> dict:
 	dong, tong = [], None
 	try:
 		for trang in range(TRAN_TRANG):
+			if MM._dong_ho() > han:
+				raise _QuaHanLuot(CAU_HET_HAN_KEO.format(phut=round(HAN_KEO_S / 60), trang=trang))
 			kq = MM.ds_hd(ch, tu.isoformat(), den.isoformat(), trang * CO_TRANG, CO_TRANG)
 			if tong is None:
 				tong = kq["records_total"]
@@ -374,13 +432,16 @@ def keo_snapshot(days=NGAY_MAC_DINH) -> dict:
 				bao["hit_page_cap"] = True
 	except _HetGioViec:
 		raise
+	except _QuaHanLuot as e:
+		bao["errors"].append({"message": str(e)})
+		return _xong_keo(bao, "failed")
 	except Exception as e:
 		bao["errors"].append({"message": CAU_KEO_LOI.format(msg=_cau(e))})
 		return _xong_keo(bao, "failed")
 	if tong is not None and tong > len(dong):  # kéo được ít hơn hẳn là báo đỏ, không phải chuyện bỏ qua
 		bao["short_pull"].append({"expected": tong, "got": len(dong)})
 	luc = _bay_gio()
-	ds, trung = _khu_trung(dong, luc)
+	ds, trung = _khu_trung(dong, luc, ch)
 	bao["trung_ref_trong_luot"] = trung
 	if ds:
 		frappe.db.savepoint("npp_lich_misa_snap")
@@ -409,12 +470,16 @@ def keo_snapshot(days=NGAY_MAC_DINH) -> dict:
 	return _xong_keo(bao, "success")
 
 
+class _QuaHanLuot(Exception):
+	"""Kéo danh sách quá hạn lượt đêm (phát hiện 17) — `str(e)` vào `errors` nguyên văn."""
+
+
 def _xong_keo(bao: dict, ket_qua: str) -> dict:
 	_nhat_ky_luot("pull_snapshots", ket_qua, bao)
 	return bao
 
 
-def _khu_trung(dong: list, luc) -> tuple[list[dict], int]:
+def _khu_trung(dong: list, luc, ch=None) -> tuple[list[dict], int]:
 	"""Bản ghi MISA → dòng snapshot (bỏ dòng thiếu RefID), khử trùng theo `ref_id` [Soát thiếu 2]: danh sách MISA phân trang theo offset — MISA phát
 	hành thêm tờ trong lúc kéo là trang trượt, một RefID về hai lần (nppsale upsert cả mảng trong MỘT câu ⇒ Postgres từ chối cả câu "ON CONFLICT DO
 	UPDATE command cannot affect row a second time" ⇒ đêm đó không khớp). Bản gặp SAU thắng (như `ON DUPLICATE KEY UPDATE` gặp trùng trong một
@@ -426,7 +491,8 @@ def _khu_trung(dong: list, luc) -> tuple[list[dict], int]:
 		d = dong_snapshot(raw)
 		if d is None:
 			continue
-		d["ban_ghi_tho"] = json.dumps(raw, ensure_ascii=False)
+		# bản thô ghi ra (QL đọc qua cổng `misa_invoice_snapshots.raw`): che bí mật dội lại (phát hiện 8); trường đã bóc từ bản NGUYÊN ở trên
+		d["ban_ghi_tho"] = json.dumps(MM.che_ban_ghi(raw, ch) if ch is not None else raw, ensure_ascii=False)
 		d["keo_luc"] = luc
 		k = d["ref_id"].casefold()
 		if k in ra:
@@ -456,9 +522,19 @@ def ghi_snapshot(ds: list[dict], luc) -> None:
 # §5.4 Khớp bốn tầng (reconcile-org.ts:44–137) — CHỈ ghi snapshot, KHÔNG BAO GIỜ ghi NPP HDDT (Gotcha #10: cô lập phạm vi hỏng)
 # =====================================================================================================================================
 
+def _ngay_khop_so(r) -> str | None:
+	"""Ngày khớp tầng 4 của một tờ sổ: `misa_inv_date` ∥ ngày VN của `phat_hanh_luc` [≠ nppsale: 10 ký tự đầu chuỗi UTC] ∥ ngày VN của `misa_sent_at`
+	(tờ huỷ nội bộ rồi phát hành giữ `phat_hanh_luc` NULL — phát hiện 2) ∥ None (không vào tầng 4)."""
+	if r.misa_inv_date:
+		return r.misa_inv_date.isoformat()
+	moc = r.phat_hanh_luc or r.misa_sent_at
+	return _ngay_vn(moc).isoformat() if moc else None
+
+
 def khop_snapshot(tu: _dt.date, den: _dt.date) -> dict:
 	"""Khớp snapshot CHƯA chốt tay (`cach_khop` ≠ manual) có `ngay_phat_hanh` ∈ [tu, den] (snapshot ngày NULL không bao giờ được khớp [=]) với sổ
-	`NPP HDDT` có `phat_hanh_luc` ∈ [tu 00:00:00, den 23:59:59] giờ VN (mọi trạng thái; `phat_hanh_luc` NULL không vào). Luật ở `nppsale/luat/hddt.py`
+	`NPP HDDT` có GREATEST(`phat_hanh_luc`, `misa_sent_at`) ∈ [tu 00:00:00, den 23:59:59] giờ VN hoặc `misa_inv_date` ∈ [tu, den] (mọi trạng thái;
+	[≠ H14 mở rộng — phát hiện 2] nppsale: `issued_at` trong cửa sổ, `issued_at` NULL không vào). Luật ở `nppsale/luat/hddt.py`
 	(`lap_chi_muc` / `khop_mot` / `quyet_ket_qua_khop` — một chỗ khai, Gotcha #9).
 
 	- Đọc HẾT sổ và snapshot (không trần 1.000 dòng của PostgREST — bản cũ của nppsale chỉ thấy 1.000 tờ và CẮT LIÊN KẾT đúng của mọi tờ khác) ⇒
@@ -472,15 +548,20 @@ def khop_snapshot(tu: _dt.date, den: _dt.date) -> dict:
 	→ {matched (gồm amount_diff), misa_only, needs_review, skipped_unlink, book_truncated, snap_truncated, errors}."""
 	tk = {"matched": 0, "misa_only": 0, "needs_review": 0, "skipped_unlink": 0, "book_truncated": False, "snap_truncated": False, "errors": []}
 	try:
-		so_doc = frappe.db.sql("""SELECT `name`, `misa_ref_id`, `misa_lookup_code`, `misa_inv_series`, `misa_inv_no`, `misa_inv_date`,
-				`mst_nguoi_mua`, `phat_hanh_luc`, `tong_tien`
-			FROM `tabNPP HDDT` WHERE `phat_hanh_luc` >= %s AND `phat_hanh_luc` <= %s ORDER BY `name`""",
-			(_gio_site(tu, _dt.time(0, 0, 0)), _gio_site(den, _dt.time(23, 59, 59))), as_dict=True)
+		# [Sửa cuối — phát hiện 2 — mở rộng H14] phần sổ: mốc muộn hơn của (phát hành nội bộ, lần gửi MISA gần nhất) trong cửa sổ — CÙNG mốc với vòng
+		# quét (`_MOC`) — HOẶC ngày HĐĐT MISA đã cấp trong cửa sổ. nppsale chỉ `issued_at` trong cửa sổ ⇒ tờ "Khoá HĐ" cũ mới đẩy (phat_hanh_luc T−90,
+		# gửi MISA T−1 — KV-37 tờ Y) và tờ huỷ nội bộ rồi phát hành (phat_hanh_luc giữ NULL — KV-26 b) không vào sổ: snapshot RefID của chính chúng
+		# thành "Chỉ có trên MISA — phát hành ngoài app" mỗi đêm (báo động giả HĐ ngoài sổ; "Dựng hoá đơn" thì 409 RefID) — vòng quét và vòng khớp
+		# kết luận khác nhau về một tờ. Thêm tờ vào sổ chỉ THÊM căn cứ (tầng RefID / mã / số là chắc chắn).
+		so_doc = frappe.db.sql(f"""SELECT `name`, `misa_ref_id`, `misa_lookup_code`, `misa_inv_series`, `misa_inv_no`, `misa_inv_date`,
+				`mst_nguoi_mua`, `phat_hanh_luc`, `misa_sent_at`, `tong_tien`
+			FROM `tabNPP HDDT` WHERE ({_MOC} >= %(tu)s AND {_MOC} <= %(den)s) OR (`misa_inv_date` >= %(tu_ngay)s AND `misa_inv_date` <= %(den_ngay)s)
+			ORDER BY `name`""", {"tu": _gio_site(tu, _dt.time(0, 0, 0)), "den": _gio_site(den, _dt.time(23, 59, 59)), "tu_ngay": tu,
+			"den_ngay": den}, as_dict=True)
 	except Exception as e:
 		raise RuntimeError(CAU_DOC_SO.format(msg=_cau(e))) from e
 	so_ = [{"id": r.name, "misa_ref_id": r.misa_ref_id, "misa_lookup_code": r.misa_lookup_code, "misa_inv_series": r.misa_inv_series,
-		"misa_inv_no": r.misa_inv_no, "mst": r.mst_nguoi_mua, "tong_tien": r.tong_tien,
-		"ngay": (r.misa_inv_date or _ngay_vn(r.phat_hanh_luc)).isoformat()} for r in so_doc]
+		"misa_inv_no": r.misa_inv_no, "mst": r.mst_nguoi_mua, "tong_tien": r.tong_tien, "ngay": _ngay_khop_so(r)} for r in so_doc]
 	cm = lap_chi_muc(so_)
 	theo_id = {d["id"]: d for d in so_}
 	try:

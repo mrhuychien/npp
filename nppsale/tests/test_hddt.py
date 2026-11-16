@@ -24,6 +24,7 @@ dòng chưa có số / mã), I1 / I3–I6 ở `_bat_bien` (cuối mỗi bài).
 from __future__ import annotations
 
 import datetime
+import io
 import json
 import re
 import threading
@@ -44,6 +45,7 @@ from nppsale.luat import hddt as H
 from nppsale.npp_hddt.doctype.npp_misa_cau_hinh import npp_misa_cau_hinh as CH
 from nppsale.tests.test_cong_hddt import _NenCong
 from nppsale.tests.test_hddt_khoa import dong_hddt
+from nppsale.tests.test_misa_mang import cho_phep_misa_gia
 
 API = "https://misa.gia/api/v2"
 MST = "0100000000"
@@ -118,7 +120,9 @@ class AdapterHddt(requests.adapters.BaseAdapter):
 		r = requests.models.Response()
 		r.status_code, r.request, r.url = b.get("status", 200), request, request.url
 		than = b.get("body", {})
-		r._content = (than if isinstance(than, str) else json.dumps(than, ensure_ascii=False)).encode()
+		# thân như dòng byte (lớp mạng đọc `stream=True` theo khúc, có trần — `_doc_than_gioi_han`); `b["headers"]` → header trả lời
+		r.raw = io.BytesIO((than if isinstance(than, str) else json.dumps(than, ensure_ascii=False)).encode())
+		r.headers.update(b.get("headers") or {})
 		return r
 
 	def close(self):
@@ -149,6 +153,7 @@ class _NenHddt(_NenCong):
 
 	def setUp(self):
 		super().setUp()
+		cho_phep_misa_gia(self)
 		frappe.db.sql("DELETE FROM `tabSingles` WHERE `doctype` = %s", CH.TEN)
 		frappe.db.sql("DELETE FROM `__Auth` WHERE `doctype` = %s", CH.TEN)
 		frappe.clear_document_cache(CH.TEN, CH.TEN)
@@ -262,9 +267,14 @@ class _NenHddt(_NenCong):
 			chu += [x or "" for x in d]
 		for el in frappe.db.sql("SELECT `method`, `error` FROM `tabError Log` WHERE `creation` > %s", self.loi_truoc):
 			chu += [x or "" for x in el]
+		for (tho,) in frappe.db.sql("SELECT `ban_ghi_tho` FROM `tabNPP MISA Snapshot`"):  # [Sửa cuối — phát hiện 8] QL đọc qua cổng (raw)
+			chu.append(tho or "")
 		toan = "\n".join(chu)
+		from urllib.parse import quote_plus
+
 		for bm in (*BI_MAT, *them):
-			self.assertNotIn(bm, toan, f"I6: lộ {bm}")
+			for dang in {bm, quote_plus(bm), json.dumps(bm)[1:-1]}:  # cả dạng mã form / thoát JSON (MISA dội lại thân /oauth)
+				self.assertNotIn(dang, toan, f"I6: lộ {bm} ({dang})")
 		self.assertIsNone(re.search(r"(?<![0-9A-Za-z])T[12](?![0-9A-Za-z])", toan), "I6: lộ token T1 / T2")
 
 
@@ -1117,7 +1127,7 @@ class TestLamMoi(_NenPhatHanh):
 
 	def test_kv31_sau_khi_ke_toan_ky(self):
 		"""KV-31 [=]: số / ký hiệu / mã tra cứu / mã CQT / quan hệ / ngày / signed / mốc hỏi; `misa_note` không đổi; link / ký / phát hành VẪN NULL (kéo
-		về không bao giờ điền); `tim_kd` có số; `modified` không đổi; 0 nhật ký (không ghi chú); Huỷ HĐ → LOCKED_EINVOICE "đã phát hành". Đơn vị
+		về không bao giờ điền); `tim_kd` có số; `modified` ĐỔI [≠ §8.0 (3) — phát hiện 16]; 0 nhật ký (không ghi chú); Huỷ HĐ → LOCKED_EINVOICE "đã phát hành". Đơn vị
 		có mã: `…/v3sainvoice/code/?refID=`."""
 		e, ref = self._da_gui()
 		truoc = self.dong(e)
@@ -1132,8 +1142,8 @@ class TestLamMoi(_NenPhatHanh):
 		self.assertEqual((r.misa_inv_no, r.misa_inv_series, r.misa_lookup_code, r.misa_invoice_code, r.misa_relation, r.misa_inv_date,
 			r.misa_status, r.misa_last_checked_at, r.misa_ref_id), ("00000123", "1C26TAA", "TX1", "M1-26-XYZ", "new", datetime.date(2026, 11, 15),
 			"signed", self.luc, ref))
-		self.assertEqual((r.misa_note, r.misa_signed_at, r.misa_published_at, r.misa_invoice_url, r.modified),
-			(truoc.misa_note, None, None, None, truoc.modified))
+		self.assertEqual((r.misa_note, r.misa_signed_at, r.misa_published_at, r.misa_invoice_url), (truoc.misa_note, None, None, None))
+		self.assertNotEqual(r.modified, truoc.modified)  # [Sửa cuối — phát hiện 16] máy ghi trường nghiệp vụ ⇒ đổi `modified` (Desk bản cũ bị chặn)
 		self.assertIn("00000123 123", r.tim_kd)
 		self.assertEqual(self.nhat_ky(), [])
 		self.assertEqual(self._huy()["error"]["message"], "LOCKED_EINVOICE: hóa đơn đã phát hành hóa đơn điện tử")
@@ -1767,6 +1777,223 @@ class TestCauHinh(_NenHddt):
 
 
 # =====================================================================================================================================
+# Sửa cuối (vòng soát 3 góc) — phát hiện 1, 6 (+3), 9, 12, 14, 15, 16 ở tầng route
+# =====================================================================================================================================
+class TestSuaCuoi(_NenPhatHanh):
+	def _treo(self, e: str, dang: str, **kv) -> str:
+		ref = str(uuid.uuid4())
+		frappe.db.set_value("NPP HDDT", e, {"misa_status": dang, "misa_ref_id": ref, "misa_sent_at": LUC - datetime.timedelta(minutes=2),
+			"misa_error": "x", **kv}, update_modified=False)
+		return ref
+
+	def test_xac_nhan_day_khi_ap_dung_khong_ket_luan(self):
+		"""[phát hiện 1] Tờ `pending` / `error` có RefID, MISA CÓ tờ với SỐ THẬT mà PublishStatus lạ (2) ở đơn vị KHÔNG mã — `ap_dung` không kết luận
+		(None — "giữ nguyên trạng thái, cần kiểm tra tay"): xác nhận đẩy vẫn đưa về ít nhất `sent` (trước: kẹt `pending` / `error` vĩnh viễn — chip "Chờ
+		gửi" / "Lỗi" không câu lỗi, Làm mới / quét lặp lại y hệt). Đủ ba đường: Làm mới, đẩy lại (bước 10), phản hồi Làm mới mang trạng thái ĐÃ GHI."""
+		bg = {"InvNo": "00000123", "InvSeries": "1C26TAA", "PublishStatus": 2, "EInvoiceStatus": 1, "TotalAmount": 26020}
+		for dang in ("pending", "error"):
+			with self.subTest(dang=dang):
+				frappe.db.savepoint("ca")
+				try:
+					e = self.lap()
+					ref = self._treo(e, dang)
+					a = self.mang(TOK, get_ban_ghi(**bg))
+					ma, kq = self.lam_moi(e)
+					self.assertEqual((ma, kq["misa"]["status"], kq["misa"]["InvNo"], kq["misa"]["PublishStatus"]), (200, "sent", "00000123", 2))
+					self.assertEqual(gon(a), ["POST /oauth", f"GET /v3sainvoice/?refID={ref}"])
+					r = self.dong(e)
+					self.assertEqual((r.misa_status, r.trang_thai, r.misa_inv_no, r.misa_error, r.phat_hanh_luc), ("sent", "issued", "00000123", None,
+						LUC))
+					self.assertIn("MISA trả PublishStatus=2 (không rõ nghĩa). Đơn vị dùng hoá đơn KHÔNG MÃ", r.misa_note)
+					self.assertEqual(self._huy()["error"]["message"], "LOCKED_EINVOICE: hóa đơn đã phát hành hóa đơn điện tử")
+				finally:
+					frappe.db.rollback(save_point="ca")
+					frappe.local._npp_ngu_canh = None
+					MM.xoa_token_nho()
+		e = self.lap()
+		ref = self._treo(e, "error")
+		a = self.mang(TOK, get_ban_ghi(**bg))
+		self.assertEqual(self.phat_hanh(e), (200, {"success": True, "cached": True, "lookup_code": None, "ref_id": ref, "inv_no": "00000123",
+			"invoice_url": None}))
+		self.assertEqual(gon(a), ["POST /oauth", f"GET /v3sainvoice/?refID={ref}"])
+		self.assertEqual((self.dong(e).misa_status, self.dong(e).trang_thai), ("sent", "issued"))
+
+	def test_ban_ghi_rong_khong_phai_misa_co(self):
+		"""[phát hiện 9] `GET ?refID=` trả `data: '{}'` / `'[]'` (bản ghi RỖNG — JS coi là "có") cho tờ treo / lỗi ⇒ coi như MISA KHÔNG có: (a) đẩy lại
+		POST tiếp cùng RefID (trước: không POST, `sent` + `issued` vĩnh viễn cho tờ MISA chưa nhận); (b) H27 hỏi trước lần thử lại → POST lần 2; (c) tờ
+		treo quá 10 phút → H5 `error`, 404; (d) tờ `sent` + bản ghi rỗng giữ như nppsale (chỉ mốc hỏi)."""
+		for rong in ("{}", "[]"):
+			with self.subTest(rong=rong):
+				frappe.db.savepoint("ca")
+				try:
+					tra_rong = {"body": {"success": True, "data": rong}}
+					e = self.lap()
+					ref = self._treo(e, "error")
+					a = self.mang(TOK, tra_rong, tra_map(ref))
+					self.assertEqual(self.phat_hanh(e)[0], 200)
+					self.assertEqual(gon(a), ["POST /oauth", f"GET /v3sainvoice/?refID={ref}", "POST /v3sainvoice"])
+					self.assertEqual((self.payload(a)[0]["RefID"], self.dong(e).misa_status), (ref, "sent"))
+					e2 = dong_hddt(nguoi_mua="Tờ H27", tien_hang=1000, tien_thue=100, tong_tien=1100)
+					a = self.mang({"status": 400, "body": {"message": "InvalidInvoiceTemplate token mismatch"}}, TOK2, tra_rong, tra_map())
+					self.assertEqual(self.phat_hanh(e2)[0], 200)
+					self.assertEqual([g.split("?")[0] for g in gon(a)], ["POST /v3sainvoice", "POST /oauth", "GET /v3sainvoice/", "POST /v3sainvoice"])
+					e3 = dong_hddt(nguoi_mua="Tờ treo", misa_status="pending", misa_ref_id="R-treo-" + ("a" if rong == "{}" else "b"),
+						misa_sent_at=LUC - datetime.timedelta(minutes=11))
+					a = self.mang(tra_rong)
+					self.assertEqual(self.lam_moi(e3), (404, {"error": "MISA không trả về dữ liệu HD."}))
+					r = self.dong(e3)
+					self.assertEqual((r.misa_status, r.misa_error, r.trang_thai), ("error", M.LOI_LM_TREO, "draft"))
+					e4 = dong_hddt(nguoi_mua="Tờ đã gửi", misa_status="sent", misa_ref_id="R-sent-" + ("a" if rong == "{}" else "b"), trang_thai="issued")
+					self.mang(tra_rong)
+					self.assertEqual(self.lam_moi(e4)[0], 200)
+					self.assertEqual((self.dong(e4).misa_status, self.dong(e4).misa_last_checked_at), ("sent", LUC))
+				finally:
+					frappe.db.rollback(save_point="ca")
+					MM.xoa_token_nho()
+
+	def test_502_504_giu_pending_va_khoa_huy(self):
+		"""[phát hiện 12 — ≠ H30] POST → 504 (cổng trước MISA hết giờ): 502 câu MISA + "chưa biết … ĐỪNG đẩy lại"; dòng GIỮ `pending` + RefID +
+		`misa_error` "chưa biết…"; nhật ký `pending`; Huỷ HĐ → LOCKED_EINVOICE "đang chờ MISA" (H2) — trước: `error` ⇒ Huỷ HĐ chạy được trong lúc
+		MISA có thể đã giữ nháp. 500 vẫn lỗi rõ (KV-20)."""
+		e = self.lap()
+		self.mang(TOK, {"status": 504, "body": "<html>504 Gateway Time-out</html>"})
+		self.assertEqual(self.phat_hanh(e), (502, {"error": "MISA publish lỗi 504: <html>504 Gateway Time-out</html> — chưa biết MISA đã nhận hoá đơn "
+			"chưa. ĐỪNG đẩy lại: bấm 'Làm mới trạng thái từ MISA' sau ít phút."}))
+		r = self.dong(e)
+		self.assertEqual((r.misa_status, r.misa_error, r.trang_thai, bool(r.misa_ref_id)), ("pending", M.LOI_PH_CHUA_BIET, "draft", True))
+		self.assertEqual([x.ket_qua for x in self.nhat_ky(hddt=e)], ["pending"])
+		self.assertEqual(self._huy()["error"]["message"], "LOCKED_EINVOICE: HĐĐT đang chờ MISA — bấm Làm mới trạng thái trước")
+
+	def test_payload_dung_lai_khi_vua_sua(self):
+		"""[phát hiện 14] Tờ tay bị MISA từ chối (error + RefID): kế toán lưu MST mới (H24 — cổng cho sửa) ĐÚNG lúc chủ bấm "Đẩy lại" (bước 3 đã đọc MST
+		cũ, đang chờ /oauth) → bước 9 đọc CÓ KHOÁ thấy MST mới ⇒ dựng lại người mua + dòng từ bản ấy: POST mang MST MỚI (trước: MST cũ cùng RefID —
+		MISA nhận dữ liệu cũ, sổ ghi dữ liệu mới)."""
+		t = dong_hddt(nguoi_mua="Cty C", mst_nguoi_mua="0300000009", tien_hang=100000, tien_thue=10000, tong_tien=110000, misa_status="error",
+			misa_ref_id="R-tay", misa_error="MISA từ chối hoá đơn: MST sai")
+		goc, da = M.doc_dong_hddt, []
+
+		def doc(ten, *, khoa=False):
+			if khoa and not da:  # KT lưu xong giữa bước 3 và bước 9 (đã commit — bản đọc có khoá thấy)
+				da.append(1)
+				frappe.db.sql("UPDATE `tabNPP HDDT` SET `mst_nguoi_mua` = '0300000001', `tong_tien` = 121000, `tien_thue` = 21000 WHERE `name` = %s",
+					ten)
+			return goc(ten, khoa=khoa)
+
+		a = self.mang(TOK, RONG, tra_map("R-tay"))
+		with patch.object(M, "doc_dong_hddt", doc):
+			self.assertEqual(self.phat_hanh(t)[0], 200)
+		p = self.payload(a)[0]
+		self.assertEqual((p["RefID"], p["AccountObjectTaxCode"], p["TotalAmountOC"], p["TotalVATAmountOC"]), ("R-tay", "0300000001", 121000, 21000))
+
+	def test_ket_qua_ok_khong_de_luot_keo_ve_song_song(self):
+		"""[phát hiện 15] Trong lúc POST còn chờ, một lượt Làm mới / quét song song đã kéo bản ghi MISA về (amount_mismatch + mã tra cứu TX1 — RefID đã
+		commit trước POST nên màn hiện "Làm mới"): ghi kết quả OK KHÔNG hạ `amount_mismatch` về `sent`, KHÔNG ghi NULL đè mã tra cứu; vẫn issued."""
+		e = self.lap()
+
+		def keo_song_song(req):
+			if req.method == "POST" and "/v3sainvoice" in req.url:
+				frappe.db.sql("""UPDATE `tabNPP HDDT` SET `misa_status` = 'amount_mismatch', `misa_lookup_code` = 'TX1', `trang_thai` = 'issued',
+					`phat_hanh_luc` = %s WHERE `name` = %s""", (LUC - datetime.timedelta(seconds=30), e))
+
+		self.mang(TOK, tra_map(), khi_goi=keo_song_song)
+		self.assertEqual(self.phat_hanh(e)[0], 200)
+		r = self.dong(e)
+		self.assertEqual((r.misa_status, r.misa_lookup_code, r.trang_thai, r.misa_error, r.phat_hanh_luc), ("amount_mismatch", "TX1", "issued", None,
+			LUC - datetime.timedelta(seconds=30)))
+
+	def test_luu_desk_ban_cu_bi_chan(self):
+		"""[phát hiện 16] System Manager mở tờ trên Desk TRƯỚC một lần máy ghi (Làm mới kéo số về; giành tờ của phát hành) rồi bấm Lưu: lõi chặn
+		(TimestampMismatchError — máy ghi đổi `modified`), số / trạng thái máy vừa ghi GIỮ (trước: `db_update` ghi lại MỌI cột của bản form cũ)."""
+		e = self.lap()
+		ref = self._treo(e, "pending")
+		cu = frappe.get_doc("NPP HDDT", e)
+		self.mang(TOK, get_ban_ghi(**ban_ghi_ky()))
+		self.assertEqual(self.lam_moi(e)[0], 200)
+		cu.misa_no_locked = 1
+		with self.assertRaises(frappe.TimestampMismatchError):
+			cu.save(ignore_permissions=True)
+		r = self.dong(e)
+		self.assertEqual((r.misa_inv_no, r.misa_status, r.misa_no_locked, r.misa_ref_id), ("00000123", "signed", 0, ref))
+		e2 = dong_hddt(nguoi_mua="Tờ Desk", tien_hang=1000, tien_thue=100, tong_tien=1100)
+		cu2 = frappe.get_doc("NPP HDDT", e2)
+		self.mang(tra_map())
+		self.assertEqual(self.phat_hanh(e2)[0], 200)
+		cu2.misa_note = "ghi chú của người"
+		with self.assertRaises(frappe.TimestampMismatchError):
+			cu2.save(ignore_permissions=True)
+		self.assertEqual((self.dong(e2).misa_status, bool(self.dong(e2).misa_ref_id)), ("sent", True))
+
+
+class TestCauHinhDiaChi(_NenHddt):
+	"""[phát hiện 6 (+3) — ≠ H28] Địa chỉ MISA chỉ nhận https tới máy chủ MISA (`MAY_CHU_MISA` + site_config `npp_misa_may_chu`; bài thêm `misa.gia`),
+	đường token / phát hành là đường dẫn `/…`: chủ / KT không biết mật khẩu không đổi được địa chỉ để máy chủ giải mã tài khoản + mật khẩu đã lưu rồi
+	POST tới máy tuỳ ý (kèm SSRF mạng trong); đổi máy MISA mà không gõ lại tài khoản / mật khẩu ⇒ bản đã lưu bị XOÁ. Câu 400 tiếng Việt (trước: 500
+	"'<strong>…</strong>' is not a valid URL" của lõi — phát hiện 3)."""
+
+	def test_luu_tu_choi_dia_chi_la(self):
+		a = self.mang()
+		cho_phep = ", ".join(sorted(MM.may_chu_cho_phep()))
+		cau = f"Địa chỉ API MISA không hợp lệ: chỉ nhận https:// tới máy chủ MISA ({cho_phep}), ví dụ https://testapp.meinvoice.vn/api/v2 (thử) hoặc " \
+			"https://app.meinvoice.vn/api/v2 (thật)."
+		for dc in ("http://127.0.0.1:8000/api/v2", "https://evil.example/api/v2", "app.meinvoice.vn/api/v2", "https://app.meinvoice.vn\\@evil.example/",
+				"https://app.meinvoice.vn:8443/api/v2", "https://app.meinvoice.vn/api/v2?x=1", "https://u@app.meinvoice.vn/api/v2",
+				"https://app.meinvoice.vn.evil.example/api/v2", "https://app.meinvoice.vn /api/v2", "http://app.meinvoice.vn/api/v2"):
+			with self.subTest(dc=dc):
+				self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**CAU_HINH_CHUAN, "api_base": dc}), (400, {"error": cau}))
+		for k, v in (("token_path", "@evil.example/oauth"), ("token_path", "oauth"), ("token_path", "//evil.example/x"),
+				("publish_path", "/v3sainvoice?x=1"), ("publish_path", "/v3sainvoice#a"), ("token_path", "/oauth:443")):
+			with self.subTest(k=k, v=v):
+				self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**CAU_HINH_CHUAN, k: v}), (400, {"error": f"Endpoint MISA không hợp lệ ({k}): "
+					"phải là đường dẫn bắt đầu bằng \"/\", ví dụ /oauth hoặc /v3sainvoice."}))
+		self.assertEqual(self.goi("owner", M.cau_hinh_doc, pt="GET"), (200, {"config": None}))  # không lưu gì
+		for dc in ("https://APP.meinvoice.vn/api/v2", "https://testapp.meinvoice.vn:443/api/v2/", "https://misa.gia"):
+			with self.subTest(dc=dc):
+				self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**CAU_HINH_CHUAN, "api_base": dc}), (200, {"success": True}))
+		with patch.dict(frappe.local.conf, {"npp_misa_may_chu": ["misa-moi.vn"]}):
+			self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**CAU_HINH_CHUAN, "api_base": "https://misa-moi.vn/api/v2"})[0], 200)
+		self.assertEqual(a.goi, [])
+
+	def test_doi_may_xoa_tai_khoan_da_luu(self):
+		"""Đổi máy MISA (thử → thật) không gõ lại tài khoản / mật khẩu ⇒ bản đã lưu bị XOÁ (has_* false), "Thử kết nối" ngay sau đó báo "Thiếu
+		username/password" (không gửi tài khoản máy cũ sang máy mới; 0 lời gọi). Cùng máy đổi đường dẫn thì giữ; đổi máy có gõ đủ thì lưu bản mới."""
+		self.assertEqual(self.goi("owner", M.cau_hinh_luu, CAU_HINH_CHUAN)[0], 200)
+		ch = {k: v for k, v in CAU_HINH_CHUAN.items() if k not in ("username", "password")}
+		self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**ch, "api_base": "https://misa.gia/api/v3"})[0], 200)
+		cfg = self.goi("owner", M.cau_hinh_doc, pt="GET")[1]["config"]
+		self.assertEqual((cfg["has_username"], cfg["has_password"]), (True, True))
+		self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**ch, "api_base": "https://testapp.meinvoice.vn/api/v2"})[0], 200)
+		cfg = self.goi("owner", M.cau_hinh_doc, pt="GET")[1]["config"]
+		self.assertEqual((cfg["api_base"], cfg["has_username"], cfg["has_password"]), ("https://testapp.meinvoice.vn/api/v2", False, False))
+		a = self.mang()
+		self.assertEqual(self.goi("owner", M.thu_ket_noi, {}), (400, {"error": "Thiếu username/password. Nhập rồi bấm test lại."}))
+		self.assertEqual(a.goi, [])
+		self.assertEqual(self.goi("owner", M.cau_hinh_luu, {**ch, "api_base": "https://app.meinvoice.vn/api/v2", "username": "u-that",
+			"password": "p-that"})[0], 200)
+		d = frappe.get_doc(CH.TEN)
+		self.assertEqual((d.get_password("tai_khoan"), d.get_password("mat_khau")), ("u-that", "p-that"))
+		self._i6("u-that", "p-that")
+
+	def test_cau_hinh_sua_tay_tren_desk(self):
+		"""Địa chỉ lạ ghi tay trên Desk (lưu Single không qua route): mọi đường dừng TRƯỚC khi giải mã / gọi — phát hành 400 + dòng `error` mang câu,
+		Làm mới 400, Thử kết nối 400, Dựng từ snapshot 400, 0 lời gọi."""
+		self.assertEqual(self.goi("owner", M.cau_hinh_luu, CAU_HINH_CHUAN)[0], 200)
+		frappe.db.set_single_value(CH.TEN, "dia_chi_api", "https://evil.example/api/v2")
+		frappe.clear_document_cache(CH.TEN, CH.TEN)
+		a = self.mang()
+		cau = MM.kiem_dia_chi_api("https://evil.example/api/v2")
+		e = self.lap()
+		with patch.object(MM.CauHinhMisa, "giai_ma", side_effect=AssertionError("không được giải mã")):
+			self.assertEqual(self.phat_hanh(e), (400, {"error": cau}))
+			self.assertEqual((self.dong(e).misa_status, self.dong(e).misa_error), ("error", cau))
+			e2 = dong_hddt(nguoi_mua="Đã gửi", misa_status="sent", misa_ref_id=str(uuid.uuid4()), trang_thai="issued")
+			self.assertEqual(self.lam_moi(e2), (400, {"error": cau}))
+			self.assertEqual(self.goi("owner", M.thu_ket_noi, {"username": "u", "password": "p"}), (400, {"error": cau}))
+			s = frappe.get_doc({"doctype": "NPP MISA Snapshot", "ref_id": "misa-dc", "keo_luc": LUC}).insert(ignore_permissions=True).name
+			self.assertEqual(self.goi("owner", M.doi_soat, {"action": "create", "snapshotId": s}), (400, {"error": cau}))
+		self.assertEqual(a.goi, [])
+
+
+# =====================================================================================================================================
 # Đọc sổ hỏng (lỗi CSDL) ở từng route — câu nguyên văn Phụ lục A; không gọi MISA; không câu tiếng Anh / bí mật
 # =====================================================================================================================================
 class TestDocHong(_NenPhatHanh):
@@ -1873,6 +2100,7 @@ class TestHaiKetNoi(IntegrationTestCase):
 				"SELECT 1 FROM `__Auth` WHERE `doctype` = %s LIMIT 1", CH.TEN):
 			self.skipTest("site đã có cấu hình MISA — bài commit thật không chạy để khỏi đụng cấu hình thật")
 		self.bat_dau = frappe.db.sql("SELECT NOW(6)")[0][0]
+		cho_phep_misa_gia(self)
 		MM.xoa_token_nho()
 		self.addCleanup(MM.xoa_token_nho)
 		p = patch.object(M, "hien_tai", lambda: NguCanh(user=frappe.session.user, vai="owner"))

@@ -22,6 +22,7 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, parse_qsl, urlparse
 
 import frappe
+import requests
 from frappe.tests import IntegrationTestCase
 from frappe.utils import flt
 
@@ -44,6 +45,7 @@ from nppsale.tests.test_hddt import (
 	hd_app,
 )
 from nppsale.tests.test_hddt_khoa import CHO_MISA, DA_PHAT_HANH, dong_hddt
+from nppsale.tests.test_misa_mang import cho_phep_misa_gia
 
 NGAY = datetime.timedelta(days=1)
 PHUT = datetime.timedelta(minutes=1)
@@ -239,8 +241,8 @@ class TestVongQuet(_NenLich):
 
 	def test_kv39_mot_to_loi_khong_keo_ca_luot(self):
 		"""KV-39 [= + nhật ký lượt]: ba tờ lượt 1 — t1 MISA đã cấp số → `signed` (KHÔNG ghi misa_signed_at / misa_published_at / misa_invoice_url —
-		chỉ phát hành ghi [=]); t2 GET 500 → errors, dòng KHÔNG đổi gì (cả mốc hỏi); t3 không có → chỉ mốc hỏi. Commit sau MỖI tờ (đếm lúc từng lời
-		GET bay đi: 0, 1, 2) — tờ hỏng không cuộn lại tờ trước."""
+		chỉ phát hành ghi [=]); t2 GET 500 → errors, dòng không đổi gì NGOÀI mốc hỏi [≠ — phát hiện 10: MISA TRẢ LỜI lỗi vẫn ghi mốc để hàng đợi xoay
+		vòng]; t3 không có → chỉ mốc hỏi. Commit sau MỖI tờ (đếm lúc từng lời GET bay đi: 0, 1, 2) — tờ hỏng không cuộn lại tờ trước."""
 		t = {k: dong_hddt(misa_ref_id=k, misa_status="sent", trang_thai="issued", phat_hanh_luc=LUC - NGAY, tong_tien=50000)
 			for k in ("t-1", "t-2", "t-3")}
 		tra = {"t-1": get_ban_ghi(InvNo="00000777", InvSeries="1C26TAA", InvDate="2026-11-14T00:00:00", PublishStatus=3, EInvoiceStatus=1,
@@ -258,7 +260,9 @@ class TestVongQuet(_NenLich):
 		self.assertEqual((r1.misa_status, r1.misa_inv_no, r1.misa_inv_series, str(r1.misa_inv_date), r1.misa_lookup_code, r1.misa_relation,
 			r1.misa_last_checked_at), ("signed", "00000777", "1C26TAA", "2026-11-14", "TX7", "new", LUC))
 		self.assertEqual((r1.misa_signed_at, r1.misa_published_at, r1.misa_invoice_url), (None, None, None))
-		self.assertEqual(self.dong(t["t-2"]), truoc_t2)
+		r2 = self.dong(t["t-2"])
+		self.assertEqual({k: v for k, v in r2.items() if k != "misa_last_checked_at"}, {k: v for k, v in truoc_t2.items() if k != "misa_last_checked_at"})
+		self.assertEqual((truoc_t2.misa_last_checked_at, r2.misa_last_checked_at), (None, LUC))
 		self.assertEqual(self.dong(t["t-3"]).misa_last_checked_at, LUC)
 		nk, nv = self.luot()
 		self.assertEqual((nk.ket_qua, nv["checked"], nv["updated"], nv["originals_marked_replaced"], nv["errors"]),
@@ -491,6 +495,13 @@ class TestChayDongBo(_NenLich):
 		with patch.object(L, "dong_bo_trang_thai", side_effect=JobTimeoutException("quá giờ")), self.assertRaises(JobTimeoutException):
 			L.chay_dong_bo()
 		self.assertEqual(len(self.nhat_ky(nguon="pull_snapshots")), so_keo)
+		# [Sửa cuối — phát hiện 17] RQ cắt việc vẫn để lại MỘT dòng nhật ký lượt `failed` (bằng chứng duy nhất việc đã chạy) trước khi nổi lên
+		nk, nv = self.luot()
+		self.assertEqual((nk.ket_qua, nv["errors"]), ("failed", [{"message": "RQ cắt việc (quá trần thời gian của việc nền) — lượt dở dang: quá giờ"}]))
+		with patch.object(L, "keo_snapshot", side_effect=JobTimeoutException("quá giờ kéo")), self.assertRaises(JobTimeoutException):
+			L.chay_dong_bo()
+		nk, nv = self.luot("pull_snapshots")
+		self.assertEqual((nk.ket_qua, nv["errors"][0]["message"]), ("failed", "RQ cắt việc (quá trần thời gian của việc nền) — lượt dở dang: quá giờ kéo"))
 
 
 # =====================================================================================================================================
@@ -760,7 +771,7 @@ class TestKeoSnapshot(_NenLich):
 		goc = frappe.local.db.sql
 
 		def sql_doc_so_hong(q, *a, **k):
-			if "FROM `tabNPP HDDT` WHERE `phat_hanh_luc` >=" in q:
+			if "`phat_hanh_luc`, `misa_sent_at`, `tong_tien`" in q and "FROM `tabNPP HDDT`" in q:
 				raise RuntimeError("đọc sổ hỏng")
 			return goc(q, *a, **k)
 
@@ -784,6 +795,131 @@ class TestKeoSnapshot(_NenLich):
 			([{"message": "Ghi kết quả khớp lỗi (ok-1): khoá dòng"}], 1, "success"))  # cu-1 vẫn ghi (misa_only), ok-1 không đếm
 		self.assertEqual(self.snap("cu-1").khop_luc, LUC)
 		self.assertTrue(cu)
+
+
+# =====================================================================================================================================
+# Sửa cuối (vòng soát 3 góc) — phát hiện 1, 2, 8, 9, 10, 17 ở việc nền
+# =====================================================================================================================================
+class TestSuaCuoiLich(_NenLich):
+	def test_xac_nhan_day_khi_ap_dung_khong_ket_luan(self):
+		"""[phát hiện 1] Vòng quét gặp tờ `pending` / `error` có RefID mà MISA CÓ tờ với số thật, PublishStatus lạ (2), đơn vị KHÔNG mã (`ap_dung` không
+		kết luận): xác nhận đẩy đưa về `sent` + issued (trước: kẹt pending / error mỗi đêm). Cùng hàm ghi với Làm mới."""
+		bg2 = {"InvNo": "00000321", "InvSeries": "1C26TAA", "PublishStatus": 2, "EInvoiceStatus": 1, "TotalAmount": 1000}
+		t = {k: dong_hddt(misa_ref_id=k, misa_status=k.split("-")[0], misa_error="x", misa_sent_at=LUC - NGAY, tong_tien=1000,
+			misa_inv_series=None) for k in ("pending-1", "error-1")}
+		self.misa(misa_gia(get=lambda ref: get_ban_ghi(**{**bg2, "InvNo": "0000032" + ("1" if ref == "pending-1" else "2")})))
+		bao = L.dong_bo_trang_thai()
+		for k, e in t.items():
+			r = self.dong(e)
+			self.assertEqual((r.misa_status, r.trang_thai, r.misa_error, bool(r.misa_inv_no)), ("sent", "issued", None, True), k)
+		self.assertEqual((bao["updated"], bao["errors"]), (2, []))
+
+	def test_ban_ghi_rong_la_misa_khong_co(self):
+		"""[phát hiện 9] `data: '{}'` / `'[]'` cho tờ treo quá 10 phút → H5 (`error`, treo_thanh_loi) như MISA không có; tờ `error` + bản ghi rỗng → chỉ
+		mốc hỏi (không "xác nhận đẩy" tờ MISA chưa nhận)."""
+		treo = dong_hddt(misa_ref_id="rong-p", misa_status="pending", misa_sent_at=LUC - 11 * PHUT)
+		loi = dong_hddt(misa_ref_id="rong-e", misa_status="error", misa_error="MISA từ chối", misa_sent_at=LUC - NGAY)
+		self.misa(misa_gia(get=lambda ref: {"body": {"success": True, "data": "{}" if ref == "rong-p" else "[]"}}))
+		bao = L.dong_bo_trang_thai()
+		self.assertEqual((self.dong(treo).misa_status, self.dong(treo).misa_error, bao["treo_thanh_loi"], bao["updated"]),
+			("error", M.LOI_LM_TREO, 1, 0))
+		r = self.dong(loi)
+		self.assertEqual((r.misa_status, r.trang_thai, r.misa_error, r.misa_last_checked_at), ("error", "draft", "MISA từ chối", LUC))
+
+	def test_loi_misa_tra_loi_van_xoay_hang_doi(self):
+		"""[phát hiện 10] MISA TRẢ LỜI lỗi cho tờ (vd 404 cho RefID nó không có — dạng "không có" chưa đo, §9.4-2): vẫn ghi mốc hỏi ⇒ đêm sau tờ CHƯA
+		hỏi đứng đầu (trước: tờ chết giữ mốc trống, đứng đầu lượt 1 mãi — ≥ 200 tờ như vậy là tờ mới không bao giờ tới lượt). Lỗi đường truyền không
+		ghi mốc [=]."""
+		chen_nhanh([{"misa_ref_id": f"Q-{i}", "misa_status": "error", "phat_hanh_luc": LUC - NGAY} for i in range(3)])
+		khong_co = {"status": 404, "body": {"message": "Not Found"}}
+
+		def moc(ref):
+			return frappe.db.get_value("NPP HDDT", {"misa_ref_id": ref}, "misa_last_checked_at")
+
+		with patch.object(L, "TRAN_LUOT", 2):
+			a = self.misa(misa_gia(get=lambda ref: khong_co))
+			bao = L.dong_bo_trang_thai()
+			dem1 = hoi(a)
+			self.assertEqual((len(dem1), len(bao["errors"]), [moc(r) for r in dem1]), (2, 2, [LUC, LUC]))
+			con = ({"Q-0", "Q-1", "Q-2"} - set(dem1)).pop()
+			self.luc = LUC + NGAY
+			a = self.misa(misa_gia(get=lambda ref: khong_co))
+			L.dong_bo_trang_thai()
+			self.assertEqual(hoi(a)[0], con)  # tờ chưa hỏi lần nào đứng đầu (trước: mốc trống mãi — hai tờ chết chiếm trọn lượt)
+			truoc = {r: moc(r) for r in ("Q-0", "Q-1", "Q-2")}
+			self.luc = LUC + 2 * NGAY
+			a = self.misa(misa_gia(get=lambda ref: requests.exceptions.ConnectionError("đứt")))
+			L.dong_bo_trang_thai()
+		self.assertEqual(len(hoi(a)), 2)
+		for r in hoi(a):
+			self.assertEqual(moc(r), truoc[r], r)  # lỗi ĐƯỜNG TRUYỀN: mốc giữ [=] (đêm sau hỏi lại trước)
+
+	def test_han_luot_va_ngat_khi_mang_dut(self):
+		"""[phát hiện 17] (a) MISA chậm: quá HAN_DONG_BO_S thì dừng nhận tờ mới — `bo_qua_vi_het_gio`, failed — và `chay_dong_bo` VẪN kéo snapshot
+		(trước: RQ cắt việc ở 3600 s, không dòng nhật ký, không kéo); (b) NGAT_LOI_MANG tờ liên tiếp lỗi đường truyền ⇒ dừng lượt (`bo_qua_vi_mang`);
+		(c) kéo danh sách quá HAN_KEO_S ⇒ dừng như lỗi kéo, failed."""
+		chen_nhanh([{"misa_ref_id": f"H-{i}", "misa_status": "sent", "phat_hanh_luc": LUC - NGAY} for i in range(4)])
+
+		def cham(req):
+			if req.method == "GET":
+				self.gio += 1000  # mỗi lời GET 1.000 s (đồng hồ đơn điệu giả của misa_mang)
+
+		self.misa(misa_gia(trang=lambda start: trang_ds([])), khi_goi=cham)
+		kq = L.chay_dong_bo()
+		nv = self.luot()[1]
+		self.assertEqual((self.luot()[0].ket_qua, nv["checked"], nv["bo_qua_vi_het_gio"]), ("failed", 3, 1))
+		self.assertEqual((self.luot("pull_snapshots")[0].ket_qua, kq["keo_snapshot"]["errors"]), ("success", []))
+		a = self.misa(misa_gia(get=lambda ref: requests.exceptions.ConnectionError("đứt")))
+		chen_nhanh([{"misa_ref_id": f"N-{i}", "misa_status": "sent", "phat_hanh_luc": LUC - NGAY} for i in range(3)])
+		bao = L.dong_bo_trang_thai()
+		self.assertEqual((len(hoi(a)), bao["checked"], bao["bo_qua_vi_mang"], len(bao["errors"])), (L.NGAT_LOI_MANG, L.NGAT_LOI_MANG,
+			7 - L.NGAT_LOI_MANG, L.NGAT_LOI_MANG))
+		self.assertEqual(self.luot()[0].ket_qua, "failed")
+
+		def trang_cham(req):
+			if req.url.endswith("/paging"):
+				self.gio += 4000
+
+		self.misa(misa_gia(trang=lambda start: trang_ds([bg(f"P-{i}", f"{i + 1:08d}") for i in range(100)])), khi_goi=trang_cham)
+		bao = L.keo_snapshot()
+		self.assertEqual((bao["errors"], bao["pulled"], self.luot("pull_snapshots")[0].ket_qua),
+			([{"message": "Kéo danh sách dừng vì quá hạn lượt đêm (55 phút) sau 1 trang — bỏ khớp đêm nay."}], 0, "failed"))
+
+	def test_khop_so_theo_moc_gui_h14(self):
+		"""[phát hiện 2 — mở rộng H14] Phần sổ của vòng khớp = GREATEST(phát hành nội bộ, lần gửi MISA) trong cửa sổ, hoặc ngày HĐĐT trong cửa sổ:
+		Y "Khoá HĐ" 90 ngày trước rồi mới đẩy hôm qua, V huỷ nội bộ rồi phát hành (phat_hanh_luc NULL — KV-26 b), U dữ liệu chuyển sang chỉ có ngày HĐĐT
+		→ khớp đúng tờ của chúng (trước: "Chỉ có trên MISA — phát hành ngoài app" mỗi đêm cho chính tờ của sổ). Tầng 4 của V dùng ngày gửi MISA."""
+		y = dong_hddt(misa_ref_id="R-Y", trang_thai="issued", misa_status="sent", phat_hanh_luc=LUC - 90 * NGAY, misa_sent_at=LUC - NGAY,
+			tong_tien=1000)
+		v = dong_hddt(misa_ref_id="R-V", trang_thai="issued", misa_status="sent", misa_sent_at=LUC - 2 * NGAY, tong_tien=2000)
+		u = dong_hddt(trang_thai="issued", misa_status="signed", misa_inv_series="1C26TAA", misa_inv_no="00000777", misa_inv_date="2026-11-03",
+			tong_tien=3000)
+		w = dong_hddt(mst_nguoi_mua="0307777777", trang_thai="issued", misa_sent_at=datetime.datetime(2026, 11, 12, 9, 0), tong_tien=4000)
+		ds = [bg("R-Y", None, ngay="2026-11-14T00:00:00", tong=1000), bg("R-V", None, ngay="2026-11-13T00:00:00", tong=2000),
+			bg("s-u", "00000777", ngay="2026-11-03T00:00:00", tong=3000),
+			bg("s-w", None, ngay="2026-11-12T00:00:00", tong=4000, AccountObjectTaxCode="0307777777")]
+		self.misa(misa_gia(trang=lambda start: trang_ds(ds if start == 0 else [])))
+		bao = L.keo_snapshot()
+		mong = {"R-Y": (y, "ref_id", "matched"), "R-V": (v, "ref_id", "matched"), "s-u": (u, "inv_no", "matched"),
+			"s-w": (w, "tax_date_amount", "needs_review")}
+		for ref, m in mong.items():
+			s = self.snap(ref)
+			self.assertEqual((s.hddt, s.cach_khop, s.ket_qua_khop), m, ref)
+		self.assertEqual((bao["matched"], bao["misa_only"], bao["needs_review"]), (3, 0, 1))
+
+	def test_ban_ghi_tho_va_nhat_ky_che_bi_mat(self):
+		"""[phát hiện 8] Bản ghi MISA mang tài khoản đang dùng (vd `CreatedBy`) → `ban_ghi_tho` của snapshot và `nhan_ve` của nhật ký `sync` che `***`
+		(QL đọc qua cổng); trường đã bóc (người mua…) lấy từ bản NGUYÊN. (`_i6` cuối bài quét cả `ban_ghi_tho`.)"""
+		e = dong_hddt(misa_ref_id="R-che", misa_status="sent", trang_thai="issued", phat_hanh_luc=LUC - NGAY, tong_tien=1000)
+		self.misa(misa_gia(get=lambda ref: get_ban_ghi(InvNo="00000555", InvSeries="1C26TAA", PublishStatus=3, EInvoiceStatus=1, TotalAmount=2000,
+			CreatedBy="u-thu"), trang=lambda start: trang_ds([bg("s-che", "00000556", AccountObjectName="Cty u-thu", CreatedBy="u-thu")]
+			if start == 0 else [])))
+		L.chay_dong_bo()
+		(nk,) = self.nhat_ky(nguon="sync", hddt=e)
+		self.assertEqual(json.loads(nk.nhan_ve)["CreatedBy"], "***")
+		s = self.snap("s-che")
+		self.assertEqual((json.loads(s.ban_ghi_tho)["CreatedBy"], json.loads(s.ban_ghi_tho)["AccountObjectName"], s.nguoi_mua),
+			("***", "Cty ***", "Cty u-thu"))
 
 
 # =====================================================================================================================================
@@ -825,6 +961,7 @@ class TestLichHaiKetNoi(IntegrationTestCase):
 				"SELECT 1 FROM `__Auth` WHERE `doctype` = %s LIMIT 1", CH.TEN):
 			self.skipTest("site đã có cấu hình MISA — bài commit thật không chạy để khỏi đụng cấu hình thật")
 		self.bat_dau = frappe.utils.now_datetime() - datetime.timedelta(seconds=1)  # `creation` theo giờ site (NOW() của CSDL là UTC)
+		cho_phep_misa_gia(self)
 		MM.xoa_token_nho()
 		self.addCleanup(MM.xoa_token_nho)
 		p = patch.object(M, "bay_gio", lambda: LUC)
@@ -877,7 +1014,7 @@ class TestLichHaiKetNoi(IntegrationTestCase):
 				frappe.local.db = chinh
 			da_hoi.append(ref_cua(req.url))
 
-		a = AdapterHddt([misa_gia(get=lambda ref: {"status": 500, "body": "boom"} if ref == "hk-2" else None)] * 10, khi_goi)
+		a = AdapterHddt([misa_gia(get=lambda ref: requests.exceptions.ConnectionError("đứt") if ref == "hk-2" else None)] * 10, khi_goi)
 		s = _PHIEN_THAT()
 		s.mount("https://", a)
 		p = patch.object(MM, "_phien", lambda: s)
