@@ -15,7 +15,11 @@ Dữ liệu: HĐ bán của tình huống vàng `xuat_du_mot_lo` (P1 "Nuoc ngot 
 Lệch có chủ ý so với nppsale (bài khai): H3 (đẩy lại hỏi MISA trước), H4 (pending → 409), H5 (xác nhận đẩy; treo > 10 phút → error), H6 (HĐ
 đã huỷ), H8, H13 (ghi hỏng báo lỗi), H17, H22, H23 (tờ đã có số → cached), H24, H25, H26, H27 (hỏi trước khi POST lần 2); RefID ghi TRƯỚC khi gửi
 (commit trước HTTP); token lấy trước giành tờ; câu truyền tải tiếng Việt; một lời /oauth ở Thử kết nối; nối tay ≥ 2 snapshot chiếm → 409; id
-không phải uuid → 404; Dựng từ snapshot một giao dịch.
+không phải uuid → 404; Dựng từ snapshot một giao dịch; [ĐX] MISA đã xác nhận có tờ (bước 10 / H27) mà ghi kết quả hỏng → GIỮ `pending` (không
+`error` — khỏi mở khoá Huỷ HĐ cho HĐ đã có nháp trên MISA); kết quả lỗi của lần đẩy không đè lượt Làm mới song song.
+
+Soi chung mọi bài (không chỉ bài tự hỏi): I2 ở `phat_hanh()` (số HĐĐT chỉ đổi qua nhánh "MISA đã có tờ"), I11 ở `AdapterHddt` (lúc lời đẩy bay đi
+dòng chưa có số / mã), I1 / I3–I6 ở `_bat_bien` (cuối mỗi bài).
 """
 from __future__ import annotations
 
