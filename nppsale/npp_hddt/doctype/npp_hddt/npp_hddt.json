@@ -1,0 +1,265 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "hoa_don_ban",
+  "don_hang",
+  "so_hd_go_tay",
+  "nguoi_mua",
+  "dia_chi_nguoi_mua",
+  "mst_nguoi_mua",
+  "tien_hang",
+  "tien_thue",
+  "tong_tien",
+  "trang_thai",
+  "phat_hanh_luc",
+  "misa_ref_id",
+  "misa_inv_no",
+  "misa_inv_series",
+  "misa_inv_date",
+  "misa_invoice_code",
+  "misa_lookup_code",
+  "misa_invoice_url",
+  "misa_status",
+  "misa_relation",
+  "misa_org_ref_id",
+  "misa_error",
+  "misa_note",
+  "misa_no_locked",
+  "misa_sent_at",
+  "misa_signed_at",
+  "misa_published_at",
+  "misa_last_checked_at",
+  "misa_invoice_id",
+  "tim_kd"
+ ],
+ "fields": [
+  {
+   "fieldname": "hoa_don_ban",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Hoá đơn bán",
+   "options": "Sales Invoice",
+   "search_index": 1
+  },
+  {
+   "fieldname": "don_hang",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Đơn hàng",
+   "options": "Sales Order",
+   "search_index": 1
+  },
+  {
+   "fieldname": "so_hd_go_tay",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Số HĐ gõ tay"
+  },
+  {
+   "fieldname": "nguoi_mua",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Người mua",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dia_chi_nguoi_mua",
+   "fieldtype": "Small Text",
+   "label": "Địa chỉ người mua"
+  },
+  {
+   "fieldname": "mst_nguoi_mua",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "MST người mua"
+  },
+  {
+   "fieldname": "tien_hang",
+   "fieldtype": "Currency",
+   "label": "Tiền hàng",
+   "precision": "0"
+  },
+  {
+   "fieldname": "tien_thue",
+   "fieldtype": "Currency",
+   "label": "Thuế GTGT",
+   "precision": "0"
+  },
+  {
+   "fieldname": "tong_tien",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Tổng tiền",
+   "precision": "0"
+  },
+  {
+   "default": "draft",
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái nội bộ",
+   "options": "draft\nissued\ncancelled",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "phat_hanh_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Phát hành nội bộ lúc",
+   "search_index": 1
+  },
+  {
+   "fieldname": "misa_ref_id",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "RefID (khoá nối)",
+   "unique": 1
+  },
+  {
+   "fieldname": "misa_inv_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Số HĐĐT"
+  },
+  {
+   "fieldname": "misa_inv_series",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Ký hiệu"
+  },
+  {
+   "fieldname": "misa_inv_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ngày phát hành (MISA)"
+  },
+  {
+   "fieldname": "misa_invoice_code",
+   "fieldtype": "Data",
+   "label": "Mã CQT"
+  },
+  {
+   "fieldname": "misa_lookup_code",
+   "fieldtype": "Data",
+   "label": "Mã tra cứu (TransactionID)"
+  },
+  {
+   "fieldname": "misa_invoice_url",
+   "fieldtype": "Data",
+   "label": "Link tra cứu",
+   "options": "URL"
+  },
+  {
+   "fieldname": "misa_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái MISA",
+   "options": "\npending\nsent\nwaiting_code\nsigned\nreplaced\ncancelled\namount_mismatch\nerror"
+  },
+  {
+   "fieldname": "misa_relation",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Quan hệ",
+   "options": "\nnew\nreplacement\nadjustment\nreplaced\nadjusted\nunknown"
+  },
+  {
+   "fieldname": "misa_org_ref_id",
+   "fieldtype": "Data",
+   "label": "RefID HĐ gốc",
+   "search_index": 1
+  },
+  {
+   "fieldname": "misa_error",
+   "fieldtype": "Small Text",
+   "label": "Lỗi MISA"
+  },
+  {
+   "fieldname": "misa_note",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú đối chiếu"
+  },
+  {
+   "default": "0",
+   "fieldname": "misa_no_locked",
+   "fieldtype": "Check",
+   "label": "Khoá số gán tay"
+  },
+  {
+   "fieldname": "misa_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Đẩy lúc"
+  },
+  {
+   "fieldname": "misa_signed_at",
+   "fieldtype": "Datetime",
+   "label": "Ký lúc"
+  },
+  {
+   "fieldname": "misa_published_at",
+   "fieldtype": "Datetime",
+   "label": "Phát hành MISA lúc"
+  },
+  {
+   "fieldname": "misa_last_checked_at",
+   "fieldtype": "Datetime",
+   "label": "Kiểm lần cuối",
+   "search_index": 1
+  },
+  {
+   "fieldname": "misa_invoice_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "(cũ) RefID / số lẫn",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tim_kd",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Khoá tìm",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP HDDT",
+ "name": "NPP HDDT",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "misa_inv_no,so_hd_go_tay,nguoi_mua,mst_nguoi_mua,hoa_don_ban",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "nguoi_mua",
+ "track_changes": 1
+}

@@ -1941,96 +1941,116 @@ Không submit. Lập → sửa (lập lại bút toán) → xoá (huỷ bút to�
 
 ### DocType: NPP HDDT (npp_hddt)
 - **Module**: NPP HDDT · **Naming**: `UUID` (dòng chuyển sang giữ `invoices.id`; dòng mới uuid7 — HĐĐT hiện cho người bằng số MISA / số gõ
-  tay, không bằng tên) · **Is Submittable**: No (trạng thái là trường; cột tích hợp được luồng kéo về ghi suốt vòng đời) · **Is Single / Is
+  tay, không bằng tên) · **Is Submittable**: No (trạng thái là trường; cột tích hợp được luồng kéo về ghi suốt vòng đời; **không submit là có chủ ý**:
+  lõi chỉ chặn huỷ Sales Invoice / Sales Order bởi chứng từ liên kết **đã submit** — `frappe/model/delete_doc.py:379–382` — nên dòng HĐĐT docstatus 0 không bao
+  giờ chặn Huỷ / Sửa HĐ bằng `LinkExistsError` tiếng Anh; khoá nghiệp vụ duy nhất là `LOCKED_EINVOICE`) · **Is Single / Is
   Child Table**: No / No · **Track Changes**: Yes (đổi trạng thái / sửa tay của người; luồng kéo về ghi bằng `db_set(update_modified=False)`
   nên không đẻ Version — vết ở `NPP MISA Log`) · **Title Field**: nguoi_mua · **Search Fields**: misa_inv_no,so_hd_go_tay,nguoi_mua,mst_nguoi_mua,hoa_don_ban
   · **Thay cho bảng nppsale**: `invoices`
 
+Đặc tả triển khai HĐĐT (16/11/2026) §1.2 bổ sung trường / luật dưới (đánh dấu [ĐX H#] = đề xuất của đặc tả, chờ chốt — `00_quyet_dinh_trien_khai.md` Q8).
+Chỉ mục **một cột** khai `idx` (thành `search_index` của DocField — lõi tự giữ; chỉ mục một cột tạo ở `on_doctype_update` bị bước đồng bộ lược đồ
+của lõi xoá rồi tạo lại mỗi lần DocType đổi: `frappe/database/schema.py:310–312`, `database/mariadb/schema.py:143–146`); chỉ mục **ghép** ở `on_doctype_update`.
+
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| hoa_don_ban | Hoá đơn bán | Link | Sales Invoice |  | ✓ | ✓ | `sales_invoice_id` (mig 124). Chỉ mục, **không** unique (như nppsale); method lập dòng khoá dòng HĐ bán (`SELECT … FOR UPDATE`) rồi mới tìm / tạo → hai lượt bấm không đẻ hai dòng (nppsale đẻ được — chú thích ở `sales-invoices/[id]/page.tsx:143`) |
-| hoa_don_ban_ls | Hoá đơn bán (lưu trữ) | Link | NPP LS Hoa Don |  |  |  | **mới**: luôn điền ở dòng chuyển sang (HĐ bán cũ nằm ở lưu trữ). HĐ còn nợ ở ngày cắt có thêm tờ đầu kỳ **cùng mã HĐ cũ** (PoC 10) → điền cả `hoa_don_ban` để khoá Sửa / Huỷ tờ đầu kỳ thấy HĐĐT. Cổng trả `sales_invoice_id` = `hoa_don_ban` ∥ `hoa_don_ban_ls` (cột `uuid` ép về chữ — §6.1 `invoices`) |
-| don_hang | Đơn hàng | Link | Sales Order |  |  | ✓ | `order_id` (mig 001). Vế lọc NVBH đi qua cột này (RLS 084). Chỉ mục |
-| don_hang_ls | Đơn hàng (lưu trữ) | Link | NPP LS Don Hang |  |  |  | **mới**: luôn điền ở dòng chuyển sang (mọi đơn trước ngày cắt nằm ở lưu trữ); cổng trả `order_id` = `don_hang` ∥ `don_hang_ls` (cột `uuid` ép về chữ — §6.1 `invoices`) |
-| so_hd_go_tay | Số HĐ gõ tay | Data |  |  | ✓ | ✓ | `invoice_number` (mig 001) — số người gõ ở màn Tạo HĐĐT (dòng Dựng từ snapshot: = số MISA — dưới); đồng bộ MISA không bao giờ ghi; khác `misa_inv_no` thì luồng kéo về **thêm** một dòng vào `misa_note` ("sổ ghi X, MISA cấp Y"), không đổi trạng thái (số gõ tay ở nppsale là số nội bộ, nâng "lệch" sẽ báo động giả cả loạt) |
-| nguoi_mua | Người mua | Data |  | ✓ | ✓ |  | `customer_name` NOT NULL (mig 001); lúc lập = tên xuất HĐ của khách ∥ tên cửa hàng |
+| hoa_don_ban | Hoá đơn bán | Link | Sales Invoice |  | ✓ | ✓ | `sales_invoice_id` (mig 124). idx — **không** duy nhất (như nppsale); method lập dòng khoá dòng HĐ bán (`SELECT … FOR UPDATE`) rồi mới tìm / tạo → hai lượt bấm không đẻ hai dòng (nppsale đẻ được — chú thích ở `sales-invoices/[id]/page.tsx:143`). Khoá `LOCKED_EINVOICE` dò theo cột này (§4.6.0) |
+| ~hoa_don_ban_ls | Hoá đơn bán (lưu trữ) | Link | NPP LS Hoa Don |  |  |  | **chưa dựng** (dấu `~`: công cụ sinh DocType bỏ dòng — DocType đích `NPP LS Hoa Don` thuộc P8, Link tới DocType chưa có thì lõi từ chối lưu DocType). Dựng cùng bảng lưu trữ: luôn điền ở dòng chuyển sang (HĐ bán cũ nằm ở lưu trữ). HĐ còn nợ ở ngày cắt có thêm tờ đầu kỳ **cùng mã HĐ cũ** (PoC 10) → điền cả `hoa_don_ban` để khoá Sửa / Huỷ tờ đầu kỳ thấy HĐĐT. Cổng trả `sales_invoice_id` = `hoa_don_ban` ∥ `hoa_don_ban_ls` (cột `uuid` ép về chữ — §6.1 `invoices`); tới lúc ấy cổng chỉ đọc `hoa_don_ban` |
+| don_hang | Đơn hàng | Link | Sales Order |  |  | ✓ | `order_id` (mig 001). Vế lọc NVBH đi qua cột này (RLS 084). idx. Dòng mới luôn kèm HĐ bán (H1) — xoá đơn (`xoa_don`, `force=True`) an toàn nhờ đơn đã có HĐ bị chặn trước |
+| ~don_hang_ls | Đơn hàng (lưu trữ) | Link | NPP LS Don Hang |  |  |  | **chưa dựng** (như `~hoa_don_ban_ls` — DocType đích `NPP LS Don Hang` thuộc P8). Dựng cùng bảng lưu trữ: luôn điền ở dòng chuyển sang (mọi đơn trước ngày cắt nằm ở lưu trữ); cổng trả `order_id` = `don_hang` ∥ `don_hang_ls` (cột `uuid` ép về chữ — §6.1 `invoices`) |
+| so_hd_go_tay | Số HĐ gõ tay | Data |  |  | ✓ | ✓ | `invoice_number` (mig 001) — số người gõ ở màn Tạo HĐĐT (dòng Dựng từ snapshot: = số MISA — dưới); đồng bộ MISA không bao giờ ghi; khác `misa_inv_no` (so `chuan_so`) thì luồng kéo về **thêm** một dòng vào `misa_note` ("sổ ghi X, MISA cấp Y" — H17), không đổi trạng thái (số gõ tay ở nppsale là số nội bộ, nâng "lệch" sẽ báo động giả cả loạt). Sửa tay theo luật H24 (dưới) |
+| nguoi_mua | Người mua | Small Text |  | ✓ | ✓ |  | `customer_name` NOT NULL (mig 001); lúc lập = tên xuất HĐ của khách ∥ tên cửa hàng. **Small Text** [ĐX — bản trước ghi Data]: Data = varchar(140), tên xuất HĐ của nppsale là `text` không giới hạn, `AccountObjectName` của MISA cũng vậy ⇒ nhập / Dựng có thể nổ "Data too long"; `title_field` không giới hạn kiểu (`frappe/core/doctype/doctype/doctype.py:1554–1582`). Sau strip rỗng ⇒ validate từ chối `23502` (`null value in column "customer_name" of relation "invoices" violates not-null constraint` — nppsale nhận `''` vì cột chỉ NOT NULL [≠ nhỏ]) |
 | dia_chi_nguoi_mua | Địa chỉ người mua | Small Text |  |  |  |  | `customer_address` (mig 001) |
 | mst_nguoi_mua | MST người mua | Data |  |  | ✓ | ✓ | `customer_tax_code` (mig 001); lúc lập = `Customer.tax_id` |
-| tien_hang | Tiền hàng | Currency |  |  |  |  | `subtotal` (mig 001); precision 0; lúc lập = tiền hàng sau giảm đơn, trước thuế của HĐ bán (cùng định nghĩa `sales_invoices.subtotal`); sửa tay chỉ khi `trang_thai` = draft và chưa có `misa_ref_id` |
-| tien_thue | Thuế GTGT | Currency |  |  |  |  | `vat` (mig 001); như trên |
-| tong_tien | Tổng tiền | Currency |  |  | ✓ |  | `total` (mig 001); = tiền HĐ (`sales_invoices.total`); tiền duy nhất đem so với MISA (Gotcha #6 — API danh sách không tách thuế) |
-| trang_thai | Trạng thái nội bộ | Select | `draft`↵`issued`↵`cancelled` | ✓ | ✓ | ✓ | `status` (mig 001), default draft. issued = đẩy MISA thành công hoặc người bấm "Khoá HĐ"; cancelled = người bấm "Huỷ HĐ" (không huỷ bên MISA — như nppsale). Chỉ mục |
-| phat_hanh_luc | Phát hành nội bộ lúc | Datetime |  |  | ✓ |  | `issued_at` (mig 001); mốc cửa sổ 60 ngày của vòng quét (cùng `misa_sent_at`, xem dưới). Chỉ mục |
-| misa_ref_id | RefID (khoá nối) | Data |  |  |  | ✓ | `misa_ref_id` (mig 099). **Unique** (nhiều dòng trống được). Sinh **trước** khi gọi MISA, bất biến — validate chặn đổi khi đã có giá trị |
-| misa_inv_no | Số HĐĐT | Data |  |  | ✓ | ✓ | `misa_inv_no` (mig 099); nguyên văn MISA (thường 8 chữ số). Unique cùng `misa_inv_series` (dưới). Chỉ mục |
-| misa_inv_series | Ký hiệu | Data |  |  | ✓ |  | `misa_inv_series` (mig 099); khi đã có số mà ký hiệu trống thì lưu `''` (để chỉ mục duy nhất bắt được) |
-| misa_inv_date | Ngày phát hành (MISA) | Date |  |  | ✓ | ✓ | `misa_inv_date` (mig 099); kỳ thuế — không đoán bằng ngày ghi sổ (Gotcha #11.5) |
+| tien_hang | Tiền hàng | Currency |  |  |  |  | `subtotal` (mig 001); precision 0; lúc lập = tiền hàng sau giảm đơn, trước thuế của HĐ bán (`net_total − discount_amount`, cùng định nghĩa `sales_invoices.subtotal`); sửa tay theo luật H24 (dưới) |
+| tien_thue | Thuế GTGT | Currency |  |  |  |  | `vat` (mig 001); precision 0; lúc lập = `total_taxes_and_charges` của HĐ bán; sửa tay theo luật H24 |
+| tong_tien | Tổng tiền | Currency |  |  | ✓ |  | `total` (mig 001); precision 0; = tiền HĐ (`grand_total`); tiền duy nhất đem so với MISA (Gotcha #6 — API danh sách không tách thuế); sửa tay theo luật H24 |
+| trang_thai | Trạng thái nội bộ | Select | `draft`↵`issued`↵`cancelled` | ✓ | ✓ | ✓ | `status` (mig 001), default draft. issued = đẩy MISA thành công / người bấm "Khoá HĐ" / Dựng từ snapshot / xác nhận đẩy (H5); cancelled = người bấm "Huỷ HĐ" (không huỷ bên MISA — như nppsale; không chặn đẩy lại: phát hành OK đặt lại issued). idx |
+| phat_hanh_luc | Phát hành nội bộ lúc | Datetime |  |  | ✓ |  | `issued_at` (mig 001); mốc cửa sổ 60 ngày của vòng quét cùng `misa_sent_at` = `GREATEST(IFNULL(phat_hanh_luc, mốc 0), IFNULL(misa_sent_at, mốc 0))` [ĐX H14 — `COALESCE` bỏ sót tờ "Khoá HĐ" cũ mới đẩy]. idx |
+| misa_ref_id | RefID (khoá nối) | Data |  |  |  | ✓ | `misa_ref_id` (mig 099). unique (nhiều dòng NULL được — mọi hàm ghi đưa NULL khi trống, không bao giờ `''`: lõi chỉ đổi `''` → NULL cho trường duy nhất khi đi đường Document — `frappe/model/document.py:2602–2605`). Sinh **trước** khi gọi MISA (phát hành, bước giành tờ — trống thì `uuid4`, đẩy lại thì giữ), Dựng (RefID của MISA), công cụ nhập; System Manager điền tay trên Desk khi **đang trống** (tờ mất RefID — §6.4 đặc tả). Bất biến — validate chặn đổi khi đã có giá trị (I1). Cổng trả NULL khi `misa_status` ∈ {trống, error} [ĐX H3b] |
+| misa_inv_no | Số HĐĐT | Data |  |  | ✓ | ✓ | `misa_inv_no` (mig 099); nguyên văn MISA (thường 8 chữ số). Duy nhất cùng `misa_inv_series` (chỉ mục ghép dưới). Người ghi: **chỉ** luồng kéo về (làm mới / quét / xác nhận đẩy) + Dựng + công cụ nhập — không bao giờ phát hành (I2). Trống ⇒ NULL (cặp duy nhất với `''` ở hai tờ cũng đụng nhau) |
+| misa_inv_series | Ký hiệu | Data |  |  | ✓ |  | `misa_inv_series` (mig 099); khi đã có số mà ký hiệu trống thì lưu `''` (MariaDB coi NULL là khác nhau — để chỉ mục duy nhất bắt được) |
+| misa_inv_date | Ngày phát hành (MISA) | Date |  |  | ✓ | ✓ | `misa_inv_date` (mig 099); kỳ thuế — không đoán bằng ngày ghi sổ (Gotcha #11.5). Ngày không có thật từ MISA (`2026-02-30`) ⇒ hàm ghi bỏ khoá + ghi chú [ĐX H26] |
 | misa_invoice_code | Mã CQT | Data |  |  |  |  | `misa_invoice_code` (mig 099); chỉ đơn vị dùng HĐ có mã |
-| misa_lookup_code | Mã tra cứu (TransactionID) | Data |  |  |  |  | `misa_lookup_code` (mig 072) |
-| misa_invoice_url | Link tra cứu | Data | URL |  |  |  | `misa_invoice_url` (mig 011) |
-| misa_status | Trạng thái MISA | Select | ↵`pending`↵`sent`↵`waiting_code`↵`signed`↵`replaced`↵`cancelled`↵`amount_mismatch`↵`error` |  | ✓ | ✓ | `misa_status` (mig 011, CHECK mig 099); trống = chưa đẩy. Chỉ mục |
+| misa_lookup_code | Mã tra cứu (TransactionID) | Data |  |  |  |  | `misa_lookup_code` (mig 072); phát hành (khi MISA trả ngay — H20) + kéo về (chỉ khi có) + Dựng |
+| misa_invoice_url | Link tra cứu | Data | URL |  |  |  | `misa_invoice_url` (mig 011); **chỉ** phát hành khi có mã tra cứu — kéo về không bao giờ điền [=] |
+| misa_status | Trạng thái MISA | Select | ↵`pending`↵`sent`↵`waiting_code`↵`signed`↵`replaced`↵`cancelled`↵`amount_mismatch`↵`error` |  | ✓ | ✓ | `misa_status` (mig 011, CHECK mig 099); trống = chưa đẩy; `pending` ⇒ có `misa_ref_id` (I4). Không chỉ mục (cổng bọc `NULLIF(misa_status, '')` — chỉ mục không dùng được) |
 | misa_relation | Quan hệ | Select | ↵`new`↵`replacement`↵`adjustment`↵`replaced`↵`adjusted`↵`unknown` |  |  | ✓ | `misa_relation` (mig 099); unknown = MISA trả giá trị lạ, không đoán |
-| misa_org_ref_id | RefID HĐ gốc | Data |  |  |  |  | `misa_org_ref_id` (mig 099); chỉ mục (đánh dấu tờ gốc bị thay thế) |
+| misa_org_ref_id | RefID HĐ gốc | Data |  |  |  |  | `misa_org_ref_id` (mig 099); idx (đánh dấu tờ gốc bị thay thế) |
 | misa_error | Lỗi MISA | Small Text |  |  |  |  | `misa_error` (mig 011) |
-| misa_note | Ghi chú đối chiếu | Small Text |  |  |  |  | `misa_note` (mig 099) |
-| misa_no_locked | Khoá số gán tay | Check |  |  |  |  | `misa_no_locked` (mig 099), default 0; chỉ System Manager bật trên Desk (nppsale không có lối bật — §4.6.0); bật thì lượt 2 bỏ qua tờ này, số MISA khác số gán tay → ghi chú + `amount_mismatch` (như `apply.ts`) |
-| misa_sent_at | Đẩy lúc | Datetime |  |  |  |  | `misa_sent_at` (mig 011); ghi ngay khi gửi (kể cả khi chưa biết kết quả) |
-| misa_signed_at | Ký lúc | Datetime |  |  |  |  | `misa_signed_at` (mig 011) |
-| misa_published_at | Phát hành MISA lúc | Datetime |  |  |  |  | `misa_published_at` (mig 072) |
-| misa_last_checked_at | Kiểm lần cuối | Datetime |  |  |  |  | `misa_last_checked_at` (mig 099); chỉ mục (lượt quét sắp trống trước) |
-| misa_invoice_id | (cũ) RefID / số lẫn | Data |  |  |  |  | `misa_invoice_id` (mig 011) — **không dùng** (mig 099); read_only, hidden; chỉ giữ dữ liệu chuyển sang để đối chiếu |
-| tim_kd | Khoá tìm | Small Text |  |  |  |  | `tim_kd` (mig 249) read_only, hidden = `khoa_tim_ds(so_hd_go_tay, nguoi_mua, misa_inv_no, misa_invoice_id)`; ghi ở `before_save` **và** kèm mỗi lần luồng kéo về `db_set` số HĐĐT (đường ấy không chạy `before_save`) |
+| misa_note | Ghi chú đối chiếu | Small Text |  |  |  |  | `misa_note` (mig 099); **chỉ thêm dòng chưa có** (bỏ dòng đã có nguyên văn — không phình mỗi đêm) [ĐX H7 — nppsale thay cả ô] |
+| misa_no_locked | Khoá số gán tay | Check |  |  |  |  | `misa_no_locked` (mig 099), default 0; chỉ System Manager bật trên Desk (nppsale không có lối bật — §4.6.0); bật thì lượt 2 bỏ qua tờ này, số MISA khác số gán tay → ghi chú + `amount_mismatch` (như `apply.ts`); chỉ giữ `misa_inv_no` |
+| misa_sent_at | Đẩy lúc | Datetime |  |  |  |  | `misa_sent_at` (mig 011); lúc gửi gần nhất — ghi ở bước giành tờ (kể cả khi chưa biết kết quả) |
+| misa_signed_at | Ký lúc | Datetime |  |  |  |  | `misa_signed_at` (mig 011); **chỉ** phát hành khi có mã tra cứu |
+| misa_published_at | Phát hành MISA lúc | Datetime |  |  |  |  | `misa_published_at` (mig 072); như trên |
+| misa_last_checked_at | Kiểm lần cuối | Datetime |  |  |  |  | `misa_last_checked_at` (mig 099); idx (lượt quét sắp trống trước); không giảm (I10) |
+| misa_invoice_id | (cũ) RefID / số lẫn | Data |  |  |  |  | `misa_invoice_id` (mig 011) — **không dùng** (mig 099); read_only, hidden; chỉ giữ dữ liệu chuyển sang để đối chiếu (còn trong `tim_kd`) |
+| tim_kd | Khoá tìm | Small Text |  |  |  |  | `tim_kd` (mig 249) read_only, hidden = `khoa_tim_ds(so_hd_go_tay, nguoi_mua, misa_inv_no, misa_invoice_id)` — đúng thứ tự trigger `trg_zzzz_tim_kd` (đo trên Postgres tham chiếu: (`HD-0042-1`, `Tạp hoá Cô Ba`, `00007140`, NULL) → `hd 0042 1 hd00421 hd421 tap hoa co ba taphoacoba 00007140 7140`); ghi ở `before_save` **và** kèm mỗi lần luồng kéo về `db_set` số HĐĐT (đường ấy không chạy `before_save` — hàm `khoa_tim_hddt` của controller) |
 
-Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_inv_no`) — dòng chưa có số không vướng (MariaDB bỏ qua NULL); thêm kiểm
-ở validate "cùng số đã chuẩn hoá mà một bên trống ký hiệu" (Gotcha #11.3 — khoá đủ cặp không bắt được `('', '123')` với `('1C25MHG', '123')`).
+Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_inv_no`) tên `uq_hddt_ky_hieu_so` — dòng chưa có số không vướng (MariaDB bỏ qua NULL);
+so **nguyên văn** như Postgres (không bắt `'00000123'` vs `'123'`, không bắt (`''`, `'123'`) vs (`'1C26THG'`, `'123'`)); collation `utf8mb4_unicode_ci` không phân biệt hoa
+thường + bỏ khoảng trắng cuối (Postgres phân biệt — công cụ nhập dò trùng theo luật MariaDB trước). Kiểm "cùng số đã chuẩn hoá ∧ (cùng ký hiệu chặt ∨ một bên
+trống)" (Gotcha #11.3) **không** đặt ở validate (bản trước ghi vậy): người duy nhất ghi `misa_inv_no` là luồng kéo về, đi `db_set` nên không chạy validate ⇒
+đặt trong hàm ghi kéo về (§4.8 đặc tả HĐĐT): vẫn ghi số MISA, thêm ghi chú `Số HĐĐT {số} trùng (sau chuẩn hoá) với hoá đơn {id khác} — cần kiểm tra.`
 
 #### Relationships
-- Links to: Sales Invoice, Sales Order, NPP LS Hoa Don, NPP LS Don Hang.
+- Links to: Sales Invoice, Sales Order (NPP LS Hoa Don, NPP LS Don Hang — khi dựng bảng lưu trữ P8).
 - Linked from: `NPP MISA Log.hddt`, `NPP MISA Snapshot.hddt`.
 - Đọc từ: Customer (tên / địa chỉ / MST xuất HĐ), Sales Invoice + dòng (tiền, dòng hàng để đẩy MISA), `NPP MISA Cau Hinh`.
 
 #### Computed/Auto fields
-- **Lập dòng** (method `nppsale.api.misa.dam_bao_dong` — thay `ensureEInvoiceRow`, gọi từ nút Phát hành ở HĐ bán): khoá dòng HĐ bán, tìm
-  dòng theo `hoa_don_ban`; chưa có thì tạo `trang_thai` = draft, `nguoi_mua` / `dia_chi_nguoi_mua` / `mst_nguoi_mua` từ khách, `tien_hang` /
-  `tien_thue` / `tong_tien` từ HĐ bán, `don_hang`
-  từ HĐ. HĐ không ở trạng thái ghi sổ → báo như nppsale ("không còn hiệu lực").
-- **Phát hành** (`nppsale.api.misa.phat_hanh`, POST, chủ / KT / QL như route nppsale): (1) **một commit**: giành tờ bằng câu cập nhật có
-  điều kiện (`misa_status` trống hoặc error, chưa có `misa_lookup_code`) đặt `misa_status` = pending, `misa_ref_id` (trống thì sinh uuid4 —
-  đẩy lại thì giữ RefID cũ), `misa_sent_at`; 0 dòng → 409 "đang phát hành / đã phát hành" như nppsale; (2) gọi MISA (đường `/v3sainvoice/Code`
-  nếu `misa_is_invoice_with_code`), ghi `NPP MISA Log`; (3) thành công: `trang_thai` = issued, `phat_hanh_luc` (nếu đang draft), `misa_lookup_code`,
-  `misa_invoice_url`, `misa_status` = signed (có mã tra cứu) / sent, `misa_error` = null, `misa_signed_at` / `misa_published_at` khi có mã tra
-  cứu; MISA trả lỗi rõ: `misa_status` = error + `misa_error`; **hết giờ / rớt mạng: giữ `misa_status` = pending** + `misa_error` = "chưa biết
-  MISA nhận chưa — bấm Làm mới trạng thái" (Làm mới / vòng quét hỏi bằng RefID: MISA có → sent / signed; không có → error, đẩy lại được với
-  cùng RefID). **Khác nppsale**: nppsale chỉ ghi RefID sau khi MISA trả OK — hết giờ là mất khoá vĩnh viễn (Gotcha #1). Tờ đã có
-  `misa_lookup_code` hoặc `misa_status` ∉ {trống, error} → trả kết quả cũ (`cached`), không đẩy lần hai (nppsale xét "đã có mã tra cứu hoặc
-  RefID" — RefID nay có từ trước khi gửi nên xét theo trạng thái).
+- **validate** (đường Document: Desk, cổng, lập dòng / Dựng nếu lưu qua Document — luồng kéo về / giành tờ đi `db_set` / SQL nên không qua đây):
+  (1) `misa_ref_id` đã có thì không đổi (I1 — `HDDT_REFID_BAT_BIEN`); đang trống thì cho điền (§6.4 đặc tả). (2) Người mua (`nguoi_mua`, `dia_chi_nguoi_mua`,
+  `mst_nguoi_mua`) / tiền (`tien_hang`, `tien_thue`, `tong_tien`) / `so_hd_go_tay` chỉ đổi khi dòng **đang** `trang_thai = draft` ∧ `IFNULL(misa_status,'') IN ('','error')`
+  (`HDDT_KHOA_SUA`) [ĐX H24 — bản trước ghi "draft và chưa có `misa_ref_id`", viết khi RefID còn ghi **sau** khi MISA nhận; nay RefID ghi **trước** khi gửi (§7.3
+  dòng 10) nên tờ tay bị MISA từ chối (vd MST người mua sai — `error` có RefID) phải sửa được để đẩy lại cùng RefID; `pending` / `sent` có RefID thì khoá]. (3) `nguoi_mua`
+  sau strip rỗng ⇒ `23502` (trên). (4) `misa_ref_id` / `misa_inv_no` trống ⇒ NULL; có số mà ký hiệu NULL ⇒ `''`. Các trường `misa_*` khác **không** chặn (System Manager
+  xoá dấu MISA trên Desk để phát hành lại tờ mất RefID — §6.4 đặc tả; trình duyệt không ghi được `misa_*` vì cổng cấm — §6.1).
+- **before_save**: `tim_kd` (bảng Fields).
+- **Lập dòng** (method `nppsale.api.misa.dam_bao_dong` — thay `ensureEInvoiceRow`; trình duyệt vẫn gọi `ensureEInvoiceRow` → cổng `invoices` INSERT → bộ ghi gọi
+  `dam_bao_dong`, không phủ giao diện — §9.3-9 đặc tả): khoá dòng HĐ bán, tìm dòng theo `hoa_don_ban`; chưa có thì tạo `trang_thai` = draft, `nguoi_mua` /
+  `dia_chi_nguoi_mua` / `mst_nguoi_mua` từ khách, `tien_hang` / `tien_thue` / `tong_tien` từ HĐ bán, `don_hang` từ HĐ. HĐ không ở trạng thái ghi sổ → báo như
+  nppsale ("không còn hiệu lực" — H6).
+- **Phát hành** (`nppsale.api.misa.phat_hanh`, POST, chủ / KT / QL như route nppsale): (1) **một commit**: giành tờ bằng khoá dòng + điều kiện (`misa_status` trống
+  hoặc error, chưa có `misa_lookup_code`, chưa có `misa_inv_no` — H23) đặt `misa_status` = pending, `misa_ref_id` (trống thì sinh uuid4 — đẩy lại thì giữ RefID cũ
+  và **hỏi MISA trước** `GET ?refID=` — H3), `misa_sent_at`; (2) gọi MISA (đường `/v3sainvoice/Code` nếu `misa_is_invoice_with_code`), ghi `NPP MISA Log`;
+  (3) thành công: `trang_thai` = issued, `phat_hanh_luc` (nếu đang draft), `misa_lookup_code`, `misa_invoice_url`, `misa_status` = signed (có mã tra cứu) / sent,
+  `misa_error` = null, `misa_signed_at` / `misa_published_at` khi có mã tra cứu; MISA trả lỗi rõ: `misa_status` = error + `misa_error` (RefID giữ); **hết giờ / rớt mạng:
+  giữ `misa_status` = pending** + `misa_error` = "chưa biết MISA nhận chưa — bấm Làm mới trạng thái" (Làm mới / vòng quét hỏi bằng RefID: MISA có → theo kết quả +
+  xác nhận đẩy; không có → error **chỉ khi** `misa_sent_at` cũ hơn 10 phút [ĐX H5], đẩy lại được với cùng RefID). **Khác nppsale**: nppsale chỉ ghi RefID sau khi MISA trả
+  OK — hết giờ là mất khoá vĩnh viễn (Gotcha #1). Tờ đã có `misa_lookup_code` / `misa_inv_no` (H23) hoặc `misa_status` ∉ {trống, error, pending} → trả kết quả cũ
+  (`cached`), không đẩy lần hai; tờ `pending` → **409** đúng câu nppsale "Hoá đơn đang được xử lý…" [ĐX H4 — bản trước gộp pending vào cached].
 - **Làm mới một tờ** (`nppsale.api.misa.lam_moi`, chủ / KT / QL) và **đồng bộ đêm** (`nppsale.lich.misa.dong_bo`, 01:00): cùng một hàm thuần
-  `ap_dung_ket_qua_misa` (chép `src/lib/misa/apply.ts` + `status.ts`) → ghi bằng `db_set(update_modified=False)` đúng các trường tích hợp,
+  `ap_dung` (`nppsale/luat/hddt.py` — chép `src/lib/misa/apply.ts` + `status.ts`) → ghi bằng `db_set(update_modified=False)` đúng các trường tích hợp,
   không bao giờ đặt null vào trường đang có giá trị, luôn ghi `misa_last_checked_at`. Lượt 1 như nppsale (có RefID, chưa số) — gồm cả tờ
-  treo pending vì hết giờ; cửa sổ 60 ngày tính theo `phat_hanh_luc` ∥ `misa_sent_at` (tờ treo chưa có `phat_hanh_luc` — lọc riêng `issued_at` như
-  nppsale sẽ bỏ sót).
+  treo pending vì hết giờ; cửa sổ 60 ngày theo `GREATEST(phat_hanh_luc, misa_sent_at)` (H14 — trên).
 - **Tờ gốc bị thay thế**: kết quả có `OrgRefID` mà quan hệ là replacement → tìm dòng `misa_ref_id` = `OrgRefID`, đặt `misa_status` /
-  `misa_relation` = replaced + ghi chú (như `mark-replaced.ts`).
+  `misa_relation` = replaced + ghi chú (như `mark-replaced.ts`; ghi chú chỉ thêm dòng — H7).
 - **Dựng từ snapshot** (`nppsale.api.misa.doi_soat`, hành động `create` — `reconcile-action/route.ts:243–301`): hỏi MISA chi tiết theo RefID (không trả chi tiết
   hoặc không có tổng tiền → từ chối, không dựng tờ thiếu số liệu); tạo dòng mới (chưa gắn đơn / HĐ) như route nppsale — `trang_thai` = issued, `phat_hanh_luc`
   = ngày phát hành MISA 00:00 (+07) (MISA không trả ngày → lúc dựng), `so_hd_go_tay` = số MISA (màn danh sách HĐĐT chỉ hiện cột này — `invoices/page.tsx:279`,
   để trống là "chưa cấp số"; ngoại lệ do người bấm, không phải đồng bộ — §4.6.0), người mua / địa chỉ / MST từ bản ghi thô (thiếu tên → "Khách lẻ"), ba số
   tiền từ chi tiết MISA, `misa_last_checked_at` = lúc dựng, `misa_note` = câu của route ("Hoá đơn dựng từ đối soát MISA …", kèm ghi chú suy trạng thái) —
-  mang đủ trường tích hợp của snapshot, `misa_status` theo luật suy trạng thái (không suy được → signed); trùng số → báo như nppsale (chỉ mục duy nhất).
+  mang đủ trường tích hợp của snapshot, `misa_status` theo luật suy trạng thái (không suy được → signed); số còn `<Chưa cấp số>` ⇒ NULL [ĐX H9]; trùng số → báo
+  như nppsale (chỉ mục duy nhất).
 - `tim_kd`: xem bảng Fields.
 
 #### Submission / vòng đời — không submit, trạng thái là trường
-- `trang_thai`: draft → issued (đẩy OK / Khoá HĐ) → cancelled; draft → cancelled. Sửa người mua / tiền / số gõ tay: chỉ khi draft và chưa có
-  `misa_ref_id`. Xoá: chỉ draft **và** chưa có `misa_ref_id`; `on_trash` của `NPP HDDT` đặt `hddt` = NULL ở mọi `NPP MISA Log` / `NPP MISA Snapshot` trỏ tới
-  tờ. Bước này thay `ON DELETE SET NULL` của mig 072 / 100 và là ngoại lệ duy nhất của luật "chỉ thêm" ở `NPP MISA Log`: Link của Frappe không có SET NULL —
+- `trang_thai`: draft → issued (đẩy OK / Khoá HĐ / Dựng / xác nhận đẩy H5) → cancelled; draft → cancelled; cancelled → issued (phát hành OK) [=].
+- Sửa người mua / tiền / số gõ tay: chỉ khi draft ∧ `misa_status` trống hoặc error [ĐX H24 — validate + cổng UPDATE].
+- **Xoá** (`on_trash`): chỉ draft **và** chưa có `misa_ref_id` — khác thì báo `Chỉ xoá được hoá đơn điện tử nháp chưa gửi MISA.` [ĐX H24: cổng báo P0001 câu này cho
+  dòng nháp có RefID thay vì 0 dòng]; trước khi lõi kiểm Link: `UPDATE tabNPP MISA Log / tabNPP MISA Snapshot SET hddt = NULL` trỏ tới tờ. Bước này thay
+  `ON DELETE SET NULL` của mig 072 / 100 và là ngoại lệ duy nhất của luật "chỉ thêm" ở `NPP MISA Log`: Link của Frappe không có SET NULL —
   `delete_doc` gọi `on_trash` rồi mới kiểm Link (`frappe/model/delete_doc.py:177, 184`) và với thao tác Delete thì mọi dòng trỏ tới đều chặn (LinkExistsError,
   câu tiếng Anh — `:380`); tờ nháp chuyển sang từ lượt phát hành hỏng của nppsale có log mà không có RefID (`publish/route.ts:369–386`: MISA trả lỗi vẫn ghi
   `einvoice_logs` có `invoice_id`, tờ chỉ đổi `misa_status` = error). Đã gửi MISA thì giữ khoá nối — Gotcha #1; ở nppsale tờ nháp không bao giờ mang RefID vì
   RefID chỉ ghi khi đẩy thành công, ở đây RefID ghi trước khi đẩy nên phải chặn.
-- `misa_status`: (trống) → pending → sent / signed / error (pending kéo dài = chưa biết kết quả, vòng quét gỡ); sent → waiting_code → signed;
-  mọi trạng thái chưa cuối → amount_mismatch / cancelled / replaced (vòng quét); error → pending (đẩy lại, cùng RefID).
-- Khoá HĐ bán: luật `LOCKED_EINVOICE` ở §4.6.0 (§7.1 điểm 20 đề xuất thêm vế "đang chờ MISA").
+- `misa_status`: (trống) | error → pending → sent / signed / error (pending kéo dài = chưa biết kết quả, vòng quét gỡ — H5); sent → waiting_code → signed;
+  mọi trạng thái chưa cuối → amount_mismatch / cancelled / replaced (vòng quét); signed giữ nguyên khi MISA trả bản ghi chưa có số [ĐX H8]; error → pending (đẩy
+  lại, cùng RefID).
+- Khoá HĐ bán: luật `LOCKED_EINVOICE` ở §4.6.0 + vế "đang chờ MISA" (§7.1 điểm 20 — đã dựng tạm theo đề xuất, H2: dòng có `misa_ref_id` ∧ `misa_status` ∈ {pending,
+  sent, waiting_code} ⇒ `LOCKED_EINVOICE: HĐĐT đang chờ MISA — bấm Làm mới trạng thái trước`). Đọc có khoá (`LOCK IN SHARE MODE`) sau khi đã khoá HĐ bán `FOR UPDATE`.
 
 ---
 
@@ -2042,9 +2062,9 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| nha_cung_cap | Nhà cung cấp | Data |  | ✓ |  |  | `provider` (mig 072), default `misa`, read_only |
+| nha_cung_cap | Nhà cung cấp | Data |  | ✓ |  |  | `provider` (mig 072), default `misa`, read_only. Dòng `tabSingles` của trường này = dấu "đã lưu" (dưới) |
 | dang_dung | Đang dùng | Check |  |  |  |  | `is_active` (mig 072), default 1; tắt → phát hành báo "chưa cấu hình", vòng quét bỏ qua |
-| moi_truong_thu | Môi trường thử | Check |  |  |  |  | `sandbox` (mig 072), default 1 |
+| moi_truong_thu | Môi trường thử | Check |  |  |  |  | `sandbox` (mig 072), default 1 (chỉ để hiển thị — môi trường thật do `dia_chi_api` quyết) |
 | dia_chi_api | Địa chỉ API | Data | URL | ✓ |  |  | `api_base` (mig 072 / 077), default `https://testapp.meinvoice.vn/api/v2`; thật: `https://app.meinvoice.vn/api/v2` |
 | duong_lay_token | Đường lấy token | Data |  |  |  |  | `token_path` (mig 075 / 077), default `/oauth` |
 | duong_phat_hanh | Đường phát hành | Data |  |  |  |  | `publish_path` (mig 075 / 078), default `/v3sainvoice`; Thử kết nối ghi theo `IsInvoiceWithCode` (dưới); `misa_is_invoice_with_code` = 1 thì method dùng `/v3sainvoice/Code` |
@@ -2069,6 +2089,14 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 - Links to: — · Linked from: — · Đọc: `NPP Cai Dat` (`ten_npp`, `ma_so_thue`) làm mặc định người bán.
 
 #### Computed/Auto fields
+- **"Đã lưu"** = có dòng `tabSingles` (`doctype = 'NPP MISA Cau Hinh'`, `field = 'nha_cung_cap'`) — hàm `da_luu()` của controller. `frappe.get_single` của Single chưa lưu vẫn
+  trả mặc định (`dang_dung` = 1, `dia_chi_api` thử) nên không dùng nó để biết "chưa cấu hình" (cổng `company_einvoice_config` ra 0 dòng, route GET `{config: null}`).
+  **Không bước cài đặt / migrate nào được `save()` Single này**: `init_singles()` của lõi (`frappe/installer.py:595–610`, chạy trong `post_install` ở **mỗi** lần
+  cài một app lên site) lưu mọi Single chưa có dòng với `ignore_validate` + `ignore_mandatory` — controller bỏ qua lời lưu khi `frappe.flags.in_install`.
+- Password (đặc tả §1.7): `has_username` / `has_password` đọc `__Auth` (có dòng `doctype = 'NPP MISA Cau Hinh'`, `fieldname` tương ứng) — **không giải mã** (GET cấu hình
+  không được hỏng vì khoá sai) — hàm `co_bi_mat(truong)` của controller. Bẫy của lõi: gán `''` / `None` rồi `save()` là **xoá** bản mã (`Document._save_passwords`,
+  `frappe/model/document.py:3399–3400`) ⇒ chỉ gán khi người gõ giá trị khác rỗng; `db_set` / `set_single_value` **bỏ qua** mã hoá (lưu chữ thường) ⇒ cấm cho hai
+  trường này; `get_password` luôn `raise_exception=False`; khoá site sai ⇒ `ValidationError` tiếng Anh "Encryption key is invalid…" ⇒ bắt, dịch tiếng Việt.
 - Method Thử kết nối (`nppsale.api.misa.thu_ket_noi`, chủ / KT) ghi như route nppsale (`test-connection/route.ts:120–141`): `misa_is_invoice_with_code` +
   `duong_phat_hanh` (`/v3sainvoice/Code` hoặc `/v3sainvoice`) theo `IsInvoiceWithCode`; `misa_company_id` / `misa_org_unit_id` / `misa_user_id` lấy từ `/oauth`;
   mẫu đang dùng (`misa_template_id`, `misa_inv_series`, `misa_inv_template_no`, `loai_hd`, `ke_thua_mau_cu`) lấy từ danh sách mẫu (mẫu còn dùng, ưu tiên mẫu đã
@@ -2088,12 +2116,12 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| hddt | HĐĐT | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 072; nppsale `ON DELETE SET NULL` → `on_trash` của `NPP HDDT` đặt NULL — §4.6 `NPP HDDT`); trống ở dòng nhật ký lượt. Chỉ mục |
+| hddt | HĐĐT | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 072; nppsale `ON DELETE SET NULL` → `on_trash` của `NPP HDDT` đặt NULL — §4.6 `NPP HDDT`); trống ở dòng nhật ký lượt. idx. Cột `uuid` (Link tới DocType UUID — `thiet_lap/cot_uuid.py`) |
 | don_hang | Đơn hàng | Data |  |  |  |  | `order_id` (mig 072) — Data: tên Sales Order, hoặc uuid cũ ở dòng chuyển sang (chỉ để tra, không ràng buộc) |
-| nguon | Nguồn | Select | `publish`↵`refresh`↵`sync`↵`sync_run`↵`pull_snapshots`↵`reconcile`↵`test_connection` | ✓ | ✓ | ✓ | **mới** — ở nppsale chỉ dòng của đồng bộ mang `request_payload.source = 'sync'` (`sync/route.ts:199–206`); dòng phát hành không có khoá `source` (payload là mảng hoá đơn — `publish/route.ts:369–380, 455–465`). Công cụ nhập: có `source` thì lấy giá trị đó, không có thì ghi `publish` (trường reqd — để trống là chèn hỏng). `sync_run` / `pull_snapshots` = một dòng mỗi lượt chạy (Gotcha #3) |
-| goi_luc | Gọi lúc | Datetime |  | ✓ | ✓ | ✓ | `attempt_at` (mig 072), default now. Chỉ mục |
+| nguon | Nguồn | Select | `publish`↵`refresh`↵`sync`↵`sync_run`↵`pull_snapshots`↵`reconcile`↵`test_connection` | ✓ | ✓ | ✓ | **mới** — ở nppsale chỉ dòng của đồng bộ mang `request_payload.source = 'sync'` (`sync/route.ts:199–206`); dòng phát hành không có khoá `source` (payload là mảng hoá đơn — `publish/route.ts:369–380, 455–465`). Công cụ nhập: có `source` thì lấy giá trị đó, không có thì ghi `publish` (trường reqd — để trống là chèn hỏng). `sync_run` / `pull_snapshots` = một dòng mỗi lượt chạy (Gotcha #3). "Hỏi MISA trước khi đẩy lại" (H3 / H27) không có giá trị riêng: ghi `publish` + `gui_di.source = 'hoi_truoc_khi_day_lai'` (§9.3-13 đặc tả) |
+| goi_luc | Gọi lúc | Datetime |  | ✓ | ✓ | ✓ | `attempt_at` (mig 072), default now. idx |
 | ket_qua | Kết quả | Select | `success`↵`failed`↵`pending` | ✓ | ✓ | ✓ | `status` (mig 072), default pending |
-| gui_di | Gửi đi | JSON |  |  |  |  | `request_payload` (mig 072); **không bao giờ** chứa token / mật khẩu (lấy token không ghi nhật ký); payload phát hành là **mảng** hoá đơn (`[header]` — `mapper.ts:202`, `publish/route.ts:373`) → method và công cụ nhập ghi chuỗi `json.dumps(...)`, đọc ra thì `json.loads` (gán `list` Python vào trường JSON thì lưu ném 'Value for … cannot be a list' — `frappe/model/document.py:2585–2586`; chỉ `dict` được tự dump — luật chung ở §4.7 `NPP Thuong Thang.thuong_kpi`); ghi log hỏng không được làm hỏng lượt phát hành mà MISA đã nhận |
+| gui_di | Gửi đi | JSON |  |  |  |  | `request_payload` (mig 072); **không bao giờ** chứa token / mật khẩu (lấy token không ghi nhật ký); payload phát hành là **mảng** hoá đơn (`[header]` — `mapper.ts:202`, `publish/route.ts:373`) → method và công cụ nhập ghi chuỗi `json.dumps(…, ensure_ascii=False)`, đọc ra thì `json.loads` (gán `list` Python vào trường JSON thì lưu ném 'Value for … cannot be a list' — `frappe/model/document.py:2585–2586`; chỉ `dict` được tự dump — luật chung ở §4.7 `NPP Thuong Thang.thuong_kpi`); ghi log hỏng không được làm hỏng lượt phát hành mà MISA đã nhận |
 | nhan_ve | Nhận về | JSON |  |  |  |  | `response_payload` (mig 072); dòng nhật ký lượt = báo cáo lượt (đã hỏi / đã cập nhật / khớp / lệch / lỗi, `hit_page_cap`, `short_pull`…) |
 | loi | Lỗi / ghi chú | Text |  |  |  |  | `error_message` (mig 072); vòng đồng bộ ghi các ghi chú đáng nói ở đây (như nppsale) |
 | misa_lookup_code | Mã tra cứu | Data |  |  |  |  | `misa_lookup_code` (mig 072) |
@@ -2120,43 +2148,45 @@ Chỉ mục ghép (`on_doctype_update`): duy nhất (`misa_inv_series`, `misa_in
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| ref_id | RefID (MISA) | Data |  | ✓ |  | ✓ | `ref_id` NOT NULL (mig 100); **unique** (= `uq_misa_snapshot_ref`) |
+| ref_id | RefID (MISA) | Data |  | ✓ |  | ✓ | `ref_id` NOT NULL (mig 100); unique (= `uq_misa_snapshot_ref`) |
 | ky_hieu | Ký hiệu | Data |  |  | ✓ |  | `inv_series` (mig 100) nguyên văn |
 | so_hddt | Số HĐĐT | Data |  |  | ✓ | ✓ | `inv_no` (mig 100) nguyên văn (vd `00007140`) |
-| ngay_phat_hanh | Ngày phát hành | Date |  |  | ✓ | ✓ | `inv_date` (mig 100); chỉ mục cùng `ket_qua_khop` |
-| ma_tra_cuu | Mã tra cứu | Data |  |  |  |  | `transaction_id` (mig 100); chỉ mục (tầng khớp 2) |
+| ngay_phat_hanh | Ngày phát hành | Date |  |  | ✓ | ✓ | `inv_date` (mig 100); chỉ mục ghép cùng `ket_qua_khop` (dưới). Ngày không có thật (`2026-02-30`) ⇒ NULL, chuỗi thô còn trong `ban_ghi_tho` [ĐX H26] |
+| ma_tra_cuu | Mã tra cứu | Data |  |  |  |  | `transaction_id` (mig 100); idx (tầng khớp 2) |
 | ma_cqt | Mã CQT | Data |  |  |  |  | `invoice_code` (mig 100) |
 | mst_nguoi_mua | MST người mua | Data |  |  | ✓ | ✓ | `buyer_tax_code` (mig 100) |
-| nguoi_mua | Người mua | Data |  |  | ✓ |  | `buyer_name` (mig 100) |
-| tong_tien | Tổng tiền | Currency |  |  | ✓ |  | `total_amount` (mig 100); **có thể âm** (HĐ điều chỉnh giảm) — mọi phép so xử dấu; Frappe ép NOT NULL DEFAULT 0 → hàm khớp xét "MISA có trả tổng" trong `ban_ghi_tho` (thiếu thì không so, như nppsale) |
-| tien_truoc_thue | Tiền trước thuế | Currency |  |  |  |  | `amount_before_vat` (mig 100) — API danh sách trả 0, không đem so (Gotcha #6) |
+| nguoi_mua | Người mua | Small Text |  |  | ✓ |  | `buyer_name` (mig 100). **Small Text** [ĐX — bản trước ghi Data; cùng lý do `NPP HDDT.nguoi_mua`] |
+| tong_tien | Tổng tiền | Currency |  |  | ✓ |  | `total_amount` (mig 100); **có thể âm** (HĐ điều chỉnh giảm) — mọi phép so xử dấu; Frappe ép NOT NULL DEFAULT 0 → "MISA có trả tổng" đọc ở `co_tong_tien` (dưới), không đọc `ban_ghi_tho` (bản trước — tốn câu JSON ở mọi chỗ) |
+| co_tong_tien | Có tổng tiền | Check |  |  |  |  | **mới** [ĐX]: 1 khi MISA có trả `TotalAmount` là số (thiếu thì không so, như nppsale — `total_amount` NULL); hidden; cổng trả `total_amount` = `IF(co_tong_tien, tong_tien, NULL)`; công cụ nhập: `total_amount IS NOT NULL` |
+| tien_truoc_thue | Tiền trước thuế | Currency |  |  |  |  | `amount_before_vat` (mig 100) — API danh sách trả 0, không đem so (Gotcha #6); 0 khi MISA trả 0 / thiếu (cổng `NULLIF(…, 0)`) |
 | tien_thue | Thuế | Currency |  |  |  |  | `vat_amount` (mig 100) — như trên |
-| publish_status | PublishStatus | Data |  |  |  |  | `publish_status` integer (mig 100) — **Data**, không Int: Int bị ép NOT NULL DEFAULT 0 mà 0 = "nháp"; trống (MISA không trả) phải khác 0 |
+| publish_status | PublishStatus | Data |  |  |  |  | `publish_status` integer (mig 100) — **Data**, không Int: Int bị ép NOT NULL DEFAULT 0 mà 0 = "nháp"; trống (MISA không trả) phải khác 0; số lẻ (`3.5`) lưu được (Postgres hỏng cả lô). Cổng trả `CASE WHEN … REGEXP '^-?[0-9]+$' THEN CAST(… AS SIGNED) END` (MariaDB `CAST('3.5' AS SIGNED)` = 3 — đo; KV-57) |
 | einvoice_status | EInvoiceStatus | Data |  |  |  |  | `einvoice_status` integer (mig 100) — Data như trên (trống ≠ giá trị) |
 | quan_he | Quan hệ | Select | ↵`new`↵`replacement`↵`adjustment`↵`replaced`↵`adjusted`↵`unknown` |  |  | ✓ | `relation` (mig 100) |
 | da_huy | MISA báo đã huỷ | Check |  |  |  | ✓ | `is_deleted` (mig 100), default 0 |
 | ref_id_goc | RefID HĐ gốc | Data |  |  |  |  | `org_ref_id` (mig 100) |
-| hddt | HĐĐT trong sổ | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 100; `ON DELETE SET NULL` → `on_trash` của `NPP HDDT` đặt NULL — §4.6 `NPP HDDT`); chỉ mục |
+| hddt | HĐĐT trong sổ | Link | NPP HDDT |  | ✓ | ✓ | `invoice_id` (mig 100; `ON DELETE SET NULL` → `on_trash` của `NPP HDDT` đặt NULL — §4.6 `NPP HDDT`); idx. Cột `uuid` (`thiet_lap/cot_uuid.py`) |
 | cach_khop | Cách khớp | Select | ↵`ref_id`↵`transaction_id`↵`inv_no`↵`inv_no_loose`↵`tax_date_amount`↵`manual` |  |  | ✓ | `match_method` (mig 100); `manual` = người chốt — vòng khớp không đụng |
 | do_tin | Độ tin | Select | ↵`certain`↵`review` |  |  |  | `match_confidence` (mig 100; giá trị theo `src/lib/misa/reconcile.ts`) |
-| ket_qua_khop | Kết quả khớp | Select | ↵`matched`↵`amount_diff`↵`misa_only`↵`cancelled`↵`replaced`↵`needs_review` |  | ✓ | ✓ | `match_status` (mig 100); `misa_only` = HĐ ngoài sổ. Chỉ mục (`ket_qua_khop`, `ngay_phat_hanh`) |
+| ket_qua_khop | Kết quả khớp | Select | ↵`matched`↵`amount_diff`↵`misa_only`↵`cancelled`↵`replaced`↵`needs_review` |  | ✓ | ✓ | `match_status` (mig 100); `misa_only` = HĐ ngoài sổ. Chỉ mục ghép (`ket_qua_khop`, `ngay_phat_hanh`) — dưới |
 | ghi_chu_khop | Ghi chú khớp | Small Text |  |  |  |  | `match_note` (mig 100) |
 | ban_ghi_tho | Bản ghi thô | JSON |  |  |  |  | `raw` (mig 100) — tra lại khi nghi bóc sai trường |
 | keo_luc | Kéo về lúc | Datetime |  | ✓ |  |  | `pulled_at` (mig 100), default now |
 | khop_luc | Khớp lúc | Datetime |  |  |  |  | `matched_at` (mig 100) |
-| so_hddt_chuan | Số đã chuẩn hoá | Data |  |  |  |  | `inv_no_norm` (mig 100, ở Postgres là cột generated) — read_only, hidden; validate tính: bỏ khoảng trắng + số 0 đầu, toàn số 0 thì giữ |
-| ky_hieu_chuan | Ký hiệu đã chuẩn hoá | Data |  |  |  |  | `inv_series_norm` (mig 100) — read_only, hidden; bỏ khoảng trắng + viết hoa, **không** bỏ chữ số đầu (chỉ tầng khớp lỏng mới bỏ). Chỉ mục ghép (`ky_hieu_chuan`, `so_hddt_chuan`) |
+| so_hddt_chuan | Số đã chuẩn hoá | Data |  |  |  |  | `inv_no_norm` (mig 100, ở Postgres là cột generated) — read_only, hidden; = `chuan_so(so_hddt)` — **đúng hàm khớp** của `nppsale/luat/hddt.py` [H21: bản trước ghi "toàn số 0 thì giữ" **và** "cùng hàm normalize.ts" — tự mâu thuẫn (`'000'` → `'0'`); app không đọc hai cột này] |
+| ky_hieu_chuan | Ký hiệu đã chuẩn hoá | Data |  |  |  |  | `inv_series_norm` (mig 100) — read_only, hidden; = `ky_hieu_chat(ky_hieu)`: strip, viết hoa, bỏ mọi khoảng trắng, **giữ** mẫu số (khoá tầng 3; chỉ tầng khớp lỏng mới bỏ chữ số đầu). Chỉ mục ghép (`ky_hieu_chuan`, `so_hddt_chuan`) — dưới |
 
-`created_at` → `creation`.
+`created_at` → `creation`. Chỉ mục ghép (`on_doctype_update`): (`ky_hieu_chuan`, `so_hddt_chuan`) `idx_snapshot_ky_hieu_so`, (`ket_qua_khop`, `ngay_phat_hanh`)
+`idx_snapshot_ket_qua_ngay`; một cột: `ma_tra_cuu`, `hddt` (idx).
 
 #### Relationships
 - Links to: NPP HDDT. · Linked from: —
 
 #### Computed/Auto fields
-- `so_hddt_chuan`, `ky_hieu_chuan`: validate, bằng **cùng** hàm chuẩn hoá của tầng khớp (`nppsale/luat/hddt.py` — chép `src/lib/misa/normalize.ts`;
-  một chỗ khai, Gotcha #9). Lượt kéo cập nhật bằng câu ghi gộp → hàm ghi phải tính hai cột này trong cùng câu.
+- `so_hddt_chuan`, `ky_hieu_chuan`: bằng **cùng** hàm chuẩn hoá của tầng khớp (`nppsale/luat/hddt.py` — chép `src/lib/misa/normalize.ts` / `reconcile.ts::strictSeries`;
+  một chỗ khai, Gotcha #9) — tính ở `validate` (đường Document) **và** trong **hàm ghi** của lượt kéo (câu ghi gộp không qua validate — hàm `chuan_hoa_snapshot` của controller).
 - Kéo (`nppsale.lich.misa.keo_snapshot`, gọi trong việc `nppsale.lich.misa.dong_bo` 01:00 sau khi đồng bộ xong — không phải mục lịch riêng, §4.6.9;
-  nppsale chỉ chạy bằng cron): tối đa 300 trang × 100, mặc định 60 ngày (≤ 400), ghi theo `ref_id`; rồi khớp bốn tầng (`ref_id` → `transaction_id` → (ký hiệu, số) → lỏng / (MST gốc, ngày, tiền) chỉ khi duy nhất —
+  nppsale chỉ chạy bằng cron): tối đa 300 trang × 100, mặc định 60 ngày (≤ 400), ghi theo `ref_id` (khử trùng RefID trong một lượt — trang trượt, KV-57); rồi khớp bốn tầng (`ref_id` → `transaction_id` → (ký hiệu, số) → lỏng / (MST gốc, ngày, tiền) chỉ khi duy nhất —
   "cần review"); **module khớp chỉ ghi bảng này**, không ghi ngược `NPP HDDT`; bỏ qua dòng `cach_khop` = manual; đọc sổ không hết thì không
   hạ cấp liên kết đã khớp (như `reconcile-org.ts`).
 - Đối soát tay (`nppsale.api.misa.doi_soat`: `link` / `unlink` / `create`, chủ / KT / QL): đặt `cach_khop` = manual.

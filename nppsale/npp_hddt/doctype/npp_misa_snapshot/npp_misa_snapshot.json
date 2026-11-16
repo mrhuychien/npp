@@ -1,0 +1,235 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "ref_id",
+  "ky_hieu",
+  "so_hddt",
+  "ngay_phat_hanh",
+  "ma_tra_cuu",
+  "ma_cqt",
+  "mst_nguoi_mua",
+  "nguoi_mua",
+  "tong_tien",
+  "co_tong_tien",
+  "tien_truoc_thue",
+  "tien_thue",
+  "publish_status",
+  "einvoice_status",
+  "quan_he",
+  "da_huy",
+  "ref_id_goc",
+  "hddt",
+  "cach_khop",
+  "do_tin",
+  "ket_qua_khop",
+  "ghi_chu_khop",
+  "ban_ghi_tho",
+  "keo_luc",
+  "khop_luc",
+  "so_hddt_chuan",
+  "ky_hieu_chuan"
+ ],
+ "fields": [
+  {
+   "fieldname": "ref_id",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "RefID (MISA)",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "ky_hieu",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Ký hiệu"
+  },
+  {
+   "fieldname": "so_hddt",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Số HĐĐT"
+  },
+  {
+   "fieldname": "ngay_phat_hanh",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ngày phát hành"
+  },
+  {
+   "fieldname": "ma_tra_cuu",
+   "fieldtype": "Data",
+   "label": "Mã tra cứu",
+   "search_index": 1
+  },
+  {
+   "fieldname": "ma_cqt",
+   "fieldtype": "Data",
+   "label": "Mã CQT"
+  },
+  {
+   "fieldname": "mst_nguoi_mua",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "MST người mua"
+  },
+  {
+   "fieldname": "nguoi_mua",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Người mua"
+  },
+  {
+   "fieldname": "tong_tien",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Tổng tiền"
+  },
+  {
+   "fieldname": "co_tong_tien",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Có tổng tiền"
+  },
+  {
+   "fieldname": "tien_truoc_thue",
+   "fieldtype": "Currency",
+   "label": "Tiền trước thuế"
+  },
+  {
+   "fieldname": "tien_thue",
+   "fieldtype": "Currency",
+   "label": "Thuế"
+  },
+  {
+   "fieldname": "publish_status",
+   "fieldtype": "Data",
+   "label": "PublishStatus"
+  },
+  {
+   "fieldname": "einvoice_status",
+   "fieldtype": "Data",
+   "label": "EInvoiceStatus"
+  },
+  {
+   "fieldname": "quan_he",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Quan hệ",
+   "options": "\nnew\nreplacement\nadjustment\nreplaced\nadjusted\nunknown"
+  },
+  {
+   "default": "0",
+   "fieldname": "da_huy",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "MISA báo đã huỷ"
+  },
+  {
+   "fieldname": "ref_id_goc",
+   "fieldtype": "Data",
+   "label": "RefID HĐ gốc"
+  },
+  {
+   "fieldname": "hddt",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "HĐĐT trong sổ",
+   "options": "NPP HDDT",
+   "search_index": 1
+  },
+  {
+   "fieldname": "cach_khop",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Cách khớp",
+   "options": "\nref_id\ntransaction_id\ninv_no\ninv_no_loose\ntax_date_amount\nmanual"
+  },
+  {
+   "fieldname": "do_tin",
+   "fieldtype": "Select",
+   "label": "Độ tin",
+   "options": "\ncertain\nreview"
+  },
+  {
+   "fieldname": "ket_qua_khop",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Kết quả khớp",
+   "options": "\nmatched\namount_diff\nmisa_only\ncancelled\nreplaced\nneeds_review"
+  },
+  {
+   "fieldname": "ghi_chu_khop",
+   "fieldtype": "Small Text",
+   "label": "Ghi chú khớp"
+  },
+  {
+   "fieldname": "ban_ghi_tho",
+   "fieldtype": "JSON",
+   "label": "Bản ghi thô"
+  },
+  {
+   "default": "Now",
+   "fieldname": "keo_luc",
+   "fieldtype": "Datetime",
+   "label": "Kéo về lúc",
+   "reqd": 1
+  },
+  {
+   "fieldname": "khop_luc",
+   "fieldtype": "Datetime",
+   "label": "Khớp lúc"
+  },
+  {
+   "fieldname": "so_hddt_chuan",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Số đã chuẩn hoá",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ky_hieu_chuan",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Ký hiệu đã chuẩn hoá",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP HDDT",
+ "name": "NPP MISA Snapshot",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "ref_id,ky_hieu,so_hddt,mst_nguoi_mua,nguoi_mua",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "so_hddt"
+}

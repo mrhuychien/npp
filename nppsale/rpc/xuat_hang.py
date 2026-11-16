@@ -10,7 +10,8 @@ lý gắn HĐ, nợ HĐ trừ ngay qua tờ ghi có không kho (nppsale.rpc.phie
 
 cancel_invoice (mig 125 / 131 / 135 / 162 / 213 / 217): huỷ HĐ = huỷ đơn — tờ ghi có của phiếu tự sinh huỷ trước, lõi hoàn kho đúng lô (đảo
 gói lô), hook on_cancel bỏ dòng công nợ, phiếu tự sinh về Nháp / phiếu tự lập bám tờ Đã huỷ, đơn về submitted rồi Đã huỷ (lý do "Huỷ theo
-hóa đơn …", phiếu Nháp / Chờ của đơn huỷ theo), báo NV; khoá khi đã thu tiền / đã phát hành HĐĐT / có phiếu trả hoàn thành.
+hóa đơn …", phiếu Nháp / Chờ của đơn huỷ theo), báo NV; khoá khi đã thu tiền / đã phát hành HĐĐT hoặc HĐĐT đang chờ MISA (`_khoa_hddt`) /
+có phiếu trả hoàn thành.
 
 reissue_invoice (mig 128 / 152 / 182 / 210 / 213 / 215 / 216 / 227 / 247): Sửa HĐ = huỷ (đơn KHÔNG huỷ theo) + lập tờ mới amend tờ cũ
 (`HD-0001-1`) trong CÙNG giao dịch; giữ hệ số tờ cũ, NV đứng tên + người giữ nợ, mặc định ngày / điều khoản / giảm giá của tờ cũ; phiếu
@@ -400,6 +401,24 @@ def _tien_da_thu(hd: str, don: str | None = None) -> bool:
 		AND (d.`hoa_don` = %(hd)s OR (IFNULL(d.`hoa_don`, '') = '' AND d.`don_hang` = %(don)s)) LIMIT 1""", {"hd": hd, "don": don or ""}))
 
 
+def _khoa_hddt(hd: str) -> None:
+	"""LOCKED_EINVOICE (mig 125 `cancel_invoice` — bản đang chạy dòng 66–77; `reissue_invoice` gọi lồng nên Sửa HĐ cũng khoá) — đặc tả HĐĐT §6.1:
+	có dòng `NPP HDDT` gắn HĐ bán (`hoa_don_ban` — chỉ nối theo HĐ, dòng chỉ có `don_hang` không khoá) mà (a) `trang_thai` = issued ∨ có
+	`misa_inv_no` ∨ `misa_status` ∈ {signed, replaced} → "đã phát hành" (MỘT dòng thoả là khoá; Postgres khoá cả `misa_inv_no = ''` — Frappe coi
+	`''` là không số, công cụ nhập đổi `''` → NULL nên hai bên trùng; HĐĐT đã huỷ trên MISA mà còn số vẫn khoá — H12); (b) [H2 — blueprint
+	§7.1 điểm 20, chờ chủ nhà chốt] có `misa_ref_id` ∧ `misa_status` ∈ {pending, sent, waiting_code} → "đang chờ MISA" (không khoá thì có thể ra
+	HĐĐT nháp trên MISA cho một HĐ đã huỷ). Đọc CÓ KHOÁ (LOCK IN SHARE MODE) sau khi đã khoá HĐ bán FOR UPDATE: REPEATABLE READ chụp ảnh ở câu
+	đọc thường đầu tiên (PoC 1d) — đọc thường có thể không thấy tờ `phat_hanh` vừa commit; phát hành khoá HĐ bán ở bước giành tờ ⇒ hai đường
+	xếp hàng. Giao diện cắt tiền tố mã (`src/lib/orders/post-invoice.ts:218–220`) — người dùng đọc phần sau dấu hai chấm."""
+	if frappe.db.sql("""SELECT 1 FROM `tabNPP HDDT` WHERE `hoa_don_ban` = %s
+			AND (`trang_thai` = 'issued' OR IFNULL(`misa_inv_no`, '') <> '' OR `misa_status` IN ('signed', 'replaced'))
+			LIMIT 1 LOCK IN SHARE MODE""", hd):
+		raise NppLoi("LOCKED_EINVOICE: hóa đơn đã phát hành hóa đơn điện tử")
+	if frappe.db.sql("""SELECT 1 FROM `tabNPP HDDT` WHERE `hoa_don_ban` = %s AND IFNULL(`misa_ref_id`, '') <> ''
+			AND `misa_status` IN ('pending', 'sent', 'waiting_code') LIMIT 1 LOCK IN SHARE MODE""", hd):
+		raise NppLoi("LOCKED_EINVOICE: HĐĐT đang chờ MISA — bấm Làm mới trạng thái trước")
+
+
 def _hang_cua_hd(hd: str | None) -> set:
 	return {r[0] for r in frappe.db.sql("SELECT DISTINCT `item_code` FROM `tabSales Invoice Item` WHERE `parent` = %s", hd)} if hd else set()
 
@@ -440,9 +459,7 @@ def _huy(nc, cd, hd: str | None, p_reason, *, lap_lai: bool = False):
 		frappe.db.sql("SELECT `name` FROM `tabSales Order` WHERE `name` = %s FOR UPDATE", don)
 	if not lap_lai and _tien_da_thu(hd, don):
 		raise NppLoi("LOCKED_HAS_PAYMENT: hóa đơn đã có tiền thu, huỷ phiếu thu trước")
-	if frappe.db.exists("DocType", "NPP HDDT") and frappe.db.sql("""SELECT 1 FROM `tabNPP HDDT` WHERE `hoa_don_ban` = %s
-			AND (`trang_thai` = 'issued' OR IFNULL(`so_hddt`, '') != '' OR `trang_thai_misa` IN ('signed', 'replaced')) LIMIT 1""", hd):
-		raise NppLoi("LOCKED_EINVOICE: hóa đơn đã phát hành hóa đơn điện tử")
+	_khoa_hddt(hd)  # sau LOCKED_HAS_PAYMENT (bỏ qua khi Sửa HĐ), trước LOCKED_RETURN_DONE — thứ tự của cancel_invoice (mig 125)
 	if frappe.db.exists("DocType", "NPP Phieu Tra") and frappe.db.exists("NPP Phieu Tra", {"hoa_don": hd, "trang_thai": "completed"}):
 		raise NppLoi("LOCKED_RETURN_DONE: hóa đơn đã có phiếu trả hoàn thành")
 	so = frappe.get_doc("Sales Order", don) if don else None
