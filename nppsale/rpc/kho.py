@@ -139,7 +139,9 @@ def bao_cao_ton_kho(p_tu=None, p_den=None):
 	  unit_name, conversion_factor, quantity, is_exchange}; NULL ở một đầu kỳ → BETWEEN ra NULL → `[]`. Bản Frappe = HĐ cổng `sales_invoices`
 	  (Sales Invoice docstatus 1, `is_return = 0`, `is_opening = No`, ngày = `posting_date`) + dòng cổng `sales_invoice_lines`.
 	Ép kiểu `date` như Postgres trước khi đọc (chuỗi sai → 22007 / 22008). Phần lưu trữ trước ngày cắt (`NPP LS *` — BP §2.11) chưa có DocType
-	(P8) nên chưa UNION."""
+	(P8) nên chưa UNION.
+	P6 M1 (soát theo đặc tả báo cáo §2.2 — khớp từng khoá): thêm khoá `tinh_lai_gia_von` (❓Q12 — số việc Repost Item Valuation còn chờ / đang chạy,
+	MỌI ngày: giá vốn lô hiện tại đổi theo bất kỳ việc tính lại nào; 0 với người không phải NV) như `bao_cao_so_ban` — giao diện cũ bỏ qua khoá lạ."""
 	from nppsale.luat.bao_cao import HET_GIO_BAO_CAO
 
 	from .bao_cao import _chay, _ngay
@@ -150,6 +152,8 @@ def bao_cao_ton_kho(p_tu=None, p_den=None):
 
 def _bao_cao_ton_kho(tu, den) -> dict:
 	from nppsale.cong.truy_van import doc
+
+	from .bao_cao import KHOA_TINH_LAI, _la_nv, tinh_lai_gia_von
 
 	nc = hien_tai()
 	lo = doc({"bang": "batches", "select": "id, product_id, batch_code, qty_on_hand, unit_cost, expires_at, created_at",
@@ -162,4 +166,4 @@ def _bao_cao_ton_kho(tu, den) -> dict:
 			for d in hd.get("lines") or []:
 				dong.append({"ngay": hd["invoice_date"], "invoice_id": hd["id"], "product_id": d["product_id"], "unit_name": d["unit_name"],
 					"conversion_factor": d["conversion_factor"], "quantity": d["quantity"], "is_exchange": d["is_exchange"]})
-	return {"lo": lo, "dong": dong}
+	return {"lo": lo, "dong": dong, KHOA_TINH_LAI: tinh_lai_gia_von() if _la_nv(nc) else 0}

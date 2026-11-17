@@ -293,6 +293,9 @@ Number" — v16 không còn DocType `Naming Series` — hoặc câu SQL của c�
   PoC mục 3 điểm 6); hàng không lô = `Bin.actual_qty`. **Giá vốn lô** = Σ `stock_value_difference` / Σ `qty` các dòng nhập của lô (bình quân trong lô — bằng giá dòng
   nhập khi mỗi dòng một lô; đổi sau LCV — PoC 4). **Giá trị tồn** = Σ theo lô (hàng có lô) + `Bin.stock_value` (hàng không lô).
 - **Giá vốn bán / lãi gộp đang tạm** khi còn việc Repost Item Valuation `Queued` / `In Progress` của mặt hàng + kho (CFD-07) — màn báo cáo đếm việc theo trạng thái.
+  (P6 M1 — đặc tả báo cáo ❓Q12, tạm theo đề xuất) `bao_cao_so_ban` / `bao_cao_ton_kho` trả thêm khoá `tinh_lai_gia_von` = số việc đã gửi còn `Queued` / `In Progress`
+  (số bán: việc có `posting_date` ≤ cuối kỳ; tồn kho: mọi việc; chưa lọc theo mặt hàng + kho) — giao diện cũ bỏ qua khoá lạ; lớp phủ hiện dải "đang tính lại
+  giá vốn (N việc)" CHƯA làm.
 - **Dòng tiền kiểu nppsale**: thu = dòng `payment` của phiếu thu chưa huỷ (bỏ `credit_applied` / `return_credit`); chi = `payable_payments` tiền mặt / chuyển khoản
   (bỏ `offset`) + `NPP Phieu Chi.da_tra` theo `tra_luc`.
 - **Lịch sử trước ngày cắt**: hàm dòng thô của báo cáo / lương UNION phần `NPP LS *` với phần ERPNext cho kỳ chạm trước `NPP Cai Dat.ngay_cat_chuyen` (cột
@@ -3806,7 +3809,11 @@ theo luật "hàm chỉ đọc gọi GET" của nppsale, CLAUDE.md 29/10/2026) �
 **HĐĐT** — `nppsale.api.misa.*` + một việc theo lịch (đồng bộ rồi kéo snapshot trong cùng việc — §4.6.9). **Nhân sự** — `compute_payroll_run` (chủ / QL / KT — `FORBIDDEN_ROLE`, kỳ khoá →
 `PAYROLL_RUN_LOCKED`), `lock_payroll_run` (= submit `NPP Ky Luong`), `my_payslips` (GET — dòng của mình ở kỳ đã khoá, mig 201), `my_sales_target` (GET — mig
 196), `payroll_returns_for` (hàm phụ — hàng trả trừ doanh số lương, mig 192). **Báo cáo một lượt** (viết ở P6, UNION lưu trữ — §4.8.0): `bao_cao_so_ban`,
-`bao_cao_cong_no`, `bao_cao_ton_kho`, `hang_khach_da_lay`, `dashboard_*`, `finance_*`. Không phải bảng nhưng cùng đi qua `nppsale.api.tuyen.goi`:
+`bao_cao_cong_no`, `bao_cao_ton_kho`, `hang_khach_da_lay`, `dashboard_*`, `finance_*`. `bao_cao_so_ban(p_tu, p_den)` (GET — dựng P6 M1: `nppsale/rpc/bao_cao.py`,
+đặc tả báo cáo §2.1): dict sáu khối dòng thô `hd` / `dong_hd` (gồm dòng đổi, sắp `id`) / `tra` (theo `ngay_tru_doanh_so`, không lọc trạng thái) / `dong_tra` (bỏ dòng
+đổi) / `gv` (giá vốn xuất theo `posting_date` — hằng `nguon_dong_xuat`, xuất lẻ / chuyển kho giá 0) / `gv_tra` (nhập lại theo Link `npp_phieu_tra`) + `tinh_lai_gia_von`;
+cột lấy từ `CotDef` của bảng cổng (một ánh xạ với đường lùi đọc từng bảng); vế RLS bảng cổng của người gọi; `gv[].tien` / `gv_tra[].tien` null với người thiếu
+`inventory.cost`. Không phải bảng nhưng cùng đi qua `nppsale.api.tuyen.goi`:
 `/api/einvoice/*` → `nppsale.api.misa.*`; `/api/do-nap` → `nppsale.api.do_nap.ghi` (`NPP Do Nap`); `/api/cron/daily` (einvoice-sync, nhắc ảnh, nhắc tuyến,
 pull-snapshots) → `scheduler_events` (không qua HTTP).
 

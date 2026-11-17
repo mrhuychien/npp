@@ -151,7 +151,9 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		frappe.set_user(email)
 		frappe.local._npp_ngu_canh = None
 		try:
-			self.assertEqual(api.rpc(ten="bao_cao_ton_kho", tham_so={"p_tu": tu, "p_den": den})["data"], {"lo": [], "dong": []})
+			# P6 M1 (❓Q12): khoá thêm `tinh_lai_gia_von` — 0 với người không phải NV
+			self.assertEqual(api.rpc(ten="bao_cao_ton_kho", tham_so={"p_tu": tu, "p_den": den})["data"], {"lo": [], "dong": [],
+				"tinh_lai_gia_von": 0})
 		finally:
 			self._ve_admin()
 		self.assertFalse(h1 == h2)

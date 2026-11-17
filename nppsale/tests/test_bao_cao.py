@@ -1,4 +1,4 @@
-"""Nền báo cáo P6 (mốc M0 — đặc tả báo cáo P6 §2.0, §3.3, L5, L11, ❓Q14) — cần bench:
+"""Nền báo cáo P6 (mốc M0 — đặc tả báo cáo P6 §2.0, §3.3, L5, L11, ❓Q14) + `bao_cao_so_ban` (mốc M1 — §2.1) — cần bench:
 
 	bench --site poc.local run-tests --module nppsale.tests.test_bao_cao
 
@@ -11,6 +11,12 @@
 - 🔧 C4 / VB-E15: nguồn cổng `price_lists` chỉ bảng giá của NPP (bảng giá chung + bảng mặc định của nhóm khách, đang bật);
 - chỉ mục `NPP Phieu Thu Dong.cong_no` (§2.13).
 Dựng trên bộ nền của bài Xuất hàng (test_tao_don.dung_nen + test_xuat_hang.dung_kho).
+
+`TestBaoCaoSoBan` (M1): `bao_cao_so_ban` trên Sổ BC của bài vàng P6 (test_bao_cao_vang — dựng lại qua RPC dưới đúng người, đồng hồ ghim): dạng JSON (đúng 6
+khối nppsale + `tinh_lai_gia_von` ❓Q12, bộ khoá từng khối, kiểu — không `Decimal` / datetime lọt ra, `dong_hd` xếp theo id, GET qua /rest/v1/rpc), biên
+tham số (NULL / ngược / '' / chữ / ngày không có thật / ngày kèm giờ), người ngoài NPP / NV bị khoá / Guest, vế RLS từng vai (văn phòng + thủ kho mọi
+chứng từ; NVBH HĐ mình / của đơn mình, phiếu mình), che giá vốn (❓Q3 — `gv[].tien` / `gv_tra[].tien` null với người thiếu ô `inventory.cost`,
+số lượng không che), đếm việc tính lại giá vốn (❓Q12). Số cụ thể từng khối so ở bài vàng (VB-A01…A15, E01, E06, E09, E15, E16).
 """
 from __future__ import annotations
 
@@ -31,6 +37,7 @@ from nppsale.cong.sql import BoThamSo, LoiCong
 from nppsale.cong.truy_van import doc
 from nppsale.luat.bao_cao import CAU_QUA_HAN, MA_QUA_HAN
 from nppsale.rpc import bao_cao as BC
+from nppsale.tests import test_bao_cao_vang as V
 from nppsale.tests import test_xuat_hang as XH
 from nppsale.tests.test_tao_don import dung_nen
 
@@ -192,7 +199,8 @@ class TestBaoCaoNen(IntegrationTestCase):
 		# bao_cao_ton_kho / bao_cao_cong_no chạy dưới hẹn `HET_GIO_BAO_CAO` — ép hẹn rất nhỏ thì câu quá hạn ra 57014
 		hn = str(getdate(nowdate()))
 		with patch("nppsale.luat.bao_cao.HET_GIO_BAO_CAO", 0.000001):
-			for ten, ts in (("bao_cao_ton_kho", {"p_tu": hn, "p_den": hn}), ("bao_cao_cong_no", {"p_tu_thu": hn, "p_tu_90": hn})):
+			for ten, ts in (("bao_cao_ton_kho", {"p_tu": hn, "p_den": hn}), ("bao_cao_cong_no", {"p_tu_thu": hn, "p_tu_90": hn}),
+					("bao_cao_so_ban", {"p_tu": hn, "p_den": hn})):
 				ma, than = self._rest("owner", f"rpc/{ten}", ts)
 				self.assertEqual((ma, than), (500, {"error": mong["error"]}), ten)
 		self.assertNotIn("error", self._goi("owner", "bao_cao_ton_kho", {"p_tu": hn, "p_den": hn}))
@@ -289,6 +297,192 @@ class TestBaoCaoNen(IntegrationTestCase):
 			AND `table_name` = 'tabNPP Phieu Thu Dong' AND `seq_in_index` = 1""", pluck=True)
 		self.assertIn("cong_no", cot)
 		self.assertTrue(frappe.get_meta("NPP Phieu Thu Dong").get_field("cong_no").search_index)
+
+
+class TestBaoCaoSoBan(V.TestBaoCaoVang):
+	"""`bao_cao_so_ban` (đặc tả báo cáo P6 §2.1) trên Sổ BC của bài vàng."""
+
+	test_kich_ban_vang = None  # bài so vàng chạy ở test_bao_cao_vang
+	KHOI = ("hd", "dong_hd", "tra", "dong_tra", "gv", "gv_tra")
+
+	def setUp(self):
+		super().setUp()
+		sai = self._dung_s1()
+		self.assertFalse(sai, "\n".join(sai))
+		self.sd = self.bo["S1"]
+
+	def _sb(self, nguoi: str | None, tu="2026-11-01", den="2026-11-30") -> dict:
+		email = self.sd.ma["k:" + nguoi] if nguoi in ("CHU", "QL", "KT", "TK", "NV_AN", "NV_BINH") else nguoi
+		return self._goi(email, "bao_cao_so_ban", {"p_tu": tu, "p_den": den}, "2026-11-17T08:00:00+07:00")
+
+	def _rong(self, tinh_lai=0) -> dict:
+		return {**{k: [] for k in self.KHOI}, "tinh_lai_gia_von": tinh_lai}
+
+	def test_dang_json(self):
+		"""L12: dict đúng 6 khối nppsale (mỗi khối một list) + `tinh_lai_gia_von` (số nguyên — ❓Q12); bộ khoá từng khối như `to_jsonb` / `jsonb_build_object`
+		của mig 256; kiểu như PostgREST (ngày 'YYYY-MM-DD', giờ ISO +07:00, bool thật, số int khi chẵn, chuỗi rỗng → null); `dong_hd` ORDER BY id (đường lùi
+		`.order('id')`); đi được bằng GET /rest/v1/rpc/bao_cao_so_ban?q=… (portal)."""
+		import re
+
+		kq = self._sb("CHU")["data"]
+		self.assertEqual(sorted(kq), sorted([*self.KHOI, "tinh_lai_gia_von"]))
+		self.assertTrue(all(isinstance(kq[k], list) for k in self.KHOI))
+		self.assertIs(type(kq["tinh_lai_gia_von"]), int)
+		json.dumps(kq)  # không Decimal / datetime lọt ra (portal/rest.py in Decimal thành CHUỖI)
+		self.assertEqual([r["id"] for r in kq["dong_hd"]], sorted(r["id"] for r in kq["dong_hd"]))
+		cua = self._loc_so_ban(kq, self.sd)
+		khoa = {"hd": {"id", "invoice_code", "invoice_date", "order_id", "status", "total", "subtotal", "vat", "customer_id", "sales_user_id",
+			"posted_by", "payment_terms"}, "dong_hd": {"id", "invoice_id", "product_id", "unit_name", "conversion_factor", "quantity", "unit_price",
+			"line_total", "is_exchange", "line_discount", "order_line_id"}, "tra": {"id", "status", "customer_id", "invoice_id", "credit_note_amount",
+			"created_at", "revenue_date", "sales_user_id", "reason", "credit_with_invoice", "ma"}, "dong_tra": {"return_id", "product_id", "unit_name",
+			"quantity", "line_total", "unit_price"}, "gv": {"product_id", "sl", "tien"}, "gv_tra": {"return_id", "product_id", "tien"}}
+		for k, bo in khoa.items():
+			self.assertTrue(cua[k], k)
+			self.assertEqual({tuple(sorted(r)) for r in cua[k]}, {tuple(sorted(bo))}, k)
+		hd1 = next(r for r in cua["hd"] if r["id"] == self.sd.nhan["HD-0001"])
+		self.assertEqual((hd1["invoice_date"], hd1["status"], hd1["total"], hd1["subtotal"], hd1["vat"], hd1["posted_by"], hd1["sales_user_id"],
+			hd1["payment_terms"], hd1["invoice_code"], hd1["order_id"]), ("2026-11-03", "posted", 534000, 530000, 4000, self.sd.ma["k:CHU"],
+			self.sd.ma["k:NV_AN"], "COD", self.sd.nhan["HD-0001"], self.sd.nhan["DH-0001"]))
+		self.assertIs(type(hd1["total"]), int)
+		doi = next(r for r in cua["dong_hd"] if r["is_exchange"])
+		self.assertEqual((doi["is_exchange"], doi["order_line_id"], doi["unit_price"], doi["line_total"]), (True, None, 0, 0))
+		self.assertTrue(all(type(r["is_exchange"]) is bool and type(r["conversion_factor"]) is int for r in cua["dong_hd"]))
+		pt1 = next(r for r in cua["tra"] if r["id"] == self.sd.nhan["PT-0001"])
+		self.assertRegex(pt1["created_at"], r"^2026-11-16T20:50:47(\.\d+)?\+07:00$")
+		self.assertEqual((pt1["revenue_date"], pt1["credit_with_invoice"], pt1["reason"], pt1["ma"], pt1["status"]),
+			("2026-11-03", True, "damaged", self.sd.nhan["PT-0001"], "completed"))
+		pt3 = next(r for r in cua["tra"] if r["id"] == self.sd.nhan["PT-0003"])
+		self.assertEqual((pt3["invoice_id"], pt3["credit_with_invoice"]), (None, False))
+		self.assertTrue(all(re.fullmatch(r"\d{4}-\d{2}-\d{2}", r["revenue_date"]) for r in cua["tra"]))
+		# GET qua lối của portal (`goiMotLuot` — {get: true}): cùng kết quả
+		ma, than = self._rest_get("rpc/bao_cao_so_ban", {"p_tu": "2026-11-01", "p_den": "2026-11-30"})
+		self.assertEqual((ma, json.loads(json.dumps(than["data"], default=str))), (200, json.loads(json.dumps(kq))))
+
+	def _rest_get(self, duong: str, ts: dict) -> tuple[int, dict]:
+		from nppsale.portal.rest import xu_ly
+
+		class Yc:
+			method = "GET"
+
+			def __init__(self):
+				self.args = {"q": json.dumps(ts)}
+
+			def get_data(self, as_text=False):
+				return ""
+
+		V.DongHo.dat("2026-11-17T08:00:00+07:00")
+		self._nguoi(self.sd.ma["k:CHU"])
+		try:
+			return xu_ly(duong, Yc())
+		finally:
+			self._nguoi(None)
+
+	def test_bien_tham_so_va_nguoi_ngoai(self):
+		"""§2.1 bảng biên: một đầu kỳ NULL / kỳ ngược → 6 mảng rỗng, không lỗi; chuỗi không phải ngày (kể cả '' — `getdate('')` là HÔM NAY, không được
+		lọt) → 22007, ngày không có thật → 22008 (ép kiểu `date` của PostgREST trước thân hàm); ngày kèm giờ đọc phần ngày; NV bị khoá / người ngoài NPP →
+		rỗng đúng dạng (user_org_id() NULL); Guest → PGRST301 401."""
+		for tu, den in (("2026-11-30", "2026-11-01"), (None, "2026-11-30"), ("2026-11-01", None), (None, None)):
+			self.assertEqual(self._sb("CHU", tu, den)["data"], self._rong(), (tu, den))
+		for v, ma, cau in (("abc", "22007", 'invalid input syntax for type date: "abc"'), ("", "22007", 'invalid input syntax for type date: ""'),
+				("2026-02-30", "22008", 'date/time field value out of range: "2026-02-30"')):
+			ket = self._sb("CHU", v, "2026-11-30")
+			self.assertEqual((ket["error"]["code"], ket["error"]["message"]), (ma, cau), v)
+			ket = self._sb("CHU", "2026-11-01", v)
+			self.assertEqual(ket["error"]["code"], ma, v)
+		kq = self._sb("CHU")["data"]
+		self.assertEqual(self._sb("CHU", "2026-11-01T00:00:00+07:00", "2026-11-30T23:59:59+07:00")["data"], kq)
+		# NV bị khoá (dang_hoat_dong = 0) và người không phải NV của NPP: rỗng đúng dạng, KHÔNG lỗi
+		frappe.db.set_value("NPP Nhan Vien", self.sd.ma["k:NV_BINH"], "dang_hoat_dong", 0, update_modified=False)
+		self.assertEqual(self._sb("NV_BINH")["data"], self._rong())
+		email = "p6m1-ngoai@nppsale.local"
+		if not frappe.db.exists("User", email):
+			frappe.get_doc({"doctype": "User", "email": email, "first_name": "Ngoai", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		self.assertEqual(self._sb(email)["data"], self._rong())
+		self._nguoi("Guest")
+		try:
+			ket = api.rpc(ten="bao_cao_so_ban", tham_so={"p_tu": "2026-11-01", "p_den": "2026-11-30"})
+		finally:
+			self._nguoi(None)
+		self.assertEqual((ket["error"]["code"], ket["status"]), ("PGRST301", 401))
+
+	def test_rls_tung_vai_va_che_gia_von(self):
+		"""L9: văn phòng + thủ kho thấy mọi HĐ / phiếu trả (cùng một kết quả); NVBH: HĐ mình đứng tên hoặc của đơn mình, phiếu mình lập / đứng tên / gắn HĐ
+		/ đơn mình; giá vốn xuất không lọc theo người (phiếu kho: mọi NV — SL như nhau). ❓Q3: `gv[].tien` / `gv_tra[].tien` = null với người thiếu ô
+		`inventory.cost` (NVBH mặc định; Kế toán / Quản lý bị thu bằng quyền riêng), số lượng không che; Chủ luôn thấy; Administrator (việc nền) thấy."""
+		n = self.sd.nhan
+		kq = {v: self._loc_so_ban(self._sb(v)["data"], self.sd) for v in ("CHU", "QL", "KT", "TK", "NV_AN", "NV_BINH")}
+		for v in ("QL", "KT", "TK"):
+			self.assertEqual({k: kq[v][k] for k in self.KHOI}, {k: kq["CHU"][k] for k in self.KHOI}, v)
+		self.assertEqual({r["id"] for r in kq["CHU"]["hd"]}, {n["HD-0001"], n["HD-0002"], n["HD-0005"]})
+		self.assertEqual({r["id"] for r in kq["NV_AN"]["hd"]}, {n["HD-0001"], n["HD-0005"]})
+		self.assertEqual({r["id"] for r in kq["NV_BINH"]["hd"]}, {n["HD-0002"]})
+		self.assertEqual({r["id"] for r in kq["NV_AN"]["tra"]}, {n["PT-0001"], n["PT-0003"], n["PT-0007"]})
+		self.assertEqual({r["id"] for r in kq["NV_BINH"]["tra"]}, {n["PT-0002"]})
+		self.assertEqual({r["invoice_id"] for r in kq["NV_AN"]["dong_hd"]}, {n["HD-0001"], n["HD-0005"]})
+		self.assertEqual({r["return_id"] for r in kq["NV_BINH"]["dong_tra"]}, {n["PT-0002"]})
+		sl = {v: sorted((r["product_id"], r["sl"]) for r in kq[v]["gv"]) for v in kq}
+		self.assertEqual(len({json.dumps(x) for x in sl.values()}), 1, sl)  # giá vốn xuất: cùng SL với mọi vai
+		self.assertEqual(sl["CHU"], [("SP1", 96), ("SP2", 30), ("SP3", 15)])  # Q1 (HĐ4 31/10 sang tháng 10), Q9 (HĐ3 huỷ rơi với mọi vai)
+		for v in ("NV_AN", "NV_BINH"):
+			self.assertTrue(kq[v]["gv"] and all(r["tien"] is None for r in kq[v]["gv"] + kq[v]["gv_tra"]), v)
+		for v in ("CHU", "QL", "KT", "TK"):
+			self.assertTrue(all(r["tien"] is not None for r in kq[v]["gv"] + kq[v]["gv_tra"]), v)
+		self.assertEqual(sorted((r["product_id"], r["tien"]) for r in kq["CHU"]["gv"]), [("SP1", 672000), ("SP2", 90000), ("SP3", 5000)])
+		# thu ô inventory.cost của Kế toán / Quản lý bằng quyền riêng → null, SL giữ; Chủ không thu được
+		for v in ("KT", "QL", "CHU"):
+			frappe.get_doc({"doctype": "NPP Quyen Rieng", "nhan_vien": self.sd.ma["k:" + v], "khoa_quyen": "inventory.cost.read",
+				"duoc_phep": 0}).insert(ignore_permissions=True)
+		for v in ("KT", "QL"):
+			x = self._loc_so_ban(self._sb(v)["data"], self.sd)
+			self.assertTrue(all(r["tien"] is None for r in x["gv"] + x["gv_tra"]), v)
+			self.assertEqual(sorted((r["product_id"], r["sl"]) for r in x["gv"]), sl["CHU"], v)
+			self.assertEqual(x["hd"], kq["CHU"]["hd"], v)  # doanh thu / trả đủ số
+		self.assertEqual(self._loc_so_ban(self._sb("CHU")["data"], self.sd)["gv"], kq["CHU"]["gv"])
+		self._nguoi("Administrator")
+		try:
+			V.DongHo.dat("2026-11-17T08:00:00+07:00")
+			ad = self._loc_so_ban(api.rpc(ten="bao_cao_so_ban", tham_so={"p_tu": "2026-11-01", "p_den": "2026-11-30"})["data"], self.sd)
+		finally:
+			self._nguoi(None)
+		self.assertEqual({k: ad[k] for k in self.KHOI}, {k: kq["CHU"][k] for k in self.KHOI})
+
+	def test_to_dau_ky_va_chuoi_rong(self):
+		"""L1: tờ nợ đầu kỳ `DK-` (Sales Invoice `is_opening = 'Yes'`, ngày trong kỳ) KHÔNG vào `hd` / `dong_hd` / giá vốn (nợ vẫn ở công nợ — VB-E10);
+		chuỗi rỗng Frappe lưu cho Link trống → null như Postgres (`sales_user_id` của phiếu mất người đứng tên)."""
+		truoc = self._sb("CHU")["data"]
+		ket = self._cong(self.sd.ma["k:CHU"], {"bang": "receivables", "hanh_dong": "insert", "gia_tri": {"org_id": self.sd.ma["org"],
+			"customer_id": self.sd.ma["kh:0911000002"], "amount": 1000000, "paid": 0, "opening_balance": True, "due_date": "2026-11-05",
+			"status": "open", "note": "No dau ky"}, "select": "id"}, "2026-11-05T08:00:00+07:00")
+		self.assertNotIn("error", ket, ket)
+		dk = frappe.get_all("Sales Invoice", filters={"customer": self.sd.ma["kh:0911000002"], "is_opening": "Yes", "docstatus": 1},
+			fields=["name", "posting_date", "grand_total"])
+		self.assertEqual([(str(x.posting_date), float(x.grand_total)) for x in dk], [("2026-11-05", 1000000.0)])  # tờ có thật, ngày trong kỳ
+		sau = self._sb("CHU")["data"]
+		self.assertEqual({k: sau[k] for k in self.KHOI}, {k: truoc[k] for k in self.KHOI})
+		pt3 = self.sd.nhan["PT-0003"]
+		frappe.db.set_value("NPP Phieu Tra", pt3, "nhan_vien", "", update_modified=False)
+		r = next(x for x in self._sb("CHU")["data"]["tra"] if x["id"] == pt3)
+		self.assertIsNone(r["sales_user_id"])
+
+	def test_tinh_lai_gia_von_q12(self):
+		"""❓Q12: `tinh_lai_gia_von` = số Repost Item Valuation đã gửi còn `Queued` / `In Progress` có ngày ≤ cuối kỳ (việc ghi lùi về sau kỳ không đổi giá
+		vốn trong kỳ); `bao_cao_ton_kho` đếm MỌI việc còn chờ (giá vốn lô hiện tại); việc xong / hỏng / nháp không đếm; người ngoài NPP 0."""
+		truoc = self._sb("CHU")["data"]["tinh_lai_gia_von"]
+		truoc_tk = self._goi(self.sd.ma["k:CHU"], "bao_cao_ton_kho", {"p_tu": "2026-11-01", "p_den": "2026-11-30"})["data"]["tinh_lai_gia_von"]
+		cong_ty = frappe.db.get_single_value("NPP Cai Dat", "cong_ty")
+		for i, (tt, ds, ngay) in enumerate((("Queued", 1, "2026-11-20"), ("In Progress", 1, "2026-11-30"), ("Queued", 1, "2026-12-01"),
+				("Completed", 1, "2026-11-10"), ("Failed", 1, "2026-11-10"), ("Queued", 0, "2026-11-10"), ("Queued", 2, "2026-11-10"))):
+			luc = dt.datetime(2026, 11, 17, 7, 0)
+			frappe.db.sql("""INSERT INTO `tabRepost Item Valuation` (`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `status`,
+				`posting_date`, `posting_time`, `company`, `based_on`) VALUES (%s, %s, %s, 'Administrator', 'Administrator', %s, %s, %s, '00:00:00',
+				%s, 'Item and Warehouse')""", (f"P6M1-RIV-{i}", luc, luc, ds, tt, ngay, cong_ty))
+		self.assertEqual(self._sb("CHU")["data"]["tinh_lai_gia_von"], truoc + 2)  # Queued 20/11 + In Progress 30/11
+		self.assertEqual(self._sb("NV_AN")["data"]["tinh_lai_gia_von"], truoc + 2)  # số việc, không phải giá vốn — không che
+		self.assertEqual(self._sb("CHU", "2026-12-01", "2026-12-31")["data"]["tinh_lai_gia_von"], truoc + 3)
+		self.assertEqual(self._goi(self.sd.ma["k:CHU"], "bao_cao_ton_kho", {"p_tu": "2026-11-01", "p_den": "2026-11-30"})["data"]["tinh_lai_gia_von"],
+			truoc_tk + 3)
+		self.assertEqual(self._sb("CHU", None, None)["data"]["tinh_lai_gia_von"], 0)  # kỳ thiếu đầu: rỗng đúng dạng
+		self.assertEqual(self._sb("CHU", "2026-12-31", "2026-12-01")["data"], self._rong())  # kỳ ngược: rỗng đúng dạng dù có việc ≤ "cuối kỳ" 01/12
 
 
 _ = add_days

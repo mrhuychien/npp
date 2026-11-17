@@ -13,6 +13,13 @@ chốt của bài site (commit / Error Log / xếp repost thành không làm gì
 Người gọi theo header `X-Npp-Nguoi` (CHU / QL / KT / TK / NV — người của bộ dữ liệu F: `nppsale.tests.test_kho_mua_vang.dung_nen_kho`, thiếu header
 = CHU). `GET /__nen` → khoá nền {CHU: email, A: mã hàng, S1: tên NCC, org…}; `POST /__lui` → lui về nền sạch (mỗi bài một nền). Một luồng (frappe.local
 theo luồng, một kết nối sổ).
+
+`--nen bao_cao` (P6 M1 — đặc tả báo cáo VB-E02): bộ E2E + Sổ BC của bài vàng báo cáo (`nppsale.tests.test_bao_cao_vang.dung_cho_cong_that` — dựng qua
+RPC dưới đúng người, đồng hồ ghim theo bước) thay bộ F; header là EMAIL người gọi (chu@e2e.vn, nv.an@sobc.vn… — hai bộ có hai Chủ), `GET /__nen` →
+{org, E2E / S1: {nguoi, khach, hang, nhan}}; bài `portal/tests/dau-cuoi-bao-cao.test.ts`:
+
+	cd /home/frappe/frappe-bench/sites && ../env/bin/python /home/frappe/frappe-bench/apps/nppsale/tools/cong_that.py --site poc.local --cong 8766 --nen bao_cao
+	cd portal && NPP_CONG_THAT=http://127.0.0.1:8766 npx vitest run tests/dau-cuoi-bao-cao.test.ts
 """
 from __future__ import annotations
 
@@ -57,7 +64,7 @@ class _Req:
 		return self._body.decode("utf-8") if as_text else self._body
 
 
-def chay(site: str, cong: int) -> None:
+def chay(site: str, cong: int, nen_ten: str = "kho_mua") -> None:
 	import frappe
 
 	frappe.init(site=site, sites_path=".")
@@ -73,13 +80,20 @@ def chay(site: str, cong: int) -> None:
 	PN._xep_repost = lambda: None
 	from nppsale.cong import bang as B
 	from nppsale.portal.rest import xu_ly
-	from nppsale.tests.test_kho_mua_vang import VANG, dung_nen_kho
-
 	B.nap()
-	with open(VANG, encoding="utf-8") as f:
-		nen = json.load(f)["nen"]
-	ma = dung_nen_kho(nen)
-	nguoi = {k[2:]: v for k, v in ma.items() if k.startswith("u:")}
+	if nen_ten == "bao_cao":
+		# P6 M1 — bộ E2E + Sổ BC của bài vàng báo cáo: người theo header = EMAIL (hai bộ có hai Chủ)
+		from nppsale.tests.test_bao_cao_vang import dung_cho_cong_that
+
+		ma = dung_cho_cong_that()
+		nguoi = {}
+	else:
+		from nppsale.tests.test_kho_mua_vang import VANG, dung_nen_kho
+
+		with open(VANG, encoding="utf-8") as f:
+			nen = json.load(f)["nen"]
+		ma = dung_nen_kho(nen)
+		nguoi = {k[2:]: v for k, v in ma.items() if k.startswith("u:")}
 	frappe.db.savepoint(DIEM)
 
 	class XuLy(BaseHTTPRequestHandler):
@@ -140,6 +154,8 @@ if __name__ == "__main__":
 	ap = argparse.ArgumentParser()
 	ap.add_argument("--site", default="poc.local")
 	ap.add_argument("--cong", type=int, default=8765)
+	ap.add_argument("--nen", choices=("kho_mua", "bao_cao"), default="kho_mua",
+		help="bộ dữ liệu: kho_mua (P4 — bộ F, mặc định) | bao_cao (P6 — bộ E2E + Sổ BC của bài vàng báo cáo)")
 	a = ap.parse_args()
 	os.chdir(os.environ.get("NPP_SITES", "/home/frappe/frappe-bench/sites"))
-	chay(a.site, a.cong)
+	chay(a.site, a.cong, a.nen)

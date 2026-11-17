@@ -28,6 +28,9 @@ cd nguon && npx vitest run --config ../vitest.nguon.config.ts   # bộ test củ
 # bài ĐẦU-CUỐI qua cổng thật (P4 M9 — mã màn nppsale → client cổng → nppsale.portal.rest.xu_ly trên site, một giao dịch không commit):
 #   (bench) cd /home/frappe/frappe-bench/sites && ../env/bin/python ../apps/nppsale/tools/cong_that.py --site poc.local --cong 8765
 NPP_CONG_THAT=http://127.0.0.1:8765 npx vitest run tests/dau-cuoi-kho-mua.test.ts   # thiếu biến → bài tự bỏ qua
+# P6 M1 — số bán hai đường (napSoBan một lượt ↔ đọc từng bảng khi hàm trả PGRST202 — VB-E02), bộ dữ liệu của bài vàng báo cáo:
+#   (bench) … tools/cong_that.py --site poc.local --cong 8766 --nen bao_cao
+NPP_CONG_THAT=http://127.0.0.1:8766 npx vitest run tests/dau-cuoi-bao-cao.test.ts
 ```
 
 Không đặt `NPPSALE_SRC` thì `lay-nguon.mjs` clone repo trong `nguon.json` — máy build cần quyền đọc repo nppsale.

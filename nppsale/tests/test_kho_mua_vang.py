@@ -39,6 +39,8 @@ Chuẩn hoá trước khi so (khác có chủ đích — không phải lệch; q
   của HĐ có sẵn bỏ), "hoa_don_mua_con_no" mô phỏng câu của /purchasing/invoices QUA CỔNG (mã phiếu theo nhãn), V80 kiểm đặc tả (`_v80`); sau MỌI kịch
   bản còn chạy khám sổ P4 (`nppsale.kham_so.quet_kho_mua` trên hàng / NCC của bộ dữ liệu — tồn lô = Σ gói lô = Bin = Σ sổ kho, lô không âm, một giá
   nhập mỗi đơn vị…) bên cạnh khám sổ công nợ NCC.
+- P6 M1: `bao_cao_so_ban` (V81 bước 9) so thẳng — HĐ / đơn theo nhãn, khách / hàng / người theo khoá nền, chứng từ có sẵn trên site bỏ, bỏ khoá
+  `tinh_lai_gia_von` (❓Q12); `finance_pnl` (P6 M5) vẫn thay bằng giá vốn kỳ đọc qua cổng.
 - tiền: Frappe làm tròn đồng (BP §7.2 điểm 3); giá vốn lô so 2 chữ số lẻ (§7.1 #5).
 LECH: kịch bản bản Frappe khác hẳn (⚠K / ❓) → hàm sửa phần MONG (bước + ảnh chụp) thành kết quả Frappe, kèm lý do — 00_quyet_dinh_trien_khai.md Q9.
 """
@@ -450,12 +452,12 @@ def _v55(t, mong):
 
 
 def _v81(t, mong):
-	"""`finance_pnl` / `bao_cao_so_ban` thuộc P6 (chưa có trên bản Frappe — đặc tả §5.7) → giá vốn kỳ đọc QUA CỔNG như `fetchCogsForRange` (đường lùi
-	của giao diện khi thiếu hàm): Σ |SL cơ sở| × `unit_cost` dòng phiếu `export` đã ghi sổ trong kỳ = số `finance_pnl.cogs` của nppsale (HĐ 100.000 +
-	trả NCC 3 × giá LÔ 10.000, xuất lẻ 0 — §7.3 điểm 36, §10 điểm 3)."""
+	"""`finance_pnl` thuộc P6 M5 (chưa có trên bản Frappe — đặc tả §5.7) → giá vốn kỳ đọc QUA CỔNG như `fetchCogsForRange` (đường lùi của giao diện
+	khi thiếu hàm): Σ |SL cơ sở| × `unit_cost` dòng phiếu `export` đã ghi sổ trong kỳ = số `finance_pnl.cogs` của nppsale (HĐ 100.000 + trả NCC 3 × giá
+	LÔ 10.000, xuất lẻ 0 — §7.3 điểm 36, §10 điểm 3). `bao_cao_so_ban` (bước 9) dựng ở P6 M1 → so THẲNG với nppsale (`gv` SL 15 / 130.000 — cùng luật)."""
 	gv = mong["buoc"][7]["tra"][0]["cogs"]
-	t["buoc"][7:9] = [{"buoc": "gia_von_ky", "nguoi": "CHU", "tu": "@hom_nay", "den": "@hom_nay"}]
-	mong["buoc"][7:9] = [{"ok": True, "tra": {"cogs": gv}}]
+	t["buoc"][7] = {"buoc": "gia_von_ky", "nguoi": "CHU", "tu": "@hom_nay", "den": "@hom_nay"}
+	mong["buoc"][7] = {"ok": True, "tra": {"cogs": gv}}
 
 
 def _v85(t, mong):
@@ -702,7 +704,7 @@ LECH: dict[str, tuple] = {
 	"V53": (_v53, "⚠K §7.2 #14: phiếu kho của HĐ / trả NCC / trả khách = chính chứng từ (câu nêu tên chứng từ); nhập lô gồm hàng khách trả"),
 	"V54": (_v54, "⚠K §3.19: nguồn theo trường thật, phiếu đã ghi sổ chỉ sửa ghi chú → huỷ được ngay lần đầu"),
 	"V55": (_v55, "⚠K §3.16: dấu chuyển vùng ở cả hai dòng cổng batches"),
-	"V81": (_v81, "finance_pnl / bao_cao_so_ban thuộc P6 → giá vốn kỳ đọc qua cổng (fetchCogsForRange) — cùng số 130.000"),
+	"V81": (_v81, "finance_pnl thuộc P6 M5 → giá vốn kỳ đọc qua cổng (fetchCogsForRange) — cùng số 130.000; bao_cao_so_ban (P6 M1) so thẳng"),
 	"V85": (_v85, "⚠K §3.16: dấu chuyển vùng ở cả hai dòng cổng batches"),
 	# M5 — lô + kho cận date
 	"V56b": (_v56b, "⚠K §4.6: sửa hạn vào ngưỡng = phiếu CKL- chuyen_date_tu_dong — dòng kho bán còn lại tồn 0"),
@@ -1386,6 +1388,8 @@ class TestKhoMuaVang(IntegrationTestCase):
 		# ------------------------------------------------------------------ M9 — báo cáo, đầu-cuối
 		if k == "doc" and b.get("ten") == "bao_cao_ton_kho":
 			return self._bao_cao_ton_kho(b, st)
+		if k == "doc" and b.get("ten") == "bao_cao_so_ban":
+			return self._bao_cao_so_ban(b, st)
 		if k == "doc" and b.get("ten") == "hoa_don_mua_con_no":
 			return self._hoa_don_mua_con_no(b, st)
 		if k == "goi_rpc":
@@ -1529,6 +1533,27 @@ class TestKhoMuaVang(IntegrationTestCase):
 			"unit_name": r["unit_name"], "conversion_factor": r["conversion_factor"], "quantity": r["quantity"], "is_exchange": r["is_exchange"]}
 			for r in ket["data"]["dong"] if r["invoice_id"] not in self.co_san["Sales Invoice"]]
 		return ket, {"lo": _xep(_so(lo)), "dong": _xep(_so(dong))}
+
+	def _bao_cao_so_ban(self, b: dict, st: dict) -> tuple[dict, object]:
+		"""RPC `bao_cao_so_ban` (P6 M1 — đặc tả báo cáo §2.1) dưới đúng người → cùng dạng `chuan_gt` của bộ sinh: HĐ → "hd:<nhãn>", đơn → "don:<nhãn>",
+		khách / mặt hàng / người → khoá nền, ngày → "@hom_nay±n", id dòng HĐ / dòng đơn → "@id". Chứng từ có sẵn trên site (dữ liệu dựng thử cũ) bỏ: HĐ
+		theo `co_san`, phiếu trả theo khách của nền, `gv` chỉ mặt hàng của nền (gộp theo mặt hàng mọi chứng từ xuất của kỳ). Bỏ khoá `tinh_lai_gia_von`
+		(❓Q12 — số việc Repost Item Valuation còn chờ của CẢ site; kiểm ở nppsale.tests.test_bao_cao)."""
+		ket = self._goi(b["nguoi"], "bao_cao_so_ban", self._thay(b.get("ts") or {}, st))
+		if "error" in ket:
+			return ket, None
+		d, k = ket["data"], self.khoa_cua.get
+		nhan = {v: kk for kk, v in st["nhan"].items() if v and kk.startswith(("hd:", "don:"))}
+		hd = [{**r, "id": nhan.get(r["id"], r["id"]), "order_id": nhan.get(r["order_id"], r["order_id"]), "customer_id": k(r["customer_id"]),
+			"sales_user_id": k(r["sales_user_id"]), "posted_by": k(r["posted_by"]), "invoice_date": self._ngay(r["invoice_date"])}
+			for r in d["hd"] if r["id"] not in self.co_san["Sales Invoice"]]
+		dong_hd = [{**r, "id": "@id", "invoice_id": nhan.get(r["invoice_id"], r["invoice_id"]), "product_id": k(r["product_id"]) or r["product_id"],
+			"order_line_id": "@id" if r["order_line_id"] else None} for r in d["dong_hd"] if r["invoice_id"] not in self.co_san["Sales Invoice"]]
+		tra = [r for r in d["tra"] if k(r["customer_id"])]
+		ids = {r["id"] for r in tra}
+		return ket, {"hd": hd, "dong_hd": dong_hd, "tra": tra, "dong_tra": [r for r in d["dong_tra"] if r["return_id"] in ids],
+			"gv": [{**r, "product_id": k(r["product_id"])} for r in d["gv"] if k(r["product_id"])],
+			"gv_tra": [r for r in d["gv_tra"] if r["return_id"] in ids]}
 
 	def _hoa_don_mua_con_no(self, b: dict, st: dict) -> tuple[dict, object]:
 		"""Mô phỏng câu của /purchasing/invoices tab "Còn nợ" + ô tìm (TS src/app/(dashboard)/purchasing/invoices/page.tsx:117–154 + `useListSearch`
