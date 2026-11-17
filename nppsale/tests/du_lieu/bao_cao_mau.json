@@ -1823,6 +1823,22 @@
       "revenue_date": "2026-11-20"
      }
     ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     }
+    ]
    }
   },
   "S2": {
@@ -2375,6 +2391,22 @@
       "revenue_date": "2026-11-20"
      }
     ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     }
+    ]
    }
   },
   "S3": {
@@ -2861,6 +2893,22 @@
       "ngay_phieu": "2026-11-16",
       "credited_at": null,
       "revenue_date": "2026-11-20"
+     }
+    ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
      }
     ]
    }
@@ -3519,6 +3567,22 @@
       "revenue_date": "2026-11-25"
      }
     ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     }
+    ]
    }
   },
   "S5": {
@@ -4013,6 +4077,22 @@
       "ngay_phieu": "2026-11-16",
       "credited_at": null,
       "revenue_date": null
+     }
+    ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
      }
     ]
    }
@@ -4599,6 +4679,22 @@
       "revenue_date": "2026-11-20"
      }
     ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     }
+    ]
    }
   },
   "S7": {
@@ -5103,6 +5199,22 @@
       "ngay_phieu": "2026-11-16",
       "credited_at": null,
       "revenue_date": "2026-11-20"
+     }
+    ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
      }
     ]
    }
@@ -5694,6 +5806,27 @@
       "revenue_date": "2026-11-12"
      }
     ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0008",
+      "han_nppsale": "2026-11-12",
+      "han_frappe_hien_tai": "2026-11-15"
+     }
+    ]
    }
   },
   "S8b": {
@@ -6225,6 +6358,27 @@
       "ngay_phieu": "2026-11-10",
       "credited_at": "2026-11-10T12:00:00+07:00",
       "revenue_date": "2026-11-10"
+     }
+    ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0008",
+      "han_nppsale": "2026-11-12",
+      "han_frappe_hien_tai": "2026-11-15"
      }
     ]
    }
@@ -6780,6 +6934,22 @@
       "revenue_date": "2026-11-20"
      }
     ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     }
+    ]
    }
   },
   "S10": {
@@ -7321,6 +7491,22 @@
       "revenue_date": "2026-11-20"
      }
     ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
+     }
+    ]
    }
   },
   "S11": {
@@ -7824,6 +8010,22 @@
       "ngay_phieu": "2026-11-16",
       "credited_at": null,
       "revenue_date": "2026-11-20"
+     }
+    ]
+   },
+   "cho_sua_p3": {
+    "viec": "P3-HAN-NO-AM",
+    "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+    "dong": [
+     {
+      "id": "no:PT-0003",
+      "han_nppsale": "2026-11-14",
+      "han_frappe_hien_tai": "2026-11-16"
+     },
+     {
+      "id": "no:PT-0006",
+      "han_nppsale": "2026-12-02",
+      "han_frappe_hien_tai": "2026-11-16"
      }
     ]
    }
@@ -10883,6 +11085,9 @@
     ]
    }
   }
+ },
+ "viec_cho_sua": {
+  "P3-HAN-NO-AM": "🔧 P3 (soát SOAT-VBC-02): hạn (NPP Cong No.han_thanh_toan) của dòng nợ ÂM phiếu trả tự lập không gắn HĐ — nppsale = ngày phiếu (returns.return_date lúc Hoàn thành; đổi ngày phiếu sau đó không dời hạn — ĐT-PT Q10), Frappe hiện tại = posting_date tờ ghi có HDT- (ngày BẤM Hoàn thành). Đề nghị sửa P3: chieu_phieu_tra lấy han_thanh_toan = ngày phiếu chụp lúc Hoàn thành (NPP Phieu Tra.ngay_tra; trống → ngày hoàn thành) + bài + thêm hạn vào ảnh chụp bộ vàng phiếu trả. Tới khi sửa: lời gọi mang 'cho_sua_p3' ĐỎ đúng như 'kq_frappe_hien_tai'; nếu chốt giữ luật Frappe (⚠K) thì so với kq_frappe_hien_tai và ghi ⚠K vào 00_quyet_dinh Q9."
  },
  "tinh_huong": [
   {
@@ -18918,6 +19123,77 @@
         "sales_user_id": "nv.binh@sobc.vn"
        }
       ]
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": [
+       {
+        "id": "no:HD-0001",
+        "paid": 200000,
+        "amount": 504000,
+        "status": "partial",
+        "due_date": "2026-11-03",
+        "return_id": null,
+        "invoice_id": "HD-0001",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0004",
+        "paid": 0,
+        "amount": 240000,
+        "status": "overdue",
+        "due_date": "2026-10-31",
+        "return_id": null,
+        "invoice_id": "HD-0004",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0003",
+        "paid": 0,
+        "amount": -240000,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0003",
+        "invoice_id": null,
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0006",
+        "paid": 0,
+        "amount": -10800,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0006",
+        "invoice_id": null,
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0005",
+        "paid": 0,
+        "amount": 220000,
+        "status": "open",
+        "due_date": "2026-11-20",
+        "return_id": null,
+        "invoice_id": "HD-0005",
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0002-1",
+        "paid": 0,
+        "amount": 308040,
+        "status": "open",
+        "due_date": "2026-11-10",
+        "return_id": null,
+        "invoice_id": "HD-0002-1",
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       }
+      ]
      }
     }
    ],
@@ -18925,7 +19201,8 @@
     "Q1 (⚠K): giá vốn kỳ theo posting_date = NGÀY HĐ (nppsale theo lúc ghi sổ phiếu xuất) — HĐ4 đề 31/10 ghi sổ 01/11 06:30 VN: nppsale vào tháng 11, Frappe vào tháng 10",
     "Q3 (⚠K): người thiếu ô inventory.cost (NVBH mặc định) nhận MỌI số giá vốn = null; số lượng không che (nppsale chỉ ẩn ở giao diện)",
     "Q9 (⚠K): không tái hiện quirk RLS — phiếu xuất của HĐ huỷ (docstatus 2) rơi với MỌI vai (nppsale: NVBH không thấy HĐ huỷ của NV khác nên cộng thêm)",
-    "Frappe: tờ mới HD-0002-1 posting_date 10/11 (giữ ngày) — gv Chủ SP1 96 / 672.000 (Q1), SP2 28 / 84.000, SP3 15 / 5.000; NV An gv SL SP1 96, SP2 28, SP3 15 (Q9 — không cộng tờ cũ HD-0002 / HĐ3), tien null (Q3); TS giaVonXuat 761.000"
+    "Frappe: tờ mới HD-0002-1 posting_date 10/11 (giữ ngày) — gv Chủ SP1 96 / 672.000 (Q1), SP2 28 / 84.000, SP3 15 / 5.000; NV An gv SL SP1 96, SP2 28, SP3 15 (Q9 — không cộng tờ cũ HD-0002 / HĐ3), tien null (Q3); TS giaVonXuat 761.000",
+    "🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi [6] mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)"
    ],
    "doi_chieu": [
     {
@@ -19861,13 +20138,85 @@
         "sales_user_id": "nv.an@sobc.vn"
        }
       ]
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": [
+       {
+        "id": "no:HD-0001",
+        "paid": 200000,
+        "amount": 504000,
+        "status": "partial",
+        "due_date": "2026-11-03",
+        "return_id": null,
+        "invoice_id": "HD-0001",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0002",
+        "paid": 0,
+        "amount": 317760,
+        "status": "open",
+        "due_date": "2026-11-10",
+        "return_id": null,
+        "invoice_id": "HD-0002",
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0004",
+        "paid": 0,
+        "amount": 240000,
+        "status": "overdue",
+        "due_date": "2026-10-31",
+        "return_id": null,
+        "invoice_id": "HD-0004",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0003",
+        "paid": 0,
+        "amount": -240000,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0003",
+        "invoice_id": null,
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0006",
+        "paid": 0,
+        "amount": -10800,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0006",
+        "invoice_id": null,
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0005",
+        "paid": 0,
+        "amount": 220000,
+        "status": "open",
+        "due_date": "2026-11-20",
+        "return_id": null,
+        "invoice_id": "HD-0005",
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       }
+      ]
      }
     }
    ],
    "lech_frappe": [
     "Q1 (⚠K): giá vốn kỳ theo posting_date = NGÀY HĐ (nppsale theo lúc ghi sổ phiếu xuất) — HĐ4 đề 31/10 ghi sổ 01/11 06:30 VN: nppsale vào tháng 11, Frappe vào tháng 10",
     "Q2 = 0 (chốt chéo P4 — ƯU TIÊN): dòng xuất lẻ XKL- / chuyển kho CKL- giá 0 ở cổng + NGUON_DONG_XUAT như nppsale; sổ kho / GL vẫn giá thật",
-    "Frappe: NL- của PT-0001 docstatus 2 (không có phiếu 'Đảo phiếu trả') → gv_tra như nppsale; gv theo Q1 / Q2 như VB-A03"
+    "Frappe: NL- của PT-0001 docstatus 2 (không có phiếu 'Đảo phiếu trả') → gv_tra như nppsale; gv theo Q1 / Q2 như VB-A03",
+    "🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi [2] mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)"
    ],
    "doi_chieu": [
     {
@@ -20157,6 +20506,88 @@
         "sales_user_id": "nv.an@sobc.vn"
        }
       ]
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": [
+       {
+        "id": "no:HD-0001",
+        "paid": 200000,
+        "amount": 504000,
+        "status": "partial",
+        "due_date": "2026-11-03",
+        "return_id": null,
+        "invoice_id": "HD-0001",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0002",
+        "paid": 0,
+        "amount": 317760,
+        "status": "open",
+        "due_date": "2026-11-10",
+        "return_id": null,
+        "invoice_id": "HD-0002",
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0004",
+        "paid": 0,
+        "amount": 240000,
+        "status": "overdue",
+        "due_date": "2026-10-31",
+        "return_id": null,
+        "invoice_id": "HD-0004",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0003",
+        "paid": 0,
+        "amount": -240000,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0003",
+        "invoice_id": null,
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0006",
+        "paid": 0,
+        "amount": -10800,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0006",
+        "invoice_id": null,
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0005",
+        "paid": 0,
+        "amount": 220000,
+        "status": "open",
+        "due_date": "2026-11-20",
+        "return_id": null,
+        "invoice_id": "HD-0005",
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0006",
+        "paid": 0,
+        "amount": 10000,
+        "status": "open",
+        "due_date": "2026-11-25",
+        "return_id": null,
+        "invoice_id": "HD-0006",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       }
+      ]
      }
     },
     {
@@ -20207,7 +20638,8 @@
     }
    ],
    "lech_frappe": [
-    "Frappe = nppsale; cổng stock_entries.notes của NL- = 'Nhập lại từ phiếu trả PT-0008' (dựng từ Link — XNT xếp 'Trả về')"
+    "Frappe = nppsale; cổng stock_entries.notes của NL- = 'Nhập lại từ phiếu trả PT-0008' (dựng từ Link — XNT xếp 'Trả về')",
+    "🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi [1] mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)"
    ],
    "doi_chieu": [
     {
@@ -21032,13 +21464,74 @@
         "sales_user_id": "nv.binh@sobc.vn"
        }
       ]
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": [
+       {
+        "id": "no:HD-0001",
+        "paid": 200000,
+        "amount": 504000,
+        "status": "partial",
+        "due_date": "2026-11-03",
+        "return_id": null,
+        "invoice_id": "HD-0001",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0002",
+        "paid": 0,
+        "amount": 317760,
+        "status": "open",
+        "due_date": "2026-11-10",
+        "return_id": null,
+        "invoice_id": "HD-0002",
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0004",
+        "paid": 0,
+        "amount": 240000,
+        "status": "overdue",
+        "due_date": "2026-10-31",
+        "return_id": null,
+        "invoice_id": "HD-0004",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0003",
+        "paid": 0,
+        "amount": -240000,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0003",
+        "invoice_id": null,
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0006",
+        "paid": 0,
+        "amount": -10800,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0006",
+        "invoice_id": null,
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       }
+      ]
      }
     }
    ],
    "lech_frappe": [
     "Q1 (⚠K): giá vốn kỳ theo posting_date = NGÀY HĐ (nppsale theo lúc ghi sổ phiếu xuất) — HĐ4 đề 31/10 ghi sổ 01/11 06:30 VN: nppsale vào tháng 11, Frappe vào tháng 10",
     "Q2 = 0 (chốt chéo P4 — ƯU TIÊN): dòng xuất lẻ XKL- / chuyển kho CKL- giá 0 ở cổng + NGUON_DONG_XUAT như nppsale; sổ kho / GL vẫn giá thật",
-    "Frappe: gv SP1 72 / 504.000 (Q1: HĐ4 sang tháng 10), SP3 15 / 5.000 (Q2 = 0); còn lại như nppsale"
+    "Frappe: gv SP1 72 / 504.000 (Q1: HĐ4 sang tháng 10), SP3 15 / 5.000 (Q2 = 0); còn lại như nppsale",
+    "🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi [6] mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)"
    ],
    "doi_chieu": [
     {
@@ -22124,6 +22617,77 @@
         "sales_user_id": "nv.binh@sobc.vn"
        }
       ]
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": [
+       {
+        "id": "no:HD-0001",
+        "paid": 200000,
+        "amount": 504000,
+        "status": "partial",
+        "due_date": "2026-11-03",
+        "return_id": null,
+        "invoice_id": "HD-0001",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0002",
+        "paid": 0,
+        "amount": 317760,
+        "status": "open",
+        "due_date": "2026-11-10",
+        "return_id": null,
+        "invoice_id": "HD-0002",
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0004",
+        "paid": 0,
+        "amount": 240000,
+        "status": "overdue",
+        "due_date": "2026-10-31",
+        "return_id": null,
+        "invoice_id": "HD-0004",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0003",
+        "paid": 0,
+        "amount": -240000,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0003",
+        "invoice_id": null,
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0006",
+        "paid": 0,
+        "amount": -10800,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0006",
+        "invoice_id": null,
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0005",
+        "paid": 0,
+        "amount": 220000,
+        "status": "open",
+        "due_date": "2026-11-20",
+        "return_id": null,
+        "invoice_id": "HD-0005",
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.binh@sobc.vn"
+       }
+      ]
      }
     },
     {
@@ -22209,7 +22773,8 @@
    ],
    "lech_frappe": [
     "Q3 (⚠K): người thiếu ô inventory.cost (NVBH mặc định) nhận MỌI số giá vốn = null; số lượng không che (nppsale chỉ ẩn ở giao diện)",
-    "Frappe: vế RLS sales_invoices cho NVBH = HĐ mình đứng tên HOẶC của đơn mình (ve_hoa_don) — NV An vẫn thấy HĐ5; gv tien null (Q3)"
+    "Frappe: vế RLS sales_invoices cho NVBH = HĐ mình đứng tên HOẶC của đơn mình (ve_hoa_don) — NV An vẫn thấy HĐ5; gv tien null (Q3)",
+    "🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi [7] mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)"
    ],
    "doi_chieu": [
     {
@@ -23444,6 +24009,220 @@
         }
        ]
       }
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": {
+       "mo": [
+        {
+         "id": "no:HD-0001",
+         "paid": 200000,
+         "amount": 504000,
+         "status": "partial",
+         "invoice": {
+          "invoice_code": "HD-0001",
+          "invoice_date": "2026-11-03"
+         },
+         "due_date": "2026-11-03",
+         "return_id": null,
+         "created_at": "2026-11-16T20:51:03+07:00",
+         "invoice_id": "HD-0001",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0002",
+         "paid": 0,
+         "amount": 317760,
+         "status": "open",
+         "invoice": {
+          "invoice_code": "HD-0002",
+          "invoice_date": "2026-11-10"
+         },
+         "due_date": "2026-11-10",
+         "return_id": null,
+         "created_at": "2026-11-16T20:52:43+07:00",
+         "invoice_id": "HD-0002",
+         "customer_id": "0911000002",
+         "sales_user_id": "nv.binh@sobc.vn"
+        },
+        {
+         "id": "no:HD-0004",
+         "paid": 0,
+         "amount": 240000,
+         "status": "overdue",
+         "invoice": {
+          "invoice_code": "HD-0004",
+          "invoice_date": "2026-10-31"
+         },
+         "due_date": "2026-10-31",
+         "return_id": null,
+         "created_at": "2026-11-16T20:52:45+07:00",
+         "invoice_id": "HD-0004",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0005",
+         "paid": 0,
+         "amount": 220000,
+         "status": "open",
+         "invoice": {
+          "invoice_code": "HD-0005",
+          "invoice_date": "2026-11-20"
+         },
+         "due_date": "2026-11-20",
+         "return_id": null,
+         "created_at": "2026-11-16T20:59:35+07:00",
+         "invoice_id": "HD-0005",
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:PT-0003",
+         "paid": 0,
+         "amount": -240000,
+         "status": "open",
+         "invoice": null,
+         "due_date": "2026-11-16",
+         "return_id": "PT-0003",
+         "created_at": "2026-11-16T20:53:34+07:00",
+         "invoice_id": null,
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:PT-0006",
+         "paid": 0,
+         "amount": -10800,
+         "status": "open",
+         "invoice": null,
+         "due_date": "2026-11-16",
+         "return_id": "PT-0006",
+         "created_at": "2026-11-16T20:53:37+07:00",
+         "invoice_id": null,
+         "customer_id": "0911000002",
+         "sales_user_id": "nv.binh@sobc.vn"
+        }
+       ],
+       "thu": [
+        {
+         "id": "thu:HD-0001:200000",
+         "amount": 200000,
+         "method": "cash",
+         "receivable": {
+          "id": "no:HD-0001",
+          "paid": 200000,
+          "amount": 504000,
+          "status": "partial",
+          "invoice": {
+           "invoice_code": "HD-0001",
+           "invoice_date": "2026-11-03"
+          },
+          "due_date": "2026-11-03",
+          "return_id": null,
+          "created_at": "2026-11-16T20:51:03+07:00",
+          "invoice_id": "HD-0001",
+          "customer_id": "0911000001",
+          "sales_user_id": "nv.an@sobc.vn"
+         },
+         "collected_at": "2026-11-16T20:54:00+07:00",
+         "receivable_id": "no:HD-0001"
+        }
+       ],
+       "gan90": [
+        {
+         "id": "no:HD-0001",
+         "paid": 200000,
+         "amount": 504000,
+         "status": "partial",
+         "invoice": {
+          "invoice_code": "HD-0001",
+          "invoice_date": "2026-11-03"
+         },
+         "due_date": "2026-11-03",
+         "return_id": null,
+         "created_at": "2026-11-16T20:51:03+07:00",
+         "invoice_id": "HD-0001",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0002",
+         "paid": 0,
+         "amount": 317760,
+         "status": "open",
+         "invoice": {
+          "invoice_code": "HD-0002",
+          "invoice_date": "2026-11-10"
+         },
+         "due_date": "2026-11-10",
+         "return_id": null,
+         "created_at": "2026-11-16T20:52:43+07:00",
+         "invoice_id": "HD-0002",
+         "customer_id": "0911000002",
+         "sales_user_id": "nv.binh@sobc.vn"
+        },
+        {
+         "id": "no:HD-0004",
+         "paid": 0,
+         "amount": 240000,
+         "status": "overdue",
+         "invoice": {
+          "invoice_code": "HD-0004",
+          "invoice_date": "2026-10-31"
+         },
+         "due_date": "2026-10-31",
+         "return_id": null,
+         "created_at": "2026-11-16T20:52:45+07:00",
+         "invoice_id": "HD-0004",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0005",
+         "paid": 0,
+         "amount": 220000,
+         "status": "open",
+         "invoice": {
+          "invoice_code": "HD-0005",
+          "invoice_date": "2026-11-20"
+         },
+         "due_date": "2026-11-20",
+         "return_id": null,
+         "created_at": "2026-11-16T20:59:35+07:00",
+         "invoice_id": "HD-0005",
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:PT-0003",
+         "paid": 0,
+         "amount": -240000,
+         "status": "open",
+         "invoice": null,
+         "due_date": "2026-11-16",
+         "return_id": "PT-0003",
+         "created_at": "2026-11-16T20:53:34+07:00",
+         "invoice_id": null,
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:PT-0006",
+         "paid": 0,
+         "amount": -10800,
+         "status": "open",
+         "invoice": null,
+         "due_date": "2026-11-16",
+         "return_id": "PT-0006",
+         "created_at": "2026-11-16T20:53:37+07:00",
+         "invoice_id": null,
+         "customer_id": "0911000002",
+         "sales_user_id": "nv.binh@sobc.vn"
+        }
+       ]
+      }
      }
     },
     {
@@ -23609,6 +24388,162 @@
         }
        ]
       }
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": {
+       "mo": [
+        {
+         "id": "no:HD-0001",
+         "paid": 200000,
+         "amount": 504000,
+         "status": "partial",
+         "invoice": {
+          "invoice_code": "HD-0001",
+          "invoice_date": "2026-11-03"
+         },
+         "due_date": "2026-11-03",
+         "return_id": null,
+         "created_at": "2026-11-16T20:51:03+07:00",
+         "invoice_id": "HD-0001",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0004",
+         "paid": 0,
+         "amount": 240000,
+         "status": "overdue",
+         "invoice": {
+          "invoice_code": "HD-0004",
+          "invoice_date": "2026-10-31"
+         },
+         "due_date": "2026-10-31",
+         "return_id": null,
+         "created_at": "2026-11-16T20:52:45+07:00",
+         "invoice_id": "HD-0004",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0005",
+         "paid": 0,
+         "amount": 220000,
+         "status": "open",
+         "invoice": {
+          "invoice_code": "HD-0005",
+          "invoice_date": "2026-11-20"
+         },
+         "due_date": "2026-11-20",
+         "return_id": null,
+         "created_at": "2026-11-16T20:59:35+07:00",
+         "invoice_id": "HD-0005",
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:PT-0003",
+         "paid": 0,
+         "amount": -240000,
+         "status": "open",
+         "invoice": null,
+         "due_date": "2026-11-16",
+         "return_id": "PT-0003",
+         "created_at": "2026-11-16T20:53:34+07:00",
+         "invoice_id": null,
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        }
+       ],
+       "thu": [
+        {
+         "id": "thu:HD-0001:200000",
+         "amount": 200000,
+         "method": "cash",
+         "receivable": {
+          "id": "no:HD-0001",
+          "paid": 200000,
+          "amount": 504000,
+          "status": "partial",
+          "invoice": {
+           "invoice_code": "HD-0001",
+           "invoice_date": "2026-11-03"
+          },
+          "due_date": "2026-11-03",
+          "return_id": null,
+          "created_at": "2026-11-16T20:51:03+07:00",
+          "invoice_id": "HD-0001",
+          "customer_id": "0911000001",
+          "sales_user_id": "nv.an@sobc.vn"
+         },
+         "collected_at": "2026-11-16T20:54:00+07:00",
+         "receivable_id": "no:HD-0001"
+        }
+       ],
+       "gan90": [
+        {
+         "id": "no:HD-0001",
+         "paid": 200000,
+         "amount": 504000,
+         "status": "partial",
+         "invoice": {
+          "invoice_code": "HD-0001",
+          "invoice_date": "2026-11-03"
+         },
+         "due_date": "2026-11-03",
+         "return_id": null,
+         "created_at": "2026-11-16T20:51:03+07:00",
+         "invoice_id": "HD-0001",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0004",
+         "paid": 0,
+         "amount": 240000,
+         "status": "overdue",
+         "invoice": {
+          "invoice_code": "HD-0004",
+          "invoice_date": "2026-10-31"
+         },
+         "due_date": "2026-10-31",
+         "return_id": null,
+         "created_at": "2026-11-16T20:52:45+07:00",
+         "invoice_id": "HD-0004",
+         "customer_id": "0911000001",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:HD-0005",
+         "paid": 0,
+         "amount": 220000,
+         "status": "open",
+         "invoice": {
+          "invoice_code": "HD-0005",
+          "invoice_date": "2026-11-20"
+         },
+         "due_date": "2026-11-20",
+         "return_id": null,
+         "created_at": "2026-11-16T20:59:35+07:00",
+         "invoice_id": "HD-0005",
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        },
+        {
+         "id": "no:PT-0003",
+         "paid": 0,
+         "amount": -240000,
+         "status": "open",
+         "invoice": null,
+         "due_date": "2026-11-16",
+         "return_id": "PT-0003",
+         "created_at": "2026-11-16T20:53:34+07:00",
+         "invoice_id": null,
+         "customer_id": "0911000003",
+         "sales_user_id": "nv.an@sobc.vn"
+        }
+       ]
+      }
      }
     },
     {
@@ -23626,6 +24561,22 @@
         "current_amount": 209200,
         "overdue_amount": 0,
         "warning_amount": 621760,
+        "critical_amount": 0,
+        "total_outstanding": 830960
+       }
+      ]
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": [
+       {
+        "current_count": 1,
+        "overdue_count": 0,
+        "warning_count": 5,
+        "critical_count": 0,
+        "current_amount": 220000,
+        "overdue_amount": 0,
+        "warning_amount": 610960,
         "critical_amount": 0,
         "total_outstanding": 830960
        }
@@ -23661,7 +24612,8 @@
     "Q9 (⚠K): không tái hiện quirk RLS — phiếu xuất của HĐ huỷ (docstatus 2) rơi với MỌI vai (nppsale: NVBH không thấy HĐ huỷ của NV khác nên cộng thêm)",
     "Frappe: finance_pnl tháng 11 Chủ / Thủ kho cogs 555.000 (xuất 767.000 − 212.000; đặc tả 565.000 theo Q2 giá thật), tháng 10 cogs 168.000, tháng 12 cogs 0 (xuất lẻ 5 gói SP2 giá 0 — Q2 = 0); NV An / NV Bình cogs, returns_cogs null; finance_balance_sheet.inventory / stock_value_summary.inventory_value / bao_cao_ton_kho lo[].unit_cost của NVBH null; còn lại như nppsale",
     "receivables_summary ghim hôm nay = 17/11/2026 (đồng hồ đọc của Sổ BC)",
-    "Q14: finance_* trên Frappe ném PGRST202 tới khi có cổng expenses / payable_payments / payables — bài so chạy sau P4 + P7 (hoặc giả lập nguồn)"
+    "Q14: finance_* trên Frappe ném PGRST202 tới khi có cổng expenses / payable_payments / payables — bài so chạy sau P4 + P7 (hoặc giả lập nguồn)",
+    "🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi [22, 23, 24] mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)"
    ],
    "doi_chieu": [
     {
@@ -28279,8 +29231,128 @@
      "nguoi": "CHU",
      "bien_the": {
       "ma": "KB10",
-      "mo_ta": "xoá mọi công nợ + khoản thu của NPP A; thêm 9 dòng nợ không HĐ của K3 do NV Hai giữ (tiền / đã thu / hạn / trạng thái): 1.000 / 0 / 16/11 (T) / open; 2.000 / 0 / 15/11 / open; 4.000 / 0 / 17/10 / open; 8.000 / 0 / 16/10 / open; 16.000 / 0 / 17/09 / open; 32.000 / 0 / 16/09 / open; 64.000 / 0 / không hạn / open; 128.000 / 0 / 31/12 / overdue (dấu tay, chưa tới hạn); 256.000 / 256.000 / 01/01 / paid",
-      "sql_nppsale": "DELETE FROM payments WHERE receivable_id IN (SELECT id FROM receivables WHERE org_id = 'NPP A'); DELETE FROM receivables WHERE org_id = 'NPP A'; INSERT INTO receivables (org_id, customer_id, sales_user_id, amount, paid, due_date, status, opening_balance, created_at) VALUES ('NPP A', '0900000003', 'nv.hai@nenn.vn', 1000, 0, '2026-11-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 2000, 0, '2026-11-15', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 4000, 0, '2026-10-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 8000, 0, '2026-10-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 16000, 0, '2026-09-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 32000, 0, '2026-09-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 64000, 0, NULL, 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 128000, 0, '2026-12-31', 'overdue', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 256000, 256000, '2026-01-01', 'paid', false, '2026-11-01T08:00:00+07:00')"
+      "mo_ta": "xoá mọi công nợ + khoản thu của NPP A; thêm 9 dòng nợ KHÔNG chứng từ của K3 do NV Hai giữ (tiền / đã thu / hạn / trạng thái): 1.000 / 0 / 16/11 (T) / open; 2.000 / 0 / 15/11 / open; 4.000 / 0 / 17/10 / open; 8.000 / 0 / 16/10 / open; 16.000 / 0 / 17/09 / open; 32.000 / 0 / 16/09 / open; 64.000 / 0 / không hạn / open; 128.000 / 0 / 31/12 / overdue (dấu tay, chưa tới hạn); 256.000 / 256.000 / 01/01 / paid",
+      "sql_nppsale": "DELETE FROM payments WHERE receivable_id IN (SELECT id FROM receivables WHERE org_id = 'NPP A'); DELETE FROM receivables WHERE org_id = 'NPP A'; INSERT INTO receivables (org_id, customer_id, sales_user_id, amount, paid, due_date, status, opening_balance, created_at) VALUES ('NPP A', '0900000003', 'nv.hai@nenn.vn', 1000, 0, '2026-11-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 2000, 0, '2026-11-15', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 4000, 0, '2026-10-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 8000, 0, '2026-10-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 16000, 0, '2026-09-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 32000, 0, '2026-09-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 64000, 0, NULL, 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 128000, 0, '2026-12-31', 'overdue', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 256000, 256000, '2026-01-01', 'paid', false, '2026-11-01T08:00:00+07:00')",
+      "frappe": "trong điểm lưu (lui sau lời gọi): xoá mọi dòng bản chiếu NPP Cong No của site (và khoản thu nếu hàm đọc tới — ba hàm của VB-D08 chỉ đọc NPP Cong No) rồi db_insert 9 dòng bang_frappe (bỏ validate / hook chiếu; khoa_nguon duy nhất mỗi dòng, khoa_cho rỗng — KHÔNG qua ghi_no_dau_ky: một tờ DK- mỗi khách → 23505 uq_receivables_opening, chỉ chèn được da_thu = 0; tờ DK- đã thu không xoá được — KHOA_XOA)",
+      "bang_frappe": [
+       {
+        "khoa_nguon": "VANG-KB10:1",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 1000,
+        "da_thu": 0,
+        "con_no": 1000,
+        "han_thanh_toan": "2026-11-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:2",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 2000,
+        "da_thu": 0,
+        "con_no": 2000,
+        "han_thanh_toan": "2026-11-15",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:3",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 4000,
+        "da_thu": 0,
+        "con_no": 4000,
+        "han_thanh_toan": "2026-10-17",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:4",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 8000,
+        "da_thu": 0,
+        "con_no": 8000,
+        "han_thanh_toan": "2026-10-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:5",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 16000,
+        "da_thu": 0,
+        "con_no": 16000,
+        "han_thanh_toan": "2026-09-17",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:6",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 32000,
+        "da_thu": 0,
+        "con_no": 32000,
+        "han_thanh_toan": "2026-09-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:7",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 64000,
+        "da_thu": 0,
+        "con_no": 64000,
+        "han_thanh_toan": null,
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:8",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 128000,
+        "da_thu": 0,
+        "con_no": 128000,
+        "han_thanh_toan": "2026-12-31",
+        "trang_thai": "overdue",
+        "qua_han_tay": 1,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:9",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 256000,
+        "da_thu": 256000,
+        "con_no": 0,
+        "han_thanh_toan": "2026-01-01",
+        "trang_thai": "paid",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       }
+      ]
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -28305,8 +29377,128 @@
      "nguoi": "CHU",
      "bien_the": {
       "ma": "KB10",
-      "mo_ta": "xoá mọi công nợ + khoản thu của NPP A; thêm 9 dòng nợ không HĐ của K3 do NV Hai giữ (tiền / đã thu / hạn / trạng thái): 1.000 / 0 / 16/11 (T) / open; 2.000 / 0 / 15/11 / open; 4.000 / 0 / 17/10 / open; 8.000 / 0 / 16/10 / open; 16.000 / 0 / 17/09 / open; 32.000 / 0 / 16/09 / open; 64.000 / 0 / không hạn / open; 128.000 / 0 / 31/12 / overdue (dấu tay, chưa tới hạn); 256.000 / 256.000 / 01/01 / paid",
-      "sql_nppsale": "DELETE FROM payments WHERE receivable_id IN (SELECT id FROM receivables WHERE org_id = 'NPP A'); DELETE FROM receivables WHERE org_id = 'NPP A'; INSERT INTO receivables (org_id, customer_id, sales_user_id, amount, paid, due_date, status, opening_balance, created_at) VALUES ('NPP A', '0900000003', 'nv.hai@nenn.vn', 1000, 0, '2026-11-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 2000, 0, '2026-11-15', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 4000, 0, '2026-10-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 8000, 0, '2026-10-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 16000, 0, '2026-09-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 32000, 0, '2026-09-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 64000, 0, NULL, 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 128000, 0, '2026-12-31', 'overdue', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 256000, 256000, '2026-01-01', 'paid', false, '2026-11-01T08:00:00+07:00')"
+      "mo_ta": "xoá mọi công nợ + khoản thu của NPP A; thêm 9 dòng nợ KHÔNG chứng từ của K3 do NV Hai giữ (tiền / đã thu / hạn / trạng thái): 1.000 / 0 / 16/11 (T) / open; 2.000 / 0 / 15/11 / open; 4.000 / 0 / 17/10 / open; 8.000 / 0 / 16/10 / open; 16.000 / 0 / 17/09 / open; 32.000 / 0 / 16/09 / open; 64.000 / 0 / không hạn / open; 128.000 / 0 / 31/12 / overdue (dấu tay, chưa tới hạn); 256.000 / 256.000 / 01/01 / paid",
+      "sql_nppsale": "DELETE FROM payments WHERE receivable_id IN (SELECT id FROM receivables WHERE org_id = 'NPP A'); DELETE FROM receivables WHERE org_id = 'NPP A'; INSERT INTO receivables (org_id, customer_id, sales_user_id, amount, paid, due_date, status, opening_balance, created_at) VALUES ('NPP A', '0900000003', 'nv.hai@nenn.vn', 1000, 0, '2026-11-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 2000, 0, '2026-11-15', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 4000, 0, '2026-10-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 8000, 0, '2026-10-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 16000, 0, '2026-09-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 32000, 0, '2026-09-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 64000, 0, NULL, 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 128000, 0, '2026-12-31', 'overdue', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 256000, 256000, '2026-01-01', 'paid', false, '2026-11-01T08:00:00+07:00')",
+      "frappe": "trong điểm lưu (lui sau lời gọi): xoá mọi dòng bản chiếu NPP Cong No của site (và khoản thu nếu hàm đọc tới — ba hàm của VB-D08 chỉ đọc NPP Cong No) rồi db_insert 9 dòng bang_frappe (bỏ validate / hook chiếu; khoa_nguon duy nhất mỗi dòng, khoa_cho rỗng — KHÔNG qua ghi_no_dau_ky: một tờ DK- mỗi khách → 23505 uq_receivables_opening, chỉ chèn được da_thu = 0; tờ DK- đã thu không xoá được — KHOA_XOA)",
+      "bang_frappe": [
+       {
+        "khoa_nguon": "VANG-KB10:1",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 1000,
+        "da_thu": 0,
+        "con_no": 1000,
+        "han_thanh_toan": "2026-11-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:2",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 2000,
+        "da_thu": 0,
+        "con_no": 2000,
+        "han_thanh_toan": "2026-11-15",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:3",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 4000,
+        "da_thu": 0,
+        "con_no": 4000,
+        "han_thanh_toan": "2026-10-17",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:4",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 8000,
+        "da_thu": 0,
+        "con_no": 8000,
+        "han_thanh_toan": "2026-10-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:5",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 16000,
+        "da_thu": 0,
+        "con_no": 16000,
+        "han_thanh_toan": "2026-09-17",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:6",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 32000,
+        "da_thu": 0,
+        "con_no": 32000,
+        "han_thanh_toan": "2026-09-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:7",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 64000,
+        "da_thu": 0,
+        "con_no": 64000,
+        "han_thanh_toan": null,
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:8",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 128000,
+        "da_thu": 0,
+        "con_no": 128000,
+        "han_thanh_toan": "2026-12-31",
+        "trang_thai": "overdue",
+        "qua_han_tay": 1,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:9",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 256000,
+        "da_thu": 256000,
+        "con_no": 0,
+        "han_thanh_toan": "2026-01-01",
+        "trang_thai": "paid",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       }
+      ]
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -28332,8 +29524,128 @@
      "nguoi": "CHU",
      "bien_the": {
       "ma": "KB10",
-      "mo_ta": "xoá mọi công nợ + khoản thu của NPP A; thêm 9 dòng nợ không HĐ của K3 do NV Hai giữ (tiền / đã thu / hạn / trạng thái): 1.000 / 0 / 16/11 (T) / open; 2.000 / 0 / 15/11 / open; 4.000 / 0 / 17/10 / open; 8.000 / 0 / 16/10 / open; 16.000 / 0 / 17/09 / open; 32.000 / 0 / 16/09 / open; 64.000 / 0 / không hạn / open; 128.000 / 0 / 31/12 / overdue (dấu tay, chưa tới hạn); 256.000 / 256.000 / 01/01 / paid",
-      "sql_nppsale": "DELETE FROM payments WHERE receivable_id IN (SELECT id FROM receivables WHERE org_id = 'NPP A'); DELETE FROM receivables WHERE org_id = 'NPP A'; INSERT INTO receivables (org_id, customer_id, sales_user_id, amount, paid, due_date, status, opening_balance, created_at) VALUES ('NPP A', '0900000003', 'nv.hai@nenn.vn', 1000, 0, '2026-11-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 2000, 0, '2026-11-15', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 4000, 0, '2026-10-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 8000, 0, '2026-10-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 16000, 0, '2026-09-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 32000, 0, '2026-09-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 64000, 0, NULL, 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 128000, 0, '2026-12-31', 'overdue', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 256000, 256000, '2026-01-01', 'paid', false, '2026-11-01T08:00:00+07:00')"
+      "mo_ta": "xoá mọi công nợ + khoản thu của NPP A; thêm 9 dòng nợ KHÔNG chứng từ của K3 do NV Hai giữ (tiền / đã thu / hạn / trạng thái): 1.000 / 0 / 16/11 (T) / open; 2.000 / 0 / 15/11 / open; 4.000 / 0 / 17/10 / open; 8.000 / 0 / 16/10 / open; 16.000 / 0 / 17/09 / open; 32.000 / 0 / 16/09 / open; 64.000 / 0 / không hạn / open; 128.000 / 0 / 31/12 / overdue (dấu tay, chưa tới hạn); 256.000 / 256.000 / 01/01 / paid",
+      "sql_nppsale": "DELETE FROM payments WHERE receivable_id IN (SELECT id FROM receivables WHERE org_id = 'NPP A'); DELETE FROM receivables WHERE org_id = 'NPP A'; INSERT INTO receivables (org_id, customer_id, sales_user_id, amount, paid, due_date, status, opening_balance, created_at) VALUES ('NPP A', '0900000003', 'nv.hai@nenn.vn', 1000, 0, '2026-11-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 2000, 0, '2026-11-15', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 4000, 0, '2026-10-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 8000, 0, '2026-10-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 16000, 0, '2026-09-17', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 32000, 0, '2026-09-16', 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 64000, 0, NULL, 'open', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 128000, 0, '2026-12-31', 'overdue', false, '2026-11-01T08:00:00+07:00'), ('NPP A', '0900000003', 'nv.hai@nenn.vn', 256000, 256000, '2026-01-01', 'paid', false, '2026-11-01T08:00:00+07:00')",
+      "frappe": "trong điểm lưu (lui sau lời gọi): xoá mọi dòng bản chiếu NPP Cong No của site (và khoản thu nếu hàm đọc tới — ba hàm của VB-D08 chỉ đọc NPP Cong No) rồi db_insert 9 dòng bang_frappe (bỏ validate / hook chiếu; khoa_nguon duy nhất mỗi dòng, khoa_cho rỗng — KHÔNG qua ghi_no_dau_ky: một tờ DK- mỗi khách → 23505 uq_receivables_opening, chỉ chèn được da_thu = 0; tờ DK- đã thu không xoá được — KHOA_XOA)",
+      "bang_frappe": [
+       {
+        "khoa_nguon": "VANG-KB10:1",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 1000,
+        "da_thu": 0,
+        "con_no": 1000,
+        "han_thanh_toan": "2026-11-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:2",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 2000,
+        "da_thu": 0,
+        "con_no": 2000,
+        "han_thanh_toan": "2026-11-15",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:3",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 4000,
+        "da_thu": 0,
+        "con_no": 4000,
+        "han_thanh_toan": "2026-10-17",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:4",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 8000,
+        "da_thu": 0,
+        "con_no": 8000,
+        "han_thanh_toan": "2026-10-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:5",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 16000,
+        "da_thu": 0,
+        "con_no": 16000,
+        "han_thanh_toan": "2026-09-17",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:6",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 32000,
+        "da_thu": 0,
+        "con_no": 32000,
+        "han_thanh_toan": "2026-09-16",
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:7",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 64000,
+        "da_thu": 0,
+        "con_no": 64000,
+        "han_thanh_toan": null,
+        "trang_thai": "open",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:8",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 128000,
+        "da_thu": 0,
+        "con_no": 128000,
+        "han_thanh_toan": "2026-12-31",
+        "trang_thai": "overdue",
+        "qua_han_tay": 1,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       },
+       {
+        "khoa_nguon": "VANG-KB10:9",
+        "loai": "dau_ky",
+        "khach_hang": "0900000003 (K3 — Customer theo SĐT)",
+        "nhan_vien": "nv.hai@nenn.vn",
+        "so_tien": 256000,
+        "da_thu": 256000,
+        "con_no": 0,
+        "han_thanh_toan": "2026-01-01",
+        "trang_thai": "paid",
+        "qua_han_tay": 0,
+        "tao_luc": "2026-11-01T08:00:00+07:00"
+       }
+      ]
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -29286,7 +30598,8 @@
      "bien_the": {
       "ma": "KB14",
       "mo_ta": "RC2 (nợ HĐ2 đặc tả = HD-0005 của K2) chuyển hẳn sang NV Một giữ, giao_tu_nv = NV Hai (như ban_giao_khach chuyển hẳn — CHỈ dòng này; phân công khách và dòng dư có RC6 (PT-0005) GIỮ NGUYÊN — ban_giao_khach thật chuyển cả RC6 và gỡ phân công K2, ra số khác)",
-      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')"
+      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')",
+      "frappe": "trong điểm lưu: ghi thẳng bản chiếu NPP Cong No của HD-0005 (nhan_vien = NV Một, giao_tu_nv = NV Hai) — KHÔNG đổi phân công K2, KHÔNG đụng dòng PT-0005, KHÔNG gọi ban_giao_khach (soát VB-D12)"
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -29337,7 +30650,8 @@
      "bien_the": {
       "ma": "KB14",
       "mo_ta": "RC2 (nợ HĐ2 đặc tả = HD-0005 của K2) chuyển hẳn sang NV Một giữ, giao_tu_nv = NV Hai (như ban_giao_khach chuyển hẳn — CHỈ dòng này; phân công khách và dòng dư có RC6 (PT-0005) GIỮ NGUYÊN — ban_giao_khach thật chuyển cả RC6 và gỡ phân công K2, ra số khác)",
-      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')"
+      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')",
+      "frappe": "trong điểm lưu: ghi thẳng bản chiếu NPP Cong No của HD-0005 (nhan_vien = NV Một, giao_tu_nv = NV Hai) — KHÔNG đổi phân công K2, KHÔNG đụng dòng PT-0005, KHÔNG gọi ban_giao_khach (soát VB-D12)"
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -29367,7 +30681,8 @@
      "bien_the": {
       "ma": "KB14",
       "mo_ta": "RC2 (nợ HĐ2 đặc tả = HD-0005 của K2) chuyển hẳn sang NV Một giữ, giao_tu_nv = NV Hai (như ban_giao_khach chuyển hẳn — CHỈ dòng này; phân công khách và dòng dư có RC6 (PT-0005) GIỮ NGUYÊN — ban_giao_khach thật chuyển cả RC6 và gỡ phân công K2, ra số khác)",
-      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')"
+      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')",
+      "frappe": "trong điểm lưu: ghi thẳng bản chiếu NPP Cong No của HD-0005 (nhan_vien = NV Một, giao_tu_nv = NV Hai) — KHÔNG đổi phân công K2, KHÔNG đụng dòng PT-0005, KHÔNG gọi ban_giao_khach (soát VB-D12)"
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -29579,7 +30894,8 @@
      "bien_the": {
       "ma": "KB14",
       "mo_ta": "RC2 (nợ HĐ2 đặc tả = HD-0005 của K2) chuyển hẳn sang NV Một giữ, giao_tu_nv = NV Hai (như ban_giao_khach chuyển hẳn — CHỈ dòng này; phân công khách và dòng dư có RC6 (PT-0005) GIỮ NGUYÊN — ban_giao_khach thật chuyển cả RC6 và gỡ phân công K2, ra số khác)",
-      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')"
+      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn', giao_tu_nv = 'nv.hai@nenn.vn' WHERE id = (SELECT rc.id FROM receivables rc JOIN sales_invoices si ON si.id = rc.invoice_id WHERE si.org_id = 'NPP A' AND si.invoice_code = 'HD-0005')",
+      "frappe": "trong điểm lưu: ghi thẳng bản chiếu NPP Cong No của HD-0005 (nhan_vien = NV Một, giao_tu_nv = NV Hai) — KHÔNG đổi phân công K2, KHÔNG đụng dòng PT-0005, KHÔNG gọi ban_giao_khach (soát VB-D12)"
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -29677,7 +30993,8 @@
        0
       ]
      ],
-     "khop": false
+     "khop": false,
+     "ly_do_lech": "sổ dựng lại: RC4 (HD-0003) hạn 01/11 = ngày HĐ (đặc tả dựng tay 31/10) → DSO NV Một 7"
     },
     {
      "muc": "NV Một summary total / current",
@@ -29736,7 +31053,8 @@
      "bien_the": {
       "ma": "KB15",
       "mo_ta": "RC5 (nợ đầu kỳ K3) do NV Một giữ",
-      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn' WHERE org_id = 'NPP A' AND opening_balance AND customer_id = '0900000003'"
+      "sql_nppsale": "UPDATE receivables SET sales_user_id = 'nv.mot@nenn.vn' WHERE org_id = 'NPP A' AND opening_balance AND customer_id = '0900000003'",
+      "frappe": "trong điểm lưu: ghi thẳng NPP Cong No của tờ DK- K3: nhan_vien = NV Một (hoặc assign người giữ nợ trên tờ DK- rồi chiếu lại)"
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -30900,6 +32218,7 @@
     {
      "ham": "stock_value_summary",
      "nguoi": "CHU_B",
+     "chi_nppsale": true,
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
       "ok": true,
@@ -31231,7 +32550,8 @@
      "bien_the": {
       "ma": "KB21",
       "mo_ta": "PY4 (trả trước 0 / 300.000 của NCC Ba — phiếu chi PCNCC-0001) chuyển sang NCC Một",
-      "sql_nppsale": "UPDATE payables SET supplier_id = 'NCC Một' WHERE org_id = 'NPP A' AND invoice_number = 'PCNCC-0001'"
+      "sql_nppsale": "UPDATE payables SET supplier_id = 'NCC Một' WHERE org_id = 'NPP A' AND invoice_number = 'PCNCC-0001'",
+      "frappe": "trong điểm lưu: ghi thẳng NPP Cong No NCC dòng trả trước của phiếu chi PCNCC-0001: nha_cung_cap = NCC Một"
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -31254,7 +32574,8 @@
      "bien_the": {
       "ma": "KB21",
       "mo_ta": "PY4 (trả trước 0 / 300.000 của NCC Ba — phiếu chi PCNCC-0001) chuyển sang NCC Một",
-      "sql_nppsale": "UPDATE payables SET supplier_id = 'NCC Một' WHERE org_id = 'NPP A' AND invoice_number = 'PCNCC-0001'"
+      "sql_nppsale": "UPDATE payables SET supplier_id = 'NCC Một' WHERE org_id = 'NPP A' AND invoice_number = 'PCNCC-0001'",
+      "frappe": "trong điểm lưu: ghi thẳng NPP Cong No NCC dòng trả trước của phiếu chi PCNCC-0001: nha_cung_cap = NCC Một"
      },
      "gio": "2026-11-16T12:00:00+07:00",
      "mong": {
@@ -32513,7 +33834,8 @@
       3264000,
       0
      ],
-     "khop": false
+     "khop": false,
+     "ly_do_lech": "sổ dựng lại: cogs nppsale = đặc tả − 192.000 (E6 xuất lẻ thật mang giá 0, đặc tả đặt tay 8.000) + 384.000 (Q1: tờ sửa HĐ3 ghi sổ 01/11); Frappe = 2.880.000 (mong_frappe — cột 'nếu Q2 chép y' của đặc tả)"
     },
     {
      "muc": "cash_flow",
@@ -36470,6 +37792,88 @@
         "sales_user_id": "nv.an@sobc.vn"
        }
       ]
+     },
+     "cho_sua_p3": {
+      "viec": "P3-HAN-NO-AM",
+      "kq_frappe_hien_tai": [
+       {
+        "id": "no:PT-0008",
+        "paid": 0,
+        "amount": -20000,
+        "status": "open",
+        "due_date": "2026-11-15",
+        "return_id": "PT-0008",
+        "invoice_id": null,
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0001",
+        "paid": 200000,
+        "amount": 504000,
+        "status": "partial",
+        "due_date": "2026-11-03",
+        "return_id": null,
+        "invoice_id": "HD-0001",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:HD-0002",
+        "paid": 0,
+        "amount": 317760,
+        "status": "open",
+        "due_date": "2026-11-10",
+        "return_id": null,
+        "invoice_id": "HD-0002",
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0004",
+        "paid": 0,
+        "amount": 240000,
+        "status": "overdue",
+        "due_date": "2026-10-31",
+        "return_id": null,
+        "invoice_id": "HD-0004",
+        "customer_id": "0911000001",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0003",
+        "paid": 0,
+        "amount": -240000,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0003",
+        "invoice_id": null,
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       },
+       {
+        "id": "no:PT-0006",
+        "paid": 0,
+        "amount": -10800,
+        "status": "open",
+        "due_date": "2026-11-16",
+        "return_id": "PT-0006",
+        "invoice_id": null,
+        "customer_id": "0911000002",
+        "sales_user_id": "nv.binh@sobc.vn"
+       },
+       {
+        "id": "no:HD-0005",
+        "paid": 0,
+        "amount": 220000,
+        "status": "open",
+        "due_date": "2026-11-20",
+        "return_id": null,
+        "invoice_id": "HD-0005",
+        "customer_id": "0911000003",
+        "sales_user_id": "nv.an@sobc.vn"
+       }
+      ]
      }
     },
     {
@@ -36754,7 +38158,8 @@
    ],
    "lech_frappe": [
     "Frappe: phiếu tự lập Hoàn thành → tờ ghi có HDT- có kho, posting_date = lúc bấm 15/11 (giữ khi đổi ngày phiếu) → finance_pnl(15/11).returns_cogs 15.000 cả trước lẫn sau; cổng stock_entries.notes của tờ ghi có = 'Nhập lại từ phiếu trả PT-0008' (dựng từ Link — M13)",
-    "đặc tả (◇) bỏ sót PT-0002 (tự lập, revenue_date 12/11 trong Sổ BC): bao_cao_so_ban(12/11).tra và finance_pnl(12/11).returns_value gồm cả PT-0002"
+    "đặc tả (◇) bỏ sót PT-0002 (tự lập, revenue_date 12/11 trong Sổ BC): bao_cao_so_ban(12/11).tra và finance_pnl(12/11).returns_value gồm cả PT-0002",
+    "🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi [4] mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)"
    ],
    "doi_chieu": [
     {
@@ -36841,7 +38246,8 @@
       39440,
       0
      ],
-     "khop": false
+     "khop": false,
+     "ly_do_lech": "đặc tả (◇) bỏ sót PT-0002 (tự lập, revenue_date 12/11 của Sổ BC): 39.440 = 20.000 (PT-0008) + 19.440 (PT-0002)"
     },
     {
      "muc": "công nợ dòng âm K1 NV An",

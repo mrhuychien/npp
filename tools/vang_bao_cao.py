@@ -537,10 +537,14 @@ def sql_e2e() -> str:
 	q.append("INSERT INTO returns (id, org_id, customer_id, credit_note_amount, created_at, revenue_date, sales_user_id, requested_by, reason, "
 		f"credit_with_invoice, status, return_code) VALUES ('{i['TR-E2E-1']}', '{ORG_E}', '{i['KH-DAI-LY-MINH']}', 150000, '2026-09-10T03:00:00Z', "
 		f"'2026-09-10', '{chu}', '{chu}', 'damaged', false, 'completed', 'TR-E2E-1');")
+	# soát SOAT-VBC-04: sổ thật không có 'đã thu 200.000' mà không khoản thu (Frappe: da_thu chỉ sinh từ phiếu thu) → thêm khoản thu 200.000 tiền mặt
+	# 05/09 09:00 VN của Chủ; dòng dư có hạn = ngày phiếu 10/09 như _cong_no_phieu_tra (sổ giả e2e để null) — thẻ 700.000 / 150.000 không đổi.
 	q.append("INSERT INTO receivables (id, org_id, customer_id, sales_user_id, invoice_id, return_id, amount, paid, due_date, status, opening_balance, created_at) "
 		f"VALUES ('{i['bc-rc-1']}', '{ORG_E}', '{i['KH-CO-BA']}', '{chu}', '{i['HD-E2E-1']}', NULL, 900000, 200000, '2026-09-01', 'partial', false, "
-		f"'2026-08-20T03:00:00Z'), ('{i['bc-rc-2']}', '{ORG_E}', '{i['KH-DAI-LY-MINH']}', '{chu}', NULL, '{i['TR-E2E-1']}', -150000, 0, NULL, 'open', "
+		f"'2026-08-20T03:00:00Z'), ('{i['bc-rc-2']}', '{ORG_E}', '{i['KH-DAI-LY-MINH']}', '{chu}', NULL, '{i['TR-E2E-1']}', -150000, 0, '2026-09-10', 'open', "
 		"false, '2026-09-10T03:00:00Z');")
+	q.append("INSERT INTO payments (id, receivable_id, collected_by, amount, method, collected_at) VALUES "
+		f"(md5('bc-pm-1')::uuid, '{i['bc-rc-1']}', '{chu}', 200000, 'cash', '2026-09-05T09:00:00+07:00');")
 	q.append("SET session_replication_role = origin;")
 	return "\n".join(q)
 
@@ -2471,8 +2475,24 @@ class Ctx:
 		return None
 
 
+# 🔧 P3-HAN-NO-AM (soát SOAT-VBC-02): hạn dòng công nợ ÂM của phiếu trả tự lập không gắn HĐ — nppsale `_cong_no_phieu_tra` = return_date (ngày
+# phiếu lúc Hoàn thành; đổi ngày sau đó KHÔNG dời — ĐT-PT Q10); Frappe hiện tại `chieu_phieu_tra` (su_kien/cong_no.py:214) = posting_date tờ ghi có
+# HDT- = ngày BẤM Hoàn thành (rpc/phieu_tra.py:708, :799). Vàng giữ số nppsale (mong); lời gọi đọc hạn nợ chạy THÊM một lượt trên sổ đã đổi hạn
+# theo luật Frappe hiện tại → 'cho_sua_p3' (khác mong thì bài Frappe ĐỎ tới khi sửa P3 — hoặc chủ dự án chốt ⚠K và dùng kq_frappe_hien_tai).
+HAM_HAN_NO = ("receivables_summary", "receivables_by_customer", "receivables_by_rep", "bao_cao_cong_no", "dashboard_summary", "bang:receivables")
+SQL_P3_HAN = ("UPDATE receivables rc SET due_date = (r.completed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date FROM returns r WHERE r.id = rc.return_id "
+	"AND rc.invoice_id IS NULL AND r.completed_at IS NOT NULL")
+VIEC_CHO_SUA = {
+	"P3-HAN-NO-AM": "🔧 P3 (soát SOAT-VBC-02): hạn (NPP Cong No.han_thanh_toan) của dòng nợ ÂM phiếu trả tự lập không gắn HĐ — nppsale = ngày phiếu "
+		"(returns.return_date lúc Hoàn thành; đổi ngày phiếu sau đó không dời hạn — ĐT-PT Q10), Frappe hiện tại = posting_date tờ ghi có HDT- (ngày BẤM "
+		"Hoàn thành). Đề nghị sửa P3: chieu_phieu_tra lấy han_thanh_toan = ngày phiếu chụp lúc Hoàn thành (NPP Phieu Tra.ngay_tra; trống → ngày hoàn "
+		"thành) + bài + thêm hạn vào ảnh chụp bộ vàng phiếu trả. Tới khi sửa: lời gọi mang 'cho_sua_p3' ĐỎ đúng như 'kq_frappe_hien_tai'; nếu chốt giữ "
+		"luật Frappe (⚠K) thì so với kq_frappe_hien_tai và ghi ⚠K vào 00_quyet_dinh Q9.",
+}
+
+
 def doc_tat_ca(K: list[dict]) -> dict:
-	"""Chạy mọi lời gọi đọc (gom theo DB) → {(mã, số): {"ok", "kq" thô | "ma_loi", "loi"}}."""
+	"""Chạy mọi lời gọi đọc (gom theo DB) → {(mã, số): {"ok", "kq" thô | "ma_loi", "loi"}}; lượt 🔧 P3-HAN-NO-AM của Sổ BC ghi ở mã '<mã>#p3'."""
 	theo_db: dict = {}
 	for t in K:
 		nhom: dict = {}
@@ -2488,6 +2508,11 @@ def doc_tat_ca(K: list[dict]) -> dict:
 			for so_, c in cs:
 				goi_[so_] = c
 			theo_db.setdefault(bo, []).append((t["ma"], goi_, bt["sql"] if bt else None))
+			# lượt đổi hạn nợ âm theo luật Frappe hiện tại (chỉ Sổ BC — Nền N: R5 hoàn thành đúng ngày phiếu; E2E: dòng nợ chèn thẳng)
+			if bo_cua(bo) == "S" and not bt:
+				goi_p3 = [c if c is not None and c["ham"] in HAM_HAN_NO else None for c in goi_]
+				if any(goi_p3):
+					theo_db[bo].append((t["ma"] + "#p3", goi_p3, SQL_P3_HAN))
 	ra = {}
 	for bo, ds in theo_db.items():
 		db = db_cua(bo)
@@ -2522,6 +2547,16 @@ def anh_chup(db: str, idm: dict) -> dict:
  'phieu_kho', COALESCE((SELECT jsonb_agg(jsonb_build_object('loai', e.type, 'status', e.status, 'ghi_so', e.posted_at, 'ghi_chu', e.notes,
    'dong', (SELECT jsonb_agg(jsonb_build_object('sp', l.product_id, 'sl_co_so', l.qty_in_base_uom, 'gia', l.unit_cost) ORDER BY l.product_id, l.qty_in_base_uom)
             FROM stock_entry_lines l WHERE l.entry_id = e.id)) ORDER BY e.posted_at NULLS LAST, e.notes) FROM stock_entries e), '[]'));""")
+	return chuan(x, idm)
+
+
+def han_no_am(db: str, idm: dict) -> list:
+	"""Dòng nợ âm (phiếu tự lập không gắn HĐ) có hạn nppsale ≠ ngày bấm Hoàn thành (luật Frappe hiện tại — 🔧 P3-HAN-NO-AM)."""
+	x = psql_json(db, """SELECT COALESCE(jsonb_agg(jsonb_build_object('id', rc.id, 'han_nppsale', rc.due_date,
+	   'han_frappe_hien_tai', (r.completed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date) ORDER BY r.return_code), '[]')
+	  FROM receivables rc JOIN returns r ON r.id = rc.return_id
+	 WHERE rc.invoice_id IS NULL AND r.completed_at IS NOT NULL
+	   AND rc.due_date IS DISTINCT FROM (r.completed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date;""")
 	return chuan(x, idm)
 
 
@@ -2706,6 +2741,19 @@ def main():
 			goi_ra[i]["chon"] = ks
 			if goi_ra[i].get("mong_frappe") == goi_ra[i]["mong"]:  # phần khác nằm ngoài khoá được chọn
 				del goi_ra[i]["mong_frappe"]
+		# 🔧 P3-HAN-NO-AM: kết quả trên sổ đã đổi hạn nợ âm theo luật Frappe hiện tại (doc_tat_ca — mã '<mã>#p3')
+		p3 = []
+		for i, c in enumerate(t["goi"]):
+			d3 = doc.get((t["ma"] + "#p3", i))
+			if not d3 or not d3["ok"] or not goi_ra[i]["mong"].get("ok"):
+				continue
+			x3 = xep(c["ham"], chuan(d3["kq"], idm[c.get("bo") or t["bo"]]))
+			ks = (t.get("chon") or {}).get(i)
+			if ks is not None and isinstance(x3, dict):
+				x3 = {"_khoa": sorted(x3), **{x: x3[x] for x in ks}}
+			if x3 != goi_ra[i]["mong"]["kq"]:
+				goi_ra[i]["cho_sua_p3"] = {"viec": "P3-HAN-NO-AM", "kq_frappe_hien_tai": x3}
+				p3.append(i)
 		# đối chiếu đặc tả
 		dc = []
 		for nhan, dac_ta, f, *ly in t.get("kiem") or []:
@@ -2722,7 +2770,10 @@ def main():
 		doi_chieu_tong += [(t["ma"], x) for x in dc]
 		can = sorted({CAN_FRAPPE[(c["ham"] if not c["ham"].startswith("bang:") else "")] for c in t["goi"] if not c["ham"].startswith("bang:")}
 			| ({"cổng bảng đã có (P3)"} if any(c["ham"].startswith("bang:") for c in t["goi"]) else set()))
-		x = {"ma": t["ma"], "ten": t["ten"], "bo": t["bo"], "nguon": t["nguon"], "can_frappe": can, "goi": goi_ra, "lech_frappe": t["lech_frappe"],
+		lech_fr = list(t["lech_frappe"])
+		if p3:
+			lech_fr.append(f"🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi {p3} mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)")
+		x = {"ma": t["ma"], "ten": t["ten"], "bo": t["bo"], "nguon": t["nguon"], "can_frappe": can, "goi": goi_ra, "lech_frappe": lech_fr,
 			"doi_chieu": dc}
 		for kk in ("ky_vong_dac_ta", "cho"):
 			if t.get(kk):
@@ -2745,6 +2796,10 @@ def main():
 				else {"ok": False, "ma_loi": r["ma_loi"], "loi": r["loi"]})
 			buoc.append(y)
 		bo_ra[bo] = {"mo_ta": mo_ta, "goc": GOC_BIEN_THE.get(bo), "buoc": buoc, "anh_chup": anh_chup(db_cua(bo), idm[bo])}
+		han = han_no_am(db_cua(bo), idm[bo])
+		if han:
+			bo_ra[bo]["cho_sua_p3"] = {"viec": "P3-HAN-NO-AM", "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
+				"dong": han}
 	buoc = []
 	for b, r in zip(bn, kq_n, strict=True):
 		y = dict(b)
@@ -2781,7 +2836,7 @@ def main():
 	}
 	tep = {"ghi_chu": "Sinh bởi tools/vang_bao_cao.py — hàm + trigger + RLS thật của nppsale (schema_full.sql, Postgres nháp, đồng hồ ghim) + mã TS thật của giao "
 		"diện (portal/nguon) — đặc tả P6 §5 (62 kịch bản VB-A01…VB-E16).", "quy_uoc": QUY_UOC, "huong_dan_frappe": HUONG_DAN_FRAPPE, "ghim_dong_ho": khung, "nen": nen, "bo": bo_ra,
-		"tinh_huong": ra_t}
+		"viec_cho_sua": VIEC_CHO_SUA, "tinh_huong": ra_t}
 	with open(DICH, "w", encoding="utf-8") as f_:
 		json.dump(tep, f_, ensure_ascii=False, indent=1)
 		f_.write("\n")
