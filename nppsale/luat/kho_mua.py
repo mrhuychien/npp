@@ -370,6 +370,8 @@ CUA_VAI: dict[str, tuple] = {
 	"complete_supplier_return": (VAI_MUA_HANG, _KHO_MUA, "42501", True),
 	"cancel_supplier_return": (VAI_MUA_HANG, _KHO_MUA, "42501", True),
 	"khoi_phuc_phieu_tra_ncc": (VAI_MUA_HANG, "FORBIDDEN: vai trò của bạn không được khôi phục phiếu trả NCC.", "42501", False),
+	# RPC mới của bản Frappe (§3.8 — sửa phiếu trả đã xuất trong MỘT giao dịch = thân huỷ + thân gửi): cùng câu / vai với hai hàm nó gộp
+	"sua_phieu_tra_ncc": (VAI_MUA_HANG, _KHO_MUA, "42501", False),
 	"so_chung_tu_ncc": (VAI_MUA_HANG, "KHONG_DU_QUYEN", "P0001", False),
 	"record_payable_payment": (VAI_TIEN_NCC, "FORBIDDEN: chỉ chủ NPP hoặc kế toán được ghi trả tiền NCC.", "42501", False),
 	"chi_tra_ncc": (VAI_TIEN_NCC, "FORBIDDEN: chỉ chủ NPP hoặc kế toán được lập phiếu chi trả NCC.", "42501", False),
