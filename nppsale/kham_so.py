@@ -17,10 +17,15 @@ Nhóm 5 / 8 của nppsale (cấn phiếu trả ở phiếu thu kiểu cũ — ap
 cong_no(): bản ERPNext của `scripts/sql/quet/phieu-thu-cong-no.sql` (mig 164) + bất biến bản chiếu công nợ (đặc tả phiếu thu §1.7).
 
 cong_no_ncc(): bất biến bản chiếu công nợ NCC (`NPP Cong No NCC` — đặc tả kho_mua §2.8; nhóm 20–22) + dòng tiền trả NCC (M3 — dòng 66 của
-`scripts/sql/kham-so-that.sql`, nguồn bảng cổng `payable_payments`; nhóm 23–26 — `quet_dong_chi_ncc`). Phần khám sổ P4 còn lại (đặc tả kho_mua §8.1:
-dòng 67 / 70–74 / 77–82 — tồn lô ↔ Bin, NCC trùng tên, giá nhập trùng, phiếu chi…) dựng ở M9.
+`scripts/sql/kham-so-that.sql`, nguồn bảng cổng `payable_payments`; nhóm 23–26 — `quet_dong_chi_ncc`).
 
 	bench --site <site> execute nppsale.kham_so.cong_no_ncc
+
+kho_mua(): phần kho / mua / NCC còn lại của `kham-so-that.sql` (đặc tả kho_mua §8.1 — dòng 66, 67, 70–74, 77–82; M9): nhóm 27–32 (phiếu nhập lại hàng
+trả bị huỷ riêng, tồn lô ↔ Bin ↔ sổ kho, lô âm, NCC trùng tên, giá nhập trùng đơn vị) + thống kê theo dòng nppsale. Trả {can_xem, thong_ke}; việc
+đêm 01:00 chạy sau cong_no_ncc (`kham_so_kho_mua`).
+
+	bench --site <site> execute nppsale.kham_so.kho_mua
 
 hddt(): hoá đơn điện tử MISA — bản Frappe của `supabase/diagnostics/einvoice_lost_refid.sql` + `einvoice_unknown_enums.sql` (đặc tả HĐĐT §6.4,
 + [Soát thiếu 2]) và các bất biến riêng của bản Frappe (tờ treo, nhật ký lượt đêm, trùng số đã chuẩn hoá, khoá Huỷ HĐ). Trả {can_xem, thong_ke}.
@@ -365,6 +370,170 @@ def kham_so_cong_no_ncc() -> None:
 	frappe.db.commit()
 	if lech:
 		frappe.log_error(title=f"Khám sổ công nợ NCC: {len(lech)} chỗ lệch", message=frappe.as_json(lech[:200], indent=1))
+	kham_so_kho_mua()
+
+
+def kham_so_kho_mua() -> None:
+	"""Việc đêm (cùng lượt 01:00, sau công nợ NCC): khám sổ P4 cả sổ (`quet_kho_mua` — chỉ đọc); có dòng cần xem → Error Log (không tự sửa)."""
+	lech = quet_kho_mua()["can_xem"]
+	if lech:
+		frappe.log_error(title=f"Khám sổ kho / mua hàng: {len(lech)} chỗ cần xem", message=frappe.as_json(lech[:200], indent=1))
+
+
+# ================================================================================================ kho + mua hàng + NCC (P4 — M9)
+def _dong_kho(nhom: int, loai: str, chung_tu: str, chi_tiet: str, nen_lam: str, **them) -> dict:
+	return {"nhom": nhom, "loai": loai, "chung_tu": chung_tu, "chi_tiet": chi_tiet, "nen_lam": nen_lam, **them}
+
+
+@frappe.whitelist()
+def kho_mua() -> dict:
+	frappe.only_for(("System Manager", "Administrator"))
+	return quet_kho_mua()
+
+
+def quet_kho_mua(hang: list[str] | None = None, ncc: list[str] | None = None) -> dict:
+	"""Khám sổ P4 (chỉ đọc) — bản ERPNext của phần kho / mua / NCC trong `scripts/sql/kham-so-that.sql` (dòng 66, 67, 70–74, 77–82; đặc tả kho_mua
+	§8.1 — soát thiếu S15). → {can_xem: [dòng {nhom, loai, chung_tu, chi_tiet, nen_lam, …}] — rỗng là sổ sạch; thong_ke: số nppsale in ở cột chi tiết}.
+	`hang` / `ncc`: chỉ xét các mặt hàng / NCC này (bài thử — site có dữ liệu dựng thử cũ); bỏ trống = cả sổ. Chỉ hai kho của NPP (`kho_ban`,
+	`kho_can_date` — nguồn lô cổng `batches`).
+	can_xem (bất biến — sổ sạch không có dòng nào):
+	  27. (dòng 66) Phiếu nhập lại hàng khách trả (Stock Entry `nhap_lai_tra`) bị huỷ RIÊNG — phiếu trả `npp_phieu_tra` vẫn Hoàn thành mà không còn chứng
+	      từ nhập kho nào đang ghi sổ (nppsale: phiếu kho của chứng từ đã đảo bị huỷ riêng; bản app chặn ở cancel_stock_entry — việc #24 — còn Desk).
+	  28. (dòng 67) Tồn theo (mặt hàng theo lô, kho) của nguồn lô cổng (Σ gói lô chưa huỷ) ≠ `Bin.actual_qty` (nppsale: thẻ kho ≠ tồn lô theo vùng).
+	  29. (dòng 67) `Bin.actual_qty` ≠ Σ `Stock Ledger Entry.actual_qty` (`is_cancelled = 0`) của (mặt hàng, kho).
+	  30. (dòng 67 / 77) Lô có tồn âm ở một kho — CFD-05 B: hàng theo lô không bao giờ âm (nppsale: lô âm của phiếu nhập đã huỷ khi cho tồn âm).
+	  31. (dòng 71) NCC trùng tên (`lower(trim(supplier_name))`) — nên gộp (gop_nha_cung_cap).
+	  32. (dòng 73) Bảng giá nhập: (mặt hàng, đơn vị) có hơn một Item Price — vi phạm "một giá mỗi đơn vị" (§2.9, luu_gia_nhap / _ghi_gia_nhap_tu_phieu).
+	Dòng 66 phần tiền (`payables.paid` ≠ Σ `payable_payments`; Σ dòng mỗi phiếu chi ≠ số chi) = nhóm 23 / 24 của `quet_dong_chi_ncc` (đếm vào thong_ke).
+	Dòng 75 (safeupdate), 76 (mã qua 9999) không chép (§8.1)."""
+	from nppsale.cong.bang.kho import NGUON_LO
+	from nppsale.su_kien import cong_no_ncc as N
+	from nppsale.su_kien.san_pham import bang_gia_nhap
+
+	ra: list[dict] = []
+	tk: dict = {}
+	from nppsale.thiet_lap.kho_mua import cai_dat_kho
+
+	cd = cai_dat_kho()
+	kho = tuple(x for x in (cd.get("kho_ban"), cd.get("kho_can_date")) if x) or ("",)
+	ts = {"kho": kho, "h": tuple(hang or ()) or ("",), "n": tuple(ncc or ()) or ("",)}
+	loc_h = "AND {c} IN %(h)s" if hang else ""
+	co_lo = {r[0] for r in frappe.db.sql("SELECT `name` FROM `tabItem` WHERE `has_batch_no` = 1")}
+
+	# 27 — phiếu nhập lại hàng khách trả bị huỷ riêng
+	if frappe.db.exists("DocType", DT):
+		for se, pt in frappe.db.sql(f"""SELECT se.`name`, se.`npp_phieu_tra` FROM `tabStock Entry` se
+				JOIN `tab{DT}` p ON p.`name` = se.`npp_phieu_tra` AND p.`trang_thai` = 'completed'
+				WHERE se.`docstatus` = 2 AND se.`npp_loai` = 'nhap_lai_tra'
+					AND NOT EXISTS (SELECT 1 FROM `tabStock Entry` x WHERE x.`docstatus` = 1 AND x.`npp_loai` = 'nhap_lai_tra'
+						AND x.`npp_phieu_tra` = se.`npp_phieu_tra`)
+					AND NOT EXISTS (SELECT 1 FROM `tabSales Invoice` x WHERE x.`docstatus` = 1 AND x.`is_return` = 1 AND x.`update_stock` = 1
+						AND x.`npp_phieu_tra` = se.`npp_phieu_tra`)
+					{loc_h.format(c="(SELECT d.`item_code` FROM `tabStock Entry Detail` d WHERE d.`parent` = se.`name` LIMIT 1)")}
+				ORDER BY se.`name`""", ts):
+			ra.append(_dong_kho(27, "Phiếu nhập lại hàng khách trả bị huỷ riêng — phiếu trả vẫn Hoàn thành", se,
+				f"phiếu trả {pt}: không còn chứng từ nhập kho nào đang ghi sổ", "Huỷ / ghi nhận lại phiếu trả (cancel_return rồi complete_return) — "
+				"không sửa tay sổ kho", phieu_tra=pt))
+	tk["phieu_kho_dao_huy_rieng"] = len([x for x in ra if x["nhom"] == 27])
+
+	# 28 / 29 / 30 — tồn lô ↔ Bin ↔ sổ kho (chỉ hai kho NPP)
+	vung_kho = {cd.get("kho_ban"): "sale", cd.get("kho_can_date"): "date"}
+	ton_lo: dict = {}
+	am: list = []
+	for sp, lo, vung, ton in frappe.db.sql(f"""SELECT x.`hang`, x.`lo`, x.`vung`, x.`ton` FROM {NGUON_LO} x WHERE x.`lo` IS NOT NULL
+			{loc_h.format(c="x.`hang`")}""", ts):
+		k = (sp, vung)
+		ton_lo[k] = ton_lo.get(k, 0.0) + flt(ton)
+		if flt(ton) < -1e-9:
+			am.append((sp, lo, vung, flt(ton)))
+	bin_ = {(sp, vung_kho[w]): flt(q) for sp, w, q in frappe.db.sql(f"""SELECT `item_code`, `warehouse`, `actual_qty` FROM `tabBin`
+		WHERE `warehouse` IN %(kho)s {loc_h.format(c="`item_code`")}""", ts)}
+	so_kho = {(sp, vung_kho[w]): flt(q) for sp, w, q in frappe.db.sql(f"""SELECT `item_code`, `warehouse`, SUM(`actual_qty`)
+		FROM `tabStock Ledger Entry` WHERE `is_cancelled` = 0 AND `warehouse` IN %(kho)s {loc_h.format(c="`item_code`")}
+		GROUP BY `item_code`, `warehouse`""", ts)}
+	for k in sorted(set(ton_lo) | {x for x in bin_ if x[0] in co_lo}):
+		if abs(ton_lo.get(k, 0.0) - bin_.get(k, 0.0)) > 0.0001:
+			ra.append(_dong_kho(28, "Tồn lô (Σ gói lô) ≠ tồn kho Bin", k[0], f"kho {k[1]}: Σ gói lô {ton_lo.get(k, 0.0):g} — Bin {bin_.get(k, 0.0):g}",
+				"Tìm dòng sổ kho của mặt hàng không có gói lô / gói lô lệch dòng sổ (Stock Ledger Entry ↔ Serial and Batch Bundle)", vung=k[1]))
+	for k in sorted(set(bin_) | set(so_kho)):
+		if abs(bin_.get(k, 0.0) - so_kho.get(k, 0.0)) > 0.0001:
+			ra.append(_dong_kho(29, "Tồn kho Bin ≠ Σ sổ kho", k[0], f"kho {k[1]}: Bin {bin_.get(k, 0.0):g} — Σ sổ kho {so_kho.get(k, 0.0):g}",
+				"Chạy lại tồn Bin (erpnext.stock.stock_balance.repost_stock) rồi khám lại", vung=k[1]))
+	for sp, lo, vung, ton in sorted(am):
+		ra.append(_dong_kho(30, "Lô tồn âm (hàng theo lô không được âm — CFD-05 B)", lo, f"{sp} kho {vung}: {ton:g}",
+			"Tìm chứng từ xuất vượt của lô (sổ kho theo lô) — không sửa tay", hang=sp, vung=vung))
+	tk["the_kho_lech"] = len({(x["chung_tu"], x["vung"]) for x in ra if x["nhom"] in (28, 29)})
+	tk["lo_am"] = len(am)
+
+	# 31 — NCC trùng tên
+	loc_n = "WHERE `name` IN %(n)s" if ncc else ""
+	trung = frappe.db.sql(f"""SELECT LOWER(TRIM(`supplier_name`)), GROUP_CONCAT(`name` ORDER BY `name` SEPARATOR ', ') FROM `tabSupplier` {loc_n}
+		GROUP BY LOWER(TRIM(`supplier_name`)) HAVING COUNT(*) > 1 ORDER BY 1""", ts)
+	for ten, ds in trung:
+		ra.append(_dong_kho(31, "NCC trùng tên", ds, f"tên “{ten}”", "Gộp NCC (gop_nha_cung_cap) — giữ một mã"))
+	tk["ncc_trung_ten"] = len(trung)
+
+	# 32 / 73 — bảng giá nhập
+	bg = bang_gia_nhap()
+	gia = frappe.db.sql(f"""SELECT `item_code`, IFNULL(`uom`, ''), COUNT(*), GROUP_CONCAT(`name` ORDER BY `name` SEPARATOR ', ') FROM `tabItem Price`
+		WHERE `price_list` = %(bg)s {loc_h.format(c="`item_code`")} GROUP BY `item_code`, IFNULL(`uom`, '')""", {**ts, "bg": bg})
+	for sp, dv, n, ds in gia:
+		if n > 1:
+			ra.append(_dong_kho(32, "Bảng giá nhập: hơn một giá cho một đơn vị", sp, f"đơn vị {dv or '—'}: {n} giá ({ds})",
+				"Giữ giá mới nhất, xoá giá thừa (luu_gia_nhap)", don_vi=dv))
+	tk["gia_nhap"] = sum(cint(r[2]) for r in gia)
+	tk["gia_nhap_trung"] = len([r for r in gia if r[2] > 1])
+
+	# thống kê theo dòng nppsale (66, 70, 72, 74, 77–82)
+	tk["ncc_paid_lech"] = len([x for x in quet_dong_chi_ncc(ncc) if x["nhom"] in (23, 24)])
+	loc_cn = "AND `nha_cung_cap` IN %(n)s" if ncc else ""
+	if frappe.db.exists("DocType", N.DT):
+		tk["dong_ncc_am_mo"] = cint(frappe.db.sql(f"""SELECT COUNT(*) FROM `tab{N.DT}` WHERE `so_tien` < 0 AND `trang_thai` != 'paid' {loc_cn}""",
+			ts)[0][0])
+		tk["ptncc_dang_tru_no"] = cint(frappe.db.sql(f"SELECT COUNT(*) FROM `tab{N.DT}` WHERE `loai` = 'tra_ncc' {loc_cn}", ts)[0][0])
+		rong = [flt(r[1]) for r in frappe.db.sql(f"""SELECT `nha_cung_cap`, SUM(`so_tien` - IFNULL(`da_tra`, 0)) FROM `tab{N.DT}`
+			WHERE `trang_thai` != 'paid' {loc_cn} GROUP BY `nha_cung_cap`""", ts)]
+		tk["ncc_tra_truoc"] = len([r for r in rong if r < 0])
+		tk["tra_truoc_ncc_tong"] = -sum(r for r in rong if r < 0)
+	loc_s = "AND d.`default_supplier` IN %(n)s" if ncc else ""
+	tk["ncc_chi_con_mat_hang"] = cint(frappe.db.sql(f"""SELECT COUNT(DISTINCT d.`default_supplier`) FROM `tabItem Default` d
+		WHERE d.`parenttype` = 'Item' AND IFNULL(d.`default_supplier`, '') != '' {loc_s}
+			AND NOT EXISTS (SELECT 1 FROM `tabPurchase Invoice` x WHERE x.`supplier` = d.`default_supplier`)
+			AND NOT EXISTS (SELECT 1 FROM `tabPayment Entry` x WHERE x.`party_type` = 'Supplier' AND x.`party` = d.`default_supplier`)
+			AND NOT EXISTS (SELECT 1 FROM `tabStock Entry` x WHERE x.`supplier` = d.`default_supplier`)""", ts)[0][0])
+	loc_pi = "AND p.`supplier` IN %(n)s" if ncc else ""
+	pn_xuat = set()
+	for pi, sp, k_, lo, sl in frappe.db.sql(f"""SELECT p.`name`, d.`item_code`, d.`warehouse`, e.`batch_no`, SUM(e.`qty`)
+			FROM `tabPurchase Invoice` p JOIN `tabPurchase Invoice Item` d ON d.`parent` = p.`name` AND d.`parenttype` = 'Purchase Invoice'
+			JOIN `tabSerial and Batch Bundle` b ON b.`name` = d.`serial_and_batch_bundle` AND b.`docstatus` = 1 AND b.`is_cancelled` = 0
+			JOIN `tabSerial and Batch Entry` e ON e.`parent` = b.`name`
+			WHERE p.`docstatus` = 1 AND p.`npp_loai` = 'phieu_nhap' {loc_pi} GROUP BY p.`name`, d.`item_code`, d.`warehouse`, e.`batch_no`""", ts):
+		con = frappe.db.sql(f"""SELECT COALESCE(SUM(e.`qty`), 0) FROM `tabSerial and Batch Entry` e JOIN `tabSerial and Batch Bundle` b
+			ON b.`name` = e.`parent` AND b.`docstatus` = 1 AND b.`is_cancelled` = 0 WHERE e.`is_cancelled` = 0 AND e.`batch_no` = %s
+			AND e.`warehouse` = %s""", (lo, k_))[0][0]
+		if abs(flt(con) - flt(sl)) > 0.0001:
+			pn_xuat.add(pi)
+	tk["pn_co_hang_da_xuat"] = len(pn_xuat)
+	tk["cho_ban_vuot_ton"] = cint(cd.get("cho_ban_vuot_ton"))
+	tk["bin_am_khong_lo"] = cint(frappe.db.sql(f"""SELECT COUNT(*) FROM `tabBin` b JOIN `tabItem` i ON i.`name` = b.`item_code` AND i.`has_batch_no` = 0
+		WHERE b.`warehouse` IN %(kho)s AND b.`actual_qty` < 0 {loc_h.format(c="b.`item_code`")}""", ts)[0][0])
+	pi_meta = frappe.get_meta("Purchase Invoice")
+	if pi_meta.has_field("npp_loai"):
+		loc_p = "AND `supplier` IN %(n)s" if ncc else ""
+		dem = dict(frappe.db.sql(f"""SELECT `npp_loai`, COUNT(*) FROM `tabPurchase Invoice` WHERE `docstatus` = 2 {loc_p} GROUP BY `npp_loai`""", ts))
+		tk["pn_da_huy"], tk["ptncc_da_huy"] = cint(dem.get("phieu_nhap")), cint(dem.get("tra_ncc"))
+		tk["nhap_mang_dau_huy"] = cint(frappe.db.sql(f"""SELECT COUNT(*) FROM `tabPurchase Invoice` WHERE `docstatus` = 0
+			AND `npp_huy_luc` IS NOT NULL {loc_p}""", ts)[0][0])
+		if pi_meta.has_field("npp_ma_cu"):
+			tk["ptncc_ma_cu"] = cint(frappe.db.sql(f"""SELECT COUNT(*) FROM `tabPurchase Invoice` WHERE `npp_loai` = 'tra_ncc'
+				AND IFNULL(`npp_ma_cu`, '') != '' {loc_p}""", ts)[0][0])
+	if frappe.get_meta("Payment Entry").has_field("npp_loai"):
+		loc_pe = "AND `party` IN %(n)s" if ncc else ""
+		n_pc, con_pc = frappe.db.sql(f"""SELECT COUNT(*), COALESCE(SUM(`unallocated_amount`), 0) FROM `tabPayment Entry` WHERE `docstatus` = 1
+			AND `npp_loai` = 'phieu_chi_ncc' {loc_pe}""", ts)[0]
+		tk["phieu_chi_ncc"], tk["tra_truoc_con"] = cint(n_pc), flt(con_pc)
+	ra.sort(key=lambda x: (x["nhom"], x["chung_tu"]))
+	return {"can_xem": ra, "thong_ke": tk}
 
 
 # ================================================================================================ hoá đơn điện tử MISA (HĐĐT)

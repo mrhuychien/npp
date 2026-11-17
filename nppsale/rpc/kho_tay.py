@@ -19,7 +19,8 @@ RPC (giữ tên nppsale — hàm Postgres nguồn ở scratchpad kho_mua/src/<t�
   nppsale; xuất lẻ → huỷ (lõi trả đúng lô theo gói lô, `lines_reversed` = số lô); nhập kho tay → lô đã bị rà sang kho cận date (phiếu `CKL-`
   `chuyen_date_tu_dong`, không động gì khác) → huỷ trước phiếu ấy (§7.3 điểm 8 — M5, `nppsale.rpc.lo_kho.hoan_chuyen_date`) → `ALREADY_ISSUED` khi lô /
   Bin đã xuất bớt (không nới khi cho bán vượt tồn), rồi huỷ (`lines_reversed` = số dòng) → xếp repost. Nháp xoá KHÔNG lùi dãy số (`xoa_nhap`).
-- `confirm_driver_handover` (chuyến giao — luồng cũ, §4.8 soát thiếu S14 / §7.3 điểm 40): `LEGACY_FLOW_REMOVED`.
+- `confirm_driver_handover` (chuyến giao — luồng cũ, §4.8 soát thiếu S14 / §7.3 điểm 40), `post_stock_export` (phiếu xuất kiểu cũ — M9, §3.21):
+  `LEGACY_FLOW_REMOVED`.
 Phiếu KIỂM KÊ (`NPP Kiem Ke` — M6, nguồn (2) của cổng `stock_entries`): `nguon_phieu` nhận cả nó; huỷ nháp = `cancelled` + ghi chú (giữ phiếu), đã duyệt
 → `CANNOT_REVERSE_TYPE (stocktake)`; ghi thẳng nháp / dòng chuyển sang nppsale.rpc.kiem_ke (dòng có dấu, dòng 0 được).
 Ghi thẳng phiếu kho NHÁP qua cổng (`stock_entries` / `stock_entry_lines` — nppsale.cong.bang.phieu_kho; trigger mig 170 + RLS owner / warehouse): lập
@@ -589,6 +590,15 @@ def _kiem_rut_nhap(doc, cd) -> int:
 def confirm_driver_handover(p_handover_id=None):
 	"""Chuyến giao đã bỏ (CLAUDE.md "Chuyến giao" — 24/09/2026): màn `/deliveries/[id]/handover` bị chặn (`LEGACY_V2_HREFS`) nhưng tên vẫn có ở nppsale
 	— đăng ký giữ tên để lời gọi lạc nhận câu nghiệp vụ thay PGRST202 (§7.3 điểm 40 — một luật với bảng không port `swap_stock_movements`)."""
+	raise NppLoi("LEGACY_FLOW_REMOVED: chức năng đã gỡ")
+
+
+@rpc("post_stock_export")
+def post_stock_export(p_entry_id=None):
+	"""Ghi sổ phiếu xuất kho kiểu cũ (P4 — M9, đặc tả kho_mua §3.21, V80): ở nppsale chỉ còn `_wf2_export_order` gọi (Xuất / Sửa HĐ — P3 đã dựng
+	bằng Sales Invoice `update_stock`, luật FIFO ngày nhận / kho bán / `INSUFFICIENT_STOCK` nằm ở `post_invoice` — nppsale.luat.xuat_kho); màn
+	`/inventory/stock-out` chặn từ 22/09/2026 (`LEGACY_V2_HREFS`), nút "TỰ GIAO HÀNG & THU TIỀN" khoá (`LEGACY_FLOW_WRITES_LOCKED`) → giữ tên, luôn
+	ném câu luồng cũ (ba câu lỗi riêng của hàm cố ý không chép — §9.4)."""
 	raise NppLoi("LEGACY_FLOW_REMOVED: chức năng đã gỡ")
 
 

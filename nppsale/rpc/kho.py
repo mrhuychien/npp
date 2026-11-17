@@ -1,8 +1,12 @@
-"""RPC KHO chỉ đọc (STABLE ở nppsale — gọi GET): tồn kho bán theo mặt hàng (POS), tổng giá trị tồn, hàng đã đặt chưa xuất.
+"""RPC KHO chỉ đọc (STABLE ở nppsale — gọi GET): tồn kho bán theo mặt hàng (POS), tổng giá trị tồn, hàng đã đặt chưa xuất, báo cáo tồn kho một lượt.
 
 Cùng một nguồn với bảng cổng `batches` (nppsale.cong.bang.kho.NGUON_LO: lô × kho từ gói lô chưa huỷ + lô ảo của hàng không lô) — một
 luật tồn cho mọi nơi đọc. Giá trị tồn (tồn × giá vốn) chỉ người được xem giá vốn (`xemDuocGiaVon`) — người khác nhận NULL, như cột
 `batches.unit_cost` ở cổng (nppsale chỉ che ở giao diện).
+
+`bao_cao_ton_kho(p_tu, p_den)` (P4 — M9, đặc tả kho_mua §5.4; mig 204 / 256): hàm nppsale SQL STABLE **SECURITY INVOKER** → đọc QUA CỔNG dưới người gọi
+(`truy_van.doc` — vế RLS + che cột một chỗ với bảng cổng): `lo` = dòng cổng `batches` còn hàng, `dong` = dòng HĐ ghi sổ trong kỳ (vế đọc
+`sales_invoices` của người gọi — NVBH chỉ HĐ mình).
 """
 from __future__ import annotations
 
@@ -121,3 +125,35 @@ def ton_kho_trang(p_tim=None, p_con_ton=True, p_sap="ten", p_offset=0, p_limit=2
 		"sum_date_value", "sum_total_qty", "sum_total_value")
 	return [{**r, **{k: (flt(r[k]) if xem or not k.endswith("_value") else None) for k in so}, "total_count": int(r.total_count),
 		"units": dv.get(r.product_id)} for r in ds]
+
+
+@rpc("bao_cao_ton_kho", ghi=False)
+def bao_cao_ton_kho(p_tu=None, p_den=None):
+	"""Báo cáo tổng hợp › Kho một lượt (`napTonKho` — src/lib/bao-cao/nap-kho.ts:87–92, GET qua `goiMotLuot`, `p_tu` = hôm nay − 89, `p_den` = hôm
+	nay). nppsale (mig 204, `SET jit = off` mig 256): `jsonb_build_object('lo', …, 'dong', …)`, phần rỗng → `[]`:
+	- `lo`: `batches` của NPP có `qty_on_hand > 0` (mọi vùng, KHÔNG trả vùng) {id, product_id, batch_code, qty_on_hand, unit_cost, expires_at,
+	  created_at}, `ORDER BY id`. Bản Frappe = dòng cổng `batches` (§5.4: `id` = `<lô>::<vùng>`, lô ảo `~SKU::vùng` của hàng không lô, hạn trống →
+	  2099-12-31) — `unit_cost` che theo `inventory.cost` như cổng (❓ §7.3 điểm 21 — nppsale không che ở hàm; giao diện đã che).
+	- `dong`: dòng HĐ `status = 'posted'` có `invoice_date BETWEEN p_tu AND p_den` (gồm dòng hàng đổi — màn tự bỏ) {ngay, invoice_id, product_id,
+	  unit_name, conversion_factor, quantity, is_exchange}; NULL ở một đầu kỳ → BETWEEN ra NULL → `[]`. Bản Frappe = HĐ cổng `sales_invoices`
+	  (Sales Invoice docstatus 1, `is_return = 0`, `is_opening = No`, ngày = `posting_date`) + dòng cổng `sales_invoice_lines`.
+	Ép kiểu `date` như Postgres trước khi đọc (chuỗi sai → 22007 / 22008). Phần lưu trữ trước ngày cắt (`NPP LS *` — BP §2.11) chưa có DocType
+	(P8) nên chưa UNION."""
+	from nppsale.cong.truy_van import doc
+
+	from .phieu_tra import _ngay_pg
+
+	tu = _ngay_pg(p_tu) if p_tu is not None else None
+	den = _ngay_pg(p_den) if p_den is not None else None
+	nc = hien_tai()
+	lo = doc({"bang": "batches", "select": "id, product_id, batch_code, qty_on_hand, unit_cost, expires_at, created_at",
+		"loc": [{"op": "gt", "cot": "qty_on_hand", "gt": 0}], "thu_tu": [{"cot": "id", "tang": True}]}, nc)["data"] or []
+	dong = []
+	if tu is not None and den is not None and tu <= den:
+		for hd in doc({"bang": "sales_invoices", "select": "id, invoice_date, lines:sales_invoice_lines(product_id, unit_name, conversion_factor, "
+				"quantity, is_exchange)", "loc": [{"op": "eq", "cot": "status", "gt": "posted"}, {"op": "gte", "cot": "invoice_date",
+				"gt": tu.isoformat()}, {"op": "lte", "cot": "invoice_date", "gt": den.isoformat()}]}, nc)["data"] or []:
+			for d in hd.get("lines") or []:
+				dong.append({"ngay": hd["invoice_date"], "invoice_id": hd["id"], "product_id": d["product_id"], "unit_name": d["unit_name"],
+					"conversion_factor": d["conversion_factor"], "quantity": d["quantity"], "is_exchange": d["is_exchange"]})
+	return {"lo": lo, "dong": dong}

@@ -65,7 +65,7 @@ NS = uuid.UUID("6f1c2a77-1d0e-4b8f-9a3c-2b4d5e6f7081")
 # mốc dựng → số kịch bản (đặc tả §8; V81–V87 gắn mốc theo §9.3)
 MOC = {"M1": range(1, 17), "M2": (*range(17, 29), 87), "M3": (*range(29, 41), 86), "M4": (*range(41, 56), 81, 85), "M5": (*range(56, 60), 82),
 	"M6": range(60, 65), "M7": (*range(65, 72), 83), "M8": (72, 73, 84), "M9": range(74, 81)}
-DA_DUNG = ("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8")
+DA_DUNG = ("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9")
 # mục ảnh chụp đã so theo mốc (mục của mốc sau — tra_no, phieu_chi, chi_phi… — thêm khi dựng)
 MUC_SO = ("pn", "ptn", "lo", "no", "tra_no", "phieu_chi", "gia_nhap", "phieu_kho", "hd", "tra_khach", "chi_phi", "ncc", "hang", "phan_cong", "nhan")
 NEN_TINH = ("ncc", "hang", "phan_cong")  # mục ảnh chụp tệp vàng chỉ ghi khi khác bộ dữ liệu nền (`nen.ct_nen`) — vắng mặt = như nền (M8)
@@ -624,8 +624,44 @@ def _v84(t, mong):
 			dau = False
 
 
+# ------------------------------------------------------------------------------------------------ M9 — báo cáo, đầu-cuối
+def _v74(t, mong):
+	"""⚠K (một luật với M4 V53 / M6 V60): cột "nhập" của cổng `batches` = Σ phần VÀO kho của lô → L2 (`PN-0002-001`) 50 + 2 thừa kiểm kê (`DCK-`) + 1 hàng
+	khách trả nhập lại (`NL-`) = 53; nppsale giữ `qty_initial` 50. Giá lô L2 vẫn 9.000 ở cả hai (thừa kiểm kê nhập theo giá vốn HIỆN TẠI của lô — M6;
+	phiếu nhập lại hàng trả theo giá lô — P3) nên ⚠K "bình quân lại" của đặc tả §6.9 V74 / §7.1 #1 KHÔNG xảy ra — kiểm thêm ở
+	nppsale.tests.test_bao_cao_kho (giá vốn HĐ 250.000, kho giảm 45.000 khi trả NCC, chênh 5.000 vào TK chi phí mặc định)."""
+	_nhap_lo(mong, "PN-0002-001", 53.0)
+
+
+def _v75(t, mong):
+	"""❓ §7.3 điểm 21 (Q9 — theo đề xuất): `bao_cao_ton_kho.lo.unit_cost` che theo `inventory.cost` như cổng `batches` → NVBH (không có ô ấy) nhận NULL;
+	nppsale hàm không che (giao diện che)."""
+	for x in mong["buoc"][6]["tra"]["lo"]:
+		x["unit_cost"] = None
+
+
+def _v76(t, mong):
+	"""⚠K §7.2 #14: phiếu kho của HĐ = CHÍNH HĐ → dòng `v_stock_movements` của HĐ mang mã HĐ (nppsale phiếu `XK-<giờ>` riêng); ⚠K §3.16: dấu chuyển
+	vùng ở cả hai dòng cổng `batches` của lô (như V85)."""
+	ma_hd = mong["ct"]["hd"][0]["ma"]
+	for x in mong["buoc"][7]["tra"]:
+		if x["entry_code"] == "XK-<giờ>":
+			x["entry_code"] = ma_hd
+	_chuyen_vung(mong, "PN-0001-001")
+
+
+def _v77(t, mong):
+	"""⚠K CFD-13 (một luật với V41 / V51 / V86): nhập kho có NCC + tiền nợ = PHIẾU NHẬP `PN-` → khoản nợ là khoản của phiếu nhập (khoá `PN:`), phiếu
+	của nó hiện trong tab "Còn nợ" vì cổng `stock_entries` gồm PI phiếu nhập; mã phiếu trong kết quả tìm so theo nhãn (Frappe cấp `PN-` cho cả hai)."""
+	m = mong["buoc"]
+	m[7]["tra"]["payable_id"] = "no:PN:<IN1>"
+	m[8]["tra"] = sorted({"IN-20261116-2001": "<IN1>", "PN-0001": "<P1>"}[x] for x in m[8]["tra"])
+	no = _no(mong["ct"], "PK:IN-20261116-2001:HD01-C")
+	no.update({"khoa": "PN:<IN1>", "phieu_kho": "<IN1>", "luc_bang_hoan_thanh": True})
+
+
 # kịch bản [Frappe] (`nguon: dac_ta` — mong là chữ của đặc tả) → hàm kiểm riêng của lớp bài
-KIEM_DAC_TA = {"V02c": "_v02c", "V12b": "_v12b", "V19b": "_v19b", "V43c": "_v43c", "V44c": "_v44c", "V57b": "_v57b"}
+KIEM_DAC_TA = {"V02c": "_v02c", "V12b": "_v12b", "V19b": "_v19b", "V43c": "_v43c", "V44c": "_v44c", "V57b": "_v57b", "V80": "_v80"}
 
 LECH: dict[str, tuple] = {
 	"V05d": (_v05d, "BP §4.3.0: khoản nợ 0 đ (giảm đầu phiếu nuốt hết tiền) là ĐÃ TRẢ ĐỦ — một luật với phải thu; nppsale chèn dòng `open` amount 0"),
@@ -684,6 +720,11 @@ LECH: dict[str, tuple] = {
 	# M8 — nhà cung cấp
 	"V84a": (_v84, "số phiên danh mục so mức tăng (nppsale +2: trigger mức câu lệnh cho từng lệnh trên products, kể cả 0 dòng)"),
 	"V84b": (_v84, "số phiên danh mục so mức tăng (nppsale +4)"),
+	# M9 — báo cáo, đầu-cuối
+	"V74": (_v74, "⚠K cột nhập của cổng batches gồm thừa kiểm kê + hàng khách trả nhập lại (L2 53; nppsale 50) — giá lô giữ 9.000 ở cả hai"),
+	"V75": (_v75, "❓ §7.3 điểm 21: bao_cao_ton_kho che giá vốn lô theo inventory.cost như cổng batches (NVBH NULL)"),
+	"V76": (_v76, "⚠K §7.2 #14: dòng lịch sử tồn của HĐ mang mã HĐ; ⚠K §3.16: dấu chuyển vùng ở cả hai dòng cổng batches"),
+	"V77": (_v77, "⚠K CFD-13: nhập kho có NCC + tiền là phiếu nhập (khoản PN:) — mã phiếu theo nhãn"),
 }
 
 
@@ -1337,6 +1378,14 @@ class TestKhoMuaVang(IntegrationTestCase):
 		if k == "doc" and b.get("ten") == "so_chung_tu_ncc":
 			ket = self._goi(b["nguoi"], "so_chung_tu_ncc", self._thay(b.get("ts") or {}, st))
 			return ket, None if "error" in ket else ket["data"]
+		# ------------------------------------------------------------------ M9 — báo cáo, đầu-cuối
+		if k == "doc" and b.get("ten") == "bao_cao_ton_kho":
+			return self._bao_cao_ton_kho(b, st)
+		if k == "doc" and b.get("ten") == "hoa_don_mua_con_no":
+			return self._hoa_don_mua_con_no(b, st)
+		if k == "goi_rpc":
+			ket = self._goi(b["nguoi"], b["ten"], self._thay(b.get("ts") or {}, st))
+			return ket, None if "error" in ket else ket["data"]
 		if k == "doc_phien":
 			# ⚠K (tệp vàng `khac_frappe` V84): so MỨC TĂNG của số phiên danh mục (`NPP Phien Danh Muc`), không số tuyệt đối
 			from nppsale.npp_he_thong.doctype.npp_phien_danh_muc.npp_phien_danh_muc import doc_phien
@@ -1452,6 +1501,54 @@ class TestKhoMuaVang(IntegrationTestCase):
 			sl = abs(flt(d["qty_in_base_uom"])) if d["qty_in_base_uom"] is not None else abs(flt(d["quantity"])) * (hs if hs > 0 else 1)
 			gv += sl * flt(d["unit_cost"])
 		return ket, {"cogs": round(gv, 2)}
+
+	def _bao_cao_ton_kho(self, b: dict, st: dict) -> tuple[dict, object]:
+		"""RPC `bao_cao_ton_kho` (M9 — §5.4) dưới đúng người → cùng dạng `chuan_gt` của bộ sinh: id lô `<lô>::<vùng>` → "lo:<mã>@<vùng>", mặt hàng →
+		khoá nền, ngày / mốc giờ → "@hom_nay±n[THH:MI]", HĐ → "hd:<nhãn>". Lô có sẵn trên site / lô ảo (hàng không lô của site) và dòng của HĐ có sẵn
+		(dữ liệu dựng thử cũ) bỏ; hai mảng so theo tập (nppsale `lo` sắp theo uuid, `dong` không sắp — thứ tự `id` của bản Frappe kiểm ở
+		nppsale.tests.test_bao_cao_kho)."""
+		ket = self._goi(b["nguoi"], "bao_cao_ton_kho", self._thay(b.get("ts") or {}, st))
+		if "error" in ket:
+			return ket, None
+		k = self.khoa_cua.get
+		hd = {v: kk[3:] for kk, v in st["nhan"].items() if kk.startswith("hd:") and v}
+		lo = []
+		for r in ket["data"]["lo"]:
+			ma, _, vung = r["id"].rpartition("::")
+			if r["id"].startswith("~") or ma in self.co_san["Batch"]:
+				continue
+			lo.append({"id": f"lo:{self._ma_lo(st, ma)}@{vung}", "product_id": k(r["product_id"]) or r["product_id"],
+				"batch_code": self._ma_lo(st, r["batch_code"]), "qty_on_hand": r["qty_on_hand"], "unit_cost": r["unit_cost"],
+				"expires_at": self._ngay(r["expires_at"]), "created_at": self._luc(r["created_at"])})
+		dong = [{"ngay": self._ngay(r["ngay"]), "invoice_id": "hd:" + hd[r["invoice_id"]], "product_id": k(r["product_id"]) or r["product_id"],
+			"unit_name": r["unit_name"], "conversion_factor": r["conversion_factor"], "quantity": r["quantity"], "is_exchange": r["is_exchange"]}
+			for r in ket["data"]["dong"] if r["invoice_id"] not in self.co_san["Sales Invoice"]]
+		return ket, {"lo": _xep(_so(lo)), "dong": _xep(_so(dong))}
+
+	def _hoa_don_mua_con_no(self, b: dict, st: dict) -> tuple[dict, object]:
+		"""Mô phỏng câu của /purchasing/invoices tab "Còn nợ" + ô tìm (TS src/app/(dashboard)/purchasing/invoices/page.tsx:117–154 + `useListSearch`
+		→ `menhDeTimDanhSach`, V77) QUA CỔNG dưới đúng người: tra trước `suppliers` (tên / mã) và `payables` (số HĐ NCC → `stock_entry_id`) chứa chữ gõ,
+		rồi `stock_entries` `type = import` có `debt:payables!inner(status)` `neq paid` và `or(entry_code / tim_kd ilike, supplier_id.in, id.in)` →
+		mã phiếu (theo nhãn: phiếu nhập "<P1>", nhập kho có NCC + nợ — PN theo CFD-13 — "<IN1>")."""
+		tu = b["ts"]["tim"]
+		ncc = self._cong(b["nguoi"], {"bang": "suppliers", "select": "id", "loc": [{"op": "or", "bieu_thuc": f"name.ilike.*{tu}*,code.ilike.*{tu}*"}]})
+		no = self._cong(b["nguoi"], {"bang": "payables", "select": "stock_entry_id", "loc": [{"op": "ilike", "cot": "invoice_number", "gt": f"*{tu}*"}]})
+		for x in (ncc, no):
+			if "error" in x:
+				return x, None
+		menh = [f"entry_code.ilike.*{tu}*", f"tim_kd.ilike.*{tu.lower()}*"]
+		if ncc["data"]:
+			menh.append(f"supplier_id.in.({','.join(r['id'] for r in ncc['data'])})")
+		ids = sorted({r["stock_entry_id"] for r in no["data"] if r.get("stock_entry_id")})
+		if ids:
+			menh.append(f"id.in.({','.join(ids)})")
+		ket = self._cong(b["nguoi"], {"bang": "stock_entries", "select": "id, entry_code, debt:payables!inner(status)",
+			"loc": [{"op": "eq", "cot": "type", "gt": "import"}, {"op": "or", "bieu_thuc": ",".join(menh)},
+				{"op": "neq", "cot": "debt.status", "gt": "paid"}]})
+		if "error" in ket:
+			return ket, None
+		cu = set().union(*self.co_san.values())
+		return ket, sorted(self._ma_pn(st, r["entry_code"]) for r in ket["data"] if r["id"] not in cu)
 
 	def _lo_theo_phieu_goc(self, b: dict, st: dict) -> tuple[dict, object]:
 		"""Mô phỏng `loadReceiptLinesForReturn` (TS src/lib/pos/load.ts:312–350) qua cổng dưới đúng người — bản lớp phủ của portal
@@ -1951,10 +2048,14 @@ class TestKhoMuaVang(IntegrationTestCase):
 		for k in MUC_SO:
 			if ct.get(k) != ct_mong.get(k):
 				sai.append(f"{t['ma']}: {k} lệch ở {'; '.join(XH._cho_lech(ct.get(k), ct_mong.get(k)))[:3000]}")
-		from nppsale.kham_so import quet_cong_no_ncc
+		from nppsale.kham_so import quet_cong_no_ncc, quet_kho_mua
 
-		for d in quet_cong_no_ncc([v for kk, v in self.ma.items() if re.fullmatch(r"S\d", kk)]):
+		ncc = [v for kk, v in self.ma.items() if re.fullmatch(r"S\d", kk)]
+		for d in quet_cong_no_ncc(ncc):
 			sai.append(f"{t['ma']}: khám sổ NCC nhóm {d.get('nhom')} {d.get('loai')} — {d.get('chung_tu')}: {d.get('chi_tiet')}")
+		# M9 — khám sổ P4 (đặc tả §8.1): tồn lô = Σ gói lô = Bin = Σ sổ kho, lô không âm, giá nhập một giá mỗi đơn vị… trên hàng / NCC của bộ dữ liệu
+		for d in quet_kho_mua([v for kk, v in self.ma.items() if re.fullmatch(r"[A-Z]", kk)], ncc)["can_xem"]:
+			sai.append(f"{t['ma']}: khám sổ kho / mua nhóm {d.get('nhom')} {d.get('loai')} — {d.get('chung_tu')}: {d.get('chi_tiet')}")
 		return sai
 
 	@staticmethod
@@ -2145,6 +2246,22 @@ class TestKhoMuaVang(IntegrationTestCase):
 			sai.append("V57b: lượt đêm 2 không được lập phiếu mới")
 		if self.nhat_ky:
 			sai.append(f"V57b: việc đêm ghi Error Log {self.nhat_ky}")
+		return sai
+
+	def _v80(self, t: dict) -> list[str]:
+		"""Luồng cũ + bảng không port (đặc tả §3.21, §4.8, V80): `post_stock_export` (giữ tên) và mọi lời ghi vào `swap_stock_movements` /
+		`purchase_orders` / `purchase_order_lines` → đúng câu `LEGACY_FLOW_REMOVED: chức năng đã gỡ` (P0001); đọc ba bảng trả `[]` (không 404 /
+		PGRST205)."""
+		sai = []
+		st = {"ma": t["ma"], "nhan": {}}
+		for i, b in enumerate(t["buoc"]):
+			ket, tv = self._buoc(b, st)
+			ten = f"V80 bước {i + 1} ({b['buoc']} {b.get('ten') or b.get('bang')})"
+			if b["buoc"] == "doc_bang":
+				if "error" in ket or tv != []:
+					sai.append(f"{ten}: mong [] — có {ket.get('error') or tv}")
+			elif (ket.get("error") or {}).get("code") != "P0001" or ket["error"].get("message") != "LEGACY_FLOW_REMOVED: chức năng đã gỡ":
+				sai.append(f"{ten}: mong P0001 LEGACY_FLOW_REMOVED: chức năng đã gỡ — có {ket.get('error') or tv}")
 		return sai
 
 	# ------------------------------------------------------------------------------------------------ chạy
