@@ -92,6 +92,9 @@ class TestDonTraTruoc(unittest.TestCase):
 			[(None, "DK", Decimal(100000)), (None, "PN-A", Decimal(150000))])
 		kh = [self._kn("Z", 10), self._kn("A", 10)]
 		self.assertEqual([k for _p, k, _x in L.phan_bo_tra_truoc([self._pc("P1", "2026-11-16 09:30", 15)], kh)], ["A", "Z"])
+		# ngày ghi nợ quyết trước tên: khoản tên "lớn" nhưng ghi nợ sớm hơn được trừ trước
+		kh = [self._kn("A-moi", 10, tao="2026-11-10 08:00"), self._kn("Z-cu", 10, tao="2026-11-02 08:00")]
+		self.assertEqual([k for _p, k, _x in L.phan_bo_tra_truoc([self._pc("P1", "2026-11-16 09:30", 15)], kh)], ["Z-cu", "A-moi"])
 
 	def test_phieu_chi_som_don_truoc(self):
 		# V33: phiếu chi ghi lùi (lúc chi sớm hơn) dồn trước dù lập sau; hoà lúc chi theo số phiếu, phiếu ĐANG LẬP (chưa số) sau cùng

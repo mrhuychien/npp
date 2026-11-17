@@ -16,8 +16,9 @@ Nhóm 5 / 8 của nppsale (cấn phiếu trả ở phiếu thu kiểu cũ — ap
 
 cong_no(): bản ERPNext của `scripts/sql/quet/phieu-thu-cong-no.sql` (mig 164) + bất biến bản chiếu công nợ (đặc tả phiếu thu §1.7).
 
-cong_no_ncc(): bất biến bản chiếu công nợ NCC (`NPP Cong No NCC` — đặc tả kho_mua §2.8; nhóm 20–22). Phần khám sổ P4 còn lại (đặc tả kho_mua §8.1:
-dòng 66 / 67 / 70–74 / 77–82 của `scripts/sql/kham-so-that.sql` — dòng `payable_payments`, tồn lô ↔ Bin, phiếu chi) dựng ở M9.
+cong_no_ncc(): bất biến bản chiếu công nợ NCC (`NPP Cong No NCC` — đặc tả kho_mua §2.8; nhóm 20–22) + dòng tiền trả NCC (M3 — dòng 66 của
+`scripts/sql/kham-so-that.sql`, nguồn bảng cổng `payable_payments`; nhóm 23–26 — `quet_dong_chi_ncc`). Phần khám sổ P4 còn lại (đặc tả kho_mua §8.1:
+dòng 67 / 70–74 / 77–82 — tồn lô ↔ Bin, NCC trùng tên, giá nhập trùng, phiếu chi…) dựng ở M9.
 
 	bench --site <site> execute nppsale.kham_so.cong_no_ncc
 

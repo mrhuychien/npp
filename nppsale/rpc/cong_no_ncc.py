@@ -575,7 +575,9 @@ def xoa_no(ids: list[str], nc) -> list[str]:
 		r = _khoa_dong(ten, ncc) if ncc else None
 		if not r:
 			continue
-		if abs(flt(r.da_tra)) >= 0.005 or _co_dong_tien(ten):  # trigger BEFORE DELETE
+		# trigger BEFORE DELETE (`paid ≠ 0 OR EXISTS payable_payments`); đã trả của bản chiếu tính từ sổ nên khoản có dòng tiền đã có đã trả ≠ 0 —
+		# vế thứ hai chỉ giữ cho khớp trigger (thử phá: bỏ vế này không bài nào đỏ — tương đương)
+		if abs(flt(r.da_tra)) >= 0.005 or _co_dong_tien(ten):
 			raise NppLoi(L.KHOA_XOA)
 		loi = L.loi_fk_xoa(r.loai, r.name)  # khoá ngoại NO ACTION của phiếu nhập / phiếu trả NCC (§7.3 điểm 38)
 		if loi is not None:

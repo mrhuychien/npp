@@ -29,7 +29,7 @@ SAN: dict[str, tuple[str, ...]] = {
 	"Customer Group": ("read", "select"),
 	# Payment Entry.validate → validate_allocated_amount_with_latest_data → get_outstanding_reference_documents gọi has_permission(NCC, "read",
 	# throw=True) (payment_entry.py:499, :2489) — phiếu chi / Ghi trả NCC (chi_tra_ncc, record_payable_payment) lập dưới chính kế toán / chủ
-	# (`paid_by` = người lập — đặc tả kho_mua §4.4); đo bằng tests/test_cong_no_ncc_rpc.py (17/11/2026)
+	# (`paid_by` = người lập — đặc tả kho_mua §4.4); đo bằng tests/test_cong_no_ncc_rpc.py::test_quyen_san_doc_ncc (17/11/2026)
 	"Supplier": ("read", "select"),
 	"Warehouse": ("read", "select"),
 	"Sales Taxes and Charges Template": ("read", "select"),

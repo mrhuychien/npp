@@ -187,6 +187,8 @@ class TestCongNoNccRpc(IntegrationTestCase):
 		p = self._pn(200000)
 		r1 = self._ptn(10000)
 		r2 = self._ptn(30000)
+		self._pn(100000, "S2")
+		self._ptn(50000, "S2")  # khoản giảm của NCC KHÁC không được dùng
 		no = self._dong(p)
 		truoc = self._pe_moi()
 		self._loi(self._ghi_tra("KT", no, 40001, "offset"), "P0001", L.BU_TRU_KHONG_CON)
@@ -469,10 +471,47 @@ class TestCongNoNccRpc(IntegrationTestCase):
 		c = self._ok(self._chi("KT", 1000, "S2"))
 		self.assertEqual(self._no(dk)["paid"], 1000)
 		self._loi(self._sua_no("KT", dk, {"amount": 6000}), "P0001", L.KHOA_SUA)  # ⚠K: đã trả → không amend
+		# nợ lập tay KHÔNG gắn phiếu kho: số nợ chỉ đổi được ở khoản ĐẦU KỲ (luật mig 227) — lập tay → NO_NCC_KHOA, tờ giữ nguyên
+		t = self._ok(self._them_no("KT", supplier_id=self.ma["S2"], amount=4000, invoice_number="TAY"))[0]["id"]
+		pi_t = frappe.db.get_value(N.DT, t, "chung_tu")
+		self._loi(self._sua_no("KT", t, {"amount": 4500}), "P0001", L.KHOA_SUA)
+		self.assertEqual((frappe.db.get_value(N.DT, t, "chung_tu"), frappe.db.get_value("Purchase Invoice", pi_t, "docstatus"), self._no(t)["amount"]),
+			(pi_t, 1, 4000))
 		# dòng trả trước: mọi đổi → NO_NCC_KHOA
 		c = self._ok(self._chi("KT", 500, "S3"))
 		tt = frappe.db.get_value(N.DT, {"phieu_chi": c["id"], "loai": "tra_truoc"}, "name")
 		self._loi(self._sua_no("KT", tt, {"notes": "x"}), "P0001", L.KHOA_SUA)
+
+	def test_quyen_san_doc_ncc(self):
+		"""DocPerm sàn ĐỌC Supplier (`thiet_lap.quyen_san.SAN`): Payment Entry.validate kiểm quyền đọc NCC khi kiểm số phân bổ (payment_entry.py:499 /
+		:2489) — phiếu chi / Ghi trả lập dưới chính kế toán, thiếu quyền → 42501 (lỗi lượt đầu của M3). Gỡ quyền đọc NCC của các vai NPP rồi chạy
+		lại `dam_bao()` (như lúc migrate) → lập lại được."""
+		from nppsale.thiet_lap import quyen_san
+		from nppsale.thiet_lap.vai import VAI_ROLE
+
+		# lõi chỉ kiểm quyền đọc NCC khi phiếu có tham chiếu để phân bổ (phiếu chỉ toàn trả trước không qua đường ấy) → NCC phải có khoản nợ
+		self._ok(self._them_no("KT", supplier_id=self.ma["S3"], amount=1000, opening_balance=True))
+		self.addCleanup(frappe.clear_cache, doctype="Supplier")
+		frappe.db.sql("UPDATE `tabCustom DocPerm` SET `read` = 0, `select` = 0 WHERE `parent` = 'Supplier' AND `role` IN %(vai)s",
+			{"vai": tuple(VAI_ROLE.values())})
+		frappe.clear_cache(doctype="Supplier")
+		ket = self._chi("KT", 500, "S3")
+		self.assertEqual(ket.get("error", {}).get("code"), "42501", ket)
+		quyen_san.dam_bao()
+		self.assertEqual(self._ok(self._chi("KT", 500, "S3"))["so_khoan"], 1)
+
+	def test_sua_so_dau_ky_goi_don(self):
+		"""§7.3 điểm 27: sửa số nợ đầu kỳ chưa trả = tờ `DKN-` amend ghi sổ mới → GỌI dồn trả trước (nppsale không dồn ở đây; nợ ròng không đổi). Trạng
+		thái "NCC còn tiền trả trước + khoản đầu kỳ chưa trả" (như sau gộp NCC — M8, nppsale không dồn khi gộp) dựng bằng cách tắt dồn lúc thêm khoản."""
+		c = self._ok(self._chi("KT", 2000, "S2"))  # NCC chưa có khoản nào → cả 2.000 là trả trước
+		tt = frappe.db.get_value(N.DT, {"phieu_chi": c["id"], "loai": "tra_truoc"}, "name")
+		with patch.object(N, "don_tra_truoc_ncc", lambda *a, **k: 0.0):
+			dk = self._ok(self._them_no("KT", supplier_id=self.ma["S2"], amount=3000, opening_balance=True))[0]["id"]
+		self.assertEqual((self._no(dk)["paid"], self._no(tt)["amount"], self._no(tt)["paid"]), (0, 0, 2000))
+		self.assertEqual(self._ok(self._sua_no("KT", dk, {"amount": 5000})), [{"id": dk}])
+		self.assertEqual({k: self._no(dk)[k] for k in ("amount", "paid", "status")}, {"amount": 5000, "paid": 2000, "status": "partial"})
+		self.assertEqual([(x["supplier_payment_id"], x["amount"]) for x in self._tra(dk)], [(c["id"], 2000)])
+		self.assertIsNone(frappe.db.exists(N.DT, tt))  # trả trước dồn hết → dòng trả trước xoá
 
 	def test_cong_xoa_no(self):
 		"""Xoá: RLS (vai khác 0 dòng) → trigger (đã trả / có dòng tiền) → khoá ngoại 23503 của phiếu nhập / phiếu trả NCC (§7.3 điểm 38) → tờ DKN- /
@@ -536,6 +575,19 @@ class TestCongNoNccRpc(IntegrationTestCase):
 			for bang in ("payables", "payable_payments", "supplier_payments"):
 				self.assertEqual(self._ok(self._cong(nguoi, {"bang": bang, "select": "id"})), [], (nguoi, bang))
 		self.assertTrue(self._ok(self._cong("QL", {"bang": "payable_payments", "select": "id", "loc": [{"op": "eq", "cot": "id", "gt": g}]})))
+		# câu đọc của màn (chi tiết công nợ / chi tiết phiếu chi / Chi phí): bảng lồng theo đúng tên khoá ngoại nppsale
+		d = self._ok(self._cong("KT", {"bang": "payable_payments", "select": "id, payer:users!payable_payments_paid_by_fkey(full_name, role), "
+			"verifier:users!payable_payments_verified_by_fkey(full_name, role), payable:payables(id, invoice_number, opening_balance, created_at)",
+			"loc": [{"op": "eq", "cot": "id", "gt": g}]}))[0]
+		self.assertEqual((d["payer"]["role"], d["verifier"]["role"], d["payable"]["id"], d["payable"]["opening_balance"]),
+			("accountant", "accountant", no, False))
+		d = self._ok(self._cong("KT", {"bang": "payables", "select": "id, supplier:suppliers(name, code, phone, address, payment_terms)",
+			"loc": [{"op": "eq", "cot": "id", "gt": no}]}))[0]
+		self.assertEqual(d["supplier"]["code"], "NCC01")
+		d = self._ok(self._cong("KT", {"bang": "supplier_payments", "select": "id, code, supplier:suppliers(name, code), "
+			"dong:payable_payments(amount, payable:payables(invoice_number))", "loc": [{"op": "eq", "cot": "id", "gt": c["id"]}]}))[0]
+		self.assertEqual((d["code"], d["supplier"], [(x["amount"], x["payable"]["invoice_number"]) for x in d["dong"]]),
+			(c["id"], {"name": "NCC Ba", "code": None}, [(500, c["id"])]))
 
 	# ------------------------------------------------------------------------------------------------ RPC đọc
 	def _tong(self, nguoi, p_since):
@@ -587,14 +639,22 @@ class TestCongNoNccRpc(IntegrationTestCase):
 
 	# ------------------------------------------------------------------------------------------------ khám sổ dòng tiền NCC (dòng 66)
 	def test_kham_so_dong_tien(self):
-		"""nppsale.kham_so.quet_dong_chi_ncc: sổ do method lập thì sạch; dòng chiếu lệch số đã trả (23), dòng tiền của phiếu chi trỏ dòng âm (26) bị bắt."""
+		"""nppsale.kham_so.quet_dong_chi_ncc: sổ do method lập thì sạch; dòng chiếu lệch số đã trả (23), một phiếu chi hai lúc chi (25), dòng tiền
+		của phiếu chi trỏ dòng âm (26) bị bắt."""
+		from nppsale.cong.bang import cong_no_ncc as CN
 		from nppsale.kham_so import quet_dong_chi_ncc
 
 		p = self._pn(100000)
 		r = self._ptn(30000)
-		self._ok(self._chi("KT", 150000))
+		self._ok(self._chi("KT", 150000))  # 100.000 trừ nợ P + 50.000 trả trước — hai dòng của cùng phiếu chi
 		ncc = [self.ma["S1"]]
 		self.assertEqual(quet_dong_chi_ncc(ncc), [])
+		# 25: nguồn thật lấy lúc chi từ chính phiếu (mọi dòng một lúc) — giả lập nguồn lệch lúc chi ở dòng trả trước để ghim bộ dò
+		dau = ("SELECT CONCAT(p.`name`, '::tra_truoc'), n.`name`, n.`da_tra`, " + CN.HINH_THUC + ", " + CN.NGUOI.format(o="p.`owner`") + ", "
+			+ CN.LUC_CHI)
+		self.assertEqual(CN.NGUON_TRA_NO.count(dau), 1)
+		with patch.object(CN, "NGUON_TRA_NO", CN.NGUON_TRA_NO.replace(dau, dau[: -len(CN.LUC_CHI)] + f"DATE_ADD({CN.LUC_CHI}, INTERVAL 1 HOUR)")):
+			self.assertEqual([d["nhom"] for d in quet_dong_chi_ncc(ncc)], [25])
 		frappe.db.set_value(N.DT, self._dong(p), "da_tra", 1, update_modified=False)
 		self.assertEqual([d["nhom"] for d in quet_dong_chi_ncc(ncc)], [23])
 		N.chieu_phieu_nhap(p)
