@@ -11,14 +11,23 @@
  *    page.tsx (linesByInvoice bỏ dòng đổi :290-300; returnLinesTheoNv / returnsTheoNv :399-422; employeeSummaryRows :838-880) rồi gọi
  *    nguyên `congHangBanNhanVien` + `chotTienChungTu` + `giamGiaHoaDon`.
  *  - SL mặt hàng dạng "2 thùng 10 hộp": `tachDonVi` + `chuDonVi` (lib/orders/pick-list.ts); phần tổng hợp NV: `hienTongSL` + `DON_VI_TONG`.
+ *  - /reports/sales tab Nhân viên (soát VB-E02 — màn được kiểm, KHÔNG phải /bao-cao/ban-hang): CHÉP đúng useMemo `employeeRows` của
+ *    app/(dashboard)/reports/sales/page.tsx:504-552 (không lọc; đầu vào = `docSoBanKy` — mot.hd / mot.dongHd đã bỏ dòng đổi / mot.tra /
+ *    mot.giaVonTra / mot.giaVonCoSo; productMap từ products(id, base_unit, primary_supplier_id, units)) rồi gọi nguyên `congLoiNhuanNhanVien`
+ *    + `soLuongCoSoDongHd`; `nvPhieuTra` = `nhanVienPhieuTra(returns, invoices)` như :489.
+ *  - Báo cáo tổng hợp › Kho, XNT (soát VB-E08 — lớp lỗi S13: `ref_order_ids` chuỗi '[]' làm xuất lẻ / trả NCC thành "Xuất bán"): CHÉP vòng
+ *    phân loại của `napBienDong` (lib/bao-cao/nap-kho.ts:216-236 — hàm gốc đọc Supabase) trên phiếu kho + dòng do bộ sinh đọc, rồi gọi nguyên
+ *    `tinhXnt` với tồn hiện tại theo lô (như man-kho.tsx:169-177).
  */
 import { readFileSync } from "node:fs"
 import { tuMotLuot, dungDongBan } from "@/lib/bao-cao/nap-ban-hang"
 import { congBan, danhMucRong } from "@/lib/bao-cao/cong"
-import { nhanVienPhieuTra, congHangBanNhanVien, chotTienChungTu } from "@/lib/analytics/hang-ban-nhan-vien"
-import { giamGiaHoaDon } from "@/lib/analytics/sales"
+import { nhanVienPhieuTra, congHangBanNhanVien, chotTienChungTu, congLoiNhuanNhanVien } from "@/lib/analytics/hang-ban-nhan-vien"
+import { giamGiaHoaDon, soLuongCoSoDongHd } from "@/lib/analytics/sales"
 import { tachDonVi, chuDonVi } from "@/lib/orders/pick-list"
 import { hienTongSL, DON_VI_TONG } from "@/lib/analytics/sl-theo-don-vi"
+import { soLuongCoSoDongKho, vnDateOf } from "@/lib/analytics/sales"
+import { tinhXnt, type BienDong, type LoaiBienDong } from "@/lib/bao-cao/nap-kho"
 
 type SpTho = {
 	id: string
@@ -32,6 +41,39 @@ type SpTho = {
 	price_lists?: { unit_name: string; price: number | string; group_id: string | null }[] | null
 }
 type Ca = { ma: string; so_ban: never; san_pham: SpTho[] }
+type PhieuKho = { id: string; type: string; notes: string | null; entry_code: string | null; posted_at: string | null; ref_order_ids: unknown }
+type DongKho = { entry_id: string; product_id: string; quantity: number; qty_in_base_uom: number | null; conversion_factor_snapshot: number | null;
+	unit_cost: number | null }
+type CaXnt = { ma: string; xnt: { a: string; b: string; pk: PhieuKho[]; dong: DongKho[]; ton: Record<string, number> } }
+
+/** XNT [a, b] — vòng phân loại CHÉP từ napBienDong (nap-kho.ts:216-236) + tinhXnt gốc. */
+function motXnt(ca: CaXnt) {
+	const { a, b, pk, dong, ton } = ca.xnt
+	const theoId = new Map(pk.map((e) => [e.id, e]))
+	const ds: BienDong[] = []
+	for (const l of dong) {
+		const e = theoId.get(l.entry_id)
+		if (!e || !e.posted_at) continue
+		const q = soLuongCoSoDongKho(l as never)
+		const coDon = Array.isArray(e.ref_order_ids) ? e.ref_order_ids.length > 0 : !!e.ref_order_ids
+		let loai: LoaiBienDong
+		let sl: number
+		if (e.type === "import") {
+			loai = (e.notes || "").startsWith("Nhập lại từ phiếu trả") ? "tra" : "nhap"
+			sl = q
+		} else if (e.type === "export") {
+			loai = coDon ? "ban" : "khac"
+			sl = -q
+		} else {
+			loai = "khac"
+			sl = Number(l.qty_in_base_uom ?? l.quantity ?? 0)
+		}
+		ds.push({ ngay: vnDateOf(e.posted_at), sp: l.product_id, sl, loai, ma: e.entry_code || e.id.slice(0, 8), phieu: e.id, gia: Number(l.unit_cost || 0) })
+	}
+	ds.sort((x, y) => x.ngay.localeCompare(y.ngay))
+	const xnt = tinhXnt(new Map(Object.entries(ton)), ds, a, b)
+	return { ma: ca.ma, xnt: Object.fromEntries([...xnt].map(([sp, x]) => [sp, x])), loai: Object.fromEntries(ds.map((d) => [`${d.ma}/${d.sp}`, d.loai])) }
+}
 
 /** dm.sp như `napDanhMuc` (nap-danh-muc.ts:98-117) — chỉ phần mặt hàng (khách / NV / kênh không vào số). */
 function danhMucSp(sp: SpTho[]) {
@@ -122,6 +164,33 @@ function mot(ca: Ca) {
 		tienTra
 	).map((r) => ({ ...r, sl_hien: hienTongSL(r.qtyTheoDv), sl_tra_hien: hienTongSL(r.returnQtyTheoDv), don_vi: DON_VI_TONG }))
 
+	// ---- /reports/sales tab Nhân viên — useMemo employeeRows (page.tsx:504-552), không lọc NCC / bảng giá / kênh, không tìm kiếm ----
+	const dongKy = tho.dongHd.filter((l) => !l.is_exchange) // docSoBanKy (nap-ban-hang.ts:315-318)
+	const lineByInvoice = new Map<string, typeof dongKy>()
+	for (const l of dongKy) {
+		const a = lineByInvoice.get(l.invoice_id) || []
+		a.push(l)
+		lineByInvoice.set(l.invoice_id, a)
+	}
+	const productMap = new Map(ca.san_pham.map((p) => [p.id, { id: p.id, base_unit: p.base_unit, primary_supplier_id: p.primary_supplier_id ?? null,
+		units: p.units ?? [] }]))
+	const avgCost = tho.giaVonCoSo
+	const giaVonHoaDon = (invoiceId: string) => {
+		let cogs = 0
+		for (const l of lineByInvoice.get(invoiceId) || []) {
+			cogs += soLuongCoSoDongHd(l as never, productMap.get(l.product_id) as never) * (avgCost.get(l.product_id) || 0)
+		}
+		return cogs
+	}
+	const nvReportsSales = congLoiNhuanNhanVien({
+		hoaDon: tho.hd as never,
+		giaVonHoaDon,
+		phieuTra: tho.tra as never,
+		nvPhieuTra: nvTra,
+		giaVonTra: tho.giaVonTra,
+		matHangQua: undefined,
+	}).map((r) => ({ id: r.id, orders: r.orders, revenue: r.revenue, cogs: r.cogs, profit: r.profit }))
+
 	return {
 		ma: ca.ma,
 		tong: congBan(out.dong),
@@ -137,8 +206,9 @@ function mot(ca: Ca) {
 		})),
 		sl_mat_hang: slMatHang,
 		hang_ban_nv: hangBanNv,
+		nv_reports_sales: nvReportsSales,
 	}
 }
 
-const vao = JSON.parse(readFileSync(0, "utf8")) as Ca[]
-process.stdout.write(JSON.stringify(vao.map(mot)))
+const vao = JSON.parse(readFileSync(0, "utf8")) as (Ca | CaXnt)[]
+process.stdout.write(JSON.stringify(vao.map((ca) => ("xnt" in ca ? motXnt(ca) : mot(ca as Ca)))))

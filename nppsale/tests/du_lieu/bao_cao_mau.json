@@ -1,25 +1,26 @@
 {
  "ghi_chu": "Sinh bởi tools/vang_bao_cao.py — hàm + trigger + RLS thật của nppsale (schema_full.sql, Postgres nháp, đồng hồ ghim) + mã TS thật của giao diện (portal/nguon) — đặc tả P6 §5 (62 kịch bản VB-A01…VB-E16).",
  "quy_uoc": [
-  "Mỗi bộ nền dựng trong DB MỚI (Postgres nháp — khung schema_full.sql của nppsale + đồng hồ ghim); mỗi bước là MỘT giao dịch như production, chạy dưới đúng người (request.jwt.claim.sub + ROLE authenticated) — 'MAY_CHU' = quyền máy chủ (chỉ chỗ có 'ly_do'); bước có 'cho_loi' là bước chờ lỗi (đúng mã / câu ghi ở bước — sổ không đổi).",
-  "Đồng hồ: mỗi bước / lời gọi mang 'gio' (ISO +07:00) = 'lúc bấm' đã ghim — bài Frappe ghim cùng giờ (frappe.utils.now / nowdate) trước bước. Sổ BC dựng 16/11/2026 20:50–21:10 VN (R15; bộ ◇ ghim theo bước: S8 15/11, S9 19/11, S10 05/11, S11 30/11 23:30), đọc 17/11/2026 08:00 VN (vn_today = 17/11 như [T]); Nền N đọc 16/11/2026 12:00 VN; E2E đọc 30/09/2026 10:00 VN.",
-  "Chỗ giữ trong tham số: '@nv:<email>' (NV — NPP Nhan Vien.name), '@kh:<SĐT>' (khách), '@sp:<SKU>', '@ncc:<tên NCC>', '@org' (NPP), '@pk:<mã phiếu kho tay>', '@ptncc:<mã>', '@don:<mã đơn>', '@hd:<mã HĐ>', '@pt:<mã phiếu trả>', '@no:hd:<mã HĐ>' / '@no:pt:<mã phiếu trả>' (dòng công nợ), '@dong_xuat:<mã đơn>' (= mọi dòng get_invoiceable_lines của đơn, SL còn lại), '@dong_sua:<mã HĐ>' + 'doi_sl' {'<SKU>/<ĐV>': SL} (= dòng hiện có của HĐ, đổi SL), '@la' (id lạ).",
-  "Kết quả đã chuẩn hoá: uuid → khoá nghiệp vụ (mã đơn / HĐ / phiếu trả; dòng HĐ '<HĐ>/<SKU>/<ĐV>[/doi]'; dòng đơn '<đơn>/<SKU>/<ĐV>'; công nợ 'no:<HĐ | phiếu trả | dk:<SĐT>:<tiền>>'; lô '<mã lô>::<vùng>' (= id cổng batches của Frappe); phiếu kho 'pk:<mã>'; khoản thu 'thu:<chứng từ>:<tiền>'; NV = email; khách = SĐT; hàng = SKU; NCC = tên); Nền N giữ khoá đặc tả (HD1 = 'HD-0001', R1…R5, RC1…RC7, PM1…PM7, PY1…PY6, PP1…PP5, X1…X6, E1…E15; NPP B tiền tố 'B:'); mốc giờ → 'YYYY-MM-DDTHH:MM:SS+07:00'; số → int khi chẵn, float khi lẻ (6 chữ số).",
-  "Thứ tự: mảng không thứ tự theo đặc tả L12 (bao_cao_so_ban.hd / dong_hd / tra / dong_tra / gv / gv_tra; bao_cao_ton_kho.lo / dong; bao_cao_cong_no.mo / gan90 / thu) đã xếp theo khoá — so như TẬP; list của hàm TABLE và hang_khach_da_lay giữ thứ tự hàm — so có thứ tự.",
-  "goi[i].mong = {ok, kq} hoặc {ok: false, ma_loi (SQLSTATE), loi (nguyên văn)}; 'chon' = chỉ giữ các khoá ấy của kết quả dict (khoá '_khoa' = bộ khoá đầy đủ); goi[i].mong_frappe (khi có) = kết quả Frappe kỳ vọng theo đề xuất Qn (cùng dạng, cùng chuẩn hoá) — bài Frappe so với mong_frappe thay mong; 'chi_nppsale': true = lời gọi không dựng được trên Frappe (bỏ).",
-  "Lời gọi 'ts:ban_hang' = mã TS thật của giao diện nppsale chạy trên kết quả bao_cao_so_ban của lời gọi 'tu' (danh mục mặt hàng của sổ; 'doi_gia' thay bảng giá chung); bài Frappe chạy cùng mã (portal) trên kết quả RPC Frappe — hoặc so phần máy chủ rồi dùng số TS này làm kỳ vọng giao diện.",
-  "lech_frappe = điểm Frappe khác nppsale có chủ ý (⚠K) / chờ chốt (❓Qn — làm theo 'đề xuất'; Q2 theo 'Chốt chéo với đặc tả P4': xuất lẻ / chuyển kho giá 0); doi_chieu = số đặc tả §5 ↔ số chạy thật (khop false = đặc tả lệch — tin số chạy thật).",
+  "Mỗi bộ nền dựng trong DB MỚI (Postgres nháp — khung schema_full.sql của nppsale, quyền như Supabase qua ALTER DEFAULT PRIVILEGES, phiên UTC, đồng hồ ghim); mỗi bước là MỘT giao dịch như production, chạy dưới đúng người (request.jwt.claim.sub + ROLE authenticated) — 'MAY_CHU' = quyền máy chủ (chỉ chỗ có 'ly_do'); bước có 'cho_loi' là bước chờ lỗi (đúng mã / câu ghi ở bước — sổ không đổi).",
+  "Đồng hồ: mỗi bước / lời gọi mang 'gio' (ISO +07:00) = 'lúc bấm' đã ghim — bài Frappe ghim cùng giờ (frappe.utils.now / nowdate) trước bước; bước có 'gio_frappe' thì bài Frappe ghim theo gio_frappe (giờ ghi sổ của kịch bản — nppsale dời giờ bằng bước máy chủ phía sau, Frappe ghi sổ lúc bấm). Sổ BC dựng 16/11/2026 20:50–21:10 VN (R15; bộ ◇ ghim theo bước: S8 15/11, S9 19/11, S10 05/11, S11 30/11 23:30), đọc 17/11/2026 08:00 VN (vn_today = 17/11 như [T]); Nền N dựng theo đúng ngày giờ từng chứng từ (01/08 … 16/11/2026), đọc 16/11/2026 12:00 VN; E2E đọc 30/09/2026 10:00 VN.",
+  "Chỗ giữ trong tham số: '@nv:<email>' (NV — NPP Nhan Vien.name), '@kh:<SĐT>' (khách), '@sp:<SKU>', '@ncc:<tên NCC>', '@dm:<mã danh mục chi phí>', '@org' (NPP; '@org_b' = NPP B), '@pk:<mã phiếu kho>', '@ptncc:<mã>', '@cp:<mã chi phí>', '@don:<mã đơn>', '@hd:<mã HĐ>', '@pt:<mã phiếu trả>', '@no:hd:<mã HĐ>' / '@no:pt:<mã phiếu trả>' (dòng công nợ), '@no_ncc:<số HĐ NCC>' / '@no_ncc:dk:<tên NCC>' (dòng nợ NCC), '@dong_xuat:<mã đơn>' (= mọi dòng get_invoiceable_lines của đơn, SL còn lại), '@dong_sua:<mã HĐ>' + 'doi_sl' {'<SKU>/<ĐV>': SL | {'quantity', 'unit_price'}} (= dòng hiện có của HĐ, đổi SL / giá), '@la' (id lạ). Mã chứng từ tra trong NPP của người của bước (Nền N: NPP A và NPP B cùng có HD-0001).",
+  "Kết quả đã chuẩn hoá: uuid → khoá nghiệp vụ (mã đơn / HĐ / phiếu trả; dòng HĐ '<HĐ>/<SKU>/<ĐV>[/doi]'; dòng đơn '<đơn>/<SKU>/<ĐV>'; công nợ 'no:<HĐ | phiếu trả | dk:<SĐT>:<tiền>>'; khoản thu 'thu:<chứng từ | dk>:<tiền>'; nợ NCC 'no_ncc:<số HĐ NCC | dk:<NCC>>'; khoản trả NCC 'tra_ncc:<số HĐ NCC | dk:<NCC>>:<tiền>'; phiếu chi NCC 'phieu_chi:<mã>'; chi phí 'chi_phi:<mã danh mục | khac>:<ngày chi>'; lô '<mã lô>::<vùng>' (= id cổng batches của Frappe); phiếu kho 'pk:<mã>'; NV = email; khách = SĐT; hàng = SKU; NCC = tên); chứng từ của NPP B (Nền N) mang tiền tố 'B:'; mốc giờ → 'YYYY-MM-DDTHH:MM:SS+07:00'; số → int khi chẵn, float khi lẻ (6 chữ số).",
+  "Thứ tự: mảng không thứ tự theo đặc tả L12 (bao_cao_so_ban.hd / dong_hd / tra / dong_tra / gv / gv_tra; bao_cao_ton_kho.lo / dong; bao_cao_cong_no.mo / gan90 / thu) đã xếp theo khoá — so như TẬP; list của hàm TABLE, bảng cổng và hang_khach_da_lay giữ thứ tự — so có thứ tự.",
+  "goi[i].mong = {ok, kq} hoặc {ok: false, ma_loi (SQLSTATE), loi (nguyên văn)}; 'chon' = chỉ giữ các khoá ấy của kết quả dict (khoá '_khoa' = bộ khoá đầy đủ); goi[i].mong_frappe (khi có) = kết quả Frappe kỳ vọng theo đề xuất Qn (cùng dạng, cùng chuẩn hoá — luật áp TỰ ĐỘNG cho mọi lời gọi có giá vốn: Q1 giá vốn theo ngày HĐ, Q2 = 0, Q3 che giá vốn, Q9 bỏ phiếu xuất HĐ huỷ; bộ E2E xuất theo dòng HĐ gồm dòng đổi) — bài Frappe so với mong_frappe thay mong; goi[i].cho_sua_p3 = {viec, kq_frappe_hien_tai} — việc 🔧 chưa sửa (viec_cho_sua): bài ĐỎ đúng như kq_frappe_hien_tai tới khi sửa; 'chi_nppsale': true = lời gọi không dựng được trên Frappe (bỏ).",
+  "Lời gọi 'ts:ban_hang' = mã TS thật của giao diện nppsale chạy trên kết quả bao_cao_so_ban của lời gọi 'tu' (danh mục mặt hàng của sổ; 'doi_gia' thay bảng giá chung) — gồm nv_reports_sales (useMemo employeeRows của /reports/sales); 'ts:xnt' = XNT [a, b] của Báo cáo tổng hợp › Kho (vòng phân loại napBienDong + tinhXnt) trên phiếu kho đã ghi sổ từ a; bài Frappe chạy cùng mã (portal) trên kết quả cổng / RPC Frappe — hoặc so phần máy chủ rồi dùng số TS này làm kỳ vọng giao diện.",
+  "lech_frappe = điểm Frappe khác nppsale có chủ ý (⚠K) / chờ chốt (❓Qn — làm theo 'đề xuất'; Q2 theo 'Chốt chéo với đặc tả P4': xuất lẻ / chuyển kho giá 0) / việc chưa sửa (🔧); doi_chieu = số đặc tả §5 ↔ số chạy thật (khop false = đặc tả lệch — tin số chạy thật; 'ly_do_lech' = lệch đã giải thích: sổ dựng lại của Nền N, đặc tả sót).",
   "Tiền so tuyệt đối; giá vốn dung sai ≤ 0,5 đ / dòng xuất (L4-c); phân bổ tiền theo dòng của mã TS ±1 đ / dòng (R6) — so theo HĐ / NV / mặt hàng."
  ],
  "huong_dan_frappe": [
-  "Dựng bộ nền một lần mỗi lớp bài (setUpClass) dưới đúng người: người / khách / hàng / lô / NCC theo 'nen', rồi từng bước của 'bo.<bộ>.buoc' (S2 … S11 = bản sao S1 + bước riêng: dựng S1 rồi chạy bước riêng trong điểm lưu, lui sau kịch bản — hoặc dựng riêng từng bộ). Mỗi bước: ghim đồng hồ = 'gio' (patch frappe.utils.now_datetime / nowdate / getdate(None) hoặc frappe.flags.current_date), đặt người (NguCanh như tests/test_kho_mua_vang.py), gọi nppsale.cong.api.rpc(ten=<rpc>, tham_so=<tham_so đã giải chỗ giữ>) — tên RPC Frappe trùng nppsale; bước 'ghi_cong' = cổng bảng (nppsale.cong — insert / update dưới đúng người); bước 'ghi_may_chu' theo trường 'frappe' của bước (kb/03 dời giờ phiếu xuất: BỎ — Frappe ghi sổ kho theo posting_date).",
-  "Sau khi dựng, so sổ với 'bo.<bộ>.anh_chup' (HĐ, đơn, phiếu trả, công nợ, khoản thu, tồn lô) trước khi so báo cáo — lệch ở đây là lỗi bộ dựng, không phải lỗi báo cáo. Phiếu kho của HĐ / nhập lại trên Frappe là chính chứng từ (không so mã XK-/NL-).",
-  "Giải chỗ giữ: '@don:' / '@hd:' / '@pt:' → name Frappe của chứng từ có nhãn ấy (ghi lại từ kết quả bước lập — mã Frappe có thể khác 'DH-0001' / 'HD-0001' / 'PT-0001'); '@dong_xuat:<đơn>' → get_invoiceable_lines(đơn) (SL còn lại, giá, hàng đổi) như màn Xuất hàng; '@dong_sua:<HĐ>' + doi_sl → dòng hiện có của HĐ, đổi SL theo '<SKU>/<ĐV>'; '@no:hd:<HĐ>' → NPP Cong No của HĐ.",
-  "Gọi báo cáo: mỗi tinh_huong.goi dưới 'nguoi', đồng hồ 'gio', tham số 'tham_so' (giữ chuỗi như GET gửi — '' / 'abc' / '2026-02-30' phải ra 22007 / 22008); 'bang:<tên>' = câu đọc cổng bảng (nppsale.cong.truy_van.doc) dưới người ấy; 'bien_the' (Nền N) = sửa sổ trong điểm lưu trước lời gọi, lui sau; 'chi_nppsale' = bỏ.",
-  "Chuẩn hoá kết quả Frappe y như tệp vàng (quy_uoc) rồi so với 'mong_frappe' nếu có, không thì 'mong' — chỉ phần khoá 'chon' (+ '_khoa' = bộ khoá đủ; Frappe thêm 'tinh_lai_gia_von' nếu chốt Q12 — bỏ khoá ấy khi so bộ khoá). Mảng không thứ tự so như tập (đã xếp); list hàm TABLE so có thứ tự.",
-  "Ánh xạ khoá: NV = email ('nen.*.nguoi'); khách = SĐT (Customer.npp_sdt); hàng = SKU (item_code); lô = '<mã lô>::<vùng>'; công nợ 'no:<chứng từ>'; Nền N dùng khoá đặc tả (RC1…, PM1…) — bài giữ bảng ánh xạ name Frappe → khoá khi dựng.",
-  "Lời gọi 'ts:ban_hang': chạy mã TS của portal (tools/vang_bao_cao_ts.ts — cùng hàm tuMotLuot → dungDongBan → congBan / congHangBanNhanVien) trên kết quả bao_cao_so_ban của Frappe, hoặc chỉ so phần máy chủ và coi số TS là kỳ vọng giao diện (bài e2e portal).",
-  "Kịch bản 'nguon' gồm 'dac_ta' (giao diện / chỉ Frappe): kiểm theo 'ky_vong_dac_ta' bằng bài e2e portal hoặc bài riêng; 'cho': 'P8' = để tới P8.",
+  "Dựng bộ nền một lần mỗi lớp bài (setUpClass) dưới đúng người: người / khách / hàng / lô / NCC theo 'nen', rồi từng bước của 'bo.<bộ>.buoc' (S2 … S11 = bản sao S1 + bước riêng: dựng S1 rồi chạy bước riêng trong điểm lưu, lui sau kịch bản — hoặc dựng riêng từng bộ; Nền N: bo.N.buoc từ đầu; E2E: bo.E2E.frappe). Mỗi bước: ghim đồng hồ = 'gio' — hoặc 'gio_frappe' khi bước có trường ấy (patch frappe.utils.now_datetime / nowdate / getdate(None) hoặc frappe.flags.current_date), đặt người (NguCanh như tests/test_kho_mua_vang.py), gọi nppsale.cong.api.rpc(ten=<rpc>, tham_so=<tham_so đã giải chỗ giữ>) — tên RPC Frappe trùng nppsale; bước 'ghi_cong' = cổng bảng (nppsale.cong — insert / update dưới đúng người); bước 'ghi_may_chu' theo trường 'frappe' của bước ('BỎ QUA' = không làm gì — vd kb/03 dời giờ phiếu xuất: Frappe ghi sổ kho theo posting_date; kb/06: đã ghim ở gio_frappe).",
+  "Lô hạt giống Sổ BC (nen.S.lo): post_stock_import lúc nen.S.gio_hat_giong (Batch.creation = 16/11/2026 20:50:26 VN — chính là lo[].created_at trong mong) với ngày nhận / posted_at = nhan_luc (01/10/2026 08:00 VN — khoá FIFO, sổ kho lùi ngày); mỗi mặt hàng MỘT lô giá cố định. Lô Nền N lập ở các bước post_stock_import của bo.N.buoc (giờ bước = Batch.creation).",
+  "Sau khi dựng, so sổ với 'bo.<bộ>.anh_chup' (HĐ, đơn, phiếu trả, công nợ, khoản thu, tồn lô; Nền N thêm nợ NCC / trả NCC / chi phí) trước khi so báo cáo — lệch ở đây là lỗi bộ dựng, không phải lỗi báo cáo; TRỪ các trường ghi ở 'bo.<bộ>.cho_sua_p3' (hạn dòng nợ âm — 🔧 P3-HAN-NO-AM: Frappe hiện tại ra 'han_frappe_hien_tai'). Phiếu kho của HĐ / nhập lại trên Frappe là chính chứng từ (không so mã XK-/NL-); E2E không so 'lo'.",
+  "Giải chỗ giữ: '@don:' / '@hd:' / '@pt:' → name Frappe của chứng từ có nhãn ấy (ghi lại từ kết quả bước lập — 'nhan' của bước; mã Frappe có thể khác 'DH-0001' / 'HD-0001' / 'PT-0001'); 'nhan_phu' = chứng từ lập NGẦM cùng bước (phiếu trả tự sinh từ phần trả của đơn: bên Frappe là NPP Phieu Tra tu_sinh của đơn ấy); chèn qua cổng ('ghi_cong' insert có 'nhan' — '@pk:<mã>', '@ptncc:<mã>', '@cp:<mã>'): cổng Frappe BỎ QUA id / mã gửi lên (COT_BO — rpc/kho_tay.py:61, rpc/tra_ncc.py:59) và tự đặt name XKL- / PTNCC- … → chỗ giữ = name cổng trả về; '@pk:<mã>' của post_stock_import = name phiếu nhập kho trả về; '@dong_xuat:<đơn>' → get_invoiceable_lines(đơn) (SL còn lại, giá, hàng đổi) như màn Xuất hàng; '@dong_sua:<HĐ>' + doi_sl → dòng hiện có của HĐ, đổi SL / giá theo '<SKU>/<ĐV>'; '@no:hd:<HĐ>' → NPP Cong No của HĐ; '@no_ncc:<số HĐ NCC>' / '@no_ncc:dk:<NCC>' → NPP Cong No NCC.",
+  "Gọi báo cáo: mỗi tinh_huong.goi dưới 'nguoi', đồng hồ 'gio', tham số 'tham_so' (giữ chuỗi như GET gửi — '' / 'abc' / '2026-02-30' phải ra 22007 / 22008); 'bang:<tên>' = câu đọc cổng bảng (nppsale.cong.truy_van.doc) dưới người ấy (tham_so.loc = [(cột, toán tử, giá trị)]); 'bien_the' (Nền N) = sửa sổ trong điểm lưu trước lời gọi theo bien_the.frappe (+ bang_frappe), lui sau; 'chi_nppsale' = bỏ.",
+  "Chuẩn hoá kết quả Frappe y như tệp vàng (quy_uoc) rồi so với 'mong_frappe' nếu có, không thì 'mong' — chỉ phần khoá 'chon' (+ '_khoa' = bộ khoá đủ; Frappe thêm 'tinh_lai_gia_von' nếu chốt Q12 — bỏ khoá ấy khi so bộ khoá). Mảng không thứ tự so như tập (đã xếp); list hàm TABLE so có thứ tự. Lời gọi có 'cho_sua_p3': tới khi P3 sửa hạn dòng nợ âm (viec_cho_sua) đánh dấu expectedFailure / so với cho_sua_p3.kq_frappe_hien_tai để biết chỉ lệch đúng chỗ ấy.",
+  "Ánh xạ khoá: NV = email ('nen.*.nguoi'); khách = SĐT (Customer.npp_sdt); hàng = SKU (item_code); lô = '<mã lô>::<vùng>'; công nợ 'no:<chứng từ>'; khoản thu 'thu:<chứng từ>:<tiền>'; nợ NCC 'no_ncc:<số HĐ NCC | dk:<NCC>>'; NPP B tiền tố 'B:'. Nền N: nhãn đặc tả §5.4 (HD1…, R1…, RC1…, PM1…, PY1…, PP1…, X1…) ↔ khoá ở bo.N.nhan_dac_ta — bài giữ bảng ánh xạ name Frappe → khoá khi dựng.",
+  "Lời gọi 'ts:ban_hang' / 'ts:xnt': chạy mã TS của portal (tools/vang_bao_cao_ts.ts — cùng hàm tuMotLuot → dungDongBan → congBan / congHangBanNhanVien / congLoiNhuanNhanVien, napBienDong + tinhXnt) trên kết quả bao_cao_so_ban / cổng stock_entries của Frappe, hoặc chỉ so phần máy chủ và coi số TS là kỳ vọng giao diện (bài e2e portal).",
+  "Kịch bản 'nguon' gồm 'dac_ta' (giao diện / chỉ Frappe): kiểm theo 'ky_vong_dac_ta' bằng bài e2e portal hoặc bài riêng; 'cho': 'P8' = để tới P8; 'can_frappe' = điều kiện phải xong trước (gồm điều kiện riêng của kịch bản).",
   "Thứ tự dựng gợi ý theo §4.2: P6-2 (A01–A15, E01, E06, E09, E15, E16) → P6-3 (B01–B06, E10) → P6-4 (C01–C04) → P6-5 (A16, D01–D20, E07, E08, E12) sau P4 + P7 chi phí; 'can_frappe' của từng kịch bản ghi điều kiện."
  ],
  "ghim_dong_ho": {
@@ -167,7 +168,8 @@
      "sl": 2000,
      "gia_von": 7000,
      "kho": "sale",
-     "nhan_luc": "2026-10-01T08:00:00+07:00"
+     "nhan_luc": "2026-10-01T08:00:00+07:00",
+     "tao_luc": "2026-11-16T20:50:26+07:00"
     },
     "L2": {
      "sku": "SP2",
@@ -175,7 +177,8 @@
      "sl": 2000,
      "gia_von": 3000,
      "kho": "sale",
-     "nhan_luc": "2026-10-01T08:00:00+07:00"
+     "nhan_luc": "2026-10-01T08:00:00+07:00",
+     "tao_luc": "2026-11-16T20:50:26+07:00"
     },
     "L3": {
      "sku": "SP3",
@@ -183,7 +186,8 @@
      "sl": 2000,
      "gia_von": 1000,
      "kho": "sale",
-     "nhan_luc": "2026-10-01T08:00:00+07:00"
+     "nhan_luc": "2026-10-01T08:00:00+07:00",
+     "tao_luc": "2026-11-16T20:50:26+07:00"
     }
    },
    "gio_hat_giong": "2026-11-16T20:50:26+07:00",
@@ -237,32 +241,93 @@
    },
    "khach": {
     "0900000001": {
-     "ten": "Tạp hoá Một"
+     "ten": "Tạp hoá Một",
+     "han_muc": 5000000
     },
     "0900000002": {
-     "ten": "Tạp hoá Hai"
+     "ten": "Tạp hoá Hai",
+     "han_muc": null
     },
     "0900000003": {
-     "ten": "Tạp hoá Ba"
+     "ten": "Tạp hoá Ba",
+     "han_muc": 0
     },
     "0900000009": {
-     "ten": "Khách B"
+     "ten": "Khách B",
+     "han_muc": 0,
+     "npp": "B"
     }
    },
+   "phan_cong": [
+    {
+     "khach": "0900000001",
+     "nv": "nv.mot@nenn.vn",
+     "vai_tro": "primary",
+     "trang_thai": "active"
+    },
+    {
+     "khach": "0900000002",
+     "nv": "nv.hai@nenn.vn",
+     "vai_tro": "primary",
+     "trang_thai": "active"
+    }
+   ],
    "hang": {
     "SP1": {
      "ten": "Nước ngọt",
-     "dv_co_so": "Lon"
+     "dv_co_so": "Lon",
+     "quy_doi": {
+      "Thùng": 24
+     },
+     "vat": 0
     },
     "SP2": {
      "ten": "Dầu ăn",
-     "dv_co_so": "Chai"
+     "dv_co_so": "Chai",
+     "quy_doi": {},
+     "vat": 0
     },
-    "SPB": {
+    "B:SPB": {
      "ten": "Hàng B",
-     "dv_co_so": "Cái"
+     "dv_co_so": "Cái",
+     "quy_doi": {},
+     "vat": 0
     }
    },
+   "ncc": {
+    "NCC Một": {
+     "ma": "N1"
+    },
+    "NCC Hai": {
+     "ma": "N2"
+    },
+    "NCC Ba": {
+     "ma": null
+    }
+   },
+   "danh_muc_chi_phi": {
+    "RENT": {
+     "ten": "Thuê kho",
+     "nhom": "operating"
+    },
+    "SALARY": {
+     "ten": "Lương",
+     "nhom": "hr"
+    },
+    "COGS_ADJ": {
+     "ten": "Điều chỉnh kiểm kê",
+     "nhom": "cogs"
+    },
+    "FIN": {
+     "ten": "Lãi vay",
+     "nhom": "financial"
+    },
+    "TAX": {
+     "ten": "Thuế môn bài",
+     "nhom": "tax"
+    }
+   },
+   "gio_hat_giong": "2026-08-01T07:00:00+07:00",
    "gio_doc": "2026-11-16T12:00:00+07:00"
   },
   "E2E": {
@@ -376,6 +441,7 @@
      },
      "gio": "2026-11-16T20:50:47+07:00",
      "nhan": "DH-0001",
+     "nhan_phu": "PT-0001",
      "kq": {
       "ok": true,
       "tra": {
@@ -1071,6 +1137,7 @@
      "hanh_dong": "insert",
      "gio": "2026-11-16T20:53:50+07:00",
      "ly_do": "phiếu xuất kho lẻ NHÁP lập qua bảng như màn /inventory/stock-issue (kb/06_xuat_kho.sql)",
+     "nhan": "@pk:XK-HUY-01",
      "gia_tri": {
       "id": "@pk:XK-HUY-01",
       "org_id": "@org",
@@ -1125,6 +1192,8 @@
      "gio": "2026-11-16T20:53:51+07:00",
      "nhan": "XK-HUY-01",
      "ghi_chu": "nppsale: dòng phiếu giữ unit_cost 0 (giá thật chỉ ở stock_line_consumptions) — Q2 chốt chéo P4: Frappe cổng / NGUON_DONG_XUAT cũng 0",
+     "frappe": "post_stock_issue ghim đồng hồ = gio_frappe 2026-11-18 10:00 VN (posting_date / ghi sổ kho của XKL-)",
+     "gio_frappe": "2026-11-18T10:00:00+07:00",
      "kq": {
       "ok": true,
       "tra": {
@@ -1139,6 +1208,7 @@
      "hanh_dong": "insert",
      "gio": "2026-11-16T20:53:50+07:00",
      "ly_do": "phiếu xuất kho lẻ NHÁP lập qua bảng như màn /inventory/stock-issue (kb/06_xuat_kho.sql)",
+     "nhan": "@pk:XK-MAU-02",
      "gia_tri": {
       "id": "@pk:XK-MAU-02",
       "org_id": "@org",
@@ -1193,6 +1263,8 @@
      "gio": "2026-11-16T20:53:51+07:00",
      "nhan": "XK-MAU-02",
      "ghi_chu": "nppsale: dòng phiếu giữ unit_cost 0 (giá thật chỉ ở stock_line_consumptions) — Q2 chốt chéo P4: Frappe cổng / NGUON_DONG_XUAT cũng 0",
+     "frappe": "post_stock_issue ghim đồng hồ = gio_frappe 2026-12-01 00:00 VN (posting_date / ghi sổ kho của XKL-)",
+     "gio_frappe": "2026-12-01T00:00:00+07:00",
      "kq": {
       "ok": true,
       "tra": {
@@ -1207,7 +1279,7 @@
      "sql": "UPDATE stock_entries SET posted_at = '2026-11-18T10:00:00+07:00' WHERE entry_code = 'XK-HUY-01'; UPDATE stock_entries SET posted_at = '2026-12-01T00:00:00+07:00' WHERE entry_code = 'XK-MAU-02';",
      "gio": "2026-11-16T20:53:55+07:00",
      "ly_do": "kb/06_xuat_kho.sql: post_stock_issue ghi sổ lúc bấm — dời về giờ ghi sổ của kịch bản (biên tháng + múi giờ)",
-     "frappe": "ghim đồng hồ bước post_stock_issue: XK-HUY-01 lúc 18/11 10:00, XK-MAU-02 lúc 01/12 00:00 (posting_date 01/12)",
+     "frappe": "BỎ QUA — đã ghim ở chính bước post_stock_issue (gio_frappe: XK-HUY-01 18/11 10:00, XK-MAU-02 01/12 00:00 VN)",
      "kq": {
       "ok": true,
       "tra": null
@@ -1305,6 +1377,7 @@
      },
      "gio": "2026-11-16T20:59:34+07:00",
      "nhan": "DH-0005",
+     "nhan_phu": "PT-0007",
      "kq": {
       "ok": true,
       "tra": {
@@ -2962,6 +3035,7 @@
      },
      "gio": "2026-11-16T21:02:09+07:00",
      "nhan": "DH-0006",
+     "nhan_phu": "PT-0008",
      "kq": {
       "ok": true,
       "tra": {
@@ -6394,6 +6468,7 @@
      "hanh_dong": "insert",
      "gio": "2026-11-19T10:00:00+07:00",
      "ly_do": "phiếu trả NCC NHÁP qua bảng như màn /pos/tra-ncc",
+     "nhan": "@ptncc:TRNCC-1",
      "gia_tri": {
       "id": "@ptncc:TRNCC-1",
       "org_id": "@org",
@@ -8031,7 +8106,7 @@
    }
   },
   "N": {
-   "mo_ta": "tam",
+   "mo_ta": "Nền N (§5.4) — DỰNG LẠI bằng RPC nppsale thật (soát SOAT-VBC-01: bản dựng tay của bước đặc tả — bc_vung_tc/nen.sql, trigger tắt — mâu thuẫn với chính nó và với luật Frappe nên không phát lại được): hạt giống (danh mục) + từng bước dưới đúng người, đồng hồ ghim theo ngày giờ thật của chứng từ; bài Frappe phát lại y bo.N.buoc rồi so sổ với anh_chup. Mã đơn / HĐ / phiếu trả đánh số theo thứ tự lập — nhãn đặc tả ↔ khoá: nhan_dac_ta.",
    "goc": null,
    "buoc": [
     {
@@ -9948,15 +10023,11 @@
     }
    ],
    "frappe": [
-    "NPP A = site; người: Chủ, Quản lý, Kế toán, Thủ kho, NV Một, NV Hai (sales), Bị khoá (owner, dang_hoat_dong = 0); NPP B (Chủ B) không dựng được (một site = một NPP — R16): mọi lời gọi của Chủ B mang chi_nppsale.",
-    "Danh mục: K1 Tạp hoá Một (0900000001, hạn mức 5.000.000, NV Một chính), K2 Tạp hoá Hai (0900000002, hạn mức trống, NV Hai chính), K3 Tạp hoá Ba (0900000003, hạn mức 0, không phân công); SP1 Nước ngọt (cơ sở Lon, Thùng = 24), SP2 Dầu ăn (Chai); NCC Một (mã N1), NCC Hai (N2), NCC Ba (mã trống).",
-    "HĐ (create_order_with_lines + post_invoice ghim ngày HĐ, NV đơn = NV HĐ): HD1 K1 / NV Một 02/11 4.640.500 (SP1 5 Thùng + SP2 10 Chai + SP2 1 Chai ĐỔI 0 đ); HD2 K2 / NV Hai 05/11 2.000.000 (SP2 20); HD3 K1 / NV Một 20/10 1.000.000 (SP1 2 Thùng); HD4 K3 / NV Hai 10/11 500.000 (SP2 5) rồi cancel_invoice; HD5 K2 / NV Một 01/11 300.000 (SP1 1 Thùng — ghim giờ ghi sổ 01/11 00:30 VN); HD6 K3 / NV Hai 15/09 400.000 (SP2 6).",
-    "Giá vốn: lô L-A SP1 8.000 / lon (kho bán), L-B SP2 60.000 (kho bán), L-C SP2 50.000 (tồn 0), L-D SP1 7.500 (kho date) — tồn cuối phải = du_lieu.lo (nhập đầu kỳ đủ để sau mọi xuất / nhập còn đúng số; mỗi mặt hàng xuất từ lô có giá nêu ở phiếu kho để giá vốn kỳ khớp). E15 (HĐ6 tháng 9, 55.000) không ảnh hưởng kịch bản nào ngoài dòng tồn kho 90 ngày.",
-    "Phiếu trả: R1 tự sinh theo HD1 (Chờ xử lý, 1.652.000); R2 tự lập gắn HD2 Hoàn thành ngày 08/11 (200.000; phiếu nhập lại 2 Chai × 60.000 ghi sổ 08/11); R3 Nháp (100.000); R4 tự lập Hoàn thành rồi Huỷ (60.000 — Frappe: chứng từ nhập lại docstatus 2, không phiếu 'Đảo'); R5 tự lập K2 / NV Hai không HĐ Hoàn thành 11/11 (250.000; nhập lại 1 Thùng SP1 × 8.000 ghi sổ 11/11) → dòng công nợ âm RC6.",
-    "Công nợ / khoản thu (create_cash_receipt ghim giờ; ghi thẳng có kiểm soát chỗ không có RPC): RC3 trả dư = HĐ3 1.200.000 thu đủ rồi Sửa HĐ giảm về 1.000.000 (P3d phương án B); RC4 (HD5) dấu quá hạn bấm tay (cổng receivables status); RC5 nợ đầu kỳ K3 700.000 hạn 01/08 (ghi_no_dau_ky) + PM7 50.000 'return_credit' (luồng cũ — ghi thẳng); RC6 / PM5 / PM6 = phiếu thu cấn trừ dư có R5 sang RC2 (±100.000 credit_applied); PM1 RC1 1.000.000 tiền mặt 03/11 10:00; PM2 RC3 1.000.000 chuyển khoản 25/10; PM3 RC3 200.000 tiền mặt 01/11 06:30; PM4 RC7 400.000 tiền mặt 20/09.",
-    "Kho khác: E6 xuất lẻ 'Hư hỏng' 24 lon SP1 ngày 12/11 (post_stock_issue — Frappe giá 0, Q2); E7 trả NCC TH-1 3 Chai SP2 NCC Một ngày 13/11 (complete_supplier_return — giá lô 60.000; nợ âm PY2 −500.000); E11 xuất lẻ NHÁP 4 Chai (Stock Entry docstatus 0); E12 / E13 phiếu nhập NCC (PY1 / PY5 / PY6).",
-    "NCC (P4): PY1 N1 phiếu nhập 10.000.000 ngày 04/11 (PP1 Ghi trả 4.000.000 chuyển khoản 06/11 14:00); PY3 N2 nợ đầu kỳ 2.000.000 dấu quá hạn (PP4 bù trừ 200.000 'offset' 09/11 — JE bu_tru_ncc); PY4 N3 trả trước 300.000 (chi_tra_ncc 07/11 09:00, không phiếu nhập); PY5 N2 phiếu nhập 1.000.000 ngày 10/10 trả đủ 15/10; PY6 N2 phiếu nhập 700.000 lúc 01/11 05:00 VN trả đủ 01/11 05:00.",
-    "Chi phí (P7 — NPP Phieu Chi; chưa có RPC phiếu chi tay → ghi thẳng): X1 Thuê kho (operating) 3.000.000 ngày 03/11 trả 03/11 09:00; X2 Lương (hr) 5.000.000 15/11 chưa trả; X3 COGS_ADJ (cogs, nguồn stocktake) 150.000 12/11 chưa trả; X4 Lãi vay (financial) 100.000 ngày 28/10 trả 02/11 08:00; X5 không danh mục 50.000 20/11 trả 20/11 09:00; X6 Thuế (tax) 80.000 05/11 trả 06/11 10:00."
+    "NPP A = site; người: Chủ, Quản lý, Kế toán, Thủ kho, NV Một, NV Hai (sales), Bị khoá (owner, dang_hoat_dong = 0 — vai None, mọi hàm rỗng đúng dạng). NPP B (Chủ B) không dựng được (một site = một NPP — R16): mọi bước / lời gọi của Chủ B mang chi_nppsale (bài bỏ).",
+    "Danh mục (nen.N): khách K1 Tạp hoá Một (0900000001, hạn mức 5.000.000, NV Một chính), K2 Tạp hoá Hai (0900000002, hạn mức trống, NV Hai chính), K3 Tạp hoá Ba (0900000003, hạn mức 0, không phân công); hàng SP1 Nước ngọt (cơ sở Lon, Thùng = 24), SP2 Dầu ăn (Chai), VAT 0, không giá bán / bảng giá; NCC Một (mã N1), NCC Hai (N2), NCC Ba (mã trống); danh mục chi phí RENT (operating), SALARY (hr), COGS_ADJ (cogs), FIN (financial), TAX (tax).",
+    "Bước (bo.N.buoc, thứ tự thời gian): tên RPC Frappe trùng nppsale (P3 / P3d / P4: create_order_with_lines, post_invoice, reissue_invoice, cancel_invoice, create_return_with_lines, complete_return, cancel_return, create_cash_receipt (kể cả use_credit), post_stock_import, post_stock_issue, complete_supplier_return, record_payable_payment (kể cả 'offset' = bù trừ NCC), chi_tra_ncc); 'ghi_cong' = cổng bảng (nợ đầu kỳ, nợ NCC đầu kỳ / lập tay gắn phiếu nhập kho, dấu quá hạn, phiếu nháp xuất lẻ / trả NCC); chi phí X1…X6 (_chi_phi): P7 chưa có — ghi thẳng NPP Phieu Chi theo 'frappe' của bước; 'ghi_may_chu' duy nhất = PM7 (khoản thu 'return_credit' kiểu cũ — dữ liệu chuyển P8, ghi thẳng NPP Cong No.da_thu 50.000).",
+    "Nhận mã: '@pk:<mã>' của post_stock_import = name phiếu nhập kho Frappe trả về (cổng bỏ qua mã gửi lên); '@no_ncc:<số HĐ NCC>' = dòng NPP Cong No NCC của tờ NTN- lập tay; '@cp:<X>' = phiếu chi P7; '@ptncc:TH-1' = name phiếu trả NCC nháp cổng trả về; phiếu trả tự sinh của đơn (nhan_phu) = NPP Phieu Tra tu_sinh của đơn ấy.",
+    "Khác có chủ ý với nppsale trên nền này (mong_frappe tự động): Q1 — tờ sửa HD-0002-1 (HĐ3 đặc tả, ngày 05/10) ghi sổ kho theo posting_date 05/10 (nppsale: lúc bấm 01/11 07:00 → giá vốn tháng 11); Q3 — NV Một không thấy giá vốn; Q9 — phiếu xuất của HĐ huỷ HD-0006 loại với mọi vai; phiếu 'Đảo phiếu trả' / nhập '(đã đảo)' của PT-0004 không có (huỷ = docstatus 2 — nppsale loại khỏi số, cùng kết quả)."
    ],
    "nhan_dac_ta": {
     "HD1": "HD-0004",
@@ -10899,10 +10970,15 @@
    }
   },
   "E2E": {
-   "mo_ta": "Bộ e2e một lượt (e2e/bao-cao-cu-mot-luot.spec.ts, 29/09/2026) + hai dòng nợ VB-E04 (e2e/bao-cao-tong-hop.spec.ts) — chèn thẳng như sổ giả e2e (id chữ của e2e → uuid GIỮ thứ tự HD-ML-A < HD-ML-B)",
+   "mo_ta": "Bộ e2e một lượt (e2e/bao-cao-cu-mot-luot.spec.ts, 29/09/2026) + hai dòng nợ VB-E04 (e2e/bao-cao-tong-hop.spec.ts) — chèn thẳng như sổ giả e2e (id chữ của e2e → uuid GIỮ thứ tự HD-ML-A < HD-ML-B); thêm khoản thu 200.000 05/09 cho dòng nợ Cô Ba và hạn 10/09 cho dòng dư có (soát SOAT-VBC-04 — sổ thật không có 'đã thu' mà không khoản thu, dòng dư có thật có hạn = ngày phiếu)",
    "goc": null,
    "frappe": [
-    "HĐ / phiếu trả / phiếu kho chèn thẳng có kiểm soát (phiếu trả không NV, không HĐ chỉ có ở dữ liệu chuyển); bảng giá chung: thùng 450.000, hộp 20.000; Item.npp_gia_ban 20.000; mã HĐ giữ thứ tự HD-ML-A < HD-ML-B theo mã điểm"
+    "Danh mục (nen.E2E): NPP E2E = site; Chủ (owner), NV A, NV B (sales); hàng ML1 'Sữa một lượt' (cơ sở hộp, thùng = 24, Item.npp_gia_ban 20.000, bảng giá chung thùng 450.000 / hộp 20.000); khách Khách Một Lượt (0912000001), Tạp hoá Cô Ba (0912000002), Đại lý Minh (0912000003) — COD, hạn mức 0.",
+    "Lô: post_stock_import ML1 ≥ 66 hộp giá 15.000 trước 29/09 (vd 28/09 08:00) — sổ giả e2e không có lô (anh_chup.lo = [] — KHÔNG so lô của bộ E2E).",
+    "HĐ (lập theo thứ tự để mã giữ HD-ML-A < HD-ML-B theo mã điểm — nhanVienPhieuTra đoán NV phiếu trả cũ theo HĐ GẶP TRƯỚC): create_order_with_lines + post_invoice ghim 29/09/2026 10:00, invoice_date 29/09: (1) NV A: 2 thùng × 470.000 + ĐỔI 3 hộp (phần đổi trả của đơn), giảm giá đơn 20.000 → total 920.000; (2) NV B: 10 hộp × 21.000 = 210.000; (3) NV A: 5 hộp × 20.000 rồi cancel_invoice (HD-ML-HUY). Frappe xuất kho MỌI dòng kể cả dòng đổi → gv 61 hộp / 915.000 (mong_frappe — sổ giả e2e SE-ML-1 58 hộp / 870.000).",
+    "TR-ML-1: phiếu trả completed KHÔNG NV, KHÔNG HĐ, tiền 42.000 (2 hộp × 21.000), ngày trừ doanh số 29/09, tạo 29/09 13:00 VN — chỉ có ở dữ liệu chuyển (phiếu tự lập Frappe luôn có người): ghi thẳng NPP Phieu Tra (+ dòng) + phiếu nhập lại NL- 2 hộp giá 15.000 nối Link npp_phieu_tra (gv_tra 30.000).",
+    "SE-ML-DAO ('Đảo phiếu trả …', 7 hộp giá 0): KHÔNG dựng — Frappe không có phiếu đảo (nppsale loại nó khỏi số).",
+    "VB-E04: HD-E2E-1 (Tạp hoá Cô Ba, Chủ đứng tên, NET12, ngày 20/08, 900.000) + create_cash_receipt 200.000 tiền mặt ghim 05/09/2026 09:00 → nợ 900.000 / 200.000 partial hạn 01/09; TR-E2E-1 (Đại lý Minh, tự lập không HĐ, 150.000, Chủ, Hoàn thành ghim 10/09) → dòng dư có −150.000 hạn 10/09."
    ],
    "anh_chup": {
     "hd": [
@@ -10982,7 +11058,14 @@
       "status": "cancelled"
      }
     ],
-    "thu": [],
+    "thu": [
+     {
+      "id": "thu:HD-E2E-1:200000",
+      "luc": "2026-09-05T09:00:00+07:00",
+      "amount": 200000,
+      "method": "cash"
+     }
+    ],
     "cong_no": [
      {
       "id": "no:HD-E2E-1",
@@ -10996,7 +11079,7 @@
      {
       "id": "no:TR-E2E-1",
       "nv": "chu@e2e.vn",
-      "han": null,
+      "han": "2026-09-10",
       "paid": 0,
       "khach": "0912000003",
       "amount": -150000,
@@ -12017,6 +12100,22 @@
         }
        },
        "gia_von_xuat": 935000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.an@sobc.vn",
+         "orders": 2,
+         "revenue": 484000,
+         "cogs": 340000,
+         "profit": 144000
+        },
+        {
+         "id": "nv.binh@sobc.vn",
+         "orders": 1,
+         "revenue": 317760,
+         "cogs": 216000,
+         "profit": 101760
+        }
+       ],
        "gia_von_co_so": {
         "SP1": 7000,
         "SP2": 3000,
@@ -12396,6 +12495,22 @@
         }
        },
        "gia_von_xuat": 767000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.an@sobc.vn",
+         "orders": 2,
+         "revenue": 484000,
+         "cogs": 340000,
+         "profit": 144000
+        },
+        {
+         "id": "nv.binh@sobc.vn",
+         "orders": 1,
+         "revenue": 317760,
+         "cogs": 216000,
+         "profit": 101760
+        }
+       ],
        "gia_von_co_so": {
         "SP1": 7000,
         "SP2": 3000,
@@ -13301,6 +13416,15 @@
         }
        },
        "gia_von_xuat": 1439000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.an@sobc.vn",
+         "orders": 2,
+         "revenue": 484000,
+         "cogs": 340000,
+         "profit": 144000
+        }
+       ],
        "gia_von_co_so": {
         "SP1": 7000,
         "SP2": 3000,
@@ -13546,6 +13670,15 @@
         }
        },
        "gia_von_xuat": 0,
+       "nv_reports_sales": [
+        {
+         "id": "nv.an@sobc.vn",
+         "orders": 2,
+         "revenue": 484000,
+         "cogs": 0,
+         "profit": 484000
+        }
+       ],
        "gia_von_co_so": {
         "SP1": 0,
         "SP2": 0,
@@ -17265,7 +17398,7 @@
    "can_frappe": [
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
     "P6-3",
-    "cổng bảng đã có (P3)",
+    "cổng bảng đã có (P3 / P4)",
     "mã TS portal/nguon (giao diện chạy nguyên trên cổng)"
    ],
    "goi": [
@@ -18262,6 +18395,22 @@
         }
        },
        "gia_von_xuat": 929000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.an@sobc.vn",
+         "orders": 2,
+         "revenue": 484000,
+         "cogs": 340000,
+         "profit": 144000
+        },
+        {
+         "id": "nv.binh@sobc.vn",
+         "orders": 1,
+         "revenue": 308040,
+         "cogs": 210000,
+         "profit": 98040
+        }
+       ],
        "gia_von_co_so": {
         "SP1": 7000,
         "SP2": 3000,
@@ -18641,6 +18790,22 @@
         }
        },
        "gia_von_xuat": 761000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.an@sobc.vn",
+         "orders": 2,
+         "revenue": 484000,
+         "cogs": 340000,
+         "profit": 144000
+        },
+        {
+         "id": "nv.binh@sobc.vn",
+         "orders": 1,
+         "revenue": 308040,
+         "cogs": 210000,
+         "profit": 98040
+        }
+       ],
        "gia_von_co_so": {
         "SP1": 7000,
         "SP2": 3000,
@@ -19480,7 +19645,7 @@
    "nguon": "chay_that",
    "can_frappe": [
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
-    "cổng bảng đã có (P3)"
+    "cổng bảng đã có (P3 / P4)"
    ],
    "goi": [
     {
@@ -20330,7 +20495,7 @@
    "nguon": "chay_that",
    "can_frappe": [
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
-    "cổng bảng đã có (P3)"
+    "cổng bảng đã có (P3 / P4)"
    ],
    "goi": [
     {
@@ -20788,7 +20953,7 @@
    "can_frappe": [
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
     "P6-3",
-    "cổng bảng đã có (P3)"
+    "cổng bảng đã có (P3 / P4)"
    ],
    "goi": [
     {
@@ -21710,7 +21875,7 @@
    "can_frappe": [
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
     "P6-3",
-    "cổng bảng đã có (P3)"
+    "cổng bảng đã có (P3 / P4)"
    ],
    "goi": [
     {
@@ -26235,7 +26400,7 @@
    "bo": "S1",
    "nguon": "chay_that",
    "can_frappe": [
-    "cổng bảng đã có (P3)"
+    "cổng bảng đã có (P3 / P4)"
    ],
    "goi": [
     {
@@ -28103,7 +28268,10 @@
     }
    ],
    "lech_frappe": [
-    "Frappe: hàm DEFINER không lọc người đứng tên HĐ; bao_cao_so_ban (INVOKER) dưới NV Bình không có HĐ mới"
+    "Frappe: hàm DEFINER không lọc người đứng tên HĐ; bao_cao_so_ban (INVOKER) dưới NV Bình không có HĐ mới",
+    "Q1 (⚠K): giá vốn kỳ theo posting_date = NGÀY HĐ (nppsale theo lúc ghi sổ phiếu xuất) — HĐ4 đề 31/10 ghi sổ 01/11 06:30 VN: nppsale vào tháng 11, Frappe vào tháng 10",
+    "Q3 (⚠K): người thiếu ô inventory.cost (NVBH mặc định) nhận MỌI số giá vốn = null; số lượng không che (nppsale chỉ ẩn ở giao diện)",
+    "soát VB-C04: bao_cao_so_ban dưới NV Bình mang mong_frappe (luật tự động) — gv SP1 96 (HĐ4 sang tháng 10), SP2 30, SP3 18, mọi tien null; gv_tra tien null"
    ],
    "doi_chieu": [
     {
@@ -34556,6 +34724,22 @@
         }
        },
        "gia_von_xuat": 870000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -34772,6 +34956,22 @@
         }
        },
        "gia_von_xuat": 915000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -34955,8 +35155,9 @@
     }
    ],
    "lech_frappe": [
-    "bộ E2E: phiếu trả TR-ML-1 KHÔNG NV, KHÔNG HĐ chỉ có từ dữ liệu chuyển (phiếu tự lập Frappe luôn có người) → bài dựng bằng ghi thẳng; mã HĐ phải giữ thứ tự HD-ML-A < HD-ML-B theo mã điểm (nhanVienPhieuTra đoán NV theo HĐ GẶP TRƯỚC)",
-    "SE-ML-DAO ('Đảo phiếu trả') không tồn tại trên Frappe; SE-ML-HUY là phiếu của HĐ huỷ (docstatus 2) — cùng số"
+    "bộ E2E: phiếu trả TR-ML-1 KHÔNG NV, KHÔNG HĐ chỉ có từ dữ liệu chuyển (phiếu tự lập Frappe luôn có người) → bài dựng bằng ghi thẳng; mã HĐ phải giữ thứ tự HD-ML-A < HD-ML-B theo mã điểm (nhanVienPhieuTra đoán NV theo HĐ GẶP TRƯỚC); cách phát lại: bo.E2E.frappe",
+    "⚠ bộ E2E (soát SOAT-VBC-04): sổ giả e2e có MỘT phiếu xuất SE-ML-1 58 hộp cho hai HĐ — thiếu 3 hộp ĐỔI của HD-ML-A; Frappe phát lại bằng post_invoice xuất MỌI dòng kể cả dòng đổi (Phụ lục A 'gồm dòng đổi', như HĐ1 Sổ BC) → bao_cao_so_ban.gv ML1 61 / 915.000 và mã TS giaVonXuat 915.000 (mong_frappe); giá vốn cơ sở vẫn 15.000 nên cost / lãi gộp / theo NV không đổi",
+    "SE-ML-DAO ('Đảo phiếu trả') không tồn tại trên Frappe; SE-ML-HUY là phiếu của HĐ huỷ (docstatus 2) — nppsale loại cả hai, Frappe không có: phần ấy cùng số"
    ],
    "doi_chieu": [
     {
@@ -35413,6 +35614,22 @@
         }
        },
        "gia_von_xuat": 870000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -35629,6 +35846,22 @@
         }
        },
        "gia_von_xuat": 915000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -35813,11 +36046,25 @@
    ],
    "lech_frappe": [
     "Lần 2 (cổng trả PGRST202 cho bao_cao_so_ban) cần cổng stock_entries / stock_entry_lines với notes NGUYÊN VĂN 'Nhập lại từ phiếu trả <PT>' dựng từ Link cho NL- và HDT- có kho (§2.13, M13) — bài e2e portal khi P4 có cổng phiếu kho",
-    "R5: thứ tự id hai đường (mã điểm JS vs collation) — chưa đo"
+    "R5: thứ tự id hai đường (mã điểm JS vs collation) — chưa đo",
+    "soát VB-E02: số tab Nhân viên của /reports/sales lấy từ CHÍNH useMemo employeeRows của màn ấy (ts:ban_hang → nv_reports_sales), không từ dungDongBan của /bao-cao/ban-hang",
+    "⚠ bộ E2E (soát SOAT-VBC-04): sổ giả e2e có MỘT phiếu xuất SE-ML-1 58 hộp cho hai HĐ — thiếu 3 hộp ĐỔI của HD-ML-A; Frappe phát lại bằng post_invoice xuất MỌI dòng kể cả dòng đổi (Phụ lục A 'gồm dòng đổi', như HĐ1 Sổ BC) → bao_cao_so_ban.gv ML1 61 / 915.000 và mã TS giaVonXuat 915.000 (mong_frappe); giá vốn cơ sở vẫn 15.000 nên cost / lãi gộp / theo NV không đổi"
    ],
    "doi_chieu": [
     {
-     "muc": "tab Nhân viên (DT thuần — mã TS dungDongBan)",
+     "muc": "/reports/sales tab Nhân viên — DT thuần NV A / NV B (useMemo employeeRows chép từ reports/sales/page.tsx + congLoiNhuanNhanVien)",
+     "dac_ta": [
+      878000,
+      210000
+     ],
+     "chay": [
+      878000,
+      210000
+     ],
+     "khop": true
+    },
+    {
+     "muc": "/bao-cao/ban-hang theo NV (dungDongBan) cùng số",
      "dac_ta": [
       878000,
       210000
@@ -36265,7 +36512,11 @@
    ],
    "lech_frappe": [
     "my_sales_target Frappe = 0 tới P7 (NPP Cau Hinh Luong) — mục tiêu ẩn; nppsale = 0 vì sổ không có hr_salary_config",
-    "phần giao diện: chỉ đặc tả"
+    "phần giao diện: chỉ đặc tả",
+    "Q1 (⚠K): giá vốn kỳ theo posting_date = NGÀY HĐ (nppsale theo lúc ghi sổ phiếu xuất) — HĐ4 đề 31/10 ghi sổ 01/11 06:30 VN: nppsale vào tháng 11, Frappe vào tháng 10",
+    "Q3 (⚠K): người thiếu ô inventory.cost (NVBH mặc định) nhận MỌI số giá vốn = null; số lượng không che (nppsale chỉ ẩn ở giao diện)",
+    "Q9 (⚠K): không tái hiện quirk RLS — phiếu xuất của HĐ huỷ (docstatus 2) rơi với MỌI vai (nppsale: NVBH không thấy HĐ huỷ của NV khác nên cộng thêm)",
+    "soát VB-E03: bao_cao_so_ban dưới NV An mang mong_frappe = đúng mong_frappe của VB-A06#0 (gv SP1 96 / SP2 30 / SP3 15, mọi tien null; gv_tra tien null) — doanh số 774.000 − 290.000 không đổi"
    ],
    "doi_chieu": [
     {
@@ -36343,7 +36594,7 @@
          "amount": -150000,
          "status": "open",
          "invoice": null,
-         "due_date": null,
+         "due_date": "2026-09-10",
          "return_id": "TR-E2E-1",
          "created_at": "2026-09-10T10:00:00+07:00",
          "invoice_id": null,
@@ -36351,7 +36602,31 @@
          "sales_user_id": "chu@e2e.vn"
         }
        ],
-       "thu": [],
+       "thu": [
+        {
+         "id": "thu:HD-E2E-1:200000",
+         "amount": 200000,
+         "method": "cash",
+         "receivable": {
+          "id": "no:HD-E2E-1",
+          "paid": 200000,
+          "amount": 900000,
+          "status": "partial",
+          "invoice": {
+           "invoice_code": "HD-E2E-1",
+           "invoice_date": "2026-08-20"
+          },
+          "due_date": "2026-09-01",
+          "return_id": null,
+          "created_at": "2026-08-20T10:00:00+07:00",
+          "invoice_id": "HD-E2E-1",
+          "customer_id": "0912000002",
+          "sales_user_id": "chu@e2e.vn"
+         },
+         "collected_at": "2026-09-05T09:00:00+07:00",
+         "receivable_id": "no:HD-E2E-1"
+        }
+       ],
        "gan90": [
         {
          "id": "no:HD-E2E-1",
@@ -36375,7 +36650,7 @@
          "amount": -150000,
          "status": "open",
          "invoice": null,
-         "due_date": null,
+         "due_date": "2026-09-10",
          "return_id": "TR-E2E-1",
          "created_at": "2026-09-10T10:00:00+07:00",
          "invoice_id": null,
@@ -36729,6 +37004,22 @@
         }
        },
        "gia_von_xuat": 870000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -36945,6 +37236,22 @@
         }
        },
        "gia_von_xuat": 915000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -37128,7 +37435,8 @@
     }
    ],
    "lech_frappe": [
-    "bộ E2E: phiếu trả TR-ML-1 KHÔNG NV, KHÔNG HĐ chỉ có từ dữ liệu chuyển (phiếu tự lập Frappe luôn có người) → bài dựng bằng ghi thẳng; mã HĐ phải giữ thứ tự HD-ML-A < HD-ML-B theo mã điểm (nhanVienPhieuTra đoán NV theo HĐ GẶP TRƯỚC)",
+    "bộ E2E: phiếu trả TR-ML-1 KHÔNG NV, KHÔNG HĐ chỉ có từ dữ liệu chuyển (phiếu tự lập Frappe luôn có người) → bài dựng bằng ghi thẳng; mã HĐ phải giữ thứ tự HD-ML-A < HD-ML-B theo mã điểm (nhanVienPhieuTra đoán NV theo HĐ GẶP TRƯỚC); cách phát lại: bo.E2E.frappe",
+    "⚠ bộ E2E (soát SOAT-VBC-04): sổ giả e2e có MỘT phiếu xuất SE-ML-1 58 hộp cho hai HĐ — thiếu 3 hộp ĐỔI của HD-ML-A; Frappe phát lại bằng post_invoice xuất MỌI dòng kể cả dòng đổi (Phụ lục A 'gồm dòng đổi', như HĐ1 Sổ BC) → bao_cao_so_ban.gv ML1 61 / 915.000 và mã TS giaVonXuat 915.000 (mong_frappe); giá vốn cơ sở vẫn 15.000 nên cost / lãi gộp / theo NV không đổi",
     "C4 (🔧 P2): cổng price_lists chỉ bảng giá chung + bảng mặc định của nhóm khách — không thì 'Theo bảng giá' có thể lấy Standard Selling (VB-E15)"
    ],
    "doi_chieu": [
@@ -37476,7 +37784,7 @@
    "can_frappe": [
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
     "P6-5 + cổng expenses / expense_categories (P7 — Q14: tới khi có thì hàm ném PGRST202)",
-    "cổng bảng đã có (P3)"
+    "cổng bảng đã có (P3 / P4)"
    ],
    "goi": [
     {
@@ -38297,12 +38605,18 @@
   },
   {
    "ma": "VB-E08",
-   "ten": "◇ xuất kho lẻ + trả NCC vào giá vốn",
+   "ten": "◇ xuất kho lẻ + trả NCC vào giá vốn + XNT (Báo cáo tổng hợp › Kho)",
    "bo": "S9",
-   "nguon": "chay_that",
+   "nguon": [
+    "chay_that",
+    "ts",
+    "dac_ta"
+   ],
    "can_frappe": [
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
-    "P6-5 + cổng expenses / expense_categories (P7 — Q14: tới khi có thì hàm ném PGRST202)"
+    "P6-5 + cổng expenses / expense_categories (P7 — Q14: tới khi có thì hàm ném PGRST202)",
+    "cổng bảng đã có (P3 / P4)",
+    "cổng stock_entries / stock_entry_lines (P4 — ref_order_ids kiểu json, notes dựng từ Link) + mã TS nap-kho.ts"
    ],
    "goi": [
     {
@@ -38486,12 +38800,182 @@
        }
       ]
      }
+    },
+    {
+     "ham": "bang:stock_entries",
+     "nguoi": "CHU",
+     "tham_so": {
+      "loc": [
+       [
+        "type",
+        "eq",
+        "export"
+       ],
+       [
+        "status",
+        "eq",
+        "posted"
+       ],
+       [
+        "posted_at",
+        "gte",
+        "2026-11-01T00:00:00+07:00"
+       ],
+       [
+        "posted_at",
+        "lt",
+        "2026-12-01T00:00:00+07:00"
+       ]
+      ]
+     },
+     "gio": "2026-11-17T08:00:00+07:00",
+     "mong": {
+      "ok": true,
+      "kq": [
+       {
+        "id": "pk:XK-261116-205245",
+        "type": "export",
+        "notes": "Xuất theo đơn DH-0004",
+        "status": "posted",
+        "posted_at": "2026-11-01T06:30:00+07:00",
+        "ref_order_ids": [
+         "DH-0004"
+        ]
+       },
+       {
+        "id": "pk:XK-261116-205103",
+        "type": "export",
+        "notes": "Xuất theo đơn DH-0001",
+        "status": "posted",
+        "posted_at": "2026-11-03T09:00:00+07:00",
+        "ref_order_ids": [
+         "DH-0001"
+        ]
+       },
+       {
+        "id": "pk:XK-261116-205243",
+        "type": "export",
+        "notes": "Xuất theo đơn DH-0002",
+        "status": "posted",
+        "posted_at": "2026-11-10T09:00:00+07:00",
+        "ref_order_ids": [
+         "DH-0002"
+        ]
+       },
+       {
+        "id": "pk:XK-261116-205244",
+        "type": "export",
+        "notes": "Xuất theo đơn DH-0003",
+        "status": "posted",
+        "posted_at": "2026-11-15T09:00:00+07:00",
+        "ref_order_ids": [
+         "DH-0003"
+        ]
+       },
+       {
+        "id": "pk:XK-261116-205336",
+        "type": "export",
+        "notes": "Đảo phiếu trả PT-0005",
+        "status": "posted",
+        "posted_at": "2026-11-16T20:53:36+07:00",
+        "ref_order_ids": []
+       },
+       {
+        "id": "pk:XK-HUY-01",
+        "type": "export",
+        "notes": "Xuất huỷ hàng hỏng",
+        "status": "posted",
+        "posted_at": "2026-11-18T10:00:00+07:00",
+        "ref_order_ids": []
+       },
+       {
+        "id": "pk:XK-261119-100005",
+        "type": "export",
+        "notes": "Xuất kho trả NCC — phiếu PTNCC-0001 (kho: sale)",
+        "status": "posted",
+        "posted_at": "2026-11-19T10:00:05+07:00",
+        "ref_order_ids": []
+       },
+       {
+        "id": "pk:XK-261116-205935",
+        "type": "export",
+        "notes": "Xuất theo đơn DH-0005",
+        "status": "posted",
+        "posted_at": "2026-11-20T09:00:00+07:00",
+        "ref_order_ids": [
+         "DH-0005"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "ham": "ts:xnt",
+     "a": "2026-11-01",
+     "b": "2026-11-30",
+     "ghi_chu": "XNT tháng 11 của Báo cáo tổng hợp › Kho (man-kho.tsx: napBienDong + tinhXnt)",
+     "mong": {
+      "ok": true,
+      "kq": {
+       "xnt": {
+        "SP1": {
+         "sp": "SP1",
+         "dau": 2000,
+         "nhap": 72,
+         "ban": 192,
+         "tra": 33,
+         "khac": 6,
+         "cuoi": 1907
+        },
+        "SP2": {
+         "sp": "SP2",
+         "dau": 2000,
+         "nhap": 0,
+         "ban": 30,
+         "tra": 6,
+         "khac": 5,
+         "cuoi": 1971
+        },
+        "SP3": {
+         "sp": "SP3",
+         "dau": 2000,
+         "nhap": 0,
+         "ban": 5,
+         "tra": 5,
+         "khac": 10,
+         "cuoi": 1990
+        }
+       },
+       "loai": {
+        "NK-261116-205338/SP1": "nhap",
+        "NL-261116-205320/SP1": "tra",
+        "NL-261116-205320/SP3": "tra",
+        "NL-261116-205333/SP2": "tra",
+        "NL-261116-205334/SP1": "tra",
+        "NL-261116-205335/SP1": "tra",
+        "NL-261116-205337/SP2": "tra",
+        "XK-261116-205103/SP1": "ban",
+        "XK-261116-205103/SP2": "ban",
+        "XK-261116-205103/SP3": "ban",
+        "XK-261116-205243/SP1": "ban",
+        "XK-261116-205243/SP2": "ban",
+        "XK-261116-205244/SP1": "ban",
+        "XK-261116-205245/SP1": "ban",
+        "XK-261116-205336/SP1": "khac",
+        "XK-261116-205935/SP1": "ban",
+        "XK-261119-100005/SP2": "khac",
+        "XK-HUY-01/SP3": "khac",
+        "XK-MAU-02/SP2": "khac"
+       }
+      }
+     }
     }
    ],
    "lech_frappe": [
     "Q1 (⚠K): giá vốn kỳ theo posting_date = NGÀY HĐ (nppsale theo lúc ghi sổ phiếu xuất) — HĐ4 đề 31/10 ghi sổ 01/11 06:30 VN: nppsale vào tháng 11, Frappe vào tháng 10",
     "Q2 = 0 (chốt chéo P4 — ƯU TIÊN): dòng xuất lẻ XKL- / chuyển kho CKL- giá 0 ở cổng + NGUON_DONG_XUAT như nppsale; sổ kho / GL vẫn giá thật",
-    "Frappe: giá dòng trả NCC = |Σ SVD| / |Σ SL| của sổ kho dòng (ĐT-KM S2 — không đọc PI Item.valuation_rate = giá trả); trả NCC với đơn giá khác giá lô thì thêm ca như ĐT-KM V81; tháng 11 Frappe gv SP1 96 / 672.000 (Q1), SP2 35 / 105.000, SP3 15 / 5.000 → cogs 570.000; tháng 12 SP2 5 / 0"
+    "Frappe: giá dòng trả NCC = |Σ SVD| / |Σ SL| của sổ kho dòng (ĐT-KM S2 — không đọc PI Item.valuation_rate = giá trả); trả NCC với đơn giá khác giá lô thì thêm ca như ĐT-KM V81; tháng 11 Frappe gv SP1 96 / 672.000 (Q1), SP2 35 / 105.000, SP3 15 / 5.000 → cogs 570.000; tháng 12 SP2 5 / 0",
+    "soát VB-E08: thêm lời gọi cổng stock_entries (phiếu xuất tháng 11) + XNT — ref_order_ids là MẢNG json ([] với xuất lẻ / trả NCC, [mã đơn] với HĐ); cổng trả CHUỖI '[]' (lớp lỗi S13) thì napBienDong xếp xuất huỷ + trả NCC vào 'Xuất bán'. Bên Frappe: phiếu xuất của HĐ là chính Sales Invoice (id = name SI, ref_order_ids = [name đơn]); bài so cổng theo (type, notes, ref_order_ids) bỏ id / posted_at của phiếu HĐ (Q1: posting_date)"
    ],
    "doi_chieu": [
     {
@@ -38545,8 +39029,33 @@
       ]
      ],
      "khop": true
+    },
+    {
+     "muc": "ref_order_ids (cổng) của xuất huỷ / trả NCC = mảng rỗng",
+     "dac_ta": [
+      [],
+      []
+     ],
+     "chay": [
+      [],
+      []
+     ],
+     "khop": true
+    },
+    {
+     "muc": "XNT: xuất huỷ / trả NCC xếp 'khác' (không phải 'ban')",
+     "dac_ta": [
+      "khac",
+      "khac"
+     ],
+     "chay": [
+      "khac",
+      "khac"
+     ],
+     "khop": true
     }
-   ]
+   ],
+   "ky_vong_dac_ta": "Báo cáo tổng hợp › Kho (XNT tháng 11): XK-HUY-01 (xuất huỷ 10 gói SP3) và phiếu xuất trả NCC (5 gói SP2) xếp cột 'Xuất khác' (ref_order_ids rỗng); phiếu xuất của HĐ xếp 'Xuất bán'; nhập lại từ phiếu trả xếp 'Trả về' — số theo goi[5] (ts:xnt)."
   },
   {
    "ma": "VB-E09",
@@ -39299,6 +39808,7 @@
     "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
     "P6-3",
     "P6-5 + cổng expenses / expense_categories (P7 — Q14: tới khi có thì hàm ném PGRST202)",
+    "tờ HĐ cũ H3 (Sales Invoice is_opening = 'Yes', K1 500.000, posting_date 05/11, giữ mã HĐ cũ) lập TAY trong bài — công cụ nhập NPP LS của P8 chưa có (soát SOAT-VBC-08); bước S10 #2 ghi 'frappe' cách dựng",
     "đã có (P3d)",
     "đã có (P4 M9 — rpc/kho.py)"
    ],
@@ -39778,7 +40288,7 @@
    "nguon": "chay_that",
    "can_frappe": [
     "P6-5 + cổng payable_payments (P4 — đã có) + expenses (P7 — Q14)",
-    "cổng bảng đã có (P3)"
+    "cổng bảng đã có (P3 / P4)"
    ],
    "goi": [
     {
@@ -40255,6 +40765,22 @@
         }
        },
        "gia_von_xuat": 870000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -40471,6 +40997,22 @@
         }
        },
        "gia_von_xuat": 915000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -40700,6 +41242,22 @@
         }
        },
        "gia_von_xuat": 870000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -40916,6 +41474,22 @@
         }
        },
        "gia_von_xuat": 915000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -41100,7 +41674,8 @@
    ],
    "lech_frappe": [
     "KHÔNG đọc price_list_rate chụp trên dòng SI; đổi giá bảng làm chênh của kỳ cũ đổi theo (như nppsale)",
-    "C3 ❓ thứ tự dòng lồng price_lists (giá hiện hành)"
+    "C3 ❓ thứ tự dòng lồng price_lists (giá hiện hành)",
+    "⚠ bộ E2E (soát SOAT-VBC-04): sổ giả e2e có MỘT phiếu xuất SE-ML-1 58 hộp cho hai HĐ — thiếu 3 hộp ĐỔI của HD-ML-A; Frappe phát lại bằng post_invoice xuất MỌI dòng kể cả dòng đổi (Phụ lục A 'gồm dòng đổi', như HĐ1 Sổ BC) → bao_cao_so_ban.gv ML1 61 / 915.000 và mã TS giaVonXuat 915.000 (mong_frappe); giá vốn cơ sở vẫn 15.000 nên cost / lãi gộp / theo NV không đổi"
    ],
    "doi_chieu": [
     {
@@ -41425,6 +42000,22 @@
         }
        },
        "gia_von_xuat": 870000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -41641,6 +42232,22 @@
         }
        },
        "gia_von_xuat": 915000,
+       "nv_reports_sales": [
+        {
+         "id": "nv.a@e2e.vn",
+         "orders": 1,
+         "revenue": 878000,
+         "cogs": 690000,
+         "profit": 188000
+        },
+        {
+         "id": "nv.b@e2e.vn",
+         "orders": 1,
+         "revenue": 210000,
+         "cogs": 150000,
+         "profit": 60000
+        }
+       ],
        "gia_von_co_so": {
         "ML1": 15000
        },
@@ -41824,7 +42431,8 @@
     }
    ],
    "lech_frappe": [
-    "🔧 C4 (P2): hôm nay (chưa sửa) bài phải ĐỎ; nppsale không có khái niệm bảng giá ngoài NPP (price_lists group_id NULL = bảng giá chung)"
+    "🔧 C4 (P2): hôm nay (chưa sửa) bài phải ĐỎ; nppsale không có khái niệm bảng giá ngoài NPP (price_lists group_id NULL = bảng giá chung)",
+    "⚠ bộ E2E (soát SOAT-VBC-04): sổ giả e2e có MỘT phiếu xuất SE-ML-1 58 hộp cho hai HĐ — thiếu 3 hộp ĐỔI của HD-ML-A; Frappe phát lại bằng post_invoice xuất MỌI dòng kể cả dòng đổi (Phụ lục A 'gồm dòng đổi', như HĐ1 Sổ BC) → bao_cao_so_ban.gv ML1 61 / 915.000 và mã TS giaVonXuat 915.000 (mong_frappe); giá vốn cơ sở vẫn 15.000 nên cost / lãi gộp / theo NV không đổi"
    ],
    "doi_chieu": [
     {

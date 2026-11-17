@@ -5,8 +5,10 @@ TS của giao diện nppsale (tools/vang_bao_cao_ts.ts) cho phần số do trìn
 
 Đặc tả: scratchpad bao_cao/dac_ta_bao_cao.md §5 (62 kịch bản VB-A01…VB-E16), §5.0 (ba bộ dữ liệu nền), §0.4 + §6.1 (Q1–Q14 — làm theo
 "đề xuất"), mục "Chốt chéo với đặc tả P4" (ƯU TIÊN: giá dòng xuất lẻ XKL- / chuyển kho CKL- = 0 như nppsale — Q2 của Frappe = nppsale).
+Bản sửa theo soát (17 phát hiện): Nền N dựng lại bằng RPC thật, luật Frappe áp tự động + chốt, 🔧 P3-HAN-NO-AM, khung quyền / múi giờ như Supabase,
+bộ E2E nhất quán, XNT + /reports/sales tab Nhân viên chạy mã TS thật, nhãn / giờ ghim phía Frappe cho bước chèn / xuất lẻ / phiếu tự sinh.
 
-CÁCH CHẠY (mỗi lần dựng lại từ đầu — không đọc lại DB cũ; ~12 giây; hai lần liền nhau ra cùng tệp từng byte):
+CÁCH CHẠY (mỗi lần dựng lại từ đầu — không đọc lại DB cũ; ~15 giây; hai lần liền nhau ra cùng tệp từng byte):
 	python3 tools/vang_bao_cao.py                → nppsale/tests/du_lieu/bao_cao_mau.json (+ in bảng đối chiếu số với đặc tả)
 	python3 tools/vang_bao_cao.py --chi VB-A0,VB-C → chỉ in các kịch bản ấy (không ghi tệp)
 	VANG_BC_PSQL="<lệnh psql không -d>" …         → dùng cụm khác; VANG_BC_SCHEMA=<schema_full.sql> → bản schema khác
@@ -15,33 +17,36 @@ Cần: (1) một cụm Postgres 16 NHÁP được ghi / tạo DB (bộ sinh xoá
 	unshare --user --map-user=1000 --map-group=1000 /usr/lib/postgresql/16/bin/pg_ctl -D <scratchpad>/bc_ban/pg/data \\
 	  -o "-p 55640 -k <scratchpad>/bc_ban/pg/sock -c listen_addresses=''" -l <scratchpad>/bc_ban/pg/pg.log -w start
 (KHÔNG dùng bản tham chiếu /tmp/pg-npp — bộ sinh ghi DB); (2) /home/user/nppsale/supabase/schema_full.sql (chỉ đọc); (3) portal/nguon/src
-(scripts/lay-nguon.mjs — nppsale ghim ở portal/nguon.json) + portal/node_modules/.bin/esbuild + node.
+(scripts/lay-nguon.mjs — nppsale ghim ở portal/nguon.json) + portal/node_modules/.bin/esbuild + node. Phiên psql luôn PGTZ=UTC (như Supabase).
 
 1. KHUNG (DB `vbc_khung`, dựng lại mỗi lần ~3 giây): nền Supabase giả (vai anon / authenticated / service_role, schema auth + auth.uid() đọc
-   `request.jwt.claim.sub`) + NGUYÊN schema_full.sql của nppsale + GRANT như Supabase + GHIM ĐỒNG HỒ: mọi `now()` / `CURRENT_DATE` /
-   `gen_random_uuid()` / `random()` trong thân hàm (schema public, auth) và trong DEFAULT của cột được thay bằng `_vang_now()` / `_vang_today()` /
-   `_vang_uuid()` / `_vang_random()` — giờ đọc từ biến phiên `vang.gio` (thiếu → lỗi VANG_CHUA_GHIM_GIO, không lặng lẽ lấy giờ thật), uuid / số
-   ngẫu nhiên = md5 của số đếm (tất định — mã phiếu thu PT-YYMMDD-NNNN của create_cash_receipt dùng random()). Logic hàm KHÔNG đổi: bộ sinh
-   kiểm lại từng thân hàm — hoàn nguyên các từ thay thế phải ra NGUYÊN VĂN thân gốc (`_kiem_ghim`), và không còn chỗ đọc giờ / uuid thật.
-   Lý do: kịch bản phụ thuộc "lúc bấm" (phiếu nhập lại tự lập ghi sổ now(), credited_at = now() khi ngày phiếu = hôm nay, tuổi nợ theo
-   vn_today()) — Postgres không có đồng hồ giả, libfaketime không cài. Chạy bất kỳ ngày nào cũng ra cùng tệp (hai lần liền nhau giống hệt).
-2. BỘ NỀN (mỗi bộ một DB mới):
-   - Sổ BC (S1 … S11): DB mới từ khung → hạt giống (ghi thẳng quyền máy chủ — danh mục như kb/00_seed.sql của bước đặc tả) → từng BƯỚC là
-     MỘT lời gọi RPC nppsale dưới đúng người (`request.jwt.claim.sub` + ROLE authenticated, mỗi bước một giao dịch — như production) hoặc
-     một ghi thẳng có kiểm soát (qua quyền trình duyệt = cổng Frappe; hoặc quyền máy chủ khi đặc tả nói không dựng được qua RPC — lý do ghi
-     ở bước). Đồng hồ ghim theo từng bước ("gio"): Sổ BC dựng lúc 16/11/2026 20:50–21:10 VN như cụm của bước đặc tả (R15), giờ ghi sổ phiếu
-     xuất của HĐ dời như kb/03_lui_gio.sql (bước ghi thẳng máy chủ). S2 … S11 = bản sao S1 (CREATE DATABASE … TEMPLATE) + bước riêng.
-   - Nền N: DB mới từ khung + tools/vang_bao_cao_nen_n.sql (dựng TAY như bước đặc tả, trigger tắt); biến thể KB10 / KB14 / KB15 / KB21 chạy
-     trong khối lui (như bien.sh).
-   - E2E (bộ e2e một lượt, 29/09/2026): DB mới từ khung + chèn thẳng đúng dòng của e2e/bao-cao-cu-mot-luot.spec.ts (+ hai dòng nợ của VB-E04).
-3. ĐỌC: mỗi lời gọi chạy dưới đúng người, đồng hồ ghim ("gio" của lời gọi — Sổ BC đọc lúc 17/11/2026 08:00 VN như [T] của đặc tả, Nền N
-   lúc 16/11 12:00, E2E lúc 30/09 10:00), kết quả chuẩn hoá: uuid → khoá nghiệp vụ (mã chứng từ / mã phiếu / email NV / SKU / SĐT khách / tên
-   NCC / mã lô), mốc giờ → "YYYY-MM-DDTHH:MM:SS+07:00", số → int khi chẵn; mảng không có thứ tự theo đặc tả được xếp theo khoá (so như tập).
-4. TS: kết quả `bao_cao_so_ban` (dạng thô, id gốc) + danh mục mặt hàng → node chạy bản bó esbuild của vang_bao_cao_ts.ts → chuẩn hoá như trên.
-5. Frappe: mỗi kịch bản mang "lech_frappe" (⚠K + "Frappe:" theo đề xuất Qn, Q2 = 0 theo chốt chéo P4) và — khi đổi số — "mong_frappe" (cùng
-   dạng "mong", tính lại từ dữ liệu: giá vốn kỳ theo NGÀY HĐ (Q1), không quirk RLS (Q9), che giá vốn với vai thiếu `inventory.cost` (Q3),
-   chuỗi không múi giờ = giờ VN (Q5)).
-6. Đối chiếu với đặc tả: mỗi kịch bản có "doi_chieu" — số của đặc tả §5 ↔ số chạy thật; lệch thì TIN số chạy thật (đặc tả có thể sai).
+   `request.jwt.claim.sub`) + quyền như Supabase (ALTER DEFAULT PRIVILEGES TRƯỚC khi nạp — REVOKE của nppsale còn hiệu lực) + NGUYÊN schema_full.sql +
+   GHIM ĐỒNG HỒ: mọi `now()` / `CURRENT_DATE` / `gen_random_uuid()` / `random()` trong thân hàm (schema public, auth) và trong DEFAULT của cột được thay
+   bằng `_vang_now()` / `_vang_today()` / `_vang_uuid()` / `_vang_random()` — giờ đọc từ biến phiên `vang.gio` (thiếu → lỗi VANG_CHUA_GHIM_GIO, không lặng
+   lẽ lấy giờ thật), uuid / số ngẫu nhiên = md5 của số đếm (tất định — mã phiếu thu PT-YYMMDD-NNNN của create_cash_receipt dùng random()). Logic hàm
+   KHÔNG đổi: bộ sinh kiểm lại từng thân hàm — hoàn nguyên các từ thay thế phải ra NGUYÊN VĂN thân gốc (`_kiem_ghim`), và không còn chỗ đọc giờ / uuid
+   thật. Chốt khung: phiên UTC, authenticated không có quyền trên giam_don_goc (REVOKE mig), anon không đọc được v_hoa_don_con_lai.
+2. BỘ NỀN (mỗi bộ một DB mới) — mỗi BƯỚC là MỘT lời gọi RPC nppsale dưới đúng người (`request.jwt.claim.sub` + ROLE authenticated, mỗi bước một giao
+   dịch — như production) hoặc một ghi thẳng có kiểm soát (qua quyền trình duyệt = cổng Frappe; hoặc quyền máy chủ khi không dựng được qua RPC — lý do
+   ghi ở bước), đồng hồ ghim theo từng bước ("gio"; "gio_frappe" khi Frappe phải ghim giờ khác):
+   - Sổ BC (S1 … S11): hạt giống (danh mục như kb/00_seed.sql của bước đặc tả) + bước (kb/01 … 11); dựng 16/11/2026 20:50–21:10 VN như cụm của bước
+     đặc tả (R15), giờ ghi sổ phiếu xuất của HĐ dời như kb/03_lui_gio.sql (bước máy chủ). S2 … S11 = bản sao S1 (CREATE DATABASE … TEMPLATE) + bước riêng.
+   - Nền N (§5.4): DỰNG LẠI bằng RPC thật theo đúng ngày giờ chứng từ (soát SOAT-VBC-01 — bản dựng tay của bước đặc tả mâu thuẫn, không phát lại được);
+     nhãn đặc tả ↔ khoá sổ: NHAN_DAC_TA_N; biến thể KB10 / KB14 / KB15 / KB21 chạy trong khối lui (như bien.sh), viết theo khoá nghiệp vụ.
+   - E2E (bộ e2e một lượt, 29/09/2026): DB mới từ khung + chèn thẳng đúng dòng của e2e/bao-cao-cu-mot-luot.spec.ts (+ hai dòng nợ của VB-E04 và khoản
+     thu 200.000 làm nên 'đã thu' của nó).
+3. ĐỌC: mỗi lời gọi chạy dưới đúng người, đồng hồ ghim ("gio" của lời gọi — Sổ BC đọc lúc 17/11/2026 08:00 VN như [T] của đặc tả, Nền N lúc 16/11
+   12:00, E2E lúc 30/09 10:00), kết quả chuẩn hoá: uuid → khoá nghiệp vụ (mã chứng từ / mã phiếu / email NV / SKU / SĐT khách / tên NCC / mã lô; NPP B
+   tiền tố 'B:'), mốc giờ → "YYYY-MM-DDTHH:MM:SS+07:00", số → int khi chẵn; mảng không có thứ tự theo đặc tả được xếp theo khoá (so như tập). Lời gọi
+   đọc hạn nợ của Sổ BC chạy thêm một lượt trên sổ đổi hạn dòng nợ âm theo luật Frappe hiện tại → 'cho_sua_p3' (🔧 P3-HAN-NO-AM).
+4. TS: kết quả `bao_cao_so_ban` (dạng thô, id gốc) + danh mục mặt hàng → node chạy bản bó esbuild của vang_bao_cao_ts.ts (Báo cáo tổng hợp, Hàng bán
+   theo nhân viên, /reports/sales tab Nhân viên, XNT của Báo cáo tổng hợp › Kho) → chuẩn hoá như trên.
+5. Frappe: mỗi kịch bản mang "lech_frappe" (⚠K + "Frappe:" theo đề xuất Qn, Q2 = 0 theo chốt chéo P4, 🔧 việc chưa sửa) và — khi đổi số — "mong_frappe"
+   (cùng dạng "mong") do luật áp TỰ ĐỘNG cho mọi lời gọi có giá vốn (Ctx.tu_dong: giá vốn kỳ theo NGÀY HĐ (Q1), không quirk RLS (Q9), che giá vốn với
+   vai thiếu `inventory.cost` (Q3), bộ chèn thẳng xuất theo dòng HĐ gồm dòng đổi) + luật riêng từng kịch bản; chốt cuối (Ctx.chot) dừng bộ sinh nếu kỳ
+   vọng hiệu lực của một lời gọi có giá vốn trái luật ấy, hoặc lời gọi của người NPP B thiếu chi_nppsale.
+6. Đối chiếu với đặc tả: mỗi kịch bản có "doi_chieu" — số của đặc tả §5 ↔ số chạy thật; lệch thì TIN số chạy thật (đặc tả có thể sai) — lệch đã giải
+   thích mang "ly_do_lech" (Nền N dựng lại, đặc tả sót); bộ sinh in số lệch chưa giải thích.
 """
 from __future__ import annotations
 
@@ -550,11 +555,12 @@ def sql_e2e() -> str:
 
 
 # ================================================================================================ bước dựng (dữ liệu — bài Frappe phát lại)
-def rpc(nguoi, ham, tham_so, gio, *, nhan=None, nhan_phu=None, cho_loi=None, doi=None, ghi_chu=None, frappe=None):
+def rpc(nguoi, ham, tham_so, gio, *, nhan=None, nhan_phu=None, cho_loi=None, doi=None, ghi_chu=None, frappe=None, gio_frappe=None):
 	"""MỘT lời gọi RPC nppsale dưới đúng người; tham_so = tham số đặt tên như PostgREST gửi (chỗ giữ "@…" = khoá nghiệp vụ).
 	nhan = chứng từ bước lập ra (mã nppsale); nhan_phu = chứng từ lập NGẦM cùng bước (phiếu trả tự sinh của đơn có phần trả hàng)."""
 	b = {"loai": "rpc", "nguoi": nguoi, "rpc": ham, "tham_so": tham_so, "gio": gio}
-	for k, v in (("nhan", nhan), ("nhan_phu", nhan_phu), ("cho_loi", cho_loi), ("doi_sl", doi), ("ghi_chu", ghi_chu), ("frappe", frappe)):
+	for k, v in (("nhan", nhan), ("nhan_phu", nhan_phu), ("cho_loi", cho_loi), ("doi_sl", doi), ("ghi_chu", ghi_chu), ("frappe", frappe),
+			("gio_frappe", gio_frappe)):
 		if v is not None:
 			b[k] = v
 	return b
@@ -629,7 +635,8 @@ def buoc_s1() -> list[dict]:
 	B.append(rpc(AN, "create_order_with_lines", _don("22222222-2222-2222-2222-000000000001", K1, {"subtotal": 530000, "vat": 4000, "total": 534000},
 		[_dd("SP1", "thung", 2, 240000, 24, "0"), _dd("SP2", "goi", 10, 5000, 1, "0.08")],
 		tra={"reason": "damaged", "notes": "hang mop"},
-		dong_tra=[_dt("SP1", "lon", 3, 10000, 0, ly_do="damaged"), _dt("SP3", "goi", 5, 2000, 0, doi=True)]), g(20, 50, 47), nhan="DH-0001"))
+		dong_tra=[_dt("SP1", "lon", 3, 10000, 0, ly_do="damaged"), _dt("SP3", "goi", 5, 2000, 0, doi=True)]), g(20, 50, 47), nhan="DH-0001",
+		nhan_phu="PT-0001"))
 	B.append(_xuat(CHU, "DH-0001", "2026-11-03", "0", g(20, 51, 3), "HD-0001"))
 	B.append(rpc(CHU, "create_order_with_lines", _don("22222222-2222-2222-2222-000000000002", K2, {"subtotal": 340000, "vat": 7200, "total": 347200},
 		[_dd("SP1", "thung", 1, 250000, 24, "0"), _dd("SP2", "goi", 20, 4500, 1, "0.08")], nv=NV + "nv.binh@sobc.vn"), g(20, 52, 40), nhan="DH-0002",
@@ -670,20 +677,24 @@ def buoc_s1() -> list[dict]:
 	B.append(rpc(CHU, "complete_return", {"p_return_id": "@pt:PT-0006", "p_zone": "sale"}, g(20, 53, 37),
 		ghi_chu="ngày phiếu 02/12 ≠ hôm nay → credited_at 02/12 12:00; phiếu nhập lại ghi sổ LÚC BẤM (16/11)"))
 	B.append(rpc(CHU, "cancel_invoice", {"p_invoice_id": "@hd:HD-0003", "p_reason": "khach doi y"}, g(20, 53, 38), nhan="HD-0003 (huỷ)"))
-	for ma, ly, sp, sl, ghi in (("XK-HUY-01", "damaged", "SP3", 10, "Xuất huỷ hàng hỏng"), ("XK-MAU-02", "sample", "SP2", 5, "Xuất hàng mẫu")):
+	# gio_frappe (soát SOAT-VBC-05): Frappe ghi sổ XKL- theo now_datetime() lúc post_stock_issue (rpc/kho_tay.py _ghi_so) → ghim ĐÚNG giờ ghi sổ của kịch
+	# bản ở chính bước ấy (nppsale dời giờ bằng bước máy chủ phía sau — kb/06)
+	for ma, ly, sp, sl, ghi, gio_fr in (("XK-HUY-01", "damaged", "SP3", 10, "Xuất huỷ hàng hỏng", "2026-11-18T10:00:00+07:00"),
+			("XK-MAU-02", "sample", "SP2", 5, "Xuất hàng mẫu", "2026-12-01T00:00:00+07:00")):
 		B.append(cong(CHU, "stock_entries", "insert", g(20, 53, 50), gia_tri={"id": "@pk:" + ma, "org_id": "@org", "entry_code": ma, "type": "export",
-			"status": "draft", "created_by": NV + "chu@sobc.vn", "notes": ghi, "issue_reason": ly, "warehouse_zone": "sale"},
+			"status": "draft", "created_by": NV + "chu@sobc.vn", "notes": ghi, "issue_reason": ly, "warehouse_zone": "sale"}, nhan="@pk:" + ma,
 			ly_do="phiếu xuất kho lẻ NHÁP lập qua bảng như màn /inventory/stock-issue (kb/06_xuat_kho.sql)", frappe="cổng stock_entries ghi nháp xuất lẻ (P4)"))
 		B.append(cong(CHU, "stock_entry_lines", "insert", g(20, 53, 50), gia_tri={"entry_id": "@pk:" + ma, "product_id": "@sp:" + sp, "unit_name": "goi",
 			"quantity": sl, "qty_in_base_uom": sl, "qty_in_transaction_uom": sl, "transaction_uom": "goi", "conversion_factor_snapshot": 1},
 			ly_do="dòng phiếu xuất kho lẻ nháp (kb/06)", frappe="cổng stock_entry_lines ghi nháp (P4)"))
-		B.append(rpc(CHU, "post_stock_issue", {"p_entry_id": "@pk:" + ma}, g(20, 53, 51), nhan=ma,
-			ghi_chu="nppsale: dòng phiếu giữ unit_cost 0 (giá thật chỉ ở stock_line_consumptions) — Q2 chốt chéo P4: Frappe cổng / NGUON_DONG_XUAT cũng 0"))
+		B.append(rpc(CHU, "post_stock_issue", {"p_entry_id": "@pk:" + ma}, g(20, 53, 51), nhan=ma, gio_frappe=gio_fr,
+			ghi_chu="nppsale: dòng phiếu giữ unit_cost 0 (giá thật chỉ ở stock_line_consumptions) — Q2 chốt chéo P4: Frappe cổng / NGUON_DONG_XUAT cũng 0",
+			frappe=f"post_stock_issue ghim đồng hồ = gio_frappe {gio_fr[:16].replace('T', ' ')} VN (posting_date / ghi sổ kho của XKL-)"))
 	B.append(may_chu("XK-HUY-01 posted_at = 18/11 10:00 VN; XK-MAU-02 posted_at = 01/12 00:00 VN (= 30/11 17:00 UTC)",
 		"UPDATE stock_entries SET posted_at = '2026-11-18T10:00:00+07:00' WHERE entry_code = 'XK-HUY-01'; "
 		"UPDATE stock_entries SET posted_at = '2026-12-01T00:00:00+07:00' WHERE entry_code = 'XK-MAU-02';", g(20, 53, 55),
 		ly_do="kb/06_xuat_kho.sql: post_stock_issue ghi sổ lúc bấm — dời về giờ ghi sổ của kịch bản (biên tháng + múi giờ)",
-		frappe="ghim đồng hồ bước post_stock_issue: XK-HUY-01 lúc 18/11 10:00, XK-MAU-02 lúc 01/12 00:00 (posting_date 01/12)"))
+		frappe="BỎ QUA — đã ghim ở chính bước post_stock_issue (gio_frappe: XK-HUY-01 18/11 10:00, XK-MAU-02 01/12 00:00 VN)"))
 	B.append(rpc(CHU, "create_cash_receipt", {"p": {"customer_id": K1, "method": "cash", "receipt_date": "2026-11-20",
 		"lines": [{"receivable_id": "@no:hd:HD-0001", "amount": 200000}]}}, g(20, 54, 0), nhan="phiếu thu 200.000 HĐ1"))
 	B.append(cong(CHU, "receivables", "update", g(20, 54, 10), gia_tri={"status": "overdue"}, loc={"id": "@no:hd:HD-0004"},
@@ -691,7 +702,7 @@ def buoc_s1() -> list[dict]:
 		frappe="cổng receivables update status = 'overdue' (P3d)"))
 	B.append(rpc(AN, "create_order_with_lines", _don("22222222-2222-2222-2222-000000000005", K3, {"subtotal": 240000, "vat": 0, "total": 240000},
 		[_dd("SP1", "thung", 1, 240000, 24, "0")], tra={"reason": "near_expiry"},
-		dong_tra=[_dt("SP1", "lon", 2, 10000, 0)]), g(20, 59, 34), nhan="DH-0005"))
+		dong_tra=[_dt("SP1", "lon", 2, 10000, 0)]), g(20, 59, 34), nhan="DH-0005", nhan_phu="PT-0007"))
 	B.append(_xuat(CHU, "DH-0005", "2026-11-20", "0", g(20, 59, 35), "HD-0005"))
 	B.append(_lui_gio_xuat("HD-0005", "2026-11-20T09:00:00+07:00", g(20, 59, 40)))
 	return B
@@ -709,7 +720,7 @@ def buoc_bien_the() -> dict:
 		"S4": ("Phiếu chỉ có hàng đổi: ĐH6 (NV An, K1) 5 gói kẹo + ĐỔI 4 gói kẹo → HĐ6 25/11 + PT-0008 tự sinh 0 đ nhập kho lúc bấm", [
 			rpc(AN, "create_order_with_lines", _don("22222222-2222-2222-2222-000000000006", K1, {"subtotal": 10000, "vat": 0, "total": 10000},
 				[_dd("SP3", "goi", 5, 2000, 1, "0")], tra={"reason": "damaged"},
-				dong_tra=[_dt("SP3", "goi", 4, 2000, 0, doi=True, tien=8000)]), g(21, 2, 9), nhan="DH-0006"),
+				dong_tra=[_dt("SP3", "goi", 4, 2000, 0, doi=True, tien=8000)]), g(21, 2, 9), nhan="DH-0006", nhan_phu="PT-0008"),
 			_xuat(CHU, "DH-0006", "2026-11-25", "0", g(21, 2, 10), "HD-0006"),
 			_lui_gio_xuat("HD-0006", "2026-11-25T09:00:00+07:00", g(21, 2, 12)),
 			rpc(CHU, "complete_return", {"p_return_id": "@pt:PT-0008", "p_zone": "sale"}, g(21, 2, 17),
@@ -736,7 +747,8 @@ def buoc_bien_the() -> dict:
 		"S9": ("◇ VB-E08: trả NCC Cty Bánh 5 gói SP2 (lô L2 giá 3.000) ghi sổ 19/11", [
 			cong(CHU, "supplier_returns", "insert", g(10, 0, 0, "2026-11-19"), gia_tri={"id": "@ptncc:TRNCC-1", "org_id": "@org",
 				"supplier_id": "@ncc:Cty Banh", "warehouse_zone": "sale", "status": "draft", "subtotal": 15000, "vat": 0, "total": 15000,
-				"created_by": NV + "chu@sobc.vn"}, ly_do="phiếu trả NCC NHÁP qua bảng như màn /pos/tra-ncc", frappe="cổng supplier_returns ghi nháp (P4)"),
+				"created_by": NV + "chu@sobc.vn"}, nhan="@ptncc:TRNCC-1", ly_do="phiếu trả NCC NHÁP qua bảng như màn /pos/tra-ncc",
+				frappe="cổng supplier_returns ghi nháp (P4)"),
 			cong(CHU, "supplier_return_lines", "insert", g(10, 0, 0, "2026-11-19"), gia_tri={"return_id": "@ptncc:TRNCC-1", "product_id": "@sp:SP2",
 				"unit_name": "goi", "quantity": 5, "unit_price": 3000, "line_total": 15000, "conversion_factor": 1, "sort_order": 1},
 				ly_do="dòng phiếu trả NCC nháp", frappe="cổng supplier_return_lines ghi nháp (P4)"),
@@ -1186,6 +1198,10 @@ DOC_BANG = {
 		"cổng sales_invoices: select id, invoice_date, status, subtotal, vat, total, sales_user_id"),
 	"payments": ("SELECT COALESCE(jsonb_agg(jsonb_build_object('id', p.id, 'amount', p.amount, 'method', p.method, 'collected_at', p.collected_at) "
 		"ORDER BY p.collected_at, p.id), '[]') FROM public.payments p", "cổng payments: select id, amount, method, collected_at"),
+	# soát VB-E08 (lớp lỗi S13): ref_order_ids phải là MẢNG json — chuỗi '[]' làm XNT xếp xuất lẻ / trả NCC thành "Xuất bán"
+	"stock_entries": ("SELECT COALESCE(jsonb_agg(jsonb_build_object('id', e.id, 'type', e.type, 'status', e.status, 'notes', e.notes, 'ref_order_ids', "
+		"e.ref_order_ids, 'posted_at', e.posted_at) ORDER BY e.posted_at, e.entry_code), '[]') FROM public.stock_entries e",
+		"cổng stock_entries: select id, type, status, notes, ref_order_ids, posted_at (id = name chứng từ Frappe — so theo type / notes / ref_order_ids)"),
 }
 
 
@@ -1447,6 +1463,19 @@ def san_pham_ts(bo: str, c: dict) -> list:
 	return sp
 
 
+def du_lieu_xnt(bo: str, a: str, b: str) -> dict:
+	"""Đầu vào XNT như màn Báo cáo tổng hợp › Kho: phiếu kho đã ghi sổ từ a (napBienDong — posted_at ≥ a 00:00 VN) + dòng + tồn hiện tại theo
+	mặt hàng (Σ lô còn tồn — napTonKho / tinhTon)."""
+	return psql_json(db_cua(bo), f"""SELECT jsonb_build_object('a', '{a}', 'b', '{b}',
+  'pk', COALESCE((SELECT jsonb_agg(jsonb_build_object('id', e.id, 'type', e.type, 'notes', e.notes, 'entry_code', e.entry_code, 'posted_at', e.posted_at,
+     'ref_order_ids', e.ref_order_ids) ORDER BY e.id) FROM stock_entries e WHERE e.status = 'posted' AND e.posted_at >= '{a}T00:00:00+07:00'), '[]'),
+  'dong', COALESCE((SELECT jsonb_agg(jsonb_build_object('entry_id', l.entry_id, 'product_id', l.product_id, 'quantity', l.quantity,
+     'qty_in_base_uom', l.qty_in_base_uom, 'conversion_factor_snapshot', l.conversion_factor_snapshot, 'unit_cost', l.unit_cost) ORDER BY l.id)
+     FROM stock_entry_lines l JOIN stock_entries e ON e.id = l.entry_id WHERE e.status = 'posted' AND e.posted_at >= '{a}T00:00:00+07:00'), '[]'),
+  'ton', COALESCE((SELECT jsonb_object_agg(x.product_id, x.sl) FROM (SELECT product_id, sum(qty_on_hand) AS sl FROM batches WHERE qty_on_hand > 0
+     GROUP BY product_id) x), '{{}}'));""")
+
+
 def ts_gon(r: dict, idm: dict) -> dict:
 	"""Kết quả TS → phần đặc tả §5 dùng (tổng, theo NV, giá vốn, phân bổ dòng, SL mặt hàng, hàng bán theo NV) — chuẩn hoá id."""
 	x = chuan(r, idm)
@@ -1459,7 +1488,8 @@ def ts_gon(r: dict, idm: dict) -> dict:
 				"returnQty": p["returnQty"], "returnValue": p["returnValue"], "diffReturn": p["diffReturn"],
 				"donVi": [{k: d[k] for k in ("unit", "heSo", "qty", "returnQty", "giaBang", "giaBan", "listed", "revenue", "diff", "returnValue",
 					"diffReturn")} for d in p["donVi"]]} for p in h["products"]]})
-	return {"tong": x["tong"], "theo_nv": dict(sorted(x["theo_nv"].items())), "gia_von_xuat": x["gia_von_xuat"],
+	nv_rs = sorted(({k: h[k] for k in ("id", "orders", "revenue", "cogs", "profit")} for h in x["nv_reports_sales"]), key=lambda h: h["id"] or "")
+	return {"tong": x["tong"], "theo_nv": dict(sorted(x["theo_nv"].items())), "gia_von_xuat": x["gia_von_xuat"], "nv_reports_sales": nv_rs,
 		"gia_von_co_so": dict(sorted(x["gia_von_co_so"].items())), "gia_von_tra": dict(sorted(x["gia_von_tra"].items())),
 		"thu_tu_hd": x["thu_tu_hd"], "nv_phieu_tra": dict(sorted(x["nv_phieu_tra"].items())), "dong": dong,
 		"sl_mat_hang": dict(sorted(x["sl_mat_hang"].items())), "hang_ban_nv": hb}
@@ -1539,10 +1569,10 @@ THU_TU = ("dong_hd / dong_tra: nppsale ORDER BY uuid, Frappe ORDER BY name (chu�
 def kich_ban() -> list[dict]:
 	K = []
 
-	def kb(ma, bo, ten, goi_, *, nguon="chay_that", lech=None, kiem=None, fr=None, ky_vong=None, cho=None, chon=None, buoc=None, thu_von=None):
-		"""fr = luật Frappe RIÊNG của kịch bản (đè luật tự động — Ctx.tu_dong); thu_von = người bị thu ô inventory.cost (Q3)."""
+	def kb(ma, bo, ten, goi_, *, nguon="chay_that", lech=None, kiem=None, fr=None, ky_vong=None, cho=None, chon=None, buoc=None, thu_von=None, can=None):
+		"""fr = luật Frappe RIÊNG của kịch bản (đè luật tự động — Ctx.tu_dong); thu_von = người bị thu ô inventory.cost (Q3); can = điều kiện Frappe thêm."""
 		K.append({"ma": ma, "bo": bo, "ten": ten, "goi": goi_, "nguon": nguon, "lech_frappe": lech or [], "kiem": kiem or [], "fr": fr,
-			"ky_vong_dac_ta": ky_vong, "cho": cho, "chon": chon, "buoc_them": buoc, "thu_von": thu_von})
+			"ky_vong_dac_ta": ky_vong, "cho": cho, "chon": chon, "buoc_them": buoc, "thu_von": thu_von, "can_them": can})
 
 	# ---------------------------------------------------------------------------------------------------------------- A
 	kb("VB-A01", "S1", "bao_cao_so_ban tháng 11 (Chủ) — bộ khoá, hd, dong_hd", [goi("bao_cao_so_ban", "CHU", **T11)],
@@ -1865,7 +1895,9 @@ def kich_ban() -> list[dict]:
 			("Quản lý p_nv NV An p_tu 01/11", [("0911000001", "SP1", 48, 3, 45, 1), ("0911000003", "SP1", 24, 26, -2, 1)], lambda k: bo_ma(k[8]["hang"], *HL[:6]))])
 	kb("VB-C04", "S6", "SECURITY DEFINER — NV Bình thấy hàng NV An bán cho khách mình phụ trách phụ", [goi("hang_khach_da_lay", "NV_BINH"),
 		goi("bao_cao_so_ban", "NV_BINH", **T11)],
-		lech=["Frappe: hàm DEFINER không lọc người đứng tên HĐ; bao_cao_so_ban (INVOKER) dưới NV Bình không có HĐ mới"],
+		lech=["Frappe: hàm DEFINER không lọc người đứng tên HĐ; bao_cao_so_ban (INVOKER) dưới NV Bình không có HĐ mới", Q1, Q3,
+			"soát VB-C04: bao_cao_so_ban dưới NV Bình mang mong_frappe (luật tự động) — gv SP1 96 (HĐ4 sang tháng 10), SP2 30, SP3 18, mọi tien null; gv_tra "
+			"tien null"],
 		kiem=[("khach", ["Quan Tu", "Sieu thi Ba"], lambda k: [x["store_name"] for x in k[0]["khach"]]),
 			("hang", [("0911000002", "SP2", 20, 6, 14, 1, "2026-11-10"), ("0911000003", "SP3", 3, 0, 3, 1, "2026-11-22")], lambda k: bo_ma(k[0]["hang"], *HL)),
 			("sp (tên, NCC)", [("Banh quy", "Cty Banh"), ("Keo", None)], lambda k: bo_ma(k[0]["sp"], "name", "ncc")),
@@ -2125,9 +2157,13 @@ def kich_ban() -> list[dict]:
 	E29 = {"p_tu": "2026-09-29", "p_den": "2026-09-29"}
 	HB = ("listed", "revenue", "diff", "docDiscount", "thueLamTron", "returnQty", "returnValue", "diffReturn", "netRevenue", "diffNet", "tongChenh")
 	E2E_FR = ("bộ E2E: phiếu trả TR-ML-1 KHÔNG NV, KHÔNG HĐ chỉ có từ dữ liệu chuyển (phiếu tự lập Frappe luôn có người) → bài dựng bằng ghi thẳng; mã HĐ phải giữ "
-		"thứ tự HD-ML-A < HD-ML-B theo mã điểm (nhanVienPhieuTra đoán NV theo HĐ GẶP TRƯỚC)")
+		"thứ tự HD-ML-A < HD-ML-B theo mã điểm (nhanVienPhieuTra đoán NV theo HĐ GẶP TRƯỚC); cách phát lại: bo.E2E.frappe")
+	E2E_GV = ("⚠ bộ E2E (soát SOAT-VBC-04): sổ giả e2e có MỘT phiếu xuất SE-ML-1 58 hộp cho hai HĐ — thiếu 3 hộp ĐỔI của HD-ML-A; Frappe phát lại bằng "
+		"post_invoice xuất MỌI dòng kể cả dòng đổi (Phụ lục A 'gồm dòng đổi', như HĐ1 Sổ BC) → bao_cao_so_ban.gv ML1 61 / 915.000 và mã TS giaVonXuat "
+		"915.000 (mong_frappe); giá vốn cơ sở vẫn 15.000 nên cost / lãi gộp / theo NV không đổi")
 	kb("VB-E01", "E2E", "Bán hàng một ngày (e2e bao-cao-cu-mot-luot, 29/09/2026) — máy chủ + mã TS", [goi("bao_cao_so_ban", "CHU", **E29), ts(0)],
-		nguon=["chay_that", "ts", "dac_ta"], lech=[E2E_FR, "SE-ML-DAO ('Đảo phiếu trả') không tồn tại trên Frappe; SE-ML-HUY là phiếu của HĐ huỷ (docstatus 2) — cùng số"],
+		nguon=["chay_that", "ts", "dac_ta"], lech=[E2E_FR, E2E_GV, "SE-ML-DAO ('Đảo phiếu trả') không tồn tại trên Frappe; SE-ML-HUY là phiếu của HĐ huỷ "
+			"(docstatus 2) — nppsale loại cả hai, Frappe không có: phần ấy cùng số"],
 		ky_vong="Chủ mở /bao-cao/ban-hang?ky=custom&ca=2026-09-29&cb=2026-09-29 (chế độ Mặt hàng, Nhân viên): chỉ GET /rest/v1/rpc/bao_cao_so_ban (kỳ + kỳ so sánh), "
 			"không câu nào tới sales_invoice_lines / return_lines / stock_entry_lines / batches. Thẻ: Doanh thu 1.130.000; Hàng trả 42.000; DT thuần 1.088.000; "
 			"Số HĐ 2; Khách mua 1; Lãi gộp 248.000. Mặt hàng: '2 thùng 10 hộp'. Nhân viên — NV A: Doanh thu 920.000, Hàng trả 42.000, DT thuần 878.000, Theo bảng "
@@ -2148,7 +2184,9 @@ def kich_ban() -> list[dict]:
 			("TS NV B chênh bán / tổng chênh", (10000, 10000), lambda k: (lambda h: (h["diff"], h["tongChenh"]))(tim(k[1]["hang_ban_nv"], id="nv.b@e2e.vn")))])
 	kb("VB-E02", "E2E", "Hai đường đọc phải ra Y HỆT (một lượt ↔ từng bảng) + tắt hàm", [goi("bao_cao_so_ban", "CHU", **E29), ts(0)], nguon=["dac_ta", "ts"],
 		lech=["Lần 2 (cổng trả PGRST202 cho bao_cao_so_ban) cần cổng stock_entries / stock_entry_lines với notes NGUYÊN VĂN 'Nhập lại từ phiếu trả <PT>' dựng từ "
-			"Link cho NL- và HDT- có kho (§2.13, M13) — bài e2e portal khi P4 có cổng phiếu kho", "R5: thứ tự id hai đường (mã điểm JS vs collation) — chưa đo"],
+			"Link cho NL- và HDT- có kho (§2.13, M13) — bài e2e portal khi P4 có cổng phiếu kho", "R5: thứ tự id hai đường (mã điểm JS vs collation) — chưa đo",
+			"soát VB-E02: số tab Nhân viên của /reports/sales lấy từ CHÍNH useMemo employeeRows của màn ấy (ts:ban_hang → nv_reports_sales), không từ "
+			"dungDongBan của /bao-cao/ban-hang", E2E_GV],
 		ky_vong="Cùng dữ liệu VB-E01 (và Sổ BC). Lần 1 có hàm: mở /reports/sales (Thời gian, Lợi nhuận, Giảm giá HĐ, Trả hàng, Nhân viên), /reports/customers "
 			"(Bán hàng, Lợi nhuận, Hàng bán theo khách — mở dòng khách), /reports/products (Bán hàng, Lợi nhuận, Xuất nhập tồn), /reports/finance, "
 			"/analytics/business/overview, cost-profit, /analytics/products/overview, categories; chụp chữ <main>. Lần 2: cổng trả PGRST202 cho bao_cao_so_ban "
@@ -2156,10 +2194,15 @@ def kich_ban() -> list[dict]:
 			"lần bằng nhau; lần 1 mọi lời gọi bao_cao_so_ban là GET, không GET nào tới sales_invoice_lines / return_lines / sales_invoices (trừ câu sales_invoices "
 			"lọc stock_entry_id của tab Lợi nhuận theo ngày). /reports/sales tab Nhân viên: NV A 878.000, NV B 210.000 (không phải 168.000). Lỗi khác "
 			"PGRST202 / 42883 (vd 500) → hộp lỗi, không số 0.",
-		kiem=[("tab Nhân viên (DT thuần — mã TS dungDongBan)", (878000, 210000), lambda k: (k[1]["theo_nv"]["nv.a@e2e.vn"]["net"], k[1]["theo_nv"]["nv.b@e2e.vn"]["net"]))])
+		kiem=[("/reports/sales tab Nhân viên — DT thuần NV A / NV B (useMemo employeeRows chép từ reports/sales/page.tsx + congLoiNhuanNhanVien)",
+				(878000, 210000), lambda k: (tim(k[1]["nv_reports_sales"], id="nv.a@e2e.vn")["revenue"], tim(k[1]["nv_reports_sales"], id="nv.b@e2e.vn")["revenue"])),
+			("/bao-cao/ban-hang theo NV (dungDongBan) cùng số", (878000, 210000), lambda k: (k[1]["theo_nv"]["nv.a@e2e.vn"]["net"],
+				k[1]["theo_nv"]["nv.b@e2e.vn"]["net"]))])
 	kb("VB-E03", "S1", "NVBH mở báo cáo + trang chủ NVBH (NV An)", [goi("bao_cao_so_ban", "NV_AN", **T11), goi("my_sales_target", "NV_AN"),
 		goi("dashboard_summary", "NV_AN", p_period_start="2026-11-01")], nguon=["chay_that", "dac_ta"],
-		lech=["my_sales_target Frappe = 0 tới P7 (NPP Cau Hinh Luong) — mục tiêu ẩn; nppsale = 0 vì sổ không có hr_salary_config", "phần giao diện: chỉ đặc tả"],
+		lech=["my_sales_target Frappe = 0 tới P7 (NPP Cau Hinh Luong) — mục tiêu ẩn; nppsale = 0 vì sổ không có hr_salary_config", "phần giao diện: chỉ đặc tả",
+			Q1, Q3, Q9, "soát VB-E03: bao_cao_so_ban dưới NV An mang mong_frappe = đúng mong_frappe của VB-A06#0 (gv SP1 96 / SP2 30 / SP3 15, mọi tien null; "
+			"gv_tra tien null) — doanh số 774.000 − 290.000 không đổi"],
 		ky_vong="NVBH mở /bao-cao/ban-hang (Tháng này): thanh lọc 'Nhân viên: <tên mình>' (khoá), không nút chế độ Nhân viên, không thẻ Lãi gộp, không nút Xuất Excel; số "
 			"chỉ gồm HĐ mình đứng tên / của đơn mình. /bao-cao/cong-no: chỉ phiếu mình giữ, ghi chú 'Chỉ hiện khách bạn phụ trách'. /reports/sales: không tab Lợi "
 			"nhuận / Nhân viên. /customers/hang-da-lay: RPC bỏ p_nv. Gõ thẳng /bao-cao/tai-chinh, /bao-cao, /dashboard, /reports/employees → về /home. Trang chủ "
@@ -2181,7 +2224,7 @@ def kich_ban() -> list[dict]:
 			("thẻ Tổng phải thu / Dư có (Σ dương / Σ âm của amount − paid)", (700000, 150000), lambda k: (sum(max(0, x["amount"] - x["paid"]) for x in k[0]["mo"]),
 				-sum(min(0, x["amount"] - x["paid"]) for x in k[0]["mo"])))])
 	kb("VB-E05", "E2E", "Hàng bán theo nhân viên (/bao-cao/nhan-vien) — mã TS congHangBanNhanVien + chotTienChungTu", [goi("bao_cao_so_ban", "CHU", **E29), ts(0)],
-		nguon=["ts", "dac_ta"], lech=[E2E_FR, "C4 (🔧 P2): cổng price_lists chỉ bảng giá chung + bảng mặc định của nhóm khách — không thì 'Theo bảng giá' có thể lấy "
+		nguon=["ts", "dac_ta"], lech=[E2E_FR, E2E_GV, "C4 (🔧 P2): cổng price_lists chỉ bảng giá chung + bảng mặc định của nhóm khách — không thì 'Theo bảng giá' có thể lấy "
 			"Standard Selling (VB-E15)"],
 		ky_vong="Chủ mở /bao-cao/nhan-vien (kỳ chứa 29/09), bấm NV A, Xuất Excel: MỘT GET bao_cao_so_ban + users / customers / products(units, price_lists); không đọc "
 			"phiếu xuất / giá vốn. Dòng NV A: SL bán '48', Đơn vị 'đơn vị', Theo bảng giá 900.000, Doanh thu 920.000, Chênh lệch bán 40.000, Thuế + làm tròn 0, "
@@ -2223,13 +2266,25 @@ def kich_ban() -> list[dict]:
 			("sau: revenue_date / credited_at", ("2026-11-10", "2026-11-10T12:00:00+07:00"), lambda k: bo_ma([tim(k[8], id="PT-0008")], "revenue_date", "credited_at")[0]),
 			("sau: (10/11).tra có PT-0008, (12/11) không", (True, False), lambda k: (tim(k[5]["tra"], id="PT-0008") is not None, tim(k[6]["tra"], id="PT-0008") is not None)),
 			("finance_pnl(15/11).returns_cogs sau", 15000, lambda k: k[7][0]["returns_cogs"])])
-	kb("VB-E08", "S9", "◇ xuất kho lẻ + trả NCC vào giá vốn", [goi("bao_cao_so_ban", "CHU", **T11), goi("bao_cao_so_ban", "CHU", **T12), goi("finance_pnl", "CHU", **F11),
-		goi("finance_pnl", "CHU", **F12)], chon={0: ["gv"], 1: ["gv"]},
+	XK11 = [("type", "eq", "export"), ("status", "eq", "posted"), ("posted_at", "gte", "2026-11-01T00:00:00+07:00"), ("posted_at", "lt", "2026-12-01T00:00:00+07:00")]
+	kb("VB-E08", "S9", "◇ xuất kho lẻ + trả NCC vào giá vốn + XNT (Báo cáo tổng hợp › Kho)", [goi("bao_cao_so_ban", "CHU", **T11), goi("bao_cao_so_ban", "CHU", **T12),
+		goi("finance_pnl", "CHU", **F11), goi("finance_pnl", "CHU", **F12), goi("bang:stock_entries", "CHU", loc=XK11),
+		{"ham": "ts:xnt", "a": "2026-11-01", "b": "2026-11-30", "ghi_chu": "XNT tháng 11 của Báo cáo tổng hợp › Kho (man-kho.tsx: napBienDong + tinhXnt)"}],
+		chon={0: ["gv"], 1: ["gv"]}, nguon=["chay_that", "ts", "dac_ta"],
 		lech=[Q1, Q2, "Frappe: giá dòng trả NCC = |Σ SVD| / |Σ SL| của sổ kho dòng (ĐT-KM S2 — không đọc PI Item.valuation_rate = giá trả); trả NCC với đơn giá khác "
-			"giá lô thì thêm ca như ĐT-KM V81; tháng 11 Frappe gv SP1 96 / 672.000 (Q1), SP2 35 / 105.000, SP3 15 / 5.000 → cogs 570.000; tháng 12 SP2 5 / 0"],
+			"giá lô thì thêm ca như ĐT-KM V81; tháng 11 Frappe gv SP1 96 / 672.000 (Q1), SP2 35 / 105.000, SP3 15 / 5.000 → cogs 570.000; tháng 12 SP2 5 / 0",
+			"soát VB-E08: thêm lời gọi cổng stock_entries (phiếu xuất tháng 11) + XNT — ref_order_ids là MẢNG json ([] với xuất lẻ / trả NCC, [mã đơn] với HĐ); "
+			"cổng trả CHUỖI '[]' (lớp lỗi S13) thì napBienDong xếp xuất huỷ + trả NCC vào 'Xuất bán'. Bên Frappe: phiếu xuất của HĐ là chính Sales Invoice (id "
+			"= name SI, ref_order_ids = [name đơn]); bài so cổng theo (type, notes, ref_order_ids) bỏ id / posted_at của phiếu HĐ (Q1: posting_date)"],
+		ky_vong="Báo cáo tổng hợp › Kho (XNT tháng 11): XK-HUY-01 (xuất huỷ 10 gói SP3) và phiếu xuất trả NCC (5 gói SP2) xếp cột 'Xuất khác' (ref_order_ids rỗng); "
+			"phiếu xuất của HĐ xếp 'Xuất bán'; nhập lại từ phiếu trả xếp 'Trả về' — số theo goi[5] (ts:xnt).",
 		kiem=[("T11 gv SP2 / SP3", [("SP2", 35, 105000), ("SP3", 15, 5000)], lambda k: [x for x in bo_ma(k[0]["gv"], "product_id", "sl", "tien") if x[0] != "SP1"]),
 			("pnl T11 cogs", 738000, lambda k: k[2][0]["cogs"]),
-			("T12 gv", [("SP2", 5, 0)], lambda k: bo_ma(k[1]["gv"], "product_id", "sl", "tien"))])
+			("T12 gv", [("SP2", 5, 0)], lambda k: bo_ma(k[1]["gv"], "product_id", "sl", "tien")),
+			("ref_order_ids (cổng) của xuất huỷ / trả NCC = mảng rỗng", ([], []), lambda k: (tim(k[4], id="pk:XK-HUY-01")["ref_order_ids"],
+				next(x for x in k[4] if (x["notes"] or "").startswith("Xuất kho trả NCC"))["ref_order_ids"])),
+			("XNT: xuất huỷ / trả NCC xếp 'khác' (không phải 'ban')", ("khac", "khac"), lambda k: (k[5]["loai"]["XK-HUY-01/SP3"],
+				k[5]["loai"][next(x for x in k[4] if (x["notes"] or "").startswith("Xuất kho trả NCC"))["id"][3:] + "/SP2"]))])
 	E09 = lambda n: [goi("bao_cao_so_ban", n, **T11), dict(goi("bao_cao_ton_kho", n, p_tu="2026-08-20", p_den="2026-11-17"),  # noqa: E731
 		ghi_chu="= napTonKho của /bao-cao/kho: hôm nay − 89 … hôm nay (hôm nay 17/11/2026)"), goi("finance_pnl", n, **F11),
 		goi("finance_balance_sheet", n, p_as_of="2026-11-30"), goi("stock_value_summary", n)]
@@ -2244,6 +2299,8 @@ def kich_ban() -> list[dict]:
 		goi("dashboard_summary", "CHU", p_period_start="2026-11-01"), goi("dashboard_channel_revenue", "CHU", p_period_start="2026-11-01"),
 		goi("dashboard_top_customers", "CHU", p_period_start="2026-11-01", p_limit=5), goi("finance_pnl", "CHU", **F11),
 		goi("bao_cao_ton_kho", "CHU", p_tu="2026-09-01", p_den="2026-11-30"), goi("receivables_by_customer", "CHU")], chon={0: ["hd"]},
+		can=["tờ HĐ cũ H3 (Sales Invoice is_opening = 'Yes', K1 500.000, posting_date 05/11, giữ mã HĐ cũ) lập TAY trong bài — công cụ nhập NPP LS của P8 chưa "
+			"có (soát SOAT-VBC-08); bước S10 #2 ghi 'frappe' cách dựng"],
 		lech=["Frappe: tờ DK- (ghi_no_dau_ky) và tờ HĐ cũ H3 (Sales Invoice is_opening = 'Yes', giữ mã HĐ cũ — P8) KHÔNG vào hd / dong_hd / doanh thu / số đơn / "
 			"top / kênh / dong tồn kho; nợ của chúng ở NPP Cong No (open_receivables, receivables_*). nppsale không có tờ HĐ cũ — bộ S10 dựng nợ của nó bằng một dòng "
 			"nợ không HĐ K1 500.000", Q1, Q2],
@@ -2280,7 +2337,8 @@ def kich_ban() -> list[dict]:
 	kb("VB-E14", "E2E", "◇ chênh lệch theo bảng giá HIỆN HÀNH, đúng đơn vị (mã TS)", [goi("bao_cao_so_ban", "CHU", **E29),
 		ts(0, doi_gia={"ML1": [{"unit_name": "thùng", "price": 460000, "group_id": None}, {"unit_name": "hộp", "price": 20000, "group_id": None}]}),
 		ts(0, doi_gia={"ML1": [{"unit_name": "hộp", "price": 20000, "group_id": None}]})], nguon=["ts", "dac_ta"],
-		lech=["KHÔNG đọc price_list_rate chụp trên dòng SI; đổi giá bảng làm chênh của kỳ cũ đổi theo (như nppsale)", "C3 ❓ thứ tự dòng lồng price_lists (giá hiện hành)"],
+		lech=["KHÔNG đọc price_list_rate chụp trên dòng SI; đổi giá bảng làm chênh của kỳ cũ đổi theo (như nppsale)", "C3 ❓ thứ tự dòng lồng price_lists (giá hiện hành)",
+			E2E_GV],
 		ky_vong="Dữ liệu VB-E01. Đổi Item Price thùng của bảng giá chung 450.000 → 460.000; mở lại 'Hàng bán theo nhân viên'. NV A: Theo bảng giá 920.000, Chênh lệch "
 			"bán 20.000, Giảm giá đơn 20.000, Thuế + làm tròn 0, Chênh lệch trả −2.000, Chênh lệch net 18.000, Tổng chênh lệch −2.000. Xoá giá thùng khỏi bảng giá chung → "
 			"giá thùng = 20.000 × 24 = 480.000 → chênh bán −20.000.",
@@ -2289,7 +2347,7 @@ def kich_ban() -> list[dict]:
 				tim(k[1]["hang_ban_nv"], id="nv.a@e2e.vn"))),
 			("xoá giá thùng: chênh bán NV A", -20000, lambda k: tim(k[2]["hang_ban_nv"], id="nv.a@e2e.vn")["diff"])])
 	kb("VB-E15", "E2E", "◇ bảng giá ngoài NPP không được thành 'giá chung' (C4) — chỉ Frappe", [goi("bao_cao_so_ban", "CHU", **E29), ts(0)], nguon=["dac_ta", "ts"],
-		lech=["🔧 C4 (P2): hôm nay (chưa sửa) bài phải ĐỎ; nppsale không có khái niệm bảng giá ngoài NPP (price_lists group_id NULL = bảng giá chung)"],
+		lech=["🔧 C4 (P2): hôm nay (chưa sửa) bài phải ĐỎ; nppsale không có khái niệm bảng giá ngoài NPP (price_lists group_id NULL = bảng giá chung)", E2E_GV],
 		ky_vong="Dữ liệu VB-E01. Thêm Item Price 'Standard Selling' cho 'Sữa một lượt' thùng 999.000 (name nhỏ hơn dòng 'Gia chuan' để ra TRƯỚC nếu cổng không lọc); thêm "
 			"Price List bán 'Gia le' không gắn nhóm khách nào, thùng 1.000.000. Kỳ vọng: cổng products(price_lists(unit_name, price, group_id)) của mặt hàng KHÔNG có hai "
 			"dòng ấy (chỉ 'Gia chuan' + bảng mặc định của nhóm khách); 'Hàng bán theo nhân viên' NV A vẫn Theo bảng giá 900.000, Chênh lệch bán 40.000 (= VB-E05); POS giá "
@@ -2575,62 +2633,76 @@ def anh_chup_ncc(db: str, idm: dict) -> dict:
 
 
 QUY_UOC = [
-	"Mỗi bộ nền dựng trong DB MỚI (Postgres nháp — khung schema_full.sql của nppsale + đồng hồ ghim); mỗi bước là MỘT giao dịch như production, chạy dưới đúng "
-	"người (request.jwt.claim.sub + ROLE authenticated) — 'MAY_CHU' = quyền máy chủ (chỉ chỗ có 'ly_do'); bước có 'cho_loi' là bước chờ lỗi (đúng mã / câu "
-	"ghi ở bước — sổ không đổi).",
-	"Đồng hồ: mỗi bước / lời gọi mang 'gio' (ISO +07:00) = 'lúc bấm' đã ghim — bài Frappe ghim cùng giờ (frappe.utils.now / nowdate) trước bước. Sổ BC dựng "
-	"16/11/2026 20:50–21:10 VN (R15; bộ ◇ ghim theo bước: S8 15/11, S9 19/11, S10 05/11, S11 30/11 23:30), đọc 17/11/2026 08:00 VN (vn_today = 17/11 như "
-	"[T]); Nền N đọc 16/11/2026 12:00 VN; E2E đọc 30/09/2026 10:00 VN.",
-	"Chỗ giữ trong tham số: '@nv:<email>' (NV — NPP Nhan Vien.name), '@kh:<SĐT>' (khách), '@sp:<SKU>', '@ncc:<tên NCC>', '@org' (NPP), '@pk:<mã phiếu kho tay>', "
-	"'@ptncc:<mã>', '@don:<mã đơn>', '@hd:<mã HĐ>', '@pt:<mã phiếu trả>', '@no:hd:<mã HĐ>' / '@no:pt:<mã phiếu trả>' (dòng công nợ), '@dong_xuat:<mã đơn>' "
-	"(= mọi dòng get_invoiceable_lines của đơn, SL còn lại), '@dong_sua:<mã HĐ>' + 'doi_sl' {'<SKU>/<ĐV>': SL} (= dòng hiện có của HĐ, đổi SL), '@la' (id lạ).",
+	"Mỗi bộ nền dựng trong DB MỚI (Postgres nháp — khung schema_full.sql của nppsale, quyền như Supabase qua ALTER DEFAULT PRIVILEGES, phiên UTC, đồng hồ "
+	"ghim); mỗi bước là MỘT giao dịch như production, chạy dưới đúng người (request.jwt.claim.sub + ROLE authenticated) — 'MAY_CHU' = quyền máy chủ (chỉ "
+	"chỗ có 'ly_do'); bước có 'cho_loi' là bước chờ lỗi (đúng mã / câu ghi ở bước — sổ không đổi).",
+	"Đồng hồ: mỗi bước / lời gọi mang 'gio' (ISO +07:00) = 'lúc bấm' đã ghim — bài Frappe ghim cùng giờ (frappe.utils.now / nowdate) trước bước; bước có "
+	"'gio_frappe' thì bài Frappe ghim theo gio_frappe (giờ ghi sổ của kịch bản — nppsale dời giờ bằng bước máy chủ phía sau, Frappe ghi sổ lúc bấm). Sổ BC "
+	"dựng 16/11/2026 20:50–21:10 VN (R15; bộ ◇ ghim theo bước: S8 15/11, S9 19/11, S10 05/11, S11 30/11 23:30), đọc 17/11/2026 08:00 VN (vn_today = 17/11 "
+	"như [T]); Nền N dựng theo đúng ngày giờ từng chứng từ (01/08 … 16/11/2026), đọc 16/11/2026 12:00 VN; E2E đọc 30/09/2026 10:00 VN.",
+	"Chỗ giữ trong tham số: '@nv:<email>' (NV — NPP Nhan Vien.name), '@kh:<SĐT>' (khách), '@sp:<SKU>', '@ncc:<tên NCC>', '@dm:<mã danh mục chi phí>', '@org' "
+	"(NPP; '@org_b' = NPP B), '@pk:<mã phiếu kho>', '@ptncc:<mã>', '@cp:<mã chi phí>', '@don:<mã đơn>', '@hd:<mã HĐ>', '@pt:<mã phiếu trả>', '@no:hd:<mã HĐ>' / "
+	"'@no:pt:<mã phiếu trả>' (dòng công nợ), '@no_ncc:<số HĐ NCC>' / '@no_ncc:dk:<tên NCC>' (dòng nợ NCC), '@dong_xuat:<mã đơn>' (= mọi dòng "
+	"get_invoiceable_lines của đơn, SL còn lại), '@dong_sua:<mã HĐ>' + 'doi_sl' {'<SKU>/<ĐV>': SL | {'quantity', 'unit_price'}} (= dòng hiện có của HĐ, đổi "
+	"SL / giá), '@la' (id lạ). Mã chứng từ tra trong NPP của người của bước (Nền N: NPP A và NPP B cùng có HD-0001).",
 	"Kết quả đã chuẩn hoá: uuid → khoá nghiệp vụ (mã đơn / HĐ / phiếu trả; dòng HĐ '<HĐ>/<SKU>/<ĐV>[/doi]'; dòng đơn '<đơn>/<SKU>/<ĐV>'; công nợ "
-	"'no:<HĐ | phiếu trả | dk:<SĐT>:<tiền>>'; lô '<mã lô>::<vùng>' (= id cổng batches của Frappe); phiếu kho 'pk:<mã>'; khoản thu 'thu:<chứng từ>:<tiền>'; NV = "
-	"email; khách = SĐT; hàng = SKU; NCC = tên); Nền N giữ khoá đặc tả (HD1 = 'HD-0001', R1…R5, RC1…RC7, PM1…PM7, PY1…PY6, PP1…PP5, X1…X6, E1…E15; NPP B tiền tố "
-	"'B:'); mốc giờ → 'YYYY-MM-DDTHH:MM:SS+07:00'; số → int khi chẵn, float khi lẻ (6 chữ số).",
+	"'no:<HĐ | phiếu trả | dk:<SĐT>:<tiền>>'; khoản thu 'thu:<chứng từ | dk>:<tiền>'; nợ NCC 'no_ncc:<số HĐ NCC | dk:<NCC>>'; khoản trả NCC "
+	"'tra_ncc:<số HĐ NCC | dk:<NCC>>:<tiền>'; phiếu chi NCC 'phieu_chi:<mã>'; chi phí 'chi_phi:<mã danh mục | khac>:<ngày chi>'; lô '<mã lô>::<vùng>' "
+	"(= id cổng batches của Frappe); phiếu kho 'pk:<mã>'; NV = email; khách = SĐT; hàng = SKU; NCC = tên); chứng từ của NPP B (Nền N) mang tiền tố 'B:'; "
+	"mốc giờ → 'YYYY-MM-DDTHH:MM:SS+07:00'; số → int khi chẵn, float khi lẻ (6 chữ số).",
 	"Thứ tự: mảng không thứ tự theo đặc tả L12 (bao_cao_so_ban.hd / dong_hd / tra / dong_tra / gv / gv_tra; bao_cao_ton_kho.lo / dong; bao_cao_cong_no.mo / "
-	"gan90 / thu) đã xếp theo khoá — so như TẬP; list của hàm TABLE và hang_khach_da_lay giữ thứ tự hàm — so có thứ tự.",
+	"gan90 / thu) đã xếp theo khoá — so như TẬP; list của hàm TABLE, bảng cổng và hang_khach_da_lay giữ thứ tự — so có thứ tự.",
 	"goi[i].mong = {ok, kq} hoặc {ok: false, ma_loi (SQLSTATE), loi (nguyên văn)}; 'chon' = chỉ giữ các khoá ấy của kết quả dict (khoá '_khoa' = bộ khoá đầy đủ); "
-	"goi[i].mong_frappe (khi có) = kết quả Frappe kỳ vọng theo đề xuất Qn (cùng dạng, cùng chuẩn hoá) — bài Frappe so với mong_frappe thay mong; "
-	"'chi_nppsale': true = lời gọi không dựng được trên Frappe (bỏ).",
+	"goi[i].mong_frappe (khi có) = kết quả Frappe kỳ vọng theo đề xuất Qn (cùng dạng, cùng chuẩn hoá — luật áp TỰ ĐỘNG cho mọi lời gọi có giá vốn: Q1 "
+	"giá vốn theo ngày HĐ, Q2 = 0, Q3 che giá vốn, Q9 bỏ phiếu xuất HĐ huỷ; bộ E2E xuất theo dòng HĐ gồm dòng đổi) — bài Frappe so với mong_frappe thay mong; "
+	"goi[i].cho_sua_p3 = {viec, kq_frappe_hien_tai} — việc 🔧 chưa sửa (viec_cho_sua): bài ĐỎ đúng như kq_frappe_hien_tai tới khi sửa; 'chi_nppsale': true = "
+	"lời gọi không dựng được trên Frappe (bỏ).",
 	"Lời gọi 'ts:ban_hang' = mã TS thật của giao diện nppsale chạy trên kết quả bao_cao_so_ban của lời gọi 'tu' (danh mục mặt hàng của sổ; 'doi_gia' thay bảng giá "
-	"chung); bài Frappe chạy cùng mã (portal) trên kết quả RPC Frappe — hoặc so phần máy chủ rồi dùng số TS này làm kỳ vọng giao diện.",
-	"lech_frappe = điểm Frappe khác nppsale có chủ ý (⚠K) / chờ chốt (❓Qn — làm theo 'đề xuất'; Q2 theo 'Chốt chéo với đặc tả P4': xuất lẻ / chuyển kho giá 0); "
-	"doi_chieu = số đặc tả §5 ↔ số chạy thật (khop false = đặc tả lệch — tin số chạy thật).",
+	"chung) — gồm nv_reports_sales (useMemo employeeRows của /reports/sales); 'ts:xnt' = XNT [a, b] của Báo cáo tổng hợp › Kho (vòng phân loại napBienDong "
+	"+ tinhXnt) trên phiếu kho đã ghi sổ từ a; bài Frappe chạy cùng mã (portal) trên kết quả cổng / RPC Frappe — hoặc so phần máy chủ rồi dùng số TS này "
+	"làm kỳ vọng giao diện.",
+	"lech_frappe = điểm Frappe khác nppsale có chủ ý (⚠K) / chờ chốt (❓Qn — làm theo 'đề xuất'; Q2 theo 'Chốt chéo với đặc tả P4': xuất lẻ / chuyển kho giá 0) / "
+	"việc chưa sửa (🔧); doi_chieu = số đặc tả §5 ↔ số chạy thật (khop false = đặc tả lệch — tin số chạy thật; 'ly_do_lech' = lệch đã giải thích: sổ dựng lại "
+	"của Nền N, đặc tả sót).",
 	"Tiền so tuyệt đối; giá vốn dung sai ≤ 0,5 đ / dòng xuất (L4-c); phân bổ tiền theo dòng của mã TS ±1 đ / dòng (R6) — so theo HĐ / NV / mặt hàng.",
 ]
 
-MO_TA_N = 'tam'
+MO_TA_N = ("Nền N (§5.4) — DỰNG LẠI bằng RPC nppsale thật (soát SOAT-VBC-01: bản dựng tay của bước đặc tả — bc_vung_tc/nen.sql, trigger tắt — mâu thuẫn "
+	"với chính nó và với luật Frappe nên không phát lại được): hạt giống (danh mục) + từng bước dưới đúng người, đồng hồ ghim theo ngày giờ thật của "
+	"chứng từ; bài Frappe phát lại y bo.N.buoc rồi so sổ với anh_chup. Mã đơn / HĐ / phiếu trả đánh số theo thứ tự lập — nhãn đặc tả ↔ khoá: nhan_dac_ta.")
 FRAPPE_N = [
-	"NPP A = site; người: Chủ, Quản lý, Kế toán, Thủ kho, NV Một, NV Hai (sales), Bị khoá (owner, dang_hoat_dong = 0); NPP B (Chủ B) không dựng được (một site = "
-	"một NPP — R16): mọi lời gọi của Chủ B mang chi_nppsale.",
-	"Danh mục: K1 Tạp hoá Một (0900000001, hạn mức 5.000.000, NV Một chính), K2 Tạp hoá Hai (0900000002, hạn mức trống, NV Hai chính), K3 Tạp hoá Ba (0900000003, "
-	"hạn mức 0, không phân công); SP1 Nước ngọt (cơ sở Lon, Thùng = 24), SP2 Dầu ăn (Chai); NCC Một (mã N1), NCC Hai (N2), NCC Ba (mã trống).",
-	"HĐ (create_order_with_lines + post_invoice ghim ngày HĐ, NV đơn = NV HĐ): HD1 K1 / NV Một 02/11 4.640.500 (SP1 5 Thùng + SP2 10 Chai + SP2 1 Chai ĐỔI 0 đ); "
-	"HD2 K2 / NV Hai 05/11 2.000.000 (SP2 20); HD3 K1 / NV Một 20/10 1.000.000 (SP1 2 Thùng); HD4 K3 / NV Hai 10/11 500.000 (SP2 5) rồi cancel_invoice; HD5 K2 / "
-	"NV Một 01/11 300.000 (SP1 1 Thùng — ghim giờ ghi sổ 01/11 00:30 VN); HD6 K3 / NV Hai 15/09 400.000 (SP2 6).",
-	"Giá vốn: lô L-A SP1 8.000 / lon (kho bán), L-B SP2 60.000 (kho bán), L-C SP2 50.000 (tồn 0), L-D SP1 7.500 (kho date) — tồn cuối phải = du_lieu.lo (nhập "
-	"đầu kỳ đủ để sau mọi xuất / nhập còn đúng số; mỗi mặt hàng xuất từ lô có giá nêu ở phiếu kho để giá vốn kỳ khớp). E15 (HĐ6 tháng 9, 55.000) không ảnh "
-	"hưởng kịch bản nào ngoài dòng tồn kho 90 ngày.",
-	"Phiếu trả: R1 tự sinh theo HD1 (Chờ xử lý, 1.652.000); R2 tự lập gắn HD2 Hoàn thành ngày 08/11 (200.000; phiếu nhập lại 2 Chai × 60.000 ghi sổ 08/11); R3 Nháp "
-	"(100.000); R4 tự lập Hoàn thành rồi Huỷ (60.000 — Frappe: chứng từ nhập lại docstatus 2, không phiếu 'Đảo'); R5 tự lập K2 / NV Hai không HĐ Hoàn thành 11/11 "
-	"(250.000; nhập lại 1 Thùng SP1 × 8.000 ghi sổ 11/11) → dòng công nợ âm RC6.",
-	"Công nợ / khoản thu (create_cash_receipt ghim giờ; ghi thẳng có kiểm soát chỗ không có RPC): RC3 trả dư = HĐ3 1.200.000 thu đủ rồi Sửa HĐ giảm về 1.000.000 (P3d "
-	"phương án B); RC4 (HD5) dấu quá hạn bấm tay (cổng receivables status); RC5 nợ đầu kỳ K3 700.000 hạn 01/08 (ghi_no_dau_ky) + PM7 50.000 'return_credit' (luồng cũ — "
-	"ghi thẳng); RC6 / PM5 / PM6 = phiếu thu cấn trừ dư có R5 sang RC2 (±100.000 credit_applied); PM1 RC1 1.000.000 tiền mặt 03/11 10:00; PM2 RC3 1.000.000 chuyển "
-	"khoản 25/10; PM3 RC3 200.000 tiền mặt 01/11 06:30; PM4 RC7 400.000 tiền mặt 20/09.",
-	"Kho khác: E6 xuất lẻ 'Hư hỏng' 24 lon SP1 ngày 12/11 (post_stock_issue — Frappe giá 0, Q2); E7 trả NCC TH-1 3 Chai SP2 NCC Một ngày 13/11 (complete_supplier_return "
-	"— giá lô 60.000; nợ âm PY2 −500.000); E11 xuất lẻ NHÁP 4 Chai (Stock Entry docstatus 0); E12 / E13 phiếu nhập NCC (PY1 / PY5 / PY6).",
-	"NCC (P4): PY1 N1 phiếu nhập 10.000.000 ngày 04/11 (PP1 Ghi trả 4.000.000 chuyển khoản 06/11 14:00); PY3 N2 nợ đầu kỳ 2.000.000 dấu quá hạn (PP4 bù trừ 200.000 "
-	"'offset' 09/11 — JE bu_tru_ncc); PY4 N3 trả trước 300.000 (chi_tra_ncc 07/11 09:00, không phiếu nhập); PY5 N2 phiếu nhập 1.000.000 ngày 10/10 trả đủ 15/10; PY6 N2 "
-	"phiếu nhập 700.000 lúc 01/11 05:00 VN trả đủ 01/11 05:00.",
-	"Chi phí (P7 — NPP Phieu Chi; chưa có RPC phiếu chi tay → ghi thẳng): X1 Thuê kho (operating) 3.000.000 ngày 03/11 trả 03/11 09:00; X2 Lương (hr) 5.000.000 15/11 "
-	"chưa trả; X3 COGS_ADJ (cogs, nguồn stocktake) 150.000 12/11 chưa trả; X4 Lãi vay (financial) 100.000 ngày 28/10 trả 02/11 08:00; X5 không danh mục 50.000 20/11 "
-	"trả 20/11 09:00; X6 Thuế (tax) 80.000 05/11 trả 06/11 10:00.",
+	"NPP A = site; người: Chủ, Quản lý, Kế toán, Thủ kho, NV Một, NV Hai (sales), Bị khoá (owner, dang_hoat_dong = 0 — vai None, mọi hàm rỗng đúng dạng). "
+	"NPP B (Chủ B) không dựng được (một site = một NPP — R16): mọi bước / lời gọi của Chủ B mang chi_nppsale (bài bỏ).",
+	"Danh mục (nen.N): khách K1 Tạp hoá Một (0900000001, hạn mức 5.000.000, NV Một chính), K2 Tạp hoá Hai (0900000002, hạn mức trống, NV Hai chính), K3 Tạp "
+	"hoá Ba (0900000003, hạn mức 0, không phân công); hàng SP1 Nước ngọt (cơ sở Lon, Thùng = 24), SP2 Dầu ăn (Chai), VAT 0, không giá bán / bảng giá; NCC "
+	"Một (mã N1), NCC Hai (N2), NCC Ba (mã trống); danh mục chi phí RENT (operating), SALARY (hr), COGS_ADJ (cogs), FIN (financial), TAX (tax).",
+	"Bước (bo.N.buoc, thứ tự thời gian): tên RPC Frappe trùng nppsale (P3 / P3d / P4: create_order_with_lines, post_invoice, reissue_invoice, cancel_invoice, "
+	"create_return_with_lines, complete_return, cancel_return, create_cash_receipt (kể cả use_credit), post_stock_import, post_stock_issue, "
+	"complete_supplier_return, record_payable_payment (kể cả 'offset' = bù trừ NCC), chi_tra_ncc); 'ghi_cong' = cổng bảng (nợ đầu kỳ, nợ NCC đầu kỳ / lập "
+	"tay gắn phiếu nhập kho, dấu quá hạn, phiếu nháp xuất lẻ / trả NCC); chi phí X1…X6 (_chi_phi): P7 chưa có — ghi thẳng NPP Phieu Chi theo 'frappe' của "
+	"bước; 'ghi_may_chu' duy nhất = PM7 (khoản thu 'return_credit' kiểu cũ — dữ liệu chuyển P8, ghi thẳng NPP Cong No.da_thu 50.000).",
+	"Nhận mã: '@pk:<mã>' của post_stock_import = name phiếu nhập kho Frappe trả về (cổng bỏ qua mã gửi lên); '@no_ncc:<số HĐ NCC>' = dòng NPP Cong No NCC của "
+	"tờ NTN- lập tay; '@cp:<X>' = phiếu chi P7; '@ptncc:TH-1' = name phiếu trả NCC nháp cổng trả về; phiếu trả tự sinh của đơn (nhan_phu) = NPP Phieu Tra "
+	"tu_sinh của đơn ấy.",
+	"Khác có chủ ý với nppsale trên nền này (mong_frappe tự động): Q1 — tờ sửa HD-0002-1 (HĐ3 đặc tả, ngày 05/10) ghi sổ kho theo posting_date 05/10 "
+	"(nppsale: lúc bấm 01/11 07:00 → giá vốn tháng 11); Q3 — NV Một không thấy giá vốn; Q9 — phiếu xuất của HĐ huỷ HD-0006 loại với mọi vai; phiếu 'Đảo "
+	"phiếu trả' / nhập '(đã đảo)' của PT-0004 không có (huỷ = docstatus 2 — nppsale loại khỏi số, cùng kết quả).",
+]
+FRAPPE_E2E = [
+	"Danh mục (nen.E2E): NPP E2E = site; Chủ (owner), NV A, NV B (sales); hàng ML1 'Sữa một lượt' (cơ sở hộp, thùng = 24, Item.npp_gia_ban 20.000, bảng giá "
+	"chung thùng 450.000 / hộp 20.000); khách Khách Một Lượt (0912000001), Tạp hoá Cô Ba (0912000002), Đại lý Minh (0912000003) — COD, hạn mức 0.",
+	"Lô: post_stock_import ML1 ≥ 66 hộp giá 15.000 trước 29/09 (vd 28/09 08:00) — sổ giả e2e không có lô (anh_chup.lo = [] — KHÔNG so lô của bộ E2E).",
+	"HĐ (lập theo thứ tự để mã giữ HD-ML-A < HD-ML-B theo mã điểm — nhanVienPhieuTra đoán NV phiếu trả cũ theo HĐ GẶP TRƯỚC): create_order_with_lines + "
+	"post_invoice ghim 29/09/2026 10:00, invoice_date 29/09: (1) NV A: 2 thùng × 470.000 + ĐỔI 3 hộp (phần đổi trả của đơn), giảm giá đơn 20.000 → total "
+	"920.000; (2) NV B: 10 hộp × 21.000 = 210.000; (3) NV A: 5 hộp × 20.000 rồi cancel_invoice (HD-ML-HUY). Frappe xuất kho MỌI dòng kể cả dòng đổi → gv 61 "
+	"hộp / 915.000 (mong_frappe — sổ giả e2e SE-ML-1 58 hộp / 870.000).",
+	"TR-ML-1: phiếu trả completed KHÔNG NV, KHÔNG HĐ, tiền 42.000 (2 hộp × 21.000), ngày trừ doanh số 29/09, tạo 29/09 13:00 VN — chỉ có ở dữ liệu chuyển "
+	"(phiếu tự lập Frappe luôn có người): ghi thẳng NPP Phieu Tra (+ dòng) + phiếu nhập lại NL- 2 hộp giá 15.000 nối Link npp_phieu_tra (gv_tra 30.000).",
+	"SE-ML-DAO ('Đảo phiếu trả …', 7 hộp giá 0): KHÔNG dựng — Frappe không có phiếu đảo (nppsale loại nó khỏi số).",
+	"VB-E04: HD-E2E-1 (Tạp hoá Cô Ba, Chủ đứng tên, NET12, ngày 20/08, 900.000) + create_cash_receipt 200.000 tiền mặt ghim 05/09/2026 09:00 → nợ 900.000 / "
+	"200.000 partial hạn 01/09; TR-E2E-1 (Đại lý Minh, tự lập không HĐ, 150.000, Chủ, Hoàn thành ghim 10/09) → dòng dư có −150.000 hạn 10/09.",
 ]
 
-
-# điều kiện để bài Frappe chạy được lời gọi (đặc tả §4.1 — ma trận RPC → nguồn → phải xong trước)
 CAN_FRAPPE = {
 	"bao_cao_so_ban": "P6-2 (rpc/bao_cao.py) + hằng nguon_dong_xuat / nguon_dong_nhap_lai (đã có — cong/bang/kho.py)",
 	"bao_cao_ton_kho": "đã có (P4 M9 — rpc/kho.py)",
@@ -2643,29 +2715,42 @@ CAN_FRAPPE = {
 	"receivables_summary": "đã có (P3d)", "receivables_by_customer": "đã có (P3d)", "receivables_by_rep": "đã có (P3d)",
 	"bao_cao_cong_no": "đã có (P3d)", "stock_value_summary": "đã có (rpc/kho.py)", "cash_received_total": "đã có (P3d)",
 	"ts:ban_hang": "mã TS portal/nguon (giao diện chạy nguyên trên cổng)",
+	"ts:xnt": "cổng stock_entries / stock_entry_lines (P4 — ref_order_ids kiểu json, notes dựng từ Link) + mã TS nap-kho.ts",
 }
 
 HUONG_DAN_FRAPPE = [
 	"Dựng bộ nền một lần mỗi lớp bài (setUpClass) dưới đúng người: người / khách / hàng / lô / NCC theo 'nen', rồi từng bước của 'bo.<bộ>.buoc' (S2 … S11 = "
-	"bản sao S1 + bước riêng: dựng S1 rồi chạy bước riêng trong điểm lưu, lui sau kịch bản — hoặc dựng riêng từng bộ). Mỗi bước: ghim đồng hồ = 'gio' (patch "
-	"frappe.utils.now_datetime / nowdate / getdate(None) hoặc frappe.flags.current_date), đặt người (NguCanh như tests/test_kho_mua_vang.py), gọi "
-	"nppsale.cong.api.rpc(ten=<rpc>, tham_so=<tham_so đã giải chỗ giữ>) — tên RPC Frappe trùng nppsale; bước 'ghi_cong' = cổng bảng (nppsale.cong — insert / "
-	"update dưới đúng người); bước 'ghi_may_chu' theo trường 'frappe' của bước (kb/03 dời giờ phiếu xuất: BỎ — Frappe ghi sổ kho theo posting_date).",
-	"Sau khi dựng, so sổ với 'bo.<bộ>.anh_chup' (HĐ, đơn, phiếu trả, công nợ, khoản thu, tồn lô) trước khi so báo cáo — lệch ở đây là lỗi bộ dựng, không phải "
-	"lỗi báo cáo. Phiếu kho của HĐ / nhập lại trên Frappe là chính chứng từ (không so mã XK-/NL-).",
-	"Giải chỗ giữ: '@don:' / '@hd:' / '@pt:' → name Frappe của chứng từ có nhãn ấy (ghi lại từ kết quả bước lập — mã Frappe có thể khác 'DH-0001' / "
-	"'HD-0001' / 'PT-0001'); '@dong_xuat:<đơn>' → get_invoiceable_lines(đơn) (SL còn lại, giá, hàng đổi) như màn Xuất hàng; '@dong_sua:<HĐ>' + doi_sl → dòng "
-	"hiện có của HĐ, đổi SL theo '<SKU>/<ĐV>'; '@no:hd:<HĐ>' → NPP Cong No của HĐ.",
+	"bản sao S1 + bước riêng: dựng S1 rồi chạy bước riêng trong điểm lưu, lui sau kịch bản — hoặc dựng riêng từng bộ; Nền N: bo.N.buoc từ đầu; E2E: "
+	"bo.E2E.frappe). Mỗi bước: ghim đồng hồ = 'gio' — hoặc 'gio_frappe' khi bước có trường ấy (patch frappe.utils.now_datetime / nowdate / getdate(None) "
+	"hoặc frappe.flags.current_date), đặt người (NguCanh như tests/test_kho_mua_vang.py), gọi nppsale.cong.api.rpc(ten=<rpc>, tham_so=<tham_so đã giải "
+	"chỗ giữ>) — tên RPC Frappe trùng nppsale; bước 'ghi_cong' = cổng bảng (nppsale.cong — insert / update dưới đúng người); bước 'ghi_may_chu' theo "
+	"trường 'frappe' của bước ('BỎ QUA' = không làm gì — vd kb/03 dời giờ phiếu xuất: Frappe ghi sổ kho theo posting_date; kb/06: đã ghim ở gio_frappe).",
+	"Lô hạt giống Sổ BC (nen.S.lo): post_stock_import lúc nen.S.gio_hat_giong (Batch.creation = 16/11/2026 20:50:26 VN — chính là lo[].created_at trong "
+	"mong) với ngày nhận / posted_at = nhan_luc (01/10/2026 08:00 VN — khoá FIFO, sổ kho lùi ngày); mỗi mặt hàng MỘT lô giá cố định. Lô Nền N lập ở các "
+	"bước post_stock_import của bo.N.buoc (giờ bước = Batch.creation).",
+	"Sau khi dựng, so sổ với 'bo.<bộ>.anh_chup' (HĐ, đơn, phiếu trả, công nợ, khoản thu, tồn lô; Nền N thêm nợ NCC / trả NCC / chi phí) trước khi so báo "
+	"cáo — lệch ở đây là lỗi bộ dựng, không phải lỗi báo cáo; TRỪ các trường ghi ở 'bo.<bộ>.cho_sua_p3' (hạn dòng nợ âm — 🔧 P3-HAN-NO-AM: Frappe hiện "
+	"tại ra 'han_frappe_hien_tai'). Phiếu kho của HĐ / nhập lại trên Frappe là chính chứng từ (không so mã XK-/NL-); E2E không so 'lo'.",
+	"Giải chỗ giữ: '@don:' / '@hd:' / '@pt:' → name Frappe của chứng từ có nhãn ấy (ghi lại từ kết quả bước lập — 'nhan' của bước; mã Frappe có thể khác "
+	"'DH-0001' / 'HD-0001' / 'PT-0001'); 'nhan_phu' = chứng từ lập NGẦM cùng bước (phiếu trả tự sinh từ phần trả của đơn: bên Frappe là NPP Phieu Tra "
+	"tu_sinh của đơn ấy); chèn qua cổng ('ghi_cong' insert có 'nhan' — '@pk:<mã>', '@ptncc:<mã>', '@cp:<mã>'): cổng Frappe BỎ QUA id / mã gửi lên "
+	"(COT_BO — rpc/kho_tay.py:61, rpc/tra_ncc.py:59) và tự đặt name XKL- / PTNCC- … → chỗ giữ = name cổng trả về; '@pk:<mã>' của post_stock_import = name "
+	"phiếu nhập kho trả về; '@dong_xuat:<đơn>' → get_invoiceable_lines(đơn) (SL còn lại, giá, hàng đổi) như màn Xuất hàng; '@dong_sua:<HĐ>' + doi_sl → dòng "
+	"hiện có của HĐ, đổi SL / giá theo '<SKU>/<ĐV>'; '@no:hd:<HĐ>' → NPP Cong No của HĐ; '@no_ncc:<số HĐ NCC>' / '@no_ncc:dk:<NCC>' → NPP Cong No NCC.",
 	"Gọi báo cáo: mỗi tinh_huong.goi dưới 'nguoi', đồng hồ 'gio', tham số 'tham_so' (giữ chuỗi như GET gửi — '' / 'abc' / '2026-02-30' phải ra 22007 / 22008); "
-	"'bang:<tên>' = câu đọc cổng bảng (nppsale.cong.truy_van.doc) dưới người ấy; 'bien_the' (Nền N) = sửa sổ trong điểm lưu trước lời gọi, lui sau; "
-	"'chi_nppsale' = bỏ.",
+	"'bang:<tên>' = câu đọc cổng bảng (nppsale.cong.truy_van.doc) dưới người ấy (tham_so.loc = [(cột, toán tử, giá trị)]); 'bien_the' (Nền N) = sửa sổ "
+	"trong điểm lưu trước lời gọi theo bien_the.frappe (+ bang_frappe), lui sau; 'chi_nppsale' = bỏ.",
 	"Chuẩn hoá kết quả Frappe y như tệp vàng (quy_uoc) rồi so với 'mong_frappe' nếu có, không thì 'mong' — chỉ phần khoá 'chon' (+ '_khoa' = bộ khoá đủ; "
-	"Frappe thêm 'tinh_lai_gia_von' nếu chốt Q12 — bỏ khoá ấy khi so bộ khoá). Mảng không thứ tự so như tập (đã xếp); list hàm TABLE so có thứ tự.",
-	"Ánh xạ khoá: NV = email ('nen.*.nguoi'); khách = SĐT (Customer.npp_sdt); hàng = SKU (item_code); lô = '<mã lô>::<vùng>'; công nợ 'no:<chứng từ>'; Nền N "
-	"dùng khoá đặc tả (RC1…, PM1…) — bài giữ bảng ánh xạ name Frappe → khoá khi dựng.",
-	"Lời gọi 'ts:ban_hang': chạy mã TS của portal (tools/vang_bao_cao_ts.ts — cùng hàm tuMotLuot → dungDongBan → congBan / congHangBanNhanVien) trên kết quả "
-	"bao_cao_so_ban của Frappe, hoặc chỉ so phần máy chủ và coi số TS là kỳ vọng giao diện (bài e2e portal).",
-	"Kịch bản 'nguon' gồm 'dac_ta' (giao diện / chỉ Frappe): kiểm theo 'ky_vong_dac_ta' bằng bài e2e portal hoặc bài riêng; 'cho': 'P8' = để tới P8.",
+	"Frappe thêm 'tinh_lai_gia_von' nếu chốt Q12 — bỏ khoá ấy khi so bộ khoá). Mảng không thứ tự so như tập (đã xếp); list hàm TABLE so có thứ tự. Lời gọi "
+	"có 'cho_sua_p3': tới khi P3 sửa hạn dòng nợ âm (viec_cho_sua) đánh dấu expectedFailure / so với cho_sua_p3.kq_frappe_hien_tai để biết chỉ lệch đúng chỗ ấy.",
+	"Ánh xạ khoá: NV = email ('nen.*.nguoi'); khách = SĐT (Customer.npp_sdt); hàng = SKU (item_code); lô = '<mã lô>::<vùng>'; công nợ 'no:<chứng từ>'; "
+	"khoản thu 'thu:<chứng từ>:<tiền>'; nợ NCC 'no_ncc:<số HĐ NCC | dk:<NCC>>'; NPP B tiền tố 'B:'. Nền N: nhãn đặc tả §5.4 (HD1…, R1…, RC1…, PM1…, "
+	"PY1…, PP1…, X1…) ↔ khoá ở bo.N.nhan_dac_ta — bài giữ bảng ánh xạ name Frappe → khoá khi dựng.",
+	"Lời gọi 'ts:ban_hang' / 'ts:xnt': chạy mã TS của portal (tools/vang_bao_cao_ts.ts — cùng hàm tuMotLuot → dungDongBan → congBan / congHangBanNhanVien / "
+	"congLoiNhuanNhanVien, napBienDong + tinhXnt) trên kết quả bao_cao_so_ban / cổng stock_entries của Frappe, hoặc chỉ so phần máy chủ và coi số TS là kỳ "
+	"vọng giao diện (bài e2e portal).",
+	"Kịch bản 'nguon' gồm 'dac_ta' (giao diện / chỉ Frappe): kiểm theo 'ky_vong_dac_ta' bằng bài e2e portal hoặc bài riêng; 'cho': 'P8' = để tới P8; "
+	"'can_frappe' = điều kiện phải xong trước (gồm điều kiện riêng của kịch bản).",
 	"Thứ tự dựng gợi ý theo §4.2: P6-2 (A01–A15, E01, E06, E09, E15, E16) → P6-3 (B01–B06, E10) → P6-4 (C01–C04) → P6-5 (A16, D01–D20, E07, E08, E12) sau P4 + "
 	"P7 chi phí; 'can_frappe' của từng kịch bản ghi điều kiện.",
 ]
@@ -2689,6 +2774,10 @@ def main():
 			if c["ham"] == "ts:ban_hang":
 				bo = c.get("bo") or t["bo"]
 				ca_ts.append({"ma": f"{t['ma']}#{i}", "so_ban": doc[(t["ma"], c["tu"])]["kq"], "san_pham": san_pham_ts(bo, c)})
+	for t in K:
+		for i, c in enumerate(t["goi"]):
+			if c["ham"] == "ts:xnt":
+				ca_ts.append({"ma": f"{t['ma']}#{i}", "xnt": du_lieu_xnt(c.get("bo") or t["bo"], c["a"], c["b"])})
 	kq_ts = {r["ma"]: r for r in chay_ts(ca_ts)} if ca_ts else {}
 	# ---- dựng tình huống
 	ra_t = []
@@ -2700,6 +2789,13 @@ def main():
 			bo = c.get("bo") or t["bo"]
 			if c["ham"] == "ts:ban_hang":
 				x = ts_gon(kq_ts[f"{t['ma']}#{i}"], idm[bo])
+				k.append(x)
+				goi_ra.append({k_: v for k_, v in c.items()} | {"mong": {"ok": True, "kq": x}})
+				continue
+			if c["ham"] == "ts:xnt":
+				r_ = chuan(kq_ts[f"{t['ma']}#{i}"], idm[bo])
+				loai = {_RE_UUID.sub(lambda m_: idm[bo].get(m_.group(0), "?" + m_.group(0)), k_): v for k_, v in r_["loai"].items()}  # khoá '<mã phiếu>/<SKU>'
+				x = {"xnt": dict(sorted(r_["xnt"].items())), "loai": dict(sorted(loai.items()))}
 				k.append(x)
 				goi_ra.append({k_: v for k_, v in c.items()} | {"mong": {"ok": True, "kq": x}})
 				continue
@@ -2769,7 +2865,7 @@ def main():
 			dc.append(x_)
 		doi_chieu_tong += [(t["ma"], x) for x in dc]
 		can = sorted({CAN_FRAPPE[(c["ham"] if not c["ham"].startswith("bang:") else "")] for c in t["goi"] if not c["ham"].startswith("bang:")}
-			| ({"cổng bảng đã có (P3)"} if any(c["ham"].startswith("bang:") for c in t["goi"]) else set()))
+			| ({"cổng bảng đã có (P3 / P4)"} if any(c["ham"].startswith("bang:") for c in t["goi"]) else set()) | set(t.get("can_them") or ()))
 		lech_fr = list(t["lech_frappe"])
 		if p3:
 			lech_fr.append(f"🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi {p3} mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)")
@@ -2809,9 +2905,8 @@ def main():
 	bo_ra["N"] = {"mo_ta": MO_TA_N, "goc": None, "buoc": buoc, "frappe": FRAPPE_N, "nhan_dac_ta": NHAN_DAC_TA_N,
 		"anh_chup": anh_chup(db_cua("N"), idm["N"]) | anh_chup_ncc(db_cua("N"), idm["N"])}
 	bo_ra["E2E"] = {"mo_ta": "Bộ e2e một lượt (e2e/bao-cao-cu-mot-luot.spec.ts, 29/09/2026) + hai dòng nợ VB-E04 (e2e/bao-cao-tong-hop.spec.ts) — chèn thẳng như sổ "
-		"giả e2e (id chữ của e2e → uuid GIỮ thứ tự HD-ML-A < HD-ML-B)", "goc": None,
-		"frappe": ["HĐ / phiếu trả / phiếu kho chèn thẳng có kiểm soát (phiếu trả không NV, không HĐ chỉ có ở dữ liệu chuyển); bảng giá chung: thùng 450.000, hộp "
-			"20.000; Item.npp_gia_ban 20.000; mã HĐ giữ thứ tự HD-ML-A < HD-ML-B theo mã điểm"],
+		"giả e2e (id chữ của e2e → uuid GIỮ thứ tự HD-ML-A < HD-ML-B); thêm khoản thu 200.000 05/09 cho dòng nợ Cô Ba và hạn 10/09 cho dòng dư có (soát "
+		"SOAT-VBC-04 — sổ thật không có 'đã thu' mà không khoản thu, dòng dư có thật có hạn = ngày phiếu)", "goc": None, "frappe": FRAPPE_E2E,
 		"anh_chup": anh_chup(db_cua("E2E"), idm["E2E"])}
 	nen = {
 		"S": {"org": "NPP BC", "nguoi": {k: {"ten": v[1], "vai": v[2], "email": v[3]} for k, v in NGUOI_S.items()},
@@ -2821,15 +2916,18 @@ def main():
 			"phan_cong": [{"khach": KHACH_S[a][3], "nv": NGUOI_S[b][3], "vai_tro": c, "trang_thai": "active"} for a, b, c in PHAN_CONG_S],
 			"hang": {k: {"ten": v[1], "dv_co_so": v[2], "vat": v[3], "gia_ban": v[4], "gia_von": v[5], "ncc": NCC_S[v[6]][1] if v[6] else None, "quy_doi": v[7]}
 				for k, v in HANG_S.items()},
-			"bang_gia_chung": [], "lo": {k: {"sku": v[1], "han": v[2], "sl": v[3], "gia_von": v[4], "kho": "sale", "nhan_luc": "2026-10-01T08:00:00+07:00"}
-				for k, v in LO_S.items()},
+			"bang_gia_chung": [], "lo": {k: {"sku": v[1], "han": v[2], "sl": v[3], "gia_von": v[4], "kho": "sale", "nhan_luc": "2026-10-01T08:00:00+07:00",
+				"tao_luc": GIO_SEED_S} for k, v in LO_S.items()},
 			"gio_hat_giong": GIO_SEED_S, "gio_doc": GIO_DOC_S,
 			"frappe": "mỗi mặt hàng MỘT lô (định giá lô của lõi = giá lô) để giá vốn khớp; bảng giá chung trống (giá niêm yết = Item.npp_gia_ban); thủ kho / kế "
 				"toán / quản lý / chủ có inventory.cost mặc định, NVBH không"},
-		"N": {"nguoi": {k: {"ten": v[1], "vai": v[2], "email": v[3], **({"khoa": True} if k == "KHOA" else {}), **({"npp": "B"} if k == "CHU_B" else {})}
+		"N": {"nguoi": {k: {"ten": v[1], "vai": v[2], "email": v[3], **({"khoa": True} if k == "KHOA" else {}), **({"npp": "B"} if k in NPP_B_N else {})}
 				for k, v in NGUOI_N.items()},
-			"khach": {v[2]: {"ten": v[1]} for v in KHACH_N.values()}, "hang": {k: {"ten": v[1], "dv_co_so": v[2]} for k, v in HANG_N.items()},
-			"gio_doc": GIO_DOC_N},
+			"khach": {v[2]: {"ten": v[1], "han_muc": v[3], **({"npp": "B"} if v[4] == ORG_NB else {})} for v in KHACH_N.values()},
+			"phan_cong": [{"khach": KHACH_N[a_][2], "nv": NGUOI_N[b_][3], "vai_tro": c_, "trang_thai": "active"} for a_, b_, c_ in PHAN_CONG_N],
+			"hang": {("B:" if v[4] == ORG_NB else "") + k: {"ten": v[1], "dv_co_so": v[2], "quy_doi": v[3], "vat": 0} for k, v in HANG_N.items()},
+			"ncc": {v[1]: {"ma": v[2]} for v in NCC_N.values()}, "danh_muc_chi_phi": {k: {"ten": v[1], "nhom": v[2]} for k, v in DM_N.items()},
+			"gio_hat_giong": GIO_SEED_N, "gio_doc": GIO_DOC_N},
 		"E2E": {"nguoi": {k: {"ten": v[1], "vai": v[2], "email": v[3]} for k, v in NGUOI_E.items()}, "khach": {v: k for k, v in SDT_E.items()},
 			"hang": {"ML1": {"ten": "Sữa một lượt", "thuong_hieu": "Hiệu Một Lượt", "dv_co_so": "hộp", "quy_doi": {"thùng": 24}, "gia_ban": 20000,
 				"bang_gia_chung": {"thùng": 450000, "hộp": 20000}}}, "gio_doc": GIO_DOC_E},
