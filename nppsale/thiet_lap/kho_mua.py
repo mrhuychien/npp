@@ -3,7 +3,8 @@
 - `dam_bao()` (after_install / after_migrate — chạy lại an toàn): đặt đúng các Single lõi ở `CAI_DAT`, Property Setter ở `THUOC_TINH`, trỏ
   `NPP Cai Dat.tk_thue_dau_vao` vào TK thuế GTGT đầu vào của mẫu "VAT n%" (dòng thuế gõ tay của phiếu nhập — BP §4.1); lập TK giảm đầu phiếu nhập
   (`tk_giam_dau_phieu_nhap` — dòng Actual + Deduct của CFD-11; M1, quyết định tạm Q9: "Chiet khau mua hang duoc huong" dưới thu nhập khác 711, chờ
-  kế toán chốt 711 hay 632 — BP §7.1 điểm 16) khi NPP Cai Dat còn trống. Dãy số phiếu nhập / trả NCC /
+  kế toán chốt 711 hay 632 — BP §7.1 điểm 16) khi NPP Cai Dat còn trống; trỏ TK nợ NCC lập tay (`tk_no_ncc_lap_tay` — M3, quyết định tạm Q9: TK "hàng
+  về chưa có hoá đơn" của công ty) khi còn trống. Dãy số phiếu nhập / trả NCC /
   nợ NCC / sửa giá (`PN-`, `PTNCC-`, `DKN-`, `NTN-`, `SGN-`) đặt cùng các dãy khác ở `mac_dinh._dat_ten_chung_tu`.
 - `kiem()` (chỉ đọc): mỗi chỗ lệch một dòng {doi_tuong, truong, dang_co, can, vi_sao} — Single lõi, Property Setter, dãy số, mẫu thuế "VAT n%" thiếu
   TK đầu vào (thiếu là phiếu nhập tính VAT = 0 mà không báo — PoC 05/11), `NPP Cai Dat` thiếu kho / bảng giá nhập / mẫu thuế mua / ngưỡng ngoài 0–365,
@@ -89,6 +90,14 @@ def _tk_giam_dau_phieu_nhap(cd_ban) -> str | None:
 		"account_type": "", "is_group": 0}).insert(ignore_permissions=True).name
 
 
+def _tk_no_ncc_lap_tay(cd_ban) -> str | None:
+	"""TK dòng của tờ nợ NCC lập tay `NTN-` (M3 — quyết định tạm Q9, chờ kế toán chốt cùng BP §7.1 điểm 16): TK trung gian "hàng về chưa có hoá đơn"
+	của công ty (`Company.stock_received_but_not_billed` — 3388 của TT200): nợ lập tay gắn phiếu nhập kho tay `IN-` (Có TK này ở M4) tất toán đúng phần
+	kho đã ghi; nợ lập tay không gắn phiếu kho để lại số dư Nợ trên TK này cho kế toán phân loại."""
+	cong_ty = cd_ban.get("cong_ty")
+	return frappe.get_cached_value("Company", cong_ty, "stock_received_but_not_billed") if cong_ty else None
+
+
 def dam_bao() -> None:
 	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
@@ -119,6 +128,11 @@ def dam_bao() -> None:
 			tk = _tk_giam_dau_phieu_nhap(cai_dat_ban())
 			if tk:
 				frappe.db.set_single_value("NPP Cai Dat", "tk_giam_dau_phieu_nhap", tk)
+		if frappe.get_meta("NPP Cai Dat").has_field("tk_no_ncc_lap_tay") and not frappe.db.get_single_value("NPP Cai Dat",
+				"tk_no_ncc_lap_tay", cache=False):
+			tk = _tk_no_ncc_lap_tay(cai_dat_ban())
+			if tk:
+				frappe.db.set_single_value("NPP Cai Dat", "tk_no_ncc_lap_tay", tk)
 		frappe.local._npp_cai_dat_ban = None
 
 
@@ -160,7 +174,8 @@ def kiem() -> list[dict]:
 		g = frappe.db.get_singles_dict("NPP Cai Dat", cast=False)
 		for truong, vi_sao in (("kho_ban", "vùng sale"), ("kho_can_date", "vùng date"), ("mau_thue_mua", "dòng VAT của phiếu nhập / trả NCC"),
 				("tk_thue_dau_vao", "dòng Actual thuế gõ tay của phiếu nhập; chênh VAT của bút toán DCN-"),
-				("tk_giam_dau_phieu_nhap", "dòng Actual + Deduct giảm đầu phiếu nhập (CFD-11) — thiếu thì phiếu có giảm đầu phiếu không lưu được")):
+				("tk_giam_dau_phieu_nhap", "dòng Actual + Deduct giảm đầu phiếu nhập (CFD-11) — thiếu thì phiếu có giảm đầu phiếu không lưu được"),
+				("tk_no_ncc_lap_tay", "dòng của tờ nợ NCC lập tay NTN- (màn Thêm công nợ NCC) — thiếu thì dùng TK hàng về chưa có hoá đơn của công ty")):
 			if not g.get(truong):
 				lech("NPP Cai Dat", truong, None, "(có giá trị)", vi_sao)
 		ng = g.get("nguong_kho_date_ngay")

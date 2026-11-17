@@ -299,7 +299,51 @@ def quet_cong_no_ncc(ncc: list[str] | None = None) -> list[dict]:
 			ra.append(_dong_ncc(20, "Công nợ NCC lệch sổ cái", n, ten.get(n), chieu.get(n, 0.0),
 				f"Σ dòng công nợ NCC {chieu.get(n, 0.0):g} — Σ sổ cái {flt(so_cai.get(n)):g}",
 				"Chạy kham_so_cong_no_ncc; còn lệch thì tìm chứng từ tiền / nợ của NCC không thuộc nhóm nào (PE Ghi trả còn tiền, bút toán tay)"))
+	ra += quet_dong_chi_ncc(ncc)
 	ra.sort(key=lambda x: (x["nhom"], x["chung_tu"]))
+	return ra
+
+
+def quet_dong_chi_ncc(ncc: list[str] | None = None) -> list[dict]:
+	"""Bất biến DÒNG TIỀN trả NCC (`scripts/sql/kham-so-that.sql` dòng 66; đặc tả kho_mua §2.8 / §8.1; BP §7.2 điểm 8) trên nguồn của bảng cổng
+	`payable_payments` (tham chiếu phiếu chi / Ghi trả + vế bù trừ + phần chưa phân bổ của phiếu chi):
+	  23. `payables.paid` (bản chiếu `da_tra`) ≠ Σ dòng tiền trỏ dòng (±0,01) — dòng tiền ngoài nhóm / chiếu cũ;
+	  24. Σ dòng của một phiếu chi đang ghi sổ (kể cả `::tra_truoc`) ≠ `paid_amount`;
+	  25. một phiếu chi có hơn một lúc chi (`paid_at`) trên các dòng của nó;
+	  26. phiếu chi phân bổ vào dòng âm (phiếu trả NCC — mig 242 không bao giờ đụng)."""
+	from nppsale.cong.bang.cong_no_ncc import NGUON_TRA_NO
+	from nppsale.su_kien import cong_no_ncc as N
+
+	ra: list[dict] = []
+	if not frappe.db.exists("DocType", N.DT) or not frappe.get_meta("Payment Entry").has_field("npp_loai"):
+		return ra
+	ts = {"n": tuple(ncc or ()) or ("",)}
+	ten = dict(frappe.db.sql("SELECT `name`, `supplier_name` FROM `tabSupplier`"))
+	loc = "WHERE n.`nha_cung_cap` IN %(n)s" if ncc else ""
+	for r in frappe.db.sql(f"""SELECT n.`name`, n.`nha_cung_cap`, n.`loai`, n.`da_tra`, COALESCE(SUM(x.`amount`), 0) AS `tong`
+			FROM `tab{N.DT}` n LEFT JOIN {NGUON_TRA_NO} x ON x.`payable_id` = n.`name` {loc}
+			GROUP BY n.`name`, n.`nha_cung_cap`, n.`loai`, n.`da_tra` HAVING ABS(n.`da_tra` - COALESCE(SUM(x.`amount`), 0)) > 0.01""", ts,
+			as_dict=True):
+		ra.append(_dong_ncc(23, "Đã trả của dòng công nợ NCC ≠ Σ dòng tiền trả", r.name, ten.get(r.nha_cung_cap), r.da_tra,
+			f"{r.loai}: đã trả {flt(r.da_tra):g} — Σ dòng tiền {flt(r.tong):g}", "Chiếu lại dòng (cong_no_ncc.chieu_dong); còn lệch thì tìm tiền ngoài nhóm"))
+	loc = "AND p.`party` IN %(n)s" if ncc else ""
+	for r in frappe.db.sql(f"""SELECT p.`name`, p.`party`, p.`paid_amount`, COALESCE(SUM(x.`amount`), 0) AS `tong`,
+				COUNT(DISTINCT x.`paid_at`) AS `luc`
+			FROM `tabPayment Entry` p LEFT JOIN {NGUON_TRA_NO} x ON x.`supplier_payment_id` = p.`name`
+			WHERE p.`docstatus` = 1 AND p.`npp_loai` = 'phieu_chi_ncc' {loc}
+			GROUP BY p.`name`, p.`party`, p.`paid_amount`""", ts, as_dict=True):
+		if abs(flt(r.paid_amount) - flt(r.tong)) > 0.01:
+			ra.append(_dong_ncc(24, "Phiếu chi NCC: Σ phần trừ nợ + trả trước ≠ số chi", r.name, ten.get(r.party), r.paid_amount,
+				f"số chi {flt(r.paid_amount):g} — Σ dòng {flt(r.tong):g}", "Chiếu lại phiếu chi (cong_no_ncc.chieu_tra_truoc) và các khoản nó trừ"))
+		if cint(r.luc) > 1:
+			ra.append(_dong_ncc(25, "Phiếu chi NCC có nhiều lúc chi", r.name, ten.get(r.party), r.paid_amount, f"{cint(r.luc)} lúc chi khác nhau",
+				"Kiểm nguồn payable_payments (lúc chi tính từ phiếu)"))
+	loc = "AND n.`nha_cung_cap` IN %(n)s" if ncc else ""
+	for r in frappe.db.sql(f"""SELECT x.`id`, x.`amount`, x.`supplier_payment_id`, n.`name`, n.`nha_cung_cap` FROM {NGUON_TRA_NO} x
+			JOIN `tab{N.DT}` n ON n.`name` = x.`payable_id`
+			WHERE n.`so_tien` < 0 AND x.`supplier_payment_id` IS NOT NULL {loc}""", ts, as_dict=True):
+		ra.append(_dong_ncc(26, "Phiếu chi NCC phân bổ vào dòng âm (phiếu trả NCC)", r.supplier_payment_id, ten.get(r.nha_cung_cap), r.amount,
+			f"dòng {r.name} nhận {flt(r.amount):g}", "Gỡ phân bổ khỏi phiếu trả NCC (mig 242 không cấn trừ dòng âm)"))
 	return ra
 
 

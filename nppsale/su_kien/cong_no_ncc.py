@@ -27,9 +27,12 @@ PN do method quyết (hook dồn ngay lúc huỷ tờ cũ là đẩy tiền phi�
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 import frappe
 from frappe.utils import flt, get_datetime, now_datetime
 
+from nppsale.luat.cong_no_ncc import KhoanNo, PhieuChiCon, phan_bo_tra_truoc
 from nppsale.luat.kho_mua import luc_chi
 from nppsale.luat.tim import khoa_tim_ds
 from nppsale.su_kien.cong_no import _con_no, trang_thai
@@ -94,7 +97,7 @@ def gia_tri_pi(ten: str) -> dict | None:
 		"loai": loai, "nha_cung_cap": pi.supplier, "ten_ncc": pi.supplier_name, "chung_tu": pi.name, "phieu_chi": None,
 		"khoa_cho": f"dau_ky:{pi.supplier}" if pi.get("npp_loai") == "dau_ky" else None,
 		"so_hd_ncc": so_hd, "tim_kd": khoa_tim_ds(so_hd or ""),
-		"phieu_kho": pi.name if loai in ("phieu_nhap", "tra_ncc") else (pi.get("npp_phieu_kho") if loai == "lap_tay" else None),
+		"phieu_kho": pi.name if loai in ("phieu_nhap", "tra_ncc") else (pi.get("npp_phieu_kho") or None),
 		"so_tien": so_tien, "da_tra": da_tra, "con_no": con_no, "han_thanh_toan": pi.get("npp_han_thanh_toan"),
 		"trang_thai": trang_thai(so_tien, da_tra, qua_han), "qua_han_tay": 1 if qua_han else 0,
 		"ghi_chu": ghi_chu if ghi_chu is not None else ghi_chu_he_thong(loai, pi.name),
@@ -229,9 +232,9 @@ def phieu_chi_con_tien(ncc: str) -> list:
 	return sorted(ds, key=lambda r: (r.luc, r.name))
 
 
-def khoan_no_cu_nhat(ncc: str):
-	"""Khoản nợ còn phải trả cũ nhất của NCC (`_don_tra_truoc_ncc`): PI đang ghi sổ, không phải tờ trả NCC / dòng âm, còn nợ theo sổ > 0; nợ đầu kỳ
-	trước (`opening_balance DESC`), rồi ngày ghi nợ, rồi tên. Dòng trả trước không phải khoản nợ."""
+def khoan_no_mo(ncc: str) -> list:
+	"""MỌI khoản nợ còn phải trả của NCC theo thứ tự dồn của `_don_tra_truoc_ncc`: PI đang ghi sổ, không phải tờ trả NCC / dòng âm, còn nợ theo sổ
+	> 0; nợ đầu kỳ trước (`opening_balance DESC`), rồi ngày ghi nợ, rồi tên. Dòng trả trước không phải khoản nợ."""
 	ds = frappe.db.sql("""SELECT pi.`name`, pi.`npp_loai`, pi.`is_return`, pi.`is_opening`, pi.`grand_total`, pi.`credit_to`,
 			pi.`outstanding_amount`, COALESCE(pi.`npp_hoan_thanh_luc`, pi.`creation`) AS `tao`, x.`con`
 		FROM (SELECT `against_voucher_no` AS `ct`, SUM(`amount`) AS `con` FROM `tabPayment Ledger Entry`
@@ -239,8 +242,59 @@ def khoan_no_cu_nhat(ncc: str):
 			GROUP BY `against_voucher_no` HAVING SUM(`amount`) > 0.005) x
 		JOIN `tabPurchase Invoice` pi ON pi.`name` = x.`ct`
 		WHERE pi.`docstatus` = 1 AND pi.`is_return` = 0 AND pi.`grand_total` >= 0""", {"n": ncc}, as_dict=True)
-	ds.sort(key=lambda r: (loai_cua_pi(r.npp_loai, r.name, r.is_return, r.is_opening) != "dau_ky", str(get_datetime(r.tao)), r.name))
+	for r in ds:
+		r.dau_ky = loai_cua_pi(r.npp_loai, r.name, r.is_return, r.is_opening) == "dau_ky"
+		r.tao = get_datetime(r.tao)
+	ds.sort(key=lambda r: (not r.dau_ky, r.tao, r.name))
+	return ds
+
+
+def khoan_no_cu_nhat(ncc: str):
+	"""Khoản nợ còn phải trả cũ nhất của NCC (đầu `khoan_no_mo`)."""
+	ds = khoan_no_mo(ncc)
 	return ds[0] if ds else None
+
+
+def _tien(x) -> Decimal:
+	return Decimal(str(round(flt(x), 2)))
+
+
+def ke_hoach_don(ncc: str, moi: PhieuChiCon | None = None) -> list[tuple[str | None, str, Decimal]]:
+	"""Kế hoạch dồn trả trước của NCC (`nppsale.luat.cong_no_ncc.phan_bo_tra_truoc`) trên số sổ hiện tại: mọi phiếu chi còn tiền + `moi` (phiếu chi
+	đang lập — `chi_tra_ncc`), mọi khoản nợ còn mở. Nơi gọi đã khoá NCC (`khoa_ncc`)."""
+	pc = [PhieuChiCon(p.name, p.luc, _tien(p.con)) for p in phieu_chi_con_tien(ncc)]
+	if moi is not None:
+		pc.append(moi)
+	kn = [KhoanNo(k.name, _tien(k.con), bool(k.dau_ky), k.tao) for k in khoan_no_mo(ncc)]
+	return phan_bo_tra_truoc(pc, kn)
+
+
+def ap_phan_bo(pe: str, pi: str, lay, ncc: str) -> None:
+	"""Gắn `lay` đồng của phiếu chi `pe` vào khoản nợ `pi` (đọc lại số còn chưa phân bổ của phiếu + công nợ của PI ngay lúc gắn) rồi chiếu lại
+	khoản."""
+	khoan = frappe.db.get_value("Purchase Invoice", pi, ["name", "credit_to", "grand_total", "outstanding_amount"], as_dict=True)
+	chua = flt(frappe.db.get_value("Payment Entry", pe, "unallocated_amount"))
+	_phan_bo(pe, khoan, flt(lay), chua, ncc)
+	chieu_phieu_nhap(pi)
+
+
+def tien_tra_thang(pi: str) -> float:
+	"""Tiền trả THẲNG vào một phiếu (đặc tả §3.2 bước 3 — `DA_TRA_TIEN`): Ghi trả (Payment Entry `ghi_tra_ncc`) + vế Nợ của bút toán bù trừ
+	(`bu_tru_ncc`) đang ghi sổ trỏ phiếu. Phần phiếu chi `PCNCC-` KHÔNG tính: lõi gỡ phân bổ khi huỷ phiếu, method dồn sang khoản khác (mig 242
+	`_tra_phan_bo_ve_truoc`)."""
+	if not frappe.get_meta("Payment Entry").has_field("npp_loai"):
+		return 0.0
+	pe = flt(frappe.db.sql("""SELECT COALESCE(SUM(r.`allocated_amount`), 0) FROM `tabPayment Entry Reference` r
+		JOIN `tabPayment Entry` p ON p.`name` = r.`parent` AND r.`parenttype` = 'Payment Entry'
+		WHERE p.`docstatus` = 1 AND p.`npp_loai` = 'ghi_tra_ncc' AND r.`reference_doctype` = 'Purchase Invoice'
+			AND r.`reference_name` = %s""", pi)[0][0])
+	if not frappe.get_meta("Journal Entry").has_field("npp_loai"):
+		return pe
+	je = flt(frappe.db.sql("""SELECT COALESCE(SUM(a.`debit_in_account_currency` - a.`credit_in_account_currency`), 0)
+		FROM `tabJournal Entry Account` a JOIN `tabJournal Entry` j ON j.`name` = a.`parent` AND a.`parenttype` = 'Journal Entry'
+		WHERE j.`docstatus` = 1 AND j.`npp_loai` = 'bu_tru_ncc' AND a.`party_type` = 'Supplier' AND a.`reference_type` = 'Purchase Invoice'
+			AND a.`reference_name` = %s""", pi)[0][0])
+	return pe + je
 
 
 def _phan_bo(pe: str, khoan, lay: float, chua: float, ncc: str) -> None:
@@ -268,27 +322,19 @@ def _phan_bo(pe: str, khoan, lay: float, chua: float, ncc: str) -> None:
 
 def don_tra_truoc_ncc(ncc: str | None) -> float:
 	"""Dồn tiền trả trước của NCC vào các khoản nợ cũ nhất (`_don_tra_truoc_ncc` mig 242; đặc tả §2.8): chỉ chạy khi NCC có phiếu chi còn tiền (= EXISTS
-	của trigger) → khoá NCC + mọi dòng → lần lượt từng phiếu chi theo lúc chi: lấy = min(còn, còn nợ của khoản) → phân bổ → chiếu lại khoản; hết phiếu
-	thì chiếu dòng trả trước (hết tiền → xoá). Không đụng tờ trả NCC / dòng âm (mig 242: "cấn trừ chúng sẽ khoá huỷ / sửa phiếu trả"). Trả tổng đã dồn."""
+	của trigger) → khoá NCC + mọi dòng → kế hoạch dồn (`ke_hoach_don` — phiếu chi theo lúc chi, khoản cũ nhất trước, lấy = min(còn, còn nợ)) → phân bổ
+	từng phần → chiếu lại khoản; cuối cùng chiếu dòng trả trước (hết tiền → xoá). Không đụng tờ trả NCC / dòng âm (mig 242: "cấn trừ chúng sẽ khoá huỷ
+	/ sửa phiếu trả"). Trả tổng đã dồn. `chi_tra_ncc` dùng CÙNG kế hoạch cho phiếu đang lập (tham chiếu lập sẵn khi ghi sổ)."""
 	if not ncc or not phieu_chi_con_tien(ncc):
 		return 0.0
 	khoa_ncc(ncc)
+	co_tien = [p.name for p in phieu_chi_con_tien(ncc)]
 	tong = 0.0
-	for pe in phieu_chi_con_tien(ncc):
-		con = flt(pe.con)
-		while con > 0.005:
-			khoan = khoan_no_cu_nhat(ncc)
-			if not khoan:
-				break
-			chua = flt(frappe.db.get_value("Payment Entry", pe.name, "unallocated_amount"))
-			lay = min(con, flt(khoan.con), chua)
-			if lay <= 0.005:  # chốt chống lặp mãi (nppsale: EXIT WHEN v_lay <= 0)
-				break
-			_phan_bo(pe.name, khoan, lay, chua, ncc)
-			chieu_phieu_nhap(khoan.name)
-			con -= lay
-			tong += lay
-		chieu_tra_truoc(pe.name)
+	for pe, pi, lay in ke_hoach_don(ncc):
+		ap_phan_bo(pe, pi, lay, ncc)
+		tong += flt(lay)
+	for pe in co_tien:
+		chieu_tra_truoc(pe)
 	return tong
 
 

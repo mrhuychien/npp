@@ -13,9 +13,7 @@
   `sort_order` = `idx`.
   Ghi (cả hai bảng): phiếu TẠM qua `nppsale.rpc.phieu_nhap` (them_phieu / sua_phieu / xoa_phieu, them_dong / sua_dong / xoa_dong) — trạng thái / tờ đã ghi
   sổ → `USE_RPC` (BP §6.1 siết; nppsale RLS cho ghi mọi cột).
-- payables ← `NPP Cong No NCC` (bản chiếu từ sổ — `nppsale.su_kien.cong_no_ncc`, §2.8): `amount` = `so_tien`, `paid` = `da_tra`, `created_at` = `tao_luc`
-  (ngày ghi nợ), `opening_balance` = (`loai = dau_ky`), `stock_entry_id` = `phieu_kho`. RLS (mig 034): owner / manager / accountant; thủ kho / NVBH 0 dòng.
-  M1 chỉ ĐỌC — ghi (nợ đầu kỳ `DKN-` / lập tay `NTN-`, sửa hạn / ghi chú / quá hạn, xoá) dựng ở M3; tới lúc ấy ghi bị từ chối như RLS.
+- payables (đọc từ M1, ghi từ M3) đăng ký ở nppsale.cong.bang.cong_no_ncc — cùng `payable_payments`, `supplier_payments`.
 """
 from __future__ import annotations
 
@@ -24,7 +22,6 @@ from ._chung import c, co_cot, org
 from .kho import KHO
 
 VAI_MUA = ("owner", "manager", "accountant", "warehouse")
-VAI_NO = ("owner", "manager", "accountant")
 NGUON_PN = "(SELECT * FROM `tabPurchase Invoice` WHERE `npp_loai` = 'phieu_nhap')"
 TK_GIAM = "(SELECT s.`value` FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'tk_giam_dau_phieu_nhap')"
 # tờ GỐC của chuỗi amend: `PN-0042-1` → `PN-0042` (dãy `PN-.####` không có gạch nối khác)
@@ -36,11 +33,6 @@ def _rls_mua(nc: NguCanh):
 		return None
 	return False
 
-
-def _rls_no(nc: NguCanh):
-	if nc.bo_qua_rls or nc.vai in VAI_NO:
-		return None
-	return False
 
 
 class GhiPhieuNhap:
@@ -140,19 +132,6 @@ def nap():
 		ghi=GhiDongPhieuNhap(),
 		thu_tu_mac_dinh=[{"cot": "invoice_id"}, {"cot": "sort_order"}],
 	))
-	if co_cot("NPP Cong No NCC", "khoa_nguon"):
-		dang_ky(Bang(
-			ten="payables",
-			nguon="`tabNPP Cong No NCC`",
-			cot={
-				"id": c("{t}.`name`"), "org_id": org(), "supplier_id": c("nha_cung_cap"), "stock_entry_id": c("phieu_kho"),
-				"invoice_number": c("so_hd_ncc"), "amount": c("so_tien", "tien"), "paid": c("da_tra", "tien"), "due_date": c("han_thanh_toan", "ngay"),
-				"status": c("trang_thai"), "notes": c("ghi_chu"), "created_at": c("tao_luc", "gio"),
-				"opening_balance": c("({t}.`loai` = 'dau_ky')", "bool"), "tim_kd": c("tim_kd"),
-			},
-			quan_he=[QuanHe("suppliers", "supplier_id", "id", False, ("payables_supplier_id_fkey", "supplier_id"))],
-			rls=_rls_no,
-		))
 
 
 try:

@@ -8,7 +8,8 @@ RPC (giữ tên nppsale — hàm Postgres nguồn ở scratchpad kho_mua/src/<t�
 - `cancel_purchase_invoice` (mig 142 / 166 / 238 / 242): phiếu tạm → chỉ dấu huỷ (`npp_huy_*` — §7.3 điểm 1: giữ nháp mang dấu huỷ, khôi phục về nháp
   được như mig 241); đã ghi sổ → `HANG_DA_XUAT` (hàng theo lô luôn chặn — CFD-05 B; câu riêng khi cờ bán vượt tồn bật — §7.3 điểm 12; hàng không lô
   được âm khi mặt hàng cho + NPP cho) → huỷ PI (lõi đảo gói lô, gỡ phân bổ phiếu chi) → lô hết hàng thì tắt (`disabled` ≈ `status 'cancelled'` —
-  §7.3 điểm 35) → xếp repost (CFD-07) → dồn trả trước sang khoản khác. CHƯA có nhánh `DA_TRA_TIEN` (tiền Ghi trả `GTN-` / bù trừ `CTN-` — mốc M3).
+  §7.3 điểm 35) → xếp repost (CFD-07) → dồn trả trước sang khoản khác. `DA_TRA_TIEN` (M3) kiểm TRƯỚC `HANG_DA_XUAT`: tiền Ghi trả `GTN-` + vế Nợ bù
+  trừ `CTN-` trỏ phiếu (phần phiếu chi `PCNCC-` lõi tự gỡ rồi dồn sang khoản khác).
 - `khoi_phuc_phieu_nhap` (mig 241): huỷ lúc nháp → bỏ dấu huỷ (về nháp); huỷ lúc đã ghi sổ → amend `PN-xxxx-n` (CFD-01) giữ ngày / giờ ghi sổ gốc (ghi lùi
   → repost), dòng giữ nguyên, nhập vào ĐÚNG các lô cũ (không lô mới), mốc hoàn thành gốc (ngày ghi nợ); không ghi đè giá nhập mới hơn.
 - `luu_gia_nhap` (mig 234): sửa tay bảng giá nhập — MỘT Item Price mỗi (mặt hàng, đơn vị) trên `NPP Cai Dat.bang_gia_nhap`, sửa tại chỗ.
@@ -570,8 +571,16 @@ def cancel_purchase_invoice(p_invoice_id=None, p_reason=None):
 
 
 def huy(ten: str, ly_do: str | None, nc, cd) -> None:
-	"""Thân huỷ phiếu đã ghi sổ (PI đã khoá). Thứ tự nppsale: [M3: DA_TRA_TIEN] → HANG_DA_XUAT → đảo kho → bỏ nợ → dồn trả trước."""
+	"""Thân huỷ phiếu đã ghi sổ (PI đã khoá). Thứ tự nppsale: DA_TRA_TIEN → HANG_DA_XUAT → đảo kho → bỏ nợ → dồn trả trước."""
+	from nppsale.luat.cong_no_ncc import loi_da_tra_tien
+	from nppsale.su_kien.cong_no_ncc import tien_tra_thang
+
 	doc = frappe.get_doc(DT, ten)
+	# mig 242 bước 6: tiền Ghi trả / bù trừ thẳng vào phiếu chặn huỷ — kể cả khi cho tồn âm, TRƯỚC HANG_DA_XUAT (đặc tả §3.2 Frappe bước 3). Phần phiếu
+	# chi `PCNCC-` không chặn: lõi gỡ phân bổ khi huỷ (`unlink_payment_on_cancellation_of_invoice` — gỡ cả Ghi trả nên phải kiểm trước), dồn ở cuối.
+	tra = tien_tra_thang(ten)
+	if tra > 0.005:
+		raise loi_da_tra_tien(round(tra, 2))
 	lo_dong = _lo_cua_dong(ten)
 	cho = bool(cd.get("cho_ban_vuot_ton"))
 	chan = []
