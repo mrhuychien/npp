@@ -93,7 +93,7 @@ def _so_hay_none(v):
 		return v
 	try:
 		return so(v)
-	except Exception:  # noqa: BLE001 — chữ không phải số: so như chữ
+	except Exception:  # chữ không phải số: so như chữ
 		return v
 
 

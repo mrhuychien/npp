@@ -16,8 +16,9 @@ RPC (giữ tên nppsale — hàm Postgres nguồn ở scratchpad kho_mua/src/<t�
   Invoice có kho → Purchase Invoice phiếu nhập / trả NCC) → vai (trước mọi bước trạng thái) → đã huỷ (`[true, false, 0]` — trừ HĐ đã huỷ / phiếu nhập
   lại hàng khách trả: câu của nppsale) → nháp: XOÁ nháp (§7.3 điểm 1) → đã ghi sổ: nguồn nhận diện bằng TRƯỜNG THẬT (⚠K đóng lỗ ghi chú V54): phiếu
   nhập / trả NCC / phiếu nhập lại hàng khách trả (`NL-` hoặc tờ ghi có có kho `HDT-` — việc #24) / nợ NCC lập tay gắn phiếu / chuyển kho / HĐ → câu
-  nppsale; xuất lẻ → huỷ (lõi trả đúng lô theo gói lô, `lines_reversed` = số lô); nhập kho tay → `ALREADY_ISSUED` khi lô / Bin đã xuất bớt (không nới
-  khi cho bán vượt tồn), rồi huỷ (`lines_reversed` = số dòng) → xếp repost. Nháp xoá KHÔNG lùi dãy số (`xoa_nhap`).
+  nppsale; xuất lẻ → huỷ (lõi trả đúng lô theo gói lô, `lines_reversed` = số lô); nhập kho tay → lô đã bị rà sang kho cận date (phiếu `CKL-`
+  `chuyen_date_tu_dong`, không động gì khác) → huỷ trước phiếu ấy (§7.3 điểm 8 — M5, `nppsale.rpc.lo_kho.hoan_chuyen_date`) → `ALREADY_ISSUED` khi lô /
+  Bin đã xuất bớt (không nới khi cho bán vượt tồn), rồi huỷ (`lines_reversed` = số dòng) → xếp repost. Nháp xoá KHÔNG lùi dãy số (`xoa_nhap`).
 - `confirm_driver_handover` (chuyến giao — luồng cũ, §4.8 soát thiếu S14 / §7.3 điểm 40): `LEGACY_FLOW_REMOVED`.
 Ghi thẳng phiếu kho NHÁP qua cổng (`stock_entries` / `stock_entry_lines` — nppsale.cong.bang.phieu_kho; trigger mig 170 + RLS owner / warehouse): lập
 nháp (`status` khác `draft` hoặc quên cột → `SO_KHO_KHOA`), sửa nháp (đổi `type` → câu "chỉ sửa được ghi chú"; `draft → cancelled` = XOÁ nháp), phiếu

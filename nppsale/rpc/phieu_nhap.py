@@ -6,7 +6,8 @@ RPC (giữ tên nppsale — hàm Postgres nguồn ở scratchpad kho_mua/src/<t�
   `PHIEU_KHONG_CON_TAM` → `PHIEU_KHONG_CO_HANG` → `SO_LUONG_KHONG_HOP_LE` (dòng thứ n) → lô + gói lô Inward từng dòng (kho dòng theo hạn — kho cận date
   khi hạn trong ngưỡng, `batches_auto_zone`) → bảng thuế (§2.4) → ghi sổ (hook chiếu công nợ NCC) → giá nhập (`_ghi_gia_nhap_tu_phieu`) → dồn trả trước.
 - `cancel_purchase_invoice` (mig 142 / 166 / 238 / 242): phiếu tạm → chỉ dấu huỷ (`npp_huy_*` — §7.3 điểm 1: giữ nháp mang dấu huỷ, khôi phục về nháp
-  được như mig 241); đã ghi sổ → `HANG_DA_XUAT` (hàng theo lô luôn chặn — CFD-05 B; câu riêng khi cờ bán vượt tồn bật — §7.3 điểm 12; hàng không lô
+  được như mig 241); đã ghi sổ → lô đã bị RÀ sang kho cận date (phiếu `CKL-` `chuyen_date_tu_dong`, lô không động gì khác) → huỷ trước phiếu ấy
+  (§7.3 điểm 8 — M5, `nppsale.rpc.lo_kho.hoan_chuyen_date`) → `HANG_DA_XUAT` (hàng theo lô luôn chặn — CFD-05 B; câu riêng khi cờ bán vượt tồn bật — §7.3 điểm 12; hàng không lô
   được âm khi mặt hàng cho + NPP cho) → huỷ PI (lõi đảo gói lô, gỡ phân bổ phiếu chi) → lô hết hàng thì tắt (`disabled` ≈ `status 'cancelled'` —
   §7.3 điểm 35) → xếp repost (CFD-07) → dồn trả trước sang khoản khác. `DA_TRA_TIEN` (M3) kiểm TRƯỚC `HANG_DA_XUAT`: tiền Ghi trả `GTN-` + vế Nợ bù
   trừ `CTN-` trỏ phiếu (phần phiếu chi `PCNCC-` lõi tự gỡ rồi dồn sang khoản khác).

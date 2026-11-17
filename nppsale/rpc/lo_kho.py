@@ -91,6 +91,11 @@ def lap_ckl(dong: list[tuple[str, str, float]], tu: str, den: str, cd, *, loai: 
 		ngay, gio = x.date(), x.strftime("%H:%M:%S.%f")
 	else:
 		ngay, gio = luc
+	# lô đã tắt (≈ `status 'cancelled'`) còn tồn: nppsale lật vùng không xét trạng thái — lõi chặn gói lô xuất có lô tắt
+	# (`stock_controller.validate_outward_bundle_batches`) → mở tạm trong lượt, tắt lại sau khi ghi sổ
+	tat = [ma for ma, _h, _sl in dong if cint(frappe.db.get_value("Batch", ma, "disabled"))]
+	for ma in tat:
+		frappe.db.set_value("Batch", ma, "disabled", 0, update_modified=False)
 	se = frappe.new_doc(DT)
 	se.update({"naming_series": "CKL-.####", "stock_entry_type": "Material Transfer", "purpose": "Material Transfer", "company": cd.cong_ty,
 		"posting_date": ngay, "posting_time": gio, "set_posting_time": 1, "npp_loai": loai, "from_warehouse": tu, "to_warehouse": den,
@@ -104,6 +109,8 @@ def lap_ckl(dong: list[tuple[str, str, float]], tu: str, den: str, cd, *, loai: 
 	se.insert()
 	se.submit()
 	frappe.local.message_log = []
+	for ma in tat:
+		frappe.db.set_value("Batch", ma, "disabled", 1, update_modified=False)
 	_dat_tim(se.name)
 	return se.name
 
@@ -211,10 +218,6 @@ def _khoa_lo(ids, cd) -> None:
 	_khoa_bin(hang, cd)
 
 
-def _ngu_canh_doc(nc) -> NguCanh:
-	return NguCanh(user=nc.user, vai=nc.vai, quyen=nc.quyen, bo_qua_rls=True, them=nc.them)
-
-
 def _dong_hien(ids, nc) -> dict[str, dict]:
 	"""Dòng cổng HIỆN TẠI của các id (giá trị so `IS DISTINCT FROM` — cùng số màn đang thấy; giá vốn đọc không che)."""
 	from nppsale.cong.truy_van import doc
@@ -269,10 +272,7 @@ def them_lo(ds: list[dict], nc) -> list[str]:
 		L.kiem_them(g)  # trigger BEFORE INSERT — trước RLS
 		if nc.vai not in K.VAI_KHO_TAY and not nc.bo_qua_rls:
 			raise L.loi_rls()
-		try:
-			kiem_org(g, L.BANG)
-		except Exception:  # noqa: BLE001 — org khác: WITH CHECK của RLS
-			raise L.loi_rls() from None
+		kiem_org(g, L.BANG)  # NPP khác: WITH CHECK của RLS (42501)
 		for cot in L.KHONG_NULL:
 			if cot == "warehouse_zone":
 				continue
