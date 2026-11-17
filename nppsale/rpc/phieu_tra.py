@@ -687,9 +687,10 @@ def _lap_phieu_nhap(doc, kho: str, zone: str, luc, cd) -> str:
 def _lap_to_ghi_co_co_kho(doc, kho: str, zone: str, luc, cd, to_cu: str | None = None) -> str:
 	"""Tờ ghi có CÓ KHO `HDT-` của phiếu tự lập: mọi dòng SL > 0 (SL âm), dòng đổi theo luật dòng 0 đ, giá vốn nhập lại tự đặt theo đơn vị
 	kho rồi ghi sổ ngay (lưu lại tờ nháp đổi dòng là lõi xoá giá — PoC 5). Gắn HĐ thì npp_hoa_don_goc (nợ trừ vào HĐ), không thì dòng âm."""
-	from frappe.utils import now_datetime
+	from frappe.utils import getdate, now_datetime
 
 	from nppsale.luat.giu_no import khi_lap
+	from nppsale.luat.phieu_tra import han_no_am
 	from nppsale.rpc.don_hang import _bang_gia_nhom, _gia_bang
 	from nppsale.rpc.gan_nguoi import da_nghi
 	from nppsale.thiet_lap.ban_hang import mau_thue_dong
@@ -708,7 +709,10 @@ def _lap_to_ghi_co_co_kho(doc, kho: str, zone: str, luc, cd, to_cu: str | None =
 		"set_warehouse": kho, "set_posting_time": 1, "posting_date": luc.date(), "posting_time": luc.strftime("%H:%M:%S"),
 		"selling_price_list": bang, "ignore_pricing_rule": 1, "disable_rounded_total": 1, "taxes_and_charges": cd.mau_thue_ban,
 		"npp_hoa_don_goc": doc.hoa_don or None, "npp_phieu_tra": doc.name, "npp_nhan_vien": doc.nhan_vien, "npp_nv_giu_no": g.nv,
-		"npp_ve_npp_luc": g.ve_npp, "npp_giao_tu_nv": g.giao, "update_outstanding_for_self": 1, "due_date": luc.date()})
+		"npp_ve_npp_luc": g.ve_npp, "npp_giao_tu_nv": g.giao, "update_outstanding_for_self": 1, "due_date": luc.date(),
+		# hạn dòng nợ âm (phiếu độc lập) = ngày phiếu LÚC hoàn thành — chụp lên tờ, `chieu_phieu_tra` đọc lại (🔧 P3-HAN-NO-AM)
+		"npp_han_thanh_toan": han_no_am(doc_lap=not doc.hoa_don and not doc.don_hang,
+			ngay_tra=getdate(doc.ngay_tra) if doc.ngay_tra else None, hoan_thanh_luc=luc)})
 	if to_cu and frappe.db.get_value("Sales Invoice", to_cu, "docstatus") == 2:
 		cn.amended_from = to_cu  # ghi nhận lại phiếu tự lập: amend tờ cũ (HDT-x-n), số PT giữ (bàn bạc 6.11)
 	for d in doc.dong:

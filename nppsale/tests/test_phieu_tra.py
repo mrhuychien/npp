@@ -194,6 +194,47 @@ class TestPhieuTraCong(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value("Sales Invoice", cu, "docstatus"), 2)
 		self.assertEqual(flt(frappe.db.get_value("Sales Invoice", moi, "grand_total")), -13334)
 
+	def _han_no(self, pt: str):
+		ds = doc({"bang": "receivables", "select": "due_date, amount", "loc": [{"op": "eq", "cot": "return_id", "gt": pt}]},
+			self._nc("owner"))["data"]
+		self.assertEqual(len(ds), 1, ds)
+		return ds[0]["due_date"]
+
+	def test_han_no_am_theo_ngay_phieu(self):
+		"""🔧 P3-HAN-NO-AM (bộ vàng P6, soát SOAT-VBC-02): hạn dòng nợ ÂM phiếu tự lập độc lập = ngày PHIẾU lúc Hoàn thành
+		(`_cong_no_phieu_tra` mig 191: COALESCE(return_date, ngày hoàn thành)), không phải ngày bấm (posting_date tờ ghi có). Đổi ngày phiếu
+		sau đó không dời hạn kể cả khi dòng được chiếu lại (ĐT-PT G32 / Q10); Ghi nhận lại chụp ngày phiếu mới; ngày phiếu tương lai giữ nguyên."""
+		from frappe.utils import add_days, getdate, nowdate
+
+		from nppsale.su_kien.cong_no import chieu_phieu_tra
+
+		hn = getdate(nowdate())
+		k = self.ma["C1"]
+		dong = [{"product_id": self.ma["P1"], "unit_name": "Lon", "quantity": 2, "unit_price": 9500, "vat_rate": 0.08}]
+		ket = self._goi("owner", "save_pos_return", {"p": {"customer_id": k, "reason": "damaged", "zone": "sale", "complete": True,
+			"return_date": str(add_days(hn, -2)), "lines": dong}})
+		self.assertNotIn("error", ket, ket)
+		pt = ket["data"]
+		to = frappe.db.get_value("NPP Phieu Tra", pt, "to_ghi_co")
+		self.assertEqual(str(frappe.db.get_value("Sales Invoice", to, "posting_date")), str(hn))  # tờ ghi sổ ngày bấm
+		self.assertEqual(self._han_no(pt), str(add_days(hn, -2)))  # hạn = ngày phiếu (Frappe cũ: ngày bấm)
+		# đổi ngày phiếu đã Hoàn thành (ghi thẳng — chỉ dời mốc ghi có / ngày trừ doanh số) → hạn đứng yên, kể cả khi chiếu lại dòng
+		self.assertEqual(self._ghi("owner", {"bang": "returns", "hanh_dong": "update", "gia_tri": {"return_date": str(add_days(hn, -5))},
+			"loc": [{"op": "eq", "cot": "id", "gt": pt}], "select": "id, return_date"})["data"], [{"id": pt, "return_date": str(add_days(hn, -5))}])
+		chieu_phieu_tra(pt)
+		self.assertEqual(self._han_no(pt), str(add_days(hn, -2)))
+		# Ghi nhận lại (huỷ + hoàn thành lại — complete_return chạy lại `_cong_no_phieu_tra`) → chụp ngày phiếu mới
+		ket = self._goi("owner", "save_pos_return", {"p": {"return_id": pt, "customer_id": k, "reason": "damaged", "zone": "sale",
+			"complete": True, "return_date": str(add_days(hn, -1)), "lines": [{**dong[0], "quantity": 3}]}})
+		self.assertNotIn("error", ket, ket)
+		self.assertEqual(frappe.db.get_value("Sales Invoice", frappe.db.get_value("NPP Phieu Tra", pt, "to_ghi_co"), "amended_from"), to)
+		self.assertEqual(self._han_no(pt), str(add_days(hn, -1)))
+		# ngày phiếu sau hôm nay (Sổ BC PT-0006: ngày 02/12 bấm 16/11 → hạn 02/12)
+		ket = self._goi("owner", "save_pos_return", {"p": {"customer_id": k, "zone": "sale", "complete": True,
+			"return_date": str(add_days(hn, 16)), "lines": dong}})
+		self.assertNotIn("error", ket, ket)
+		self.assertEqual(self._han_no(ket["data"]), str(add_days(hn, 16)))
+
 	def test_kham_so_bat_lech(self):
 		"""nppsale.kham_so.quet_phieu_tra: sổ đúng → không dòng nào; huỷ tay tờ ghi có của phiếu tự sinh (sổ lệch) → báo nhóm 1 (tờ ghi có
 		không khớp phiếu) và nhóm 6 (công nợ HĐ lệch công thức)."""

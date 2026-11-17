@@ -186,14 +186,15 @@ def dat_nguoi_giu(dong: str, nv: str | None, ve_npp_luc, giao=_GIU_DAU) -> None:
 def chieu_phieu_tra(pt: str) -> str | None:
 	"""Dòng công nợ ÂM (dư có) của phiếu trả TỰ LẬP độc lập — không HĐ, không đơn (`_cong_no_phieu_tra`, mig 191; blueprint §3.5.5):
 	một phiếu một dòng, khoá `NPP Phieu Tra:<PT>` (giữ qua mỗi lần lập lại tờ ghi có). Có khi phiếu Hoàn thành và tờ ghi có đang ghi sổ;
-	mất điều kiện → xoá dòng (bản chiếu thuần — nppsale để lại dòng amount 0, ⚠ Q6 của đặc tả)."""
+	mất điều kiện → xoá dòng (bản chiếu thuần — nppsale để lại dòng amount 0, ⚠ Q6 của đặc tả). Hạn = ngày phiếu chụp lúc Hoàn thành
+	(`npp_han_thanh_toan` của tờ) — đổi ngày phiếu sau đó không dời hạn (ĐT-PT G32 / Q10)."""
 	khoa = f"NPP Phieu Tra:{pt}"
 	r = frappe.db.get_value("NPP Phieu Tra", pt, ["name", "trang_thai", "tu_sinh", "to_ghi_co", "hoa_don", "don_hang"], as_dict=True) \
 		if frappe.db.exists("DocType", "NPP Phieu Tra") else None
 	to = None
 	if r and not r.tu_sinh and r.trang_thai == "completed" and not r.hoa_don and not r.don_hang and r.to_ghi_co:
 		to = frappe.db.get_value("Sales Invoice", r.to_ghi_co, ["name", "docstatus", "customer", "customer_name", "grand_total", "posting_date",
-			"creation", "npp_nv_giu_no", "npp_giao_tu_nv", "npp_ve_npp_luc"], as_dict=True)
+			"creation", "npp_nv_giu_no", "npp_giao_tu_nv", "npp_ve_npp_luc", "npp_han_thanh_toan"], as_dict=True)
 	nhom = frappe.get_all("Sales Invoice", filters={"npp_phieu_tra": pt, "is_return": 1}, pluck="name")
 	if not to or to.docstatus != 1:
 		dong = frappe.db.get_value(DT, {"khoa_nguon": khoa}, "name")
@@ -211,7 +212,9 @@ def chieu_phieu_tra(pt: str) -> str | None:
 	return _ghi(khoa, {
 		"loai": "phieu_tra", "khach_hang": to.customer, "ten_khach": to.customer_name, "hoa_don": None, "phieu_tra": pt, "don_hang": None,
 		"nhan_vien": to.npp_nv_giu_no, "giao_tu_nv": to.npp_giao_tu_nv, "ve_npp_luc": to.npp_ve_npp_luc,
-		"so_tien": so_tien, "da_thu": da_thu, "con_no": con_no, "han_thanh_toan": to.posting_date,
+		# hạn = ngày phiếu lúc Hoàn thành (`_cong_no_phieu_tra` mig 191: COALESCE(return_date, ngày hoàn thành)) — chụp trên tờ lúc lập
+		# (`luat.phieu_tra.han_no_am`); tờ lập trước bản sửa 🔧 P3-HAN-NO-AM không có số chụp → ngày ghi sổ tờ (= ngày bấm, như cũ)
+		"so_tien": so_tien, "da_thu": da_thu, "con_no": con_no, "han_thanh_toan": to.npp_han_thanh_toan or to.posting_date,
 		"trang_thai": trang_thai(so_tien, da_thu, False), "qua_han_tay": 0, "ghi_chu": "Dư có từ phiếu trả hàng", "tao_luc": to.creation,
 		"tinh_luc": now_datetime(),
 	})

@@ -7,6 +7,8 @@ TS của giao diện nppsale (tools/vang_bao_cao_ts.ts) cho phần số do trìn
 "đề xuất"), mục "Chốt chéo với đặc tả P4" (ƯU TIÊN: giá dòng xuất lẻ XKL- / chuyển kho CKL- = 0 như nppsale — Q2 của Frappe = nppsale).
 Bản sửa theo soát (17 phát hiện): Nền N dựng lại bằng RPC thật, luật Frappe áp tự động + chốt, 🔧 P3-HAN-NO-AM, khung quyền / múi giờ như Supabase,
 bộ E2E nhất quán, XNT + /reports/sales tab Nhân viên chạy mã TS thật, nhãn / giờ ghim phía Frappe cho bước chèn / xuất lẻ / phiếu tự sinh.
+P6 M0 (P3 đuôi): Frappe đã sửa hạn dòng nợ âm phiếu tự lập = ngày phiếu lúc Hoàn thành (luat/phieu_tra.han_no_am, su_kien/cong_no.chieu_phieu_tra) —
+bỏ lượt đọc thêm 'cho_sua_p3' / 'viec_cho_sua': bài Frappe so thẳng số nppsale (hạn nợ âm không còn là chỗ lệch).
 
 CÁCH CHẠY (mỗi lần dựng lại từ đầu — không đọc lại DB cũ; ~15 giây; hai lần liền nhau ra cùng tệp từng byte):
 	python3 tools/vang_bao_cao.py                → nppsale/tests/du_lieu/bao_cao_mau.json (+ in bảng đối chiếu số với đặc tả)
@@ -37,8 +39,7 @@ Cần: (1) một cụm Postgres 16 NHÁP được ghi / tạo DB (bộ sinh xoá
      thu 200.000 làm nên 'đã thu' của nó).
 3. ĐỌC: mỗi lời gọi chạy dưới đúng người, đồng hồ ghim ("gio" của lời gọi — Sổ BC đọc lúc 17/11/2026 08:00 VN như [T] của đặc tả, Nền N lúc 16/11
    12:00, E2E lúc 30/09 10:00), kết quả chuẩn hoá: uuid → khoá nghiệp vụ (mã chứng từ / mã phiếu / email NV / SKU / SĐT khách / tên NCC / mã lô; NPP B
-   tiền tố 'B:'), mốc giờ → "YYYY-MM-DDTHH:MM:SS+07:00", số → int khi chẵn; mảng không có thứ tự theo đặc tả được xếp theo khoá (so như tập). Lời gọi
-   đọc hạn nợ của Sổ BC chạy thêm một lượt trên sổ đổi hạn dòng nợ âm theo luật Frappe hiện tại → 'cho_sua_p3' (🔧 P3-HAN-NO-AM).
+   tiền tố 'B:'), mốc giờ → "YYYY-MM-DDTHH:MM:SS+07:00", số → int khi chẵn; mảng không có thứ tự theo đặc tả được xếp theo khoá (so như tập).
 4. TS: kết quả `bao_cao_so_ban` (dạng thô, id gốc) + danh mục mặt hàng → node chạy bản bó esbuild của vang_bao_cao_ts.ts (Báo cáo tổng hợp, Hàng bán
    theo nhân viên, /reports/sales tab Nhân viên, XNT của Báo cáo tổng hợp › Kho) → chuẩn hoá như trên.
 5. Frappe: mỗi kịch bản mang "lech_frappe" (⚠K + "Frappe:" theo đề xuất Qn, Q2 = 0 theo chốt chéo P4, 🔧 việc chưa sửa) và — khi đổi số — "mong_frappe"
@@ -2533,24 +2534,14 @@ class Ctx:
 		return None
 
 
-# 🔧 P3-HAN-NO-AM (soát SOAT-VBC-02): hạn dòng công nợ ÂM của phiếu trả tự lập không gắn HĐ — nppsale `_cong_no_phieu_tra` = return_date (ngày
-# phiếu lúc Hoàn thành; đổi ngày sau đó KHÔNG dời — ĐT-PT Q10); Frappe hiện tại `chieu_phieu_tra` (su_kien/cong_no.py:214) = posting_date tờ ghi có
-# HDT- = ngày BẤM Hoàn thành (rpc/phieu_tra.py:708, :799). Vàng giữ số nppsale (mong); lời gọi đọc hạn nợ chạy THÊM một lượt trên sổ đã đổi hạn
-# theo luật Frappe hiện tại → 'cho_sua_p3' (khác mong thì bài Frappe ĐỎ tới khi sửa P3 — hoặc chủ dự án chốt ⚠K và dùng kq_frappe_hien_tai).
-HAM_HAN_NO = ("receivables_summary", "receivables_by_customer", "receivables_by_rep", "bao_cao_cong_no", "dashboard_summary", "bang:receivables")
-SQL_P3_HAN = ("UPDATE receivables rc SET due_date = (r.completed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date FROM returns r WHERE r.id = rc.return_id "
-	"AND rc.invoice_id IS NULL AND r.completed_at IS NOT NULL")
-VIEC_CHO_SUA = {
-	"P3-HAN-NO-AM": "🔧 P3 (soát SOAT-VBC-02): hạn (NPP Cong No.han_thanh_toan) của dòng nợ ÂM phiếu trả tự lập không gắn HĐ — nppsale = ngày phiếu "
-		"(returns.return_date lúc Hoàn thành; đổi ngày phiếu sau đó không dời hạn — ĐT-PT Q10), Frappe hiện tại = posting_date tờ ghi có HDT- (ngày BẤM "
-		"Hoàn thành). Đề nghị sửa P3: chieu_phieu_tra lấy han_thanh_toan = ngày phiếu chụp lúc Hoàn thành (NPP Phieu Tra.ngay_tra; trống → ngày hoàn "
-		"thành) + bài + thêm hạn vào ảnh chụp bộ vàng phiếu trả. Tới khi sửa: lời gọi mang 'cho_sua_p3' ĐỎ đúng như 'kq_frappe_hien_tai'; nếu chốt giữ "
-		"luật Frappe (⚠K) thì so với kq_frappe_hien_tai và ghi ⚠K vào 00_quyet_dinh Q9.",
-}
+# 🔧 P3-HAN-NO-AM (soát SOAT-VBC-02) ĐÃ SỬA ở P6 M0 (commit "P3 (đuôi)"): hạn dòng công nợ ÂM của phiếu trả tự lập không gắn HĐ — nppsale
+# `_cong_no_phieu_tra` = COALESCE(return_date, ngày hoàn thành) lúc Hoàn thành (đổi ngày phiếu sau đó KHÔNG dời — ĐT-PT Q10); Frappe chụp số ấy vào
+# `npp_han_thanh_toan` của tờ ghi có (luat/phieu_tra.han_no_am) và `chieu_phieu_tra` đọc lại. Không còn lượt đọc thêm 'cho_sua_p3': vàng = số nppsale.
+VIEC_CHO_SUA: dict = {}
 
 
 def doc_tat_ca(K: list[dict]) -> dict:
-	"""Chạy mọi lời gọi đọc (gom theo DB) → {(mã, số): {"ok", "kq" thô | "ma_loi", "loi"}}; lượt 🔧 P3-HAN-NO-AM của Sổ BC ghi ở mã '<mã>#p3'."""
+	"""Chạy mọi lời gọi đọc (gom theo DB) → {(mã, số): {"ok", "kq" thô | "ma_loi", "loi"}}."""
 	theo_db: dict = {}
 	for t in K:
 		nhom: dict = {}
@@ -2566,11 +2557,6 @@ def doc_tat_ca(K: list[dict]) -> dict:
 			for so_, c in cs:
 				goi_[so_] = c
 			theo_db.setdefault(bo, []).append((t["ma"], goi_, bt["sql"] if bt else None))
-			# lượt đổi hạn nợ âm theo luật Frappe hiện tại (chỉ Sổ BC — Nền N: R5 hoàn thành đúng ngày phiếu; E2E: dòng nợ chèn thẳng)
-			if bo_cua(bo) == "S" and not bt:
-				goi_p3 = [c if c is not None and c["ham"] in HAM_HAN_NO else None for c in goi_]
-				if any(goi_p3):
-					theo_db[bo].append((t["ma"] + "#p3", goi_p3, SQL_P3_HAN))
 	ra = {}
 	for bo, ds in theo_db.items():
 		db = db_cua(bo)
@@ -2605,16 +2591,6 @@ def anh_chup(db: str, idm: dict) -> dict:
  'phieu_kho', COALESCE((SELECT jsonb_agg(jsonb_build_object('loai', e.type, 'status', e.status, 'ghi_so', e.posted_at, 'ghi_chu', e.notes,
    'dong', (SELECT jsonb_agg(jsonb_build_object('sp', l.product_id, 'sl_co_so', l.qty_in_base_uom, 'gia', l.unit_cost) ORDER BY l.product_id, l.qty_in_base_uom)
             FROM stock_entry_lines l WHERE l.entry_id = e.id)) ORDER BY e.posted_at NULLS LAST, e.notes) FROM stock_entries e), '[]'));""")
-	return chuan(x, idm)
-
-
-def han_no_am(db: str, idm: dict) -> list:
-	"""Dòng nợ âm (phiếu tự lập không gắn HĐ) có hạn nppsale ≠ ngày bấm Hoàn thành (luật Frappe hiện tại — 🔧 P3-HAN-NO-AM)."""
-	x = psql_json(db, """SELECT COALESCE(jsonb_agg(jsonb_build_object('id', rc.id, 'han_nppsale', rc.due_date,
-	   'han_frappe_hien_tai', (r.completed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date) ORDER BY r.return_code), '[]')
-	  FROM receivables rc JOIN returns r ON r.id = rc.return_id
-	 WHERE rc.invoice_id IS NULL AND r.completed_at IS NOT NULL
-	   AND rc.due_date IS DISTINCT FROM (r.completed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date;""")
 	return chuan(x, idm)
 
 
@@ -2655,8 +2631,7 @@ QUY_UOC = [
 	"goi[i].mong = {ok, kq} hoặc {ok: false, ma_loi (SQLSTATE), loi (nguyên văn)}; 'chon' = chỉ giữ các khoá ấy của kết quả dict (khoá '_khoa' = bộ khoá đầy đủ); "
 	"goi[i].mong_frappe (khi có) = kết quả Frappe kỳ vọng theo đề xuất Qn (cùng dạng, cùng chuẩn hoá — luật áp TỰ ĐỘNG cho mọi lời gọi có giá vốn: Q1 "
 	"giá vốn theo ngày HĐ, Q2 = 0, Q3 che giá vốn, Q9 bỏ phiếu xuất HĐ huỷ; bộ E2E xuất theo dòng HĐ gồm dòng đổi) — bài Frappe so với mong_frappe thay mong; "
-	"goi[i].cho_sua_p3 = {viec, kq_frappe_hien_tai} — việc 🔧 chưa sửa (viec_cho_sua): bài ĐỎ đúng như kq_frappe_hien_tai tới khi sửa; 'chi_nppsale': true = "
-	"lời gọi không dựng được trên Frappe (bỏ).",
+	"'chi_nppsale': true = lời gọi không dựng được trên Frappe (bỏ).",
 	"Lời gọi 'ts:ban_hang' = mã TS thật của giao diện nppsale chạy trên kết quả bao_cao_so_ban của lời gọi 'tu' (danh mục mặt hàng của sổ; 'doi_gia' thay bảng giá "
 	"chung) — gồm nv_reports_sales (useMemo employeeRows của /reports/sales); 'ts:xnt' = XNT [a, b] của Báo cáo tổng hợp › Kho (vòng phân loại napBienDong "
 	"+ tinhXnt) trên phiếu kho đã ghi sổ từ a; bài Frappe chạy cùng mã (portal) trên kết quả cổng / RPC Frappe — hoặc so phần máy chủ rồi dùng số TS này "
@@ -2729,8 +2704,7 @@ HUONG_DAN_FRAPPE = [
 	"mong) với ngày nhận / posted_at = nhan_luc (01/10/2026 08:00 VN — khoá FIFO, sổ kho lùi ngày); mỗi mặt hàng MỘT lô giá cố định. Lô Nền N lập ở các "
 	"bước post_stock_import của bo.N.buoc (giờ bước = Batch.creation).",
 	"Sau khi dựng, so sổ với 'bo.<bộ>.anh_chup' (HĐ, đơn, phiếu trả, công nợ, khoản thu, tồn lô; Nền N thêm nợ NCC / trả NCC / chi phí) trước khi so báo "
-	"cáo — lệch ở đây là lỗi bộ dựng, không phải lỗi báo cáo; TRỪ các trường ghi ở 'bo.<bộ>.cho_sua_p3' (hạn dòng nợ âm — 🔧 P3-HAN-NO-AM: Frappe hiện "
-	"tại ra 'han_frappe_hien_tai'). Phiếu kho của HĐ / nhập lại trên Frappe là chính chứng từ (không so mã XK-/NL-); E2E không so 'lo'.",
+	"cáo — lệch ở đây là lỗi bộ dựng, không phải lỗi báo cáo. Phiếu kho của HĐ / nhập lại trên Frappe là chính chứng từ (không so mã XK-/NL-); E2E không so 'lo'.",
 	"Giải chỗ giữ: '@don:' / '@hd:' / '@pt:' → name Frappe của chứng từ có nhãn ấy (ghi lại từ kết quả bước lập — 'nhan' của bước; mã Frappe có thể khác "
 	"'DH-0001' / 'HD-0001' / 'PT-0001'); 'nhan_phu' = chứng từ lập NGẦM cùng bước (phiếu trả tự sinh từ phần trả của đơn: bên Frappe là NPP Phieu Tra "
 	"tu_sinh của đơn ấy); chèn qua cổng ('ghi_cong' insert có 'nhan' — '@pk:<mã>', '@ptncc:<mã>', '@cp:<mã>'): cổng Frappe BỎ QUA id / mã gửi lên "
@@ -2741,8 +2715,7 @@ HUONG_DAN_FRAPPE = [
 	"'bang:<tên>' = câu đọc cổng bảng (nppsale.cong.truy_van.doc) dưới người ấy (tham_so.loc = [(cột, toán tử, giá trị)]); 'bien_the' (Nền N) = sửa sổ "
 	"trong điểm lưu trước lời gọi theo bien_the.frappe (+ bang_frappe), lui sau; 'chi_nppsale' = bỏ.",
 	"Chuẩn hoá kết quả Frappe y như tệp vàng (quy_uoc) rồi so với 'mong_frappe' nếu có, không thì 'mong' — chỉ phần khoá 'chon' (+ '_khoa' = bộ khoá đủ; "
-	"Frappe thêm 'tinh_lai_gia_von' nếu chốt Q12 — bỏ khoá ấy khi so bộ khoá). Mảng không thứ tự so như tập (đã xếp); list hàm TABLE so có thứ tự. Lời gọi "
-	"có 'cho_sua_p3': tới khi P3 sửa hạn dòng nợ âm (viec_cho_sua) đánh dấu expectedFailure / so với cho_sua_p3.kq_frappe_hien_tai để biết chỉ lệch đúng chỗ ấy.",
+	"Frappe thêm 'tinh_lai_gia_von' nếu chốt Q12 — bỏ khoá ấy khi so bộ khoá). Mảng không thứ tự so như tập (đã xếp); list hàm TABLE so có thứ tự.",
 	"Ánh xạ khoá: NV = email ('nen.*.nguoi'); khách = SĐT (Customer.npp_sdt); hàng = SKU (item_code); lô = '<mã lô>::<vùng>'; công nợ 'no:<chứng từ>'; "
 	"khoản thu 'thu:<chứng từ>:<tiền>'; nợ NCC 'no_ncc:<số HĐ NCC | dk:<NCC>>'; NPP B tiền tố 'B:'. Nền N: nhãn đặc tả §5.4 (HD1…, R1…, RC1…, PM1…, "
 	"PY1…, PP1…, X1…) ↔ khoá ở bo.N.nhan_dac_ta — bài giữ bảng ánh xạ name Frappe → khoá khi dựng.",
@@ -2837,19 +2810,6 @@ def main():
 			goi_ra[i]["chon"] = ks
 			if goi_ra[i].get("mong_frappe") == goi_ra[i]["mong"]:  # phần khác nằm ngoài khoá được chọn
 				del goi_ra[i]["mong_frappe"]
-		# 🔧 P3-HAN-NO-AM: kết quả trên sổ đã đổi hạn nợ âm theo luật Frappe hiện tại (doc_tat_ca — mã '<mã>#p3')
-		p3 = []
-		for i, c in enumerate(t["goi"]):
-			d3 = doc.get((t["ma"] + "#p3", i))
-			if not d3 or not d3["ok"] or not goi_ra[i]["mong"].get("ok"):
-				continue
-			x3 = xep(c["ham"], chuan(d3["kq"], idm[c.get("bo") or t["bo"]]))
-			ks = (t.get("chon") or {}).get(i)
-			if ks is not None and isinstance(x3, dict):
-				x3 = {"_khoa": sorted(x3), **{x: x3[x] for x in ks}}
-			if x3 != goi_ra[i]["mong"]["kq"]:
-				goi_ra[i]["cho_sua_p3"] = {"viec": "P3-HAN-NO-AM", "kq_frappe_hien_tai": x3}
-				p3.append(i)
 		# đối chiếu đặc tả
 		dc = []
 		for nhan, dac_ta, f, *ly in t.get("kiem") or []:
@@ -2867,8 +2827,6 @@ def main():
 		can = sorted({CAN_FRAPPE[(c["ham"] if not c["ham"].startswith("bang:") else "")] for c in t["goi"] if not c["ham"].startswith("bang:")}
 			| ({"cổng bảng đã có (P3 / P4)"} if any(c["ham"].startswith("bang:") for c in t["goi"]) else set()) | set(t.get("can_them") or ()))
 		lech_fr = list(t["lech_frappe"])
-		if p3:
-			lech_fr.append(f"🔧 P3-HAN-NO-AM (viec_cho_sua): hạn dòng nợ âm phiếu tự lập — lời gọi {p3} mang 'cho_sua_p3' (số Frappe HIỆN TẠI khác nppsale)")
 		x = {"ma": t["ma"], "ten": t["ten"], "bo": t["bo"], "nguon": t["nguon"], "can_frappe": can, "goi": goi_ra, "lech_frappe": lech_fr,
 			"doi_chieu": dc}
 		for kk in ("ky_vong_dac_ta", "cho"):
@@ -2892,10 +2850,6 @@ def main():
 				else {"ok": False, "ma_loi": r["ma_loi"], "loi": r["loi"]})
 			buoc.append(y)
 		bo_ra[bo] = {"mo_ta": mo_ta, "goc": GOC_BIEN_THE.get(bo), "buoc": buoc, "anh_chup": anh_chup(db_cua(bo), idm[bo])}
-		han = han_no_am(db_cua(bo), idm[bo])
-		if han:
-			bo_ra[bo]["cho_sua_p3"] = {"viec": "P3-HAN-NO-AM", "ghi_chu": "anh_chup.cong_no[].han của các dòng này: Frappe hiện tại ra 'han_frappe_hien_tai'",
-				"dong": han}
 	buoc = []
 	for b, r in zip(bn, kq_n, strict=True):
 		y = dict(b)

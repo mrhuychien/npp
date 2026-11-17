@@ -1,6 +1,7 @@
 """Luật thuần phiếu trả (nppsale.luat.phieu_tra) — kỳ vọng đối chiếu trên Postgres tham chiếu (round numeric nửa xa số 0, to_char /
 trim_scale của câu lỗi) và định nghĩa trigger đang chạy: _chot_gia_tran_dong_tra (mig 230), _ngay_tru_doanh_so (mig 192),
-sync_return_credited_at (mig 188), _nguoi_cua_phieu_tra + guard_return_sales_user (mig 160 / 194), sync_return_credit_amount.
+sync_return_credited_at (mig 188), _nguoi_cua_phieu_tra + guard_return_sales_user (mig 160 / 194), sync_return_credit_amount,
+hạn dòng nợ âm của `_cong_no_phieu_tra` (mig 191).
 
 	python3 -m unittest nppsale.tests.test_luat_phieu_tra
 """
@@ -11,6 +12,7 @@ from nppsale.cong.loi import NppLoi
 from nppsale.luat.gia_don import QuyenGiam, quyen_giam
 from nppsale.luat.phieu_tra import (
 	dien_nguoi_mac_dinh,
+	han_no_am,
 	kiem_gia_tra,
 	kiem_nguoi_dung_ten,
 	moc_ghi_co,
@@ -101,6 +103,15 @@ class TestNgayVaMoc(unittest.TestCase):
 			dt.datetime(2026, 10, 6, 12, 0))
 		for tt in ("draft", "submitted", "cancelled"):
 			self.assertIsNone(moc_ghi_co(trang_thai=tt, ngay_tra=hom_nay, moc_cu=cu, doi_ngay=False, **kw))
+
+	def test_han_no_am(self):
+		"""`_cong_no_phieu_tra` (mig 191): due_date = COALESCE(return_date, ngày VN của completed_at) — ngày PHIẾU, không phải ngày bấm
+		(Sổ BC: PT-0003 ngày phiếu 14/11 bấm 16/11 → hạn 14/11; PT-0006 ngày phiếu 02/12 → hạn 02/12 — 🔧 P3-HAN-NO-AM)."""
+		bam = dt.datetime(2026, 11, 16, 20, 55)
+		self.assertEqual(han_no_am(doc_lap=True, ngay_tra=D(2026, 11, 14), hoan_thanh_luc=bam), D(2026, 11, 14))
+		self.assertEqual(han_no_am(doc_lap=True, ngay_tra=D(2026, 12, 2), hoan_thanh_luc=bam), D(2026, 12, 2))  # ngày phiếu tương lai
+		self.assertEqual(han_no_am(doc_lap=True, ngay_tra=None, hoan_thanh_luc=bam), D(2026, 11, 16))  # trống → ngày hoàn thành
+		self.assertIsNone(han_no_am(doc_lap=False, ngay_tra=D(2026, 11, 14), hoan_thanh_luc=bam))  # gắn HĐ / đơn: nợ nằm ở dòng HĐ
 
 
 class TestNguoiDungTen(unittest.TestCase):

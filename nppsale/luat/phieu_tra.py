@@ -82,6 +82,16 @@ def moc_ghi_co(*, trang_thai: str, ngay_tra: _dt.date | None, moc_cu: _dt.dateti
 	return moc_cu
 
 
+def han_no_am(*, doc_lap: bool, ngay_tra: _dt.date | None, hoan_thanh_luc: _dt.datetime) -> _dt.date | None:
+	"""Hạn (due_date) của dòng công nợ ÂM phiếu tự lập ĐỘC LẬP — `_cong_no_phieu_tra` (mig 191): `COALESCE(return_date, ngày VN của
+	completed_at, hôm nay VN)`, chạy ở complete_return (mỗi lần Hoàn thành / Ghi nhận lại) → hạn = ngày phiếu LÚC hoàn thành. Đổi ngày phiếu
+	sau đó không chạy lại hàm nên hạn đứng yên (ĐT-PT G32 / Q10). Frappe chụp số này vào `npp_han_thanh_toan` của tờ ghi có lúc lập tờ (bản
+	chiếu đọc lại mỗi lần chiếu); phiếu gắn HĐ / đơn không có dòng riêng → None. 🔧 P3-HAN-NO-AM (bộ vàng P6, soát SOAT-VBC-02)."""
+	if not doc_lap:
+		return None
+	return ngay_tra or hoan_thanh_luc.date()
+
+
 def nguoi_dung_ten(*, nv_hd: str | None, hien_tai: str | None, nv_don: str | None, nv_hd_gan_nhat: str | None) -> str | None:
 	"""_nguoi_cua_phieu_tra (mig 194): người đứng tên HĐ gắn → giá trị đang có → người đứng tên đơn → người đứng tên HĐ ghi sổ gần nhất của
 	khách (ngày HĐ, rồi giờ tạo, giảm dần)."""
