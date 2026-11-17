@@ -8,6 +8,13 @@
   (method mở lại lô như `cancel_supplier_return` mig 235); (c) tờ trả NCC độc lập xuất theo GIÁ LÔ (Serial and Batch Entry `incoming_rate` /
   SLE `valuation_rate`), không theo đơn giá trả — chênh vào `Company.default_expense_account` (§7.1 #4); `PI Item.valuation_rate` = giá trả NCC
   (cổng `stock_entry_lines.unit_cost` phải đọc sổ kho — soát thiếu S2).
+- M4 (đặc tả §7.1 #13 / §7.3 điểm 31 phần SE, đo 17/11/2026): (d) chuyển kho Material Transfer có gói lô Outward app lập → lõi tự lập gói Inward ở kho
+  đích CÙNG Batch, GIỮ giá lô (không giá bình quân của mặt hàng) — không cần "lô đích cùng danh tính" của nppsale; lõi huỷ được chuyển kho (app vẫn
+  chặn CANNOT_REVERSE_TYPE như nppsale); (e) Material Receipt: `basic_rate` là giá mỗi đơn vị KHO (dòng thùng ×24 nhập 1.000 → giá trị 48 × 1.000);
+  (f) dòng xuất không ghi `expense_account` → lõi lặng lẽ điền `Company.stock_adjustment_account` (app ghi `tk_xuat_le`); (g) Batch không ngày SX →
+  lõi tự điền hôm nay lúc lưu (app đặt lại trống như nppsale); (h) §7.3 điểm 5: mặt hàng có hạn (`has_expiry_date`) mà Batch để trống hạn → lõi tự
+  tính = ngày SX + hạn dùng; mặt hàng có hạn mà KHÔNG khai hạn dùng → lưu Batch không hạn báo "Please set Shelf Life in Days…" (nhập kho tay gửi
+  `2099-12-31` cho mặt hàng có hạn giữ nguyên số ấy; gửi trống thì báo câu lõi này).
 
 	bench --site poc.local run-tests --module nppsale.tests.test_do_kho_mua
 """
@@ -109,3 +116,67 @@ class TestDoKhoMua(IntegrationTestCase):
 		self.assertEqual(flt(frappe.db.sql("""SELECT SUM(e.`qty`) FROM `tabSerial and Batch Entry` e JOIN `tabSerial and Batch Bundle` b
 			ON b.`name` = e.`parent` AND b.`docstatus` = 1 AND b.`is_cancelled` = 0 WHERE e.`batch_no` = 'VTD-DO-L1' AND e.`is_cancelled` = 0""")[0][0]), 10)
 		self.assertEqual(lo_theo_kho(self.lo, kho), [])  # lô tắt không được chọn
+
+	# ------------------------------------------------------------------------------------------------ M4 — Stock Entry
+	def _se(self, muc: str, dong: list[dict]):
+		se = frappe.new_doc("Stock Entry")
+		se.update({"stock_entry_type": muc, "purpose": muc, "company": self.cd.cong_ty, "posting_date": nowdate(), "set_posting_time": 1,
+			"posting_time": "08:00:00"})
+		for d in dong:
+			se.append("items", {"uom": "Lon", "conversion_factor": 1, **d})
+		se.flags.ignore_permissions = True
+		return se
+
+	def _nhap_lo(self, ma: str, sl: float, gia: float, kho: str):
+		frappe.get_doc({"doctype": "Batch", "batch_id": ma, "item": self.lo}).insert(ignore_permissions=True)
+		se = self._se("Material Receipt", [{"item_code": self.lo, "qty": sl, "basic_rate": gia, "t_warehouse": kho}])
+		gan_goi_lo(se.items[0], lap_goi_lo("Inward", "Stock Entry", self.lo, kho, {ma: sl}, se.posting_date, "07:00:00", self.cd.cong_ty))
+		se.insert()
+		se.submit()
+
+	def test_chuyen_kho_giu_gia_lo(self):
+		"""§7.1 #13 (d): hai lô giá khác nhau ở kho bán; chuyển 4 của lô rẻ sang kho date → phía nhận cùng Batch, giá 8.000 (không bình quân 8.666…)."""
+		ban, date = self.cd.kho_ban, self.cd.kho_can_date
+		self._nhap_lo("VTD-DO-R", 10, 8000, ban)
+		self._nhap_lo("VTD-DO-D", 20, 9000, ban)
+		se = self._se("Material Transfer", [{"item_code": self.lo, "qty": 4, "s_warehouse": ban, "t_warehouse": date}])
+		gan_goi_lo(se.items[0], lap_goi_lo("Outward", "Stock Entry", self.lo, ban, {"VTD-DO-R": 4}, se.posting_date, "09:00:00", self.cd.cong_ty))
+		se.insert()
+		se.submit()
+		vao = frappe.db.sql("""SELECT e.`batch_no`, e.`qty`, e.`incoming_rate` FROM `tabSerial and Batch Entry` e JOIN `tabSerial and Batch Bundle` b
+			ON b.`name` = e.`parent` WHERE b.`voucher_no` = %s AND b.`type_of_transaction` = 'Inward' AND b.`docstatus` = 1""", se.name)
+		self.assertEqual([(x[0], flt(x[1]), flt(x[2])) for x in vao], [("VTD-DO-R", 4, 8000)])
+		self.assertEqual(flt(frappe.db.get_value("Stock Ledger Entry", {"voucher_no": se.name, "warehouse": date, "is_cancelled": 0},
+			"stock_value_difference")), 32000)
+		se.reload()
+		se.cancel()  # lõi huỷ được — app giữ CANNOT_REVERSE_TYPE (nppsale)
+		self.assertEqual(se.docstatus, 2)
+
+	def test_nhap_kho_gia_theo_don_vi_kho_va_tai_khoan(self):
+		"""(e) `basic_rate` theo đơn vị KHO; (f) xuất không TK → Stock Adjustment của công ty; (g) Batch tự điền ngày SX."""
+		se = self._se("Material Receipt", [{"item_code": self.x, "qty": 2, "uom": "Thung", "conversion_factor": 24, "basic_rate": 1000,
+			"t_warehouse": self.cd.kho_ban}])
+		se.insert()
+		se.submit()
+		self.assertEqual((flt(se.items[0].transfer_qty), flt(se.items[0].valuation_rate)), (48, 1000))
+		self.assertEqual(flt(frappe.db.get_value("Stock Ledger Entry", {"voucher_no": se.name, "is_cancelled": 0}, "stock_value_difference")), 48000)
+		xk = self._se("Material Issue", [{"item_code": self.x, "qty": 1, "s_warehouse": self.cd.kho_ban}])
+		xk.insert()
+		self.assertEqual(xk.items[0].expense_account, frappe.get_cached_value("Company", self.cd.cong_ty, "stock_adjustment_account"))
+		lo = frappe.get_doc({"doctype": "Batch", "batch_id": "VTD-DO-NSX", "item": self.lo}).insert(ignore_permissions=True)
+		self.assertEqual(str(lo.manufacturing_date), nowdate())
+
+	def test_lo_tu_tinh_han(self):
+		"""(h) §7.3 điểm 5."""
+		from frappe.utils import add_days
+
+		nhom = frappe.db.get_value("Item Group", {"is_group": 0}, "name")
+		mat_hang = lambda ma, han: frappe.get_doc({"doctype": "Item", "item_code": ma, "item_name": ma, "item_group": nhom,  # noqa: E731
+			"stock_uom": "Lon", "is_stock_item": 1, "has_batch_no": 1, "has_expiry_date": 1, "shelf_life_in_days": han})
+		mat_hang("VTD-DO-HAN", 30).insert(ignore_permissions=True)
+		mat_hang("VTD-DO-HAN0", 0).insert(ignore_permissions=True)  # lõi KHÔNG bắt hạn dùng lúc lưu Item
+		lo = frappe.get_doc({"doctype": "Batch", "batch_id": "VTD-DO-HAN-1", "item": "VTD-DO-HAN"}).insert(ignore_permissions=True)
+		self.assertEqual((str(lo.manufacturing_date), str(lo.expiry_date)), (nowdate(), str(add_days(nowdate(), 30))))
+		with self.assertRaises(frappe.ValidationError) as e:
+			frappe.get_doc({"doctype": "Batch", "batch_id": "VTD-DO-HAN0-1", "item": "VTD-DO-HAN0"}).insert(ignore_permissions=True)
+		self.assertIn("Shelf Life in Days", str(e.exception))

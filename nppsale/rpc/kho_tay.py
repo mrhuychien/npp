@@ -17,7 +17,8 @@ RPC (giữ tên nppsale — hàm Postgres nguồn ở scratchpad kho_mua/src/<t�
   lại hàng khách trả: câu của nppsale) → nháp: XOÁ nháp (§7.3 điểm 1) → đã ghi sổ: nguồn nhận diện bằng TRƯỜNG THẬT (⚠K đóng lỗ ghi chú V54): phiếu
   nhập / trả NCC / phiếu nhập lại hàng khách trả (`NL-` hoặc tờ ghi có có kho `HDT-` — việc #24) / nợ NCC lập tay gắn phiếu / chuyển kho / HĐ → câu
   nppsale; xuất lẻ → huỷ (lõi trả đúng lô theo gói lô, `lines_reversed` = số lô); nhập kho tay → `ALREADY_ISSUED` khi lô / Bin đã xuất bớt (không nới
-  khi cho bán vượt tồn), rồi huỷ (`lines_reversed` = số dòng) → xếp repost.
+  khi cho bán vượt tồn), rồi huỷ (`lines_reversed` = số dòng) → xếp repost. Nháp xoá KHÔNG lùi dãy số (`xoa_nhap`).
+- `confirm_driver_handover` (chuyến giao — luồng cũ, §4.8 soát thiếu S14 / §7.3 điểm 40): `LEGACY_FLOW_REMOVED`.
 Ghi thẳng phiếu kho NHÁP qua cổng (`stock_entries` / `stock_entry_lines` — nppsale.cong.bang.phieu_kho; trigger mig 170 + RLS owner / warehouse): lập
 nháp (`status` khác `draft` hoặc quên cột → `SO_KHO_KHOA`), sửa nháp (đổi `type` → câu "chỉ sửa được ghi chú"; `draft → cancelled` = XOÁ nháp), phiếu
 đã ghi sổ / đã huỷ chỉ sửa `notes` (⚠K: nppsale cho sửa cả `entry_code`, `issue_reason`, `supplier_id`, `ref_order_ids`), xoá chỉ nháp; dòng chỉ khi
@@ -348,16 +349,16 @@ def _lap_lo(t, dong, luc, kho_chon: str, cd) -> dict:
 	from nppsale.rpc.goi_lo import kho_nhan_lo
 
 	ra: dict = {}
-	dung: set = set()
 	hom_nay = getdate(nowdate())
 	for d in dong:
 		it = _thong_tin(d.hang)
 		if not it.has_batch_no:
 			continue
 		ma = d.ma_lo or T.ma_lo_tu_dat(t.ma, d.n)
-		if ma.lower() in dung or frappe.db.exists("Batch", ma):
+		# trùng trong CÙNG tải trọng cũng bắt ở đây: dòng trước đã lập Batch trong giao dịch này (khoá `name` không phân biệt hoa thường —
+		# collation utf8mb4_unicode_ci)
+		if frappe.db.exists("Batch", ma):
 			raise T.loi_lo_trung(ma)
-		dung.add(ma.lower())
 		han = T.han_lo(d.han, bool(it.has_expiry_date))
 		kho = kho_nhan_lo(t.vung, han, cd, hom_nay)
 		b = frappe.get_doc({"doctype": "Batch", "batch_id": ma, "item": d.hang, "manufacturing_date": d.nsx, "expiry_date": han,
@@ -550,6 +551,14 @@ def _kiem_rut_nhap(doc, cd) -> int:
 		if con < nhap - 1e-9:
 			raise T.loi_da_xuat_bot(_ten_hang(d.item_code), doc.name, nhap, Decimal(str(round(con, 6))))
 	return n
+
+
+# ================================================================================================ RPC luồng cũ (§4.8 — soát thiếu S14)
+@rpc("confirm_driver_handover")
+def confirm_driver_handover(p_handover_id=None):
+	"""Chuyến giao đã bỏ (CLAUDE.md "Chuyến giao" — 24/09/2026): màn `/deliveries/[id]/handover` bị chặn (`LEGACY_V2_HREFS`) nhưng tên vẫn có ở nppsale
+	— đăng ký giữ tên để lời gọi lạc nhận câu nghiệp vụ thay PGRST202 (§7.3 điểm 40 — một luật với bảng không port `swap_stock_movements`)."""
+	raise NppLoi("LEGACY_FLOW_REMOVED: chức năng đã gỡ")
 
 
 # ================================================================================================ ghi thẳng phiếu kho nháp qua cổng (§4.5)

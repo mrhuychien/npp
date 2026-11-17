@@ -110,6 +110,16 @@ class TestSql(unittest.TestCase):
 		self.assertTrue(kh.sql_dem.startswith("SELECT COUNT(*) AS n FROM `tabSales Order` q_b WHERE"))
 		self.assertEqual([c[0] for c in kh.cot_ra], ["id", "order_code", "total"])
 
+	def test_thu_tu_mac_dinh_bieu_thuc_nguon(self):
+		"""`thu_tu_mac_dinh` nhận `{"sql": …}` — biểu thức trên cột NGUỒN không phải cột nppsale (dòng phiếu kho theo `idx` như Postgres trả theo thứ tự
+		chèn — nppsale.cong.bang.phieu_kho); yêu cầu có `thu_tu` thì bỏ thứ tự mặc định."""
+		D.dang_ky(D.Bang(ten="dong_thu", nguon="`tabX Detail`", khoa="id", cot={"id": D.CotDef("{t}.`name`"), "cha": D.CotDef("{t}.`parent`")},
+			thu_tu_mac_dinh=[{"cot": "cha"}, {"sql": "{t}.`idx`"}]))
+		kh, _ = S.ke_hoach_doc({"bang": "dong_thu", "select": "id"}, D.NguCanh(user="a", vai="owner"))
+		self.assertIn("ORDER BY (q_b.`parent` IS NULL) ASC, q_b.`parent` ASC, (q_b.`idx` IS NULL) ASC, q_b.`idx` ASC", kh.sql)
+		kh, _ = S.ke_hoach_doc({"bang": "dong_thu", "select": "id", "thu_tu": [{"cot": "id", "tang": False}]}, D.NguCanh(user="a", vai="owner"))
+		self.assertNotIn("`idx`", kh.sql)
+
 	def test_khong_rls_cho_chu(self):
 		kh, _ = S.ke_hoach_doc({"bang": "sales_orders", "select": "id"}, D.NguCanh(user="chu@x", vai="owner"))
 		self.assertIn("WHERE 1=1", kh.sql)

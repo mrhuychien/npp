@@ -116,6 +116,11 @@ def nguon_dong_nhap_lai(dk: str = "") -> str:
 )"""
 
 
+# tên HẰNG của đặc tả kho_mua §10 điểm 5 / đặc tả báo cáo §2.13 (không lọc ngày) — nơi cần lọc theo ngày gọi hàm (`dk` chèn vào từng nhánh)
+NGUON_DONG_XUAT = nguon_dong_xuat()
+NGUON_DONG_NHAP_LAI = nguon_dong_nhap_lai()
+
+
 class _ChuaGhi:
 	"""Ghi lô (mig 170) dựng ở bước kho — tới lúc ấy từ chối như RLS (vai khác owner / warehouse cũng bị từ chối ở nppsale)."""
 

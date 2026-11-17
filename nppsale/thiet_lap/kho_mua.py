@@ -4,8 +4,10 @@
   `NPP Cai Dat.tk_thue_dau_vao` vào TK thuế GTGT đầu vào của mẫu "VAT n%" (dòng thuế gõ tay của phiếu nhập — BP §4.1); lập TK giảm đầu phiếu nhập
   (`tk_giam_dau_phieu_nhap` — dòng Actual + Deduct của CFD-11; M1, quyết định tạm Q9: "Chiet khau mua hang duoc huong" dưới thu nhập khác 711, chờ
   kế toán chốt 711 hay 632 — BP §7.1 điểm 16) khi NPP Cai Dat còn trống; trỏ TK nợ NCC lập tay (`tk_no_ncc_lap_tay` — M3, quyết định tạm Q9: TK "hàng
-  về chưa có hoá đơn" của công ty) khi còn trống. Dãy số phiếu nhập / trả NCC /
-  nợ NCC / sửa giá (`PN-`, `PTNCC-`, `DKN-`, `NTN-`, `SGN-`) đặt cùng các dãy khác ở `mac_dinh._dat_ten_chung_tu`.
+  về chưa có hoá đơn" của công ty) khi còn trống; trỏ TK xuất lẻ (`tk_xuat_le` — M4: giá vốn hàng bán của công ty) và TK nhập kho tay không công nợ
+  (`tk_nhap_kho_khong_hd` — M4: "hàng về chưa có hoá đơn") khi còn trống (quyết định tạm Q9, chờ kế toán — BP §7.1 điểm 16). Dãy số phiếu nhập / trả NCC /
+  nợ NCC / sửa giá (`PN-`, `PTNCC-`, `DKN-`, `NTN-`, `SGN-`) đặt cùng các dãy khác ở `mac_dinh._dat_ten_chung_tu`; phiếu kho tay (`IN-…`, `XKL-`,
+  `CKL-`) đặt dãy ngay trên tờ (nppsale.rpc.kho_tay).
 - `kiem()` (chỉ đọc): mỗi chỗ lệch một dòng {doi_tuong, truong, dang_co, can, vi_sao} — Single lõi, Property Setter, dãy số, mẫu thuế "VAT n%" thiếu
   TK đầu vào (thiếu là phiếu nhập tính VAT = 0 mà không báo — PoC 05/11), `NPP Cai Dat` thiếu kho / bảng giá nhập / mẫu thuế mua / ngưỡng ngoài 0–365,
   NCC đang `disabled` (lõi chặn MỌI bút toán với NCC bị tắt — `party.py:881–889`; ngừng hợp tác = `npp_ngung_hop_tac`). Rỗng = đủ.
