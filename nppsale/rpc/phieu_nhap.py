@@ -571,15 +571,47 @@ def cancel_purchase_invoice(p_invoice_id=None, p_reason=None):
 	return r.name
 
 
-def huy(ten: str, ly_do: str | None, nc, cd) -> None:
-	"""Thân huỷ phiếu đã ghi sổ (PI đã khoá). Thứ tự nppsale: DA_TRA_TIEN → HANG_DA_XUAT → đảo kho → bỏ nợ → dồn trả trước."""
+def sua_gia_cua(doc) -> dict | None:
+	"""`npp_sua_gia` (AOS JSON — sửa giá phiếu đã bán, M7 nhánh B) của tờ: số HIỆN HÀNH {dong: {"<idx>": {don_gia, giam_dong, thue_suat, thanh_tien,
+	ghi_chu}}, dau_phieu: {giam, giam_ap, thue_go_tay, tien_hang, thue, tong}, lan_sua: […]}; None = chưa sửa giá."""
+	x = doc.get("npp_sua_gia") if doc is not None else None
+	if isinstance(x, str):
+		try:
+			x = json.loads(x) if x.strip() else None
+		except ValueError:
+			x = None
+	return x if isinstance(x, dict) and x.get("dau_phieu") else None
+
+
+def _huy_sua_gia(ten: str) -> None:
+	"""Phiếu đã sửa giá (M7 nhánh B — đặc tả §3.2 Frappe bước 5): huỷ Landed Cost Voucher `SGN-` (mới trước — lõi tính lại giá vốn lô) rồi bút toán
+	`DCN-` TRƯỚC khi huỷ phiếu — LCV trỏ phiếu bằng liên kết động (`document.py:1852–1858` chặn huỷ PI) và trỏ bút toán (`npp_but_toan` — Link chặn
+	huỷ bút toán khi LCV còn ghi sổ, nên LCV huỷ trước; đặc tả ghi "DCN rồi LCV" — đo M7: lõi từ chối thứ tự ấy)."""
+	if frappe.get_meta("Landed Cost Voucher").has_field("npp_phieu_nhap"):
+		for lcv in frappe.get_all("Landed Cost Voucher", filters={"npp_phieu_nhap": ten, "docstatus": 1}, pluck="name", order_by="creation desc"):
+			d = frappe.get_doc("Landed Cost Voucher", lcv)
+			d.flags.ignore_permissions = True
+			d.cancel()
+	if frappe.get_meta("Journal Entry").has_field("npp_loai"):
+		for je in frappe.get_all("Journal Entry", filters={"npp_loai": "dieu_chinh_gia_nhap", "npp_phieu_nhap": ten, "docstatus": 1}, pluck="name",
+				order_by="creation desc"):
+			d = frappe.get_doc("Journal Entry", je)
+			d.flags.ignore_permissions = True
+			d.cancel()
+	frappe.local.message_log = []
+
+
+def huy(ten: str, ly_do: str | None, nc, cd, *, sua: bool = False) -> None:
+	"""Thân huỷ phiếu đã ghi sổ (PI đã khoá). Thứ tự nppsale: DA_TRA_TIEN → HANG_DA_XUAT → đảo kho → bỏ nợ → dồn trả trước. `sua` = gọi nội bộ từ
+	`sua_phieu_nhap` nhánh amend (đặc tả §3.3 nhánh A bước 2): BỎ kiểm `DA_TRA_TIEN` (tiền đi theo tờ mới — nơi gọi đã ghi nhớ + huỷ bút toán) và
+	KHÔNG dồn trả trước ở cuối (tiền phiếu chi lõi vừa gỡ phải về tờ amend trước — M0)."""
 	from nppsale.luat.cong_no_ncc import loi_da_tra_tien
-	from nppsale.su_kien.cong_no_ncc import tien_tra_thang
+	from nppsale.su_kien.cong_no_ncc import huy_chuyen_tra_du, je_chuyen_tra_du, tien_tra_thang
 
 	doc = frappe.get_doc(DT, ten)
 	# mig 242 bước 6: tiền Ghi trả / bù trừ thẳng vào phiếu chặn huỷ — kể cả khi cho tồn âm, TRƯỚC HANG_DA_XUAT (đặc tả §3.2 Frappe bước 3). Phần phiếu
 	# chi `PCNCC-` không chặn: lõi gỡ phân bổ khi huỷ (`unlink_payment_on_cancellation_of_invoice` — gỡ cả Ghi trả nên phải kiểm trước), dồn ở cuối.
-	tra = tien_tra_thang(ten)
+	tra = 0.0 if sua else tien_tra_thang(ten)
 	if tra > 0.005:
 		raise loi_da_tra_tien(round(tra, 2))
 	lo_dong = _lo_cua_dong(ten)
@@ -612,6 +644,10 @@ def huy(ten: str, ly_do: str | None, nc, cd) -> None:
 			chan.append((ten_hang, K.muc_hang_da_xuat(ten_hang, nhap, con)))
 	if chan:
 		raise K.loi_hang_da_xuat(chan, cho)
+	_huy_sua_gia(ten)
+	# tiền phiếu chi chuyển dư vào phiếu (lần sửa trước — M7): về phần chưa phân bổ của phiếu chi rồi dồn ở cuối (Ghi trả dư đã chặn ở DA_TRA_TIEN)
+	huy_chuyen_tra_du(je_chuyen_tra_du(pi=ten))
+	doc = frappe.get_doc(DT, ten)  # các bút toán / LCV vừa huỷ đã chạm tờ (outstanding, giá trị dòng) — đọc lại trước khi huỷ
 	doc.update({"npp_ly_do_huy": ly_do, "npp_huy_luc": now_datetime(), "npp_huy_boi": _nv(nc)})
 	doc.flags.ignore_permissions = True
 	doc.cancel()  # lõi đảo gói lô (hàng về đúng lô), đảo GL, gỡ phân bổ phiếu chi (unlink_payment_on_cancellation_of_invoice); hook xoá dòng nợ
@@ -620,6 +656,8 @@ def huy(ten: str, ly_do: str | None, nc, cd) -> None:
 		if _ton_lo(lo) <= 1e-6:
 			frappe.db.set_value("Batch", lo, "disabled", 1)  # ≈ `status 'cancelled'` của nppsale (lô ≤ 0 sau huỷ — §7.3 điểm 35)
 	_xep_repost()
+	if sua:
+		return
 	from nppsale.su_kien.cong_no_ncc import don_tra_truoc_ncc
 
 	don_tra_truoc_ncc(doc.supplier)  # tiền phiếu chi lõi vừa gỡ khỏi phiếu → dồn sang khoản nợ khác còn mở (mig 242)
@@ -648,7 +686,8 @@ def khoi_phuc_phieu_nhap(p_invoice_id=None):
 def lap_lai(ten_cu: str, cd) -> tuple[str, int]:
 	"""Amend tờ đã huỷ (CFD-01): chép đầu phiếu + dòng (bảng thuế giữ nguyên), bỏ dấu huỷ, ngày / giờ ghi sổ = tờ gốc (ghi lùi → repost; nppsale
 	giữ ngày nhập gốc của phiếu kho), mốc hoàn thành gốc (`npp_hoan_thanh_luc` — ngày ghi nợ = completed_at gốc), gói lô Inward vào ĐÚNG lô cũ của
-	từng dòng (lô đã tắt lúc huỷ thì mở lại — nppsale `status 'available'`). Trả (tên tờ mới, số lô đã nhập lại)."""
+	từng dòng (lô đã tắt lúc huỷ thì mở lại — nppsale `status 'available'`). Tờ cũ đã SỬA GIÁ (`npp_sua_gia` — M7 nhánh B; bút toán / LCV đã huỷ cùng
+	tờ): tờ mới mang thẳng giá / giảm / thuế đã sửa và dựng lại bảng thuế (nppsale khôi phục đúng số đã sửa). Trả (tên tờ mới, số lô đã nhập lại)."""
 	from nppsale.rpc.goi_lo import gan_goi_lo, lap_goi_lo
 
 	cu = frappe.get_doc(DT, ten_cu)
@@ -667,9 +706,23 @@ def lap_lai(ten_cu: str, cd) -> tuple[str, int]:
 		"npp_huy_luc": None, "npp_huy_boi": None, "npp_ly_do_huy": None, "npp_hoan_thanh_luc": cu.get("npp_hoan_thanh_luc"),
 		"posting_date": cu.posting_date, "posting_time": str(cu.posting_time), "set_posting_time": 1})
 	gio = str(cu.posting_time)
-	cu_idx = {d.idx: d for d in cu.items}
+	phu = sua_gia_cua(cu)
+	moi.npp_sua_gia = None
+	if phu:  # tờ đã sửa giá (M7 nhánh B) bị huỷ — bút toán DCN- / LCV đã huỷ theo: tờ khôi phục mang THẲNG giá đã sửa (nppsale khôi phục số đã sửa)
+		dp = phu["dau_phieu"]
+		moi.update({"npp_giam_dau_phieu": flt(dp.get("giam")), "npp_co_thue_go_tay": 0 if dp.get("thue_go_tay") is None else 1,
+			"npp_thue_go_tay": flt(dp.get("thue_go_tay"))})
+		for d in moi.items:
+			x = (phu.get("dong") or {}).get(str(d.idx))
+			if x:
+				kho = d.warehouse
+				_ap_dong(moi, d, {"unit_price": x.get("don_gia"), "line_discount": x.get("giam_dong"), "vat_rate": x.get("thue_suat"),
+					"notes": x.get("ghi_chu")}, cd)
+				d.warehouse = kho
+		moi.flags.ignore_permissions = True
+		dung_thue(moi, cd)
 	for d in moi.items:
-		d.allow_zero_valuation_rate = cu_idx[d.idx].allow_zero_valuation_rate if d.idx in cu_idx else 0  # dòng 0 đ (hàng tặng)
+		d.allow_zero_valuation_rate = 1 if not flt(d.rate) else 0  # dòng 0 đ (hàng tặng)
 		lo = lo_idx.get(d.idx)
 		if not lo:
 			continue
@@ -725,8 +778,9 @@ def ghi_gia_nhap_tu_phieu(doc) -> int:
 		return 0
 	ngay = getdate(doc.bill_date) if doc.get("bill_date") else hom_nay()
 	bang = bang_gia_nhap()
-	moi = K.dong_ghi_gia({"product_id": d.item_code, "unit_name": d.uom, "unit_price": d.price_list_rate}
-		for d in sorted(doc.items, key=lambda x: x.idx))
+	phu = (sua_gia_cua(doc) or {}).get("dong") or {}  # giá đã sửa ở phiếu đã bán (M7 nhánh B — đặc tả §3.3 bước 6: ghi theo giá đã sửa)
+	moi = K.dong_ghi_gia({"product_id": d.item_code, "unit_name": d.uom,
+		"unit_price": (phu.get(str(d.idx)) or {}).get("don_gia", d.price_list_rate)} for d in sorted(doc.items, key=lambda x: x.idx))
 	so = 0
 	for (sp, dv), gia in moi.items():
 		cu = _gia_nhap(sp, dv, bang)

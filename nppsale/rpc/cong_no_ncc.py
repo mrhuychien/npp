@@ -284,8 +284,13 @@ def huy_phieu_chi_ncc(p_id=None, p_reason=None):
 		return {"id": r.name, "code": r.name, "da_huy": False, "so_tien_go": 0}  # IDEMPOTENT — bấm hai lần không gỡ tiền hai lần
 	if r.party != ncc:
 		N.khoa_ncc(r.party)
+	# tiền phiếu chi đã chuyển dư vào phiếu nhập sau một lần sửa (bút toán `chuyen_tra_du_ncc` — M7): huỷ trước (bút toán trỏ phiếu chi chặn huỷ PE),
+	# khoản ấy tăng nợ lại như mọi dòng tiền của phiếu chi bị gỡ (nppsale xoá dòng `payable_payments` của phiếu chi)
+	du = N.je_chuyen_tra_du(pe=r.name)
+	pi_du = [a.reference_name for je in du for a in frappe.get_doc("Journal Entry", je).accounts if a.reference_type == "Purchase Invoice"]
+	N.huy_chuyen_tra_du(du)
 	pe = frappe.get_doc("Payment Entry", r.name)
-	pi = [d.reference_name for d in pe.references if d.reference_doctype == "Purchase Invoice"]
+	pi = [d.reference_name for d in pe.references if d.reference_doctype == "Purchase Invoice"] + pi_du
 	pe.update({"npp_ly_do_huy": L.btrim(p_reason), "npp_huy_luc": now_datetime(), "npp_huy_boi": _nv(nc)})
 	pe.flags.ignore_permissions = True
 	pe.cancel()  # lõi gỡ mọi phân bổ (Payment Ledger delinked); hook chiếu lại các khoản + xoá dòng trả trước

@@ -73,6 +73,34 @@ class GhiDongPhieuNhap:
 		return xoa_dong(ids, nc)
 
 
+# Phiếu đã SỬA GIÁ (M7 nhánh B — đặc tả §3.3, BP §5.9 `npp_sua_gia`): tờ lõi giữ giá gốc, chênh nằm ở LCV `SGN-` + bút toán `DCN-` → cổng phủ số HIỆN HÀNH
+# của `npp_sua_gia` lên đầu phiếu (`dau_phieu`) và dòng (`dong."<idx>"`). JSON null (thuế gõ tay đã bỏ) → NULL.
+DA_SUA = "JSON_EXISTS({t}.`npp_sua_gia`, '$.dau_phieu')"
+
+
+def _so_json(cot: str, duong: str) -> str:
+	return f"CAST(JSON_VALUE({cot}.`npp_sua_gia`, '{duong}') AS DECIMAL(21,6))"
+
+
+def phu(khoa: str, goc: str) -> str:
+	"""Cột tiền của đầu phiếu: số đã sửa khi có, không thì biểu thức gốc."""
+	return f"CASE WHEN {DA_SUA} THEN {_so_json('{t}', '$.dau_phieu.' + khoa)} ELSE {goc} END"
+
+
+def dong_json(khoa: str) -> str:
+	return f"CONCAT('$.dong.\"', {{t}}.`idx`, '\"{khoa}')"
+
+
+def _dong(khoa: str, goc: str) -> str:
+	return (f"CASE WHEN JSON_EXISTS({{t}}.`_sua`, {dong_json('')}) THEN CAST(JSON_VALUE({{t}}.`_sua`, {dong_json('.' + khoa)}) AS DECIMAL(21,6)) "
+		f"ELSE {goc} END")
+
+
+gia_dong = _dong("don_gia", "{t}.`price_list_rate`")
+giam_dong = _dong("giam_dong", "IFNULL({t}.`npp_giam_dong`, 0)")
+thue_dong = _dong("thue_suat", "IFNULL({t}.`npp_thue_suat`, 0)")
+
+
 def nap():
 	if not co_cot("Purchase Invoice", "npp_loai"):
 		return
@@ -82,11 +110,11 @@ def nap():
 		nguon=NGUON_PN,
 		cot={
 			"id": c("{t}.`name`"), "org_id": org(), "po_id": CotDef("NULL"), "supplier_id": c("supplier"), "invoice_number": c("bill_no"),
-			"invoice_date": c("bill_date", "ngay"), "subtotal": c("COALESCE({t}.`total`, 0)", "tien"),
-			"vat": c("(SELECT COALESCE(SUM(CASE WHEN x.`add_deduct_tax` = 'Deduct' THEN -x.`tax_amount` ELSE x.`tax_amount` END), 0) "
+			"invoice_date": c("bill_date", "ngay"), "subtotal": c(phu("tien_hang", "COALESCE({t}.`total`, 0)"), "tien"),
+			"vat": c(phu("thue", "(SELECT COALESCE(SUM(CASE WHEN x.`add_deduct_tax` = 'Deduct' THEN -x.`tax_amount` ELSE x.`tax_amount` END), 0) "
 				"FROM `tabPurchase Taxes and Charges` x WHERE x.`parent` = {t}.`name` AND x.`parenttype` = 'Purchase Invoice' "
-				f"AND x.`account_head` <> IFNULL({TK_GIAM}, ''))", "tien"),
-			"total": c("COALESCE({t}.`grand_total`, 0)", "tien"),
+				f"AND x.`account_head` <> IFNULL({TK_GIAM}, ''))"), "tien"),
+			"total": c(phu("tong", "COALESCE({t}.`grand_total`, 0)"), "tien"),
 			"status": c("CASE WHEN {t}.`docstatus` = 1 THEN 'completed' WHEN {t}.`docstatus` = 2 OR {t}.`npp_huy_luc` IS NOT NULL "
 				"THEN 'cancelled' ELSE 'draft' END"),
 			"payable_id": c("(SELECT n.`name` FROM `tabNPP Cong No NCC` n WHERE n.`chung_tu` = {t}.`name` LIMIT 1)"),
@@ -95,12 +123,13 @@ def nap():
 			"created_by": c(f"CASE WHEN {nguoi_lap} IN ('Administrator', 'Guest') THEN NULL ELSE {nguoi_lap} END"),
 			"completed_at": c("npp_hoan_thanh_luc", "gio"),
 			"stock_entry_id": c("CASE WHEN {t}.`docstatus` IN (1, 2) THEN {t}.`name` END"),
-			"receipt_code": c("{t}.`name`"), "discount": c("npp_giam_dau_phieu", "tien"),
+			"receipt_code": c("{t}.`name`"), "discount": c(phu("giam", "{t}.`npp_giam_dau_phieu`"), "tien"),
 			# kho người chọn: `npp_kho_nhap` (lõi xoá `set_warehouse` khi các dòng khác kho — dòng hạn ngắn vào kho cận date)
 			"warehouse_zone": c(f"(SELECT z.`vung` FROM {KHO} z WHERE z.`kho` = COALESCE(NULLIF({{t}}.`npp_kho_nhap`, ''), {{t}}.`set_warehouse`) "
 				"LIMIT 1)"),
 			"cancelled_at": c("npp_huy_luc", "gio"), "cancelled_by": c("npp_huy_boi"), "cancel_reason": c("npp_ly_do_huy"),
-			"vat_override": c("CASE WHEN {t}.`npp_co_thue_go_tay` = 1 THEN {t}.`npp_thue_go_tay` END", "tien"),
+			"vat_override": c(f"CASE WHEN {DA_SUA} THEN {_so_json('{t}', '$.dau_phieu.thue_go_tay')} "
+				"WHEN {t}.`npp_co_thue_go_tay` = 1 THEN {t}.`npp_thue_go_tay` END", "tien"),
 		},
 		quan_he=[
 			QuanHe("suppliers", "supplier_id", "id", False, ("purchase_invoices_supplier_id_fkey", "supplier_id")),
@@ -114,15 +143,17 @@ def nap():
 	))
 	dang_ky(Bang(
 		ten="purchase_invoice_lines",
-		nguon=("(SELECT d.* FROM `tabPurchase Invoice Item` d WHERE d.`parenttype` = 'Purchase Invoice' AND d.`parent` IN "
-			"(SELECT p.`name` FROM `tabPurchase Invoice` p WHERE p.`npp_loai` = 'phieu_nhap'))"),
+		# `_sua` = `npp_sua_gia` của phiếu cha (M7 nhánh B — giá đã sửa ở phiếu đã bán phủ lên dòng)
+		nguon=("(SELECT d.*, p.`npp_sua_gia` AS `_sua` FROM `tabPurchase Invoice Item` d JOIN `tabPurchase Invoice` p ON p.`name` = d.`parent` "
+			"WHERE d.`parenttype` = 'Purchase Invoice' AND p.`npp_loai` = 'phieu_nhap')"),
 		cot={
 			"id": c("{t}.`name`"), "invoice_id": c("parent"), "product_id": c("item_code"), "unit_name": c("uom"), "quantity": c("qty", "so"),
-			"unit_price": c("price_list_rate", "tien"), "line_discount": c("IFNULL({t}.`npp_giam_dong`, 0)", "tien"),
-			"vat_rate": c("IFNULL({t}.`npp_thue_suat`, 0)", "so"), "conversion_factor": c("conversion_factor", "so"),
-			"line_total": c("(GREATEST(0, {t}.`qty` * {t}.`price_list_rate` - IFNULL({t}.`npp_giam_dong`, 0)) * (1 + IFNULL({t}.`npp_thue_suat`, 0)))",
-				"tien"),
-			"notes": c("npp_ghi_chu"), "sort_order": c("idx", "so"), "created_at": c("creation", "gio"),
+			"unit_price": c(gia_dong, "tien"), "line_discount": c(giam_dong, "tien"), "vat_rate": c(thue_dong, "so"),
+			"conversion_factor": c("conversion_factor", "so"),
+			"line_total": c(f"(GREATEST(0, {{t}}.`qty` * {gia_dong} - {giam_dong}) * (1 + {thue_dong}))", "tien"),
+			"notes": c(f"CASE WHEN JSON_EXISTS({{t}}.`_sua`, {dong_json('')}) THEN JSON_VALUE({{t}}.`_sua`, {dong_json('.ghi_chu')}) "
+				"ELSE {t}.`npp_ghi_chu` END"),
+			"sort_order": c("idx", "so"), "created_at": c("creation", "gio"),
 		},
 		quan_he=[
 			QuanHe("products", "product_id", "id", False, ("purchase_invoice_lines_product_id_fkey", "product_id")),

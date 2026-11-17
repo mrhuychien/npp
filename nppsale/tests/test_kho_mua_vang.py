@@ -61,7 +61,7 @@ NS = uuid.UUID("6f1c2a77-1d0e-4b8f-9a3c-2b4d5e6f7081")
 # mốc dựng → số kịch bản (đặc tả §8; V81–V87 gắn mốc theo §9.3)
 MOC = {"M1": range(1, 17), "M2": (*range(17, 29), 87), "M3": (*range(29, 41), 86), "M4": (*range(41, 56), 81, 85), "M5": (*range(56, 60), 82),
 	"M6": range(60, 65), "M7": (*range(65, 72), 83), "M8": (72, 73, 84), "M9": range(74, 81)}
-DA_DUNG = ("M1", "M2", "M3", "M4", "M5", "M6")
+DA_DUNG = ("M1", "M2", "M3", "M4", "M5", "M6", "M7")
 # mục ảnh chụp đã so theo mốc (mục của mốc sau — tra_no, phieu_chi, chi_phi… — thêm khi dựng)
 MUC_SO = ("pn", "ptn", "lo", "no", "tra_no", "phieu_chi", "gia_nhap", "phieu_kho", "hd", "tra_khach", "chi_phi", "nhan")
 BUOC_PK = ("nhap_kho", "pk", "xuat_le", "chuyen", "huy_pk")  # bước phiếu kho tay (M4)
@@ -69,6 +69,7 @@ LOAI_CT = ("pn", "ptn")  # nhãn chứng từ PI (phiếu nhập / phiếu trả
 LA = str(uuid.uuid5(NS, "p4:la"))  # "@la" — id không có dòng nào (uuid hợp lệ như bộ sinh)
 _RE_HOM_NAY = re.compile(r"^@hom_nay([+-]\d+)?(T.*)?$")
 _RE_THIEU = re.compile(r"(INSUFFICIENT_STOCK \| .*\()([^()]*)(\): cần )")
+_RE_DA_XUAT = re.compile(r"(: đã xuất \S+ )(\S+)(, số lượng mới chỉ )")  # DA_XUAT_NHIEU_HON (M7): đơn vị cơ sở của mặt hàng
 _RE_XK_PTN = re.compile(r"Xuất kho trả NCC — phiếu (\S+) \(kho: \w+\)")
 _RE_GIO_NGAY = re.compile(r"\b(\d{2}):(\d{2}) (\d{2})/(\d{2})/(\d{4})\b")  # `to_char(posted_at, 'HH24:MI DD/MM/YYYY')` — ALREADY_POSTED (M6)
 
@@ -563,6 +564,58 @@ def _v64(t, mong):
 	_nhap_lo(mong, "Q-1", 5.0)
 
 
+# ------------------------------------------------------------------------------------------------ M7 — sửa phiếu nhập đã hoàn thành
+CHI_SUA_GIA = _loi("PHIEU_DA_XUAT_CHI_SUA_GIA: Lô của phiếu đã xuất ở HD-0001 — chỉ sửa được giá; muốn đổi số lượng / mặt hàng / NCC / kho thì huỷ "
+	"các HĐ đã lấy lô hoặc lập phiếu trả hàng NCC / điều chỉnh kho.")
+
+
+def _ct_sau_sua_gia(ct: dict) -> None:
+	"""Ảnh chụp sau bước sửa giá chung của V65–V69 (P: thùng 2 × 264.000, `HD-NCC-9`, ghi chú "sửa giá"; lô 11.000 / tồn 18; nợ 528.000 đã trả 100.000)
+	— bước sửa SAU của V67 / V69 bị từ chối nên sổ dừng ở đây (số y như ảnh chụp nppsale của V66)."""
+	ct["lo"] = [{"ma": "PN-0001-001", "sp": "@A", "gia": 11000.0, "han": "2099-12-31", "nsx": "@hom_nay", "ton": 18.0, "nhap": 48.0, "vung": "sale",
+		"status": "available", "luc_nhan": "@luc_goi"}]
+	ct["no"] = [{"luc": "@luc_goi", "ncc": "@S1", "khoa": "PN:PN-0001", "so_hd": "HD-NCC-9", "da_tra": 100000, "dau_ky": False, "status": "partial",
+		"ghi_chu": "Phiếu nhập hàng PN-0001", "so_tien": 528000, "phieu_kho": "PN-0001", "luc_bang_hoan_thanh": True}]
+	p = ct["pn"][0]
+	p.update({"so_hd": "HD-NCC-9", "ghi_chu": "sửa giá", "subtotal": 528000, "total": 528000, "dong": [{"dv": "thùng", "hs": 24, "sl": 2, "sp": "@A",
+		"gia": 264000, "stt": 1, "giam": 0, "thue": 0, "tien": 528000}]})
+	ct["gia_nhap"] = [{"dv": "thùng", "sp": "@A", "gia": 264000, "ngay": "@hom_nay-46", "nguon": "PN-0001", "sua_boi": "@u:KT"}]
+	pk = next(x for x in ct["phieu_kho"] if x["ma"] == "PN-0001")
+	pk["dong"] = [{"dv": "thùng", "hs": 24.0, "lo": "PN-0001-001@sale", "sl": 48, "sp": "@A", "gia": 11000.0, "dv_gd": "thùng", "sl_cs": 48.0,
+		"sl_gd": 2.0}]
+
+
+def _v67(t, mong):
+	"""⚠K CFD-06 / §7.2 #3 (§3.3 nhánh B): lô của P đã bán → chỉ sửa giá; đổi ĐV thùng → hộp, SL, thêm dòng B → PHIEU_DA_XUAT_CHI_SUA_GIA (mã + câu đề
+	xuất §7.3 điểm 7, chờ chốt) — sổ giữ như sau lần sửa giá (nppsale: lô A 30 / tồn 0, lô mới B, nợ 380.000)."""
+	mong["buoc"][5] = CHI_SUA_GIA
+	_ct_sau_sua_gia(mong["ct"])
+
+
+def _trang_thai_tra_du(mong, khoa: str = "PN:PN-0001") -> None:
+	"""BP §4.3.0 / §7.3 điểm 13 (⚠K): khoản đã trả DƯ (đã trả > số nợ — NCC nợ lại mình) là `open` (một luật với phải thu); nppsale `partial`."""
+	next(x for x in mong["ct"]["no"] if x["khoa"] == khoa)["status"] = "open"
+
+
+def _v69b(t, mong):
+	_trang_thai_tra_du(mong)
+
+
+def _v70(t, mong):
+	"""⚠K §3.3 nhánh A (V70): sửa phiếu CHƯA xuất = huỷ + amend — dòng nhập lại theo luật kho nhận lúc nhập (`batches_auto_zone`): đổi kho đầu phiếu về
+	kho bán thì A vào kho bán nhưng C (hạn +20, trong ngưỡng 30) VẪN vào kho cận date (nppsale đổi vùng tại chỗ cả lô C về bán — trigger chỉ chạy khi
+	chèn / đổi hạn)."""
+	ct = mong["ct"]
+	next(x for x in ct["lo"] if x["ma"] == "PN-0001-002")["vung"] = "date"
+	for d in next(x for x in ct["phieu_kho"] if x["ma"] == "PN-0001")["dong"]:
+		if d["lo"] == "PN-0001-002@sale":
+			d["lo"] = "PN-0001-002@date"
+
+
+def _v71(t, mong):
+	_trang_thai_tra_du(mong)
+
+
 # kịch bản [Frappe] (`nguon: dac_ta` — mong là chữ của đặc tả) → hàm kiểm riêng của lớp bài
 KIEM_DAC_TA = {"V02c": "_v02c", "V12b": "_v12b", "V19b": "_v19b", "V43c": "_v43c", "V44c": "_v44c", "V57b": "_v57b"}
 
@@ -616,6 +669,12 @@ LECH: dict[str, tuple] = {
 	"V60": (_v60, "⚠K: thừa kiểm kê = Material Receipt DCK- → cột nhập của cổng batches gồm phần thừa (L-RONG 2; nppsale qty_initial giữ 0)"),
 	"V63": (_v63, "⚠K §3.17 (đóng lỗ V13): duyệt kiểm kê chỉ nhận NPP Kiem Ke → phiếu xuất nháp báo ENTRY_NOT_FOUND, kho không đổi"),
 	"V64": (_v64, "⚠K: thừa kiểm kê vào lô rỗng Q-1 = Material Receipt DCK- → cột nhập 5 (nppsale qty_initial giữ 0)"),
+	# M7 — sửa phiếu nhập đã hoàn thành
+	"V67": (_v67, "⚠K CFD-06 / §7.2 #3: lô đã bán → chỉ sửa giá; đổi ĐV / SL / thêm dòng → PHIEU_DA_XUAT_CHI_SUA_GIA (§7.3 điểm 7)"),
+	"V69": (_v67, "⚠K CFD-06 / §7.2 #3: lô đã bán → chỉ sửa giá; đổi thùng → hộp → PHIEU_DA_XUAT_CHI_SUA_GIA (nppsale sửa được — xem V69b)"),
+	"V69b": (_v69b, "BP §4.3.0 / §7.3 điểm 13: khoản trả dư (đã trả 100.000 > nợ 80.000) là open — nppsale partial"),
+	"V70": (_v70, "⚠K §3.3 nhánh A: amend nhập lại theo luật kho nhận — C hạn trong ngưỡng vẫn vào kho cận date khi đầu phiếu về kho bán"),
+	"V71": (_v71, "BP §4.3.0 / §7.3 điểm 13: khoản trả dư sau sửa (đã trả 1.200.000 > nợ 800.000) là open — nppsale partial"),
 }
 
 
@@ -658,10 +717,12 @@ def _dv(v):
 
 
 def _dv_loi(s):
-	"""Đơn vị trong câu thiếu tồn của phiếu trả NCC (`INSUFFICIENT_STOCK | <tên> (<đơn vị cơ sở>): cần …`) so như `_dv`: Frappe in `stock_uom`
-	(bản ghi UOM có trước — "Hop"), nppsale in `products.base_unit` ("hộp"). Phần còn lại của câu vẫn so từng ký tự."""
+	"""Đơn vị trong câu thiếu tồn của phiếu trả NCC (`INSUFFICIENT_STOCK | <tên> (<đơn vị cơ sở>): cần …`) và câu `DA_XUAT_NHIEU_HON` của sửa phiếu nhập
+	(`<tên>: đã xuất <x> <đơn vị cơ sở>, số lượng mới chỉ <y>` — M7) so như `_dv`: Frappe in `stock_uom` (bản ghi UOM có trước — "Hop"), nppsale in
+	`products.base_unit` ("hộp"). Phần còn lại của câu vẫn so từng ký tự."""
 	if not isinstance(s, str):
 		return s
+	s = _RE_DA_XUAT.sub(lambda m: m.group(1) + _dv(m.group(2)) + m.group(3), s)
 	return _RE_THIEU.sub(lambda m: m.group(1) + _dv(m.group(2)) + m.group(3), s)
 
 
@@ -680,13 +741,13 @@ def _xep(ds: list) -> list:
 
 def _gop_tra_truoc(ds: list) -> list:
 	"""⚠K (đặc tả §4.4): phần chưa phân bổ của một phiếu chi là MỘT dòng `<PE>::tra_truoc` — nppsale có thể giữ nhiều dòng `payable_payments` trên dòng
-	trả trước (phần dồn đi rồi trả về khi huỷ phiếu nhập — `_tra_phan_bo_ve_truoc` chuyển nguyên dòng): gộp các dòng `TT:` cùng phiếu chi, cộng tiền."""
+	trả trước (phần dồn đi rồi trả về khi huỷ phiếu nhập — `_tra_phan_bo_ve_truoc` chuyển nguyên dòng): gộp các dòng `TT:` cùng phiếu chi, cộng tiền.
+	M7 (sửa phiếu nhập nhánh amend): tiền MỘT phiếu tiền trên một khoản có thể là hai dòng cổng — tham chiếu phiếu tiền (phần vừa tờ mới) + vế bút toán
+	chuyển tiền trả dư `chuyen_tra_du_ncc` (cùng hình thức / người / lúc chi / ghi chú / phiếu chi), nppsale MỘT dòng giữ nguyên → gộp mọi dòng cùng
+	danh tính (mọi trường trừ tiền), áp CẢ HAI phía."""
 	gop: dict = {}
 	ra = []
 	for x in ds:
-		if not str(x.get("no") or "").startswith("TT:"):
-			ra.append(x)
-			continue
 		k = json.dumps({a: b for a, b in x.items() if a != "tien"}, sort_keys=True, ensure_ascii=False)
 		if k in gop:
 			gop[k]["tien"] = flt(gop[k]["tien"]) + flt(x["tien"])
@@ -1054,6 +1115,13 @@ class TestKhoMuaVang(IntegrationTestCase):
 			if isinstance(r, dict):
 				return ket, {**r, "id": "pn:" + (self._nhan_pn(st, r.get("id")) or "?")}
 			return ket, "pn:" + (self._nhan_pn(st, r) or "?")
+		if k == "pn_sua":  # M7 — sửa phiếu nhập đã hoàn thành (tờ cuối chuỗi amend; `id` trả về = tờ còn hiệu lực → nhãn)
+			ts = {"p_invoice_id": self._ten(st, "pn:" + b["nhan"]), "p_head": self._thay(b.get("dau") or {}, st),
+				"p_lines": self._thay(b.get("dong") or [], st)}
+			ket = self._goi(b["nguoi"], "sua_phieu_nhap", ts)
+			if "error" in ket:
+				return ket, None
+			return ket, {**ket["data"], "id": "pn:" + (self._nhan_pn(st, ket["data"].get("id")) or "?")}
 		if k == "gia":
 			ket = self._goi(b["nguoi"], "luu_gia_nhap", {"p_dong": self._thay(b.get("p_dong"), st)})
 			return ket, None if "error" in ket else ket["data"]
@@ -1065,7 +1133,11 @@ class TestKhoMuaVang(IntegrationTestCase):
 			if "error" in ket:
 				return ket, None
 			cu = set().union(*self.co_san.values())  # dòng có sẵn trên site (dữ liệu dựng thử cũ) không thuộc kịch bản
-			ds = [r for r in ket["data"] if (r.get("__id") or r.get("id")) not in cu]
+			if b["bang"] == "batches":  # id cổng `<lô>::<vùng>` — lô có sẵn theo mã; lô ảo `~SKU::vùng` (hàng không lô của site) nppsale không có
+				ds = [r for r in ket["data"] if not str(r.get("__id") or r.get("id")).startswith("~")
+					and str(r.get("__id") or r.get("id")).rpartition("::")[0] not in self.co_san["Batch"]]
+			else:
+				ds = [r for r in ket["data"] if (r.get("__id") or r.get("id")) not in cu]
 			return ket, _xep([self._chuan_dong({c: v for c, v in r.items() if c != "__id"}, st) for r in ds])
 		if k == "dem":
 			# đếm dòng người gọi đọc được — trừ dòng có sẵn trên site (dữ liệu dựng thử cũ) như `doc_bang`
@@ -1402,10 +1474,13 @@ class TestKhoMuaVang(IntegrationTestCase):
 				v = "ptn:" + (self._nhan_ptn(st, v) or "?")
 			elif k in ("entry_code", "entry_id") and v:  # mã phiếu kho (v_stock_movements…) → "<nhãn>" (phiếu kho tay / phiếu nhập / trả NCC)
 				v = self._ma_pn(st, v)
+			elif k == "batch_code" and v:  # lô của phiếu nhập `<PN>-NNN` → "<nhãn>-NNN" (câu 18 — M7 V70)
+				v = self._ma_lo(st, v)
 			elif isinstance(v, str) and v in self.khoa_cua:
 				v = self.khoa_cua[v]
 			elif k.endswith(("_date", "_at")) and v:
-				v = self._ngay(v) if k.endswith("_date") else self._luc(v)
+				# `batches.expires_at` / `manufactured_at` là DATE ở nppsale (tên đuôi `_at`) — so như ngày
+				v = self._ngay(v) if k.endswith("_date") or k in ("expires_at", "manufactured_at") else self._luc(v)
 			ra[k] = _so(v)
 		return ra
 

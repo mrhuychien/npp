@@ -7,8 +7,9 @@
   (`them_no` — nợ đầu kỳ = tờ `DKN-`, nợ lập tay = tờ `NTN-`; `sua_no` — số HĐ / hạn / ghi chú / trạng thái tay, số nợ đầu kỳ chưa trả = amend `DKN-…-n`;
   `xoa_no` — huỷ tờ `DKN-` / `NTN-` chưa trả; nợ của phiếu nhập / trả NCC → 23503 khoá ngoại như nppsale).
 - payable_payments ← SQL dựng (`NGUON_TRA_NO`): tham chiếu Payment Entry (`phieu_chi_ncc` / `ghi_tra_ncc`) + vế phải trả của bút toán bù trừ `CTN-`
-  (`bu_tru_ncc` — số có dấu: vế Nợ khoản được trả +, vế Có phiếu trả NCC − để `paid` = Σ dòng ở cả dòng âm) + phần chưa phân bổ của phiếu chi
-  (`<PE>::tra_truoc` — dòng trả trước). `paid_at` = lúc chi (luật `v_luc` của `chi_tra_ncc`: phiếu chi ngày tạo → giờ tạo, ghi lùi → 12:00 của ngày chi;
+  (`bu_tru_ncc` — số có dấu: vế Nợ khoản được trả +, vế Có phiếu trả NCC − để `paid` = Σ dòng ở cả dòng âm) + vế phiếu nhập của bút toán chuyển
+  tiền trả dư `chuyen_tra_du_ncc` (M7 — sửa phiếu nhập: phần tiền tờ cũ không vừa tờ mới nằm lại trên chính khoản nợ như nppsale; dòng mang hình thức /
+  người / lúc chi / ghi chú / phiếu chi của PHIẾU TIỀN gốc) + phần chưa phân bổ của phiếu chi (`<PE>::tra_truoc` — dòng trả trước). `paid_at` = lúc chi (luật `v_luc` của `chi_tra_ncc`: phiếu chi ngày tạo → giờ tạo, ghi lùi → 12:00 của ngày chi;
   MỌI phần của một phiếu chi mang cùng lúc chi); Ghi trả / bù trừ → giờ lập. RLS đọc owner / manager / accountant; GHI chỉ xác nhận
   (`verified_by` / `verified_at` — owner / accountant), mọi ghi khác → `CHI_NCC_KHOA` (trigger `_khoa_ghi_thang_chi_ncc` mig 227).
 - supplier_payments ← Payment Entry `npp_loai = phieu_chi_ncc` (`PCNCC-`): `seq` tách từ tên, `reference_code` = số người gõ (số tự điền cho TK ngân
@@ -47,6 +48,16 @@ NGUON_TRA_NO = (
 	"FROM `tabJournal Entry Account` a JOIN `tabJournal Entry` j ON j.`name` = a.`parent` AND a.`parenttype` = 'Journal Entry' "
 	f"LEFT JOIN {DT} n ON n.`khoa_nguon` = CONCAT('Purchase Invoice:', a.`reference_name`) "
 	"WHERE j.`docstatus` = 1 AND j.`npp_loai` = 'bu_tru_ncc' AND a.`party_type` = 'Supplier' AND a.`reference_type` = 'Purchase Invoice' "
+	"UNION ALL "
+	# tiền trả dư chuyển vào chính phiếu sau sửa phiếu nhập (bút toán `chuyen_tra_du_ncc` — M7): dòng mang danh tính của phiếu tiền gốc
+	"SELECT a.`name`, n.`name`, a.`debit_in_account_currency` - a.`credit_in_account_currency`, " + HINH_THUC + ", "
+	+ NGUOI.format(o="p.`owner`") + ", " + LUC_CHI + ", a.`npp_xac_nhan_boi`, a.`npp_xac_nhan_luc`, " + GHI_CHU_CHI + ", "
+	"CASE WHEN p.`npp_loai` = 'phieu_chi_ncc' THEN p.`name` END "
+	"FROM `tabJournal Entry Account` a JOIN `tabJournal Entry` j ON j.`name` = a.`parent` AND a.`parenttype` = 'Journal Entry' "
+	"JOIN `tabJournal Entry Account` b ON b.`parent` = j.`name` AND b.`parenttype` = 'Journal Entry' AND b.`reference_type` = 'Payment Entry' "
+	"JOIN `tabPayment Entry` p ON p.`name` = b.`reference_name` "
+	f"LEFT JOIN {DT} n ON n.`khoa_nguon` = CONCAT('Purchase Invoice:', a.`reference_name`) "
+	"WHERE j.`docstatus` = 1 AND j.`npp_loai` = 'chuyen_tra_du_ncc' AND a.`party_type` = 'Supplier' AND a.`reference_type` = 'Purchase Invoice' "
 	"UNION ALL "
 	"SELECT CONCAT(p.`name`, '::tra_truoc'), n.`name`, n.`da_tra`, " + HINH_THUC + ", " + NGUOI.format(o="p.`owner`") + ", " + LUC_CHI
 	+ ", p.`npp_xac_nhan_boi`, p.`npp_xac_nhan_luc`, " + GHI_CHU_CHI + ", p.`name` "

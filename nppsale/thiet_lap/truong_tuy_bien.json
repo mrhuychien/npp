@@ -334,7 +334,7 @@
    "insert_after": "voucher_type",
    "label": "Loại bút toán NPP",
    "module": "NPP Tien",
-   "options": "\ncan_tru_khach\nchuyen_tien_thua\nbu_tru_ncc\nchi_phi\ntra_chi_phi\ndieu_chinh_gia_nhap",
+   "options": "\ncan_tru_khach\nchuyen_tien_thua\nbu_tru_ncc\nchi_phi\ntra_chi_phi\ndieu_chinh_gia_nhap\nchuyen_tra_du_ncc",
    "read_only": 1,
    "search_index": 1
   },

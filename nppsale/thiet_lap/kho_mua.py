@@ -7,7 +7,8 @@
   về chưa có hoá đơn" của công ty) khi còn trống; trỏ TK xuất lẻ (`tk_xuat_le` — M4: giá vốn hàng bán của công ty) và TK nhập kho tay không công nợ
   (`tk_nhap_kho_khong_hd` — M4: "hàng về chưa có hoá đơn") khi còn trống (quyết định tạm Q9, chờ kế toán — BP §7.1 điểm 16); M6 kiểm kê: lập TK thừa kiểm kê
   (`tk_thua_kiem_ke` — "Thua kiem ke" dưới thu nhập khác 711, CFD-09 "thừa ghi thu nhập khác") và trỏ TK chi phí mặc định (`tk_chi_phi_mac_dinh` — chi phí
-  khác của công ty) khi còn trống; gieo tám danh mục chi phí mig 016 (`NPP Danh Muc Chi Phi` — MỘT lần, khi bảng còn rỗng: xoá danh mục rồi migrate
+  khác của công ty) khi còn trống; M7 sửa phiếu nhập đã bán: lập TK trung gian sửa giá nhập (`tk_trung_gian_sua_gia_nhap` — "Trung gian sua gia nhap" dưới
+  nợ ngắn hạn: Có ở LCV `SGN-`, Nợ ở bút toán `DCN-`) khi còn trống; gieo tám danh mục chi phí mig 016 (`NPP Danh Muc Chi Phi` — MỘT lần, khi bảng còn rỗng: xoá danh mục rồi migrate
   không tự lập lại) với `COGS_ADJ` gắn TK giá vốn hàng bán (hao hụt kiểm kê — BP §7.1 điểm 16 "632?"). Dãy số phiếu nhập / trả NCC /
   nợ NCC / sửa giá (`PN-`, `PTNCC-`, `DKN-`, `NTN-`, `SGN-`) đặt cùng các dãy khác ở `mac_dinh._dat_ten_chung_tu`; phiếu kho tay (`IN-…`, `XKL-`,
   `CKL-`) đặt dãy ngay trên tờ (nppsale.rpc.kho_tay).
@@ -136,6 +137,25 @@ def _tk_thua_kiem_ke(cd_ban) -> str | None:
 		"is_group": 0}).insert(ignore_permissions=True).name
 
 
+def _tk_trung_gian_sua_gia_nhap(cd_ban) -> str | None:
+	"""TK trung gian sửa giá phiếu nhập đã bán (M7 — CFD-06, BP §5.10; quyết định tạm Q9, chờ kế toán chốt cùng BP §7.1 điểm 16): dòng chi phí của Landed
+	Cost Voucher `SGN-` (Có) ↔ vế đối ứng của bút toán `DCN-` (Nợ) — hai vế triệt tiêu, số dư ≠ 0 là LCV / bút toán lệch nhau. Lõi cấm TK loại Stock /
+	TK nhóm cho LCV (`landed_cost_voucher.py:216–229`) → tài khoản lá "Trung gian sua gia nhap" (loại trống) dưới nợ ngắn hạn (Current Liabilities), tạo
+	khi chưa có."""
+	cong_ty, abbr = cd_ban.get("cong_ty"), cd_ban.get("abbr")
+	if not cong_ty or not abbr:
+		return None
+	ma = f"Trung gian sua gia nhap - {abbr}"
+	if frappe.db.exists("Account", ma):
+		return ma
+	nhom = frappe.db.get_value("Account", {"company": cong_ty, "account_name": "Current Liabilities", "is_group": 1}) or frappe.db.get_value(
+		"Account", {"company": cong_ty, "root_type": "Liability", "is_group": 1}, order_by="lft desc")
+	if not nhom:
+		return None
+	return frappe.get_doc({"doctype": "Account", "account_name": "Trung gian sua gia nhap", "parent_account": nhom, "company": cong_ty,
+		"account_type": "", "is_group": 0}).insert(ignore_permissions=True).name
+
+
 def _tk_chi_phi_mac_dinh(cd_ban) -> str | None:
 	"""TK chi phí mặc định (phiếu chi không danh mục / danh mục chưa gắn TK — BP §4.5; M6: phiếu xuất hao hụt khi danh mục `COGS_ADJ` thiếu TK): tạm
 	"Miscellaneous Expenses" (chi phí khác) của công ty — chờ kế toán chốt cùng BP §7.1 điểm 16 (quyết định tạm Q9)."""
@@ -199,7 +219,8 @@ def dam_bao() -> None:
 			if tk:
 				frappe.db.set_single_value("NPP Cai Dat", "tk_giam_dau_phieu_nhap", tk)
 		for truong, ham in (("tk_no_ncc_lap_tay", _tk_no_ncc_lap_tay), ("tk_xuat_le", _tk_xuat_le), ("tk_nhap_kho_khong_hd", _tk_nhap_kho_khong_hd),
-				("tk_thua_kiem_ke", _tk_thua_kiem_ke), ("tk_chi_phi_mac_dinh", _tk_chi_phi_mac_dinh)):
+				("tk_thua_kiem_ke", _tk_thua_kiem_ke), ("tk_chi_phi_mac_dinh", _tk_chi_phi_mac_dinh),
+				("tk_trung_gian_sua_gia_nhap", _tk_trung_gian_sua_gia_nhap)):
 			if frappe.get_meta("NPP Cai Dat").has_field(truong) and not frappe.db.get_single_value("NPP Cai Dat", truong, cache=False):
 				tk = ham(cai_dat_ban())
 				if tk:
@@ -252,7 +273,9 @@ def kiem() -> list[dict]:
 				("tk_nhap_kho_khong_hd", "TK chênh lệch phiếu nhập kho tay IN- không công nợ — thiếu thì nhập kho tay báo CAI_DAT_THIEU"),
 				("tk_thua_kiem_ke", "TK chênh lệch phiếu nhập điều chỉnh DCK- phần thừa kiểm kê — thiếu thì duyệt kiểm kê có thừa báo CAI_DAT_THIEU"),
 				("tk_chi_phi_mac_dinh", "TK chi phí khi danh mục chưa gắn TK (phiếu xuất hao hụt kiểm kê, phiếu chi) — thiếu mà COGS_ADJ cũng thiếu TK thì "
-					"duyệt kiểm kê có hụt báo CAI_DAT_THIEU")):
+					"duyệt kiểm kê có hụt báo CAI_DAT_THIEU"),
+				("tk_trung_gian_sua_gia_nhap", "TK trung gian sửa giá phiếu nhập đã bán (LCV SGN- ↔ bút toán DCN-) — thiếu thì sửa giá phiếu đã bán báo "
+					"CAI_DAT_THIEU")):
 			if not g.get(truong):
 				lech("NPP Cai Dat", truong, None, "(có giá trị)", vi_sao)
 		ng = g.get("nguong_kho_date_ngay")

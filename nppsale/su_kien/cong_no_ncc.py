@@ -294,7 +294,70 @@ def tien_tra_thang(pi: str) -> float:
 		FROM `tabJournal Entry Account` a JOIN `tabJournal Entry` j ON j.`name` = a.`parent` AND a.`parenttype` = 'Journal Entry'
 		WHERE j.`docstatus` = 1 AND j.`npp_loai` = 'bu_tru_ncc' AND a.`party_type` = 'Supplier' AND a.`reference_type` = 'Purchase Invoice'
 			AND a.`reference_name` = %s""", pi)[0][0])
-	return pe + je
+	# phần Ghi trả `GTN-` trả dư đã chuyển vào phiếu sau một lần sửa (bút toán `chuyen_tra_du_ncc` — M7): vẫn là tiền trả thẳng vào khoản này
+	du = flt(frappe.db.sql("""SELECT COALESCE(SUM(a.`debit_in_account_currency` - a.`credit_in_account_currency`), 0)
+		FROM `tabJournal Entry Account` a JOIN `tabJournal Entry` j ON j.`name` = a.`parent` AND a.`parenttype` = 'Journal Entry'
+		JOIN `tabJournal Entry Account` b ON b.`parent` = j.`name` AND b.`parenttype` = 'Journal Entry' AND b.`reference_type` = 'Payment Entry'
+		JOIN `tabPayment Entry` p ON p.`name` = b.`reference_name` AND p.`npp_loai` = 'ghi_tra_ncc'
+		WHERE j.`docstatus` = 1 AND j.`npp_loai` = 'chuyen_tra_du_ncc' AND a.`party_type` = 'Supplier' AND a.`reference_type` = 'Purchase Invoice'
+			AND a.`reference_name` = %s""", pi)[0][0])
+	return pe + je + du
+
+
+# ------------------------------------------------------------------------------------------------ tiền trả dư sau sửa phiếu nhập (M7)
+def je_chuyen_tra_du(pi: str | None = None, pe: str | None = None) -> list[str]:
+	"""Bút toán `chuyen_tra_du_ncc` đang ghi sổ có vế trỏ phiếu nhập `pi` / phiếu tiền `pe` (theo lúc lập)."""
+	if not frappe.get_meta("Journal Entry").has_field("npp_loai") or not (pi or pe):
+		return []
+	loai, ten = ("Purchase Invoice", pi) if pi else ("Payment Entry", pe)
+	return [r[0] for r in frappe.db.sql("""SELECT DISTINCT j.`name`, j.`creation` FROM `tabJournal Entry` j
+		JOIN `tabJournal Entry Account` a ON a.`parent` = j.`name` AND a.`parenttype` = 'Journal Entry'
+		WHERE j.`docstatus` = 1 AND j.`npp_loai` = 'chuyen_tra_du_ncc' AND a.`reference_type` = %s AND a.`reference_name` = %s
+		ORDER BY j.`creation`, j.`name`""", (loai, ten))]
+
+
+def tien_chuyen_tra_du(je: str) -> tuple[str | None, float]:
+	"""(phiếu tiền, số) của một bút toán `chuyen_tra_du_ncc` — vế Có tham chiếu Payment Entry."""
+	r = frappe.db.sql("""SELECT `reference_name`, `credit_in_account_currency` - `debit_in_account_currency` FROM `tabJournal Entry Account`
+		WHERE `parent` = %s AND `parenttype` = 'Journal Entry' AND `reference_type` = 'Payment Entry' LIMIT 1""", je)
+	return (r[0][0], flt(r[0][1])) if r else (None, 0.0)
+
+
+def huy_chuyen_tra_du(ds: list[str]) -> list[str]:
+	"""Huỷ các bút toán chuyển tiền trả dư (trước khi huỷ phiếu nhập / phiếu tiền chúng trỏ — lõi gỡ tham chiếu lặng lẽ, tiền treo ngoài nhóm):
+	phần tiền ấy về lại phần chưa phân bổ của phiếu tiền (dòng trả trước của phiếu chi — dồn ở nơi gọi)."""
+	ra = []
+	for ten in ds:
+		je = frappe.get_doc("Journal Entry", ten)
+		if je.docstatus != 1:
+			continue
+		je.flags.ignore_permissions = True
+		je.cancel()  # hook sau_but_toan: chiếu lại phiếu nhập + dòng trả trước của phiếu tiền
+		ra.append(ten)
+	frappe.local.message_log = []
+	return ra
+
+
+def lap_chuyen_tra_du(pe: str, pi: str, so) -> str:
+	"""Phần tiền đã trả của tờ cũ không vừa tờ mới (trả dư sau `sua_phieu_nhap` nhánh amend): bút toán `Debit Note` (lõi bỏ kiểm số còn nợ — nợ âm được)
+	Nợ phải trả tham chiếu phiếu nhập / Có phải trả tham chiếu phiếu tiền → tiền nằm trên CHÍNH khoản nợ (NCC nợ lại mình) như nppsale giữ `paid` trên
+	dòng nợ (mig 235 bước 23) — khuôn `can_tru.lap_chuyen_tien_thua` của Sửa HĐ (Q7). Dòng `payable_payments` của bút toán mang hình thức / người /
+	lúc chi / ghi chú / phiếu chi của phiếu tiền (cổng `NGUON_TRA_NO`)."""
+	x = frappe.db.get_value("Payment Entry", pe, ["company", "party", "paid_to", "posting_date"], as_dict=True)
+	p = frappe.db.get_value("Purchase Invoice", pi, ["credit_to", "posting_date"], as_dict=True)
+	cc = frappe.get_cached_value("Company", x.company, "cost_center")
+	je = frappe.new_doc("Journal Entry")
+	je.update({"voucher_type": "Debit Note", "naming_series": "CTN-.####", "company": x.company, "posting_date": max(x.posting_date, p.posting_date),
+		"npp_loai": "chuyen_tra_du_ncc", "npp_phieu_nhap": pi, "user_remark": f"Chuyển tiền trả dư — {pe} → {pi}"})
+	je.append("accounts", {"account": p.credit_to, "party_type": "Supplier", "party": x.party, "debit_in_account_currency": flt(so),
+		"reference_type": "Purchase Invoice", "reference_name": pi, "cost_center": cc})
+	je.append("accounts", {"account": x.paid_to, "party_type": "Supplier", "party": x.party, "credit_in_account_currency": flt(so),
+		"reference_type": "Payment Entry", "reference_name": pe, "cost_center": cc})
+	je.flags.ignore_permissions = True
+	je.insert()
+	je.submit()  # hook sau_but_toan: chiếu phiếu nhập + dòng trả trước của phiếu tiền
+	frappe.local.message_log = []
+	return je.name
 
 
 def _phan_bo(pe: str, khoan, lay: float, chua: float, ncc: str) -> None:
