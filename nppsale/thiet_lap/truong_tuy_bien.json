@@ -1096,6 +1096,15 @@
    "module": "NPP Kho Mua",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "npp_kho_nhap",
+   "fieldtype": "Link",
+   "insert_after": "to_warehouse",
+   "label": "Kho người chọn",
+   "module": "NPP Kho Mua",
+   "options": "Warehouse",
+   "read_only": 1
   }
  ],
  "Stock Entry Detail": [

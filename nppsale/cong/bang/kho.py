@@ -54,6 +54,68 @@ NGUON_LO = f"""(
 )"""
 
 
+# ------------------------------------------------------------------------------------------------ giá dòng chứng từ kho (đặc tả kho_mua §10 điểm 3–5)
+# MỘT luật giá vốn mỗi đơn vị CƠ SỞ cho cổng `stock_entry_lines.unit_cost`, `v_stock_movements.unit_cost` (nppsale.cong.bang.phieu_kho) và hằng báo
+# cáo P6 (`nguon_dong_xuat` / `nguon_dong_nhap_lai` — đặc tả báo cáo Phụ lục A): đường lùi đọc cổng (`fetchCogsForRange`, XNT) phải ra CÙNG số với
+# đường một lượt.
+# - Xuất lẻ `XKL-` / chuyển kho `CKL-`: 0 — TẠM THEO nppsale (dòng phiếu giữ `unit_cost 0`, giá chỉ ở vết lấy lô → giá vốn kỳ KHÔNG tính xuất lẻ;
+#   §7.3 điểm 36, §10 điểm 3 — Q9 "Giá vốn xuất lẻ / chuyển kho trên báo cáo"); sổ kho / GL vẫn giá thật.
+# - Trả NCC: giá vốn LÔ từ sổ kho của dòng (|Σ stock_value_difference| / |Σ actual_qty|) — KHÔNG `PI Item.valuation_rate` (= giá trả NCC,
+#   `buying_controller.py:576–660`; soát thiếu S2 / V81).
+GIA_SE_XUAT_LE_0 = "('xuat_le', 'chuyen_kho', 'chuyen_date_tu_dong')"
+GIA_TRA_NCC = ("IFNULL((SELECT ABS(SUM(sle.`stock_value_difference`)) / NULLIF(ABS(SUM(sle.`actual_qty`)), 0) FROM `tabStock Ledger Entry` sle "
+	"WHERE sle.`voucher_type` = 'Purchase Invoice' AND sle.`voucher_no` = {p}.`name` AND sle.`voucher_detail_no` = {d}.`name` "
+	"AND sle.`is_cancelled` = 0), 0)")
+
+
+def gia_dong_se(se: str = "se", d: str = "d") -> str:
+	return f"CASE WHEN IFNULL({se}.`npp_loai`, '') IN {GIA_SE_XUAT_LE_0} THEN 0 ELSE IFNULL({d}.`valuation_rate`, 0) END"
+
+
+def gia_tra_ncc(p: str = "p", d: str = "pii") -> str:
+	return GIA_TRA_NCC.format(p=p, d=d)
+
+
+def nguon_dong_xuat(dk: str = "") -> str:
+	"""Mỗi dòng XUẤT đã ghi sổ (đặc tả báo cáo P6 Phụ lục A-1): HĐ có kho (gồm dòng đổi), xuất kho lẻ `XKL-` (giá 0 — §10 điểm 3), xuất trả NCC
+	`PTNCC-` (giá lô từ sổ kho). → (hang, sl, gia, ngay, chung_tu, loai, dong). `dk` dùng {t} cho bí danh đầu phiếu, vd
+	"AND {t}.`posting_date` BETWEEN %(tu)s AND %(den)s" — chèn vào TỪNG nhánh (giữ chỉ mục `posting_date`)."""
+	return f"""(
+	SELECT ii.`item_code` AS hang, ABS(ii.`stock_qty`) AS sl, IFNULL(ii.`incoming_rate`, 0) AS gia, si.`posting_date` AS ngay, si.`name` AS chung_tu,
+		'hoa_don' AS loai, ii.`name` AS dong
+	FROM `tabSales Invoice` si
+	JOIN `tabSales Invoice Item` ii ON ii.`parent` = si.`name` AND ii.`parenttype` = 'Sales Invoice'
+	WHERE si.`docstatus` = 1 AND si.`is_return` = 0 AND si.`update_stock` = 1 AND IFNULL(si.`is_opening`, 'No') = 'No' {dk.replace('{t}', 'si')}
+	UNION ALL
+	SELECT d.`item_code`, ABS(d.`transfer_qty`), {gia_dong_se()}, se.`posting_date`, se.`name`, 'xuat_le', d.`name`
+	FROM `tabStock Entry` se
+	JOIN `tabStock Entry Detail` d ON d.`parent` = se.`name` AND d.`parenttype` = 'Stock Entry'
+	WHERE se.`docstatus` = 1 AND se.`npp_loai` = 'xuat_le' {dk.replace('{t}', 'se')}
+	UNION ALL
+	SELECT pii.`item_code`, ABS(pii.`stock_qty`), {gia_tra_ncc()}, p.`posting_date`, p.`name`, 'tra_ncc', pii.`name`
+	FROM `tabPurchase Invoice` p
+	JOIN `tabPurchase Invoice Item` pii ON pii.`parent` = p.`name` AND pii.`parenttype` = 'Purchase Invoice'
+	WHERE p.`docstatus` = 1 AND p.`is_return` = 1 AND p.`update_stock` = 1 AND p.`npp_loai` = 'tra_ncc' {dk.replace('{t}', 'p')}
+)"""
+
+
+def nguon_dong_nhap_lai(dk: str = "") -> str:
+	"""Mỗi dòng NHẬP LẠI hàng khách trả đã ghi sổ (Phụ lục A-2), nối phiếu theo Link `npp_phieu_tra` (phiếu `NL-` và tờ ghi có có kho `HDT-`), gồm dòng
+	đổi. → (pt, hang, sl, gia, ngay, chung_tu)."""
+	return f"""(
+	SELECT se.`npp_phieu_tra` AS pt, d.`item_code` AS hang, ABS(d.`transfer_qty`) AS sl, IFNULL(d.`valuation_rate`, 0) AS gia, se.`posting_date` AS ngay,
+		se.`name` AS chung_tu
+	FROM `tabStock Entry` se
+	JOIN `tabStock Entry Detail` d ON d.`parent` = se.`name` AND d.`parenttype` = 'Stock Entry'
+	WHERE se.`docstatus` = 1 AND se.`npp_loai` = 'nhap_lai_tra' AND IFNULL(se.`npp_phieu_tra`, '') <> '' {dk.replace('{t}', 'se')}
+	UNION ALL
+	SELECT si.`npp_phieu_tra`, ii.`item_code`, ABS(ii.`stock_qty`), IFNULL(ii.`incoming_rate`, 0), si.`posting_date`, si.`name`
+	FROM `tabSales Invoice` si
+	JOIN `tabSales Invoice Item` ii ON ii.`parent` = si.`name` AND ii.`parenttype` = 'Sales Invoice'
+	WHERE si.`docstatus` = 1 AND si.`is_return` = 1 AND si.`update_stock` = 1 AND IFNULL(si.`npp_phieu_tra`, '') <> '' {dk.replace('{t}', 'si')}
+)"""
+
+
 class _ChuaGhi:
 	"""Ghi lô (mig 170) dựng ở bước kho — tới lúc ấy từ chối như RLS (vai khác owner / warehouse cũng bị từ chối ở nppsale)."""
 

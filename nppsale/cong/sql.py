@@ -147,7 +147,8 @@ def _cot_chon(bang: D.Bang, nut_chon: list, bd: str, ts_unused=None):
 def _sap_xep(bang: D.Bang, thu_tu: list[dict], bd: str) -> str:
 	phan = []
 	for o in thu_tu or []:
-		e = o["_bieu"] if o.get("_bieu") else _bieu(bang, o["cot"], bd)[0]
+		# `sql`: biểu thức của thứ tự mặc định trên cột nguồn KHÔNG phải cột nppsale (dòng con theo `idx` — vd `stock_entry_lines`), {t} = bí danh
+		e = o["_bieu"] if o.get("_bieu") else o["sql"].replace("{t}", bd) if o.get("sql") else _bieu(bang, o["cot"], bd)[0]
 		tang = o.get("tang", True)
 		null_dau = o.get("null_dau")
 		if null_dau is None:

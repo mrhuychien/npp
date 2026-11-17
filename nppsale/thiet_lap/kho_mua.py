@@ -98,6 +98,22 @@ def _tk_no_ncc_lap_tay(cd_ban) -> str | None:
 	return frappe.get_cached_value("Company", cong_ty, "stock_received_but_not_billed") if cong_ty else None
 
 
+def _tk_xuat_le(cd_ban) -> str | None:
+	"""TK chênh lệch của phiếu xuất lẻ `XKL-` (M4 — quyết định tạm Q9, chờ kế toán chốt cùng BP §7.1 điểm 16 "632 như cách nppsale tính vào giá
+	vốn, hay 811 / 641"): giá vốn hàng bán của công ty (`Company.default_expense_account` — 632). Không đặt thì `validate_item` của lõi lặng lẽ điền
+	`stock_adjustment_account` (`stock_entry.py:3334–3337`)."""
+	cong_ty = cd_ban.get("cong_ty")
+	return frappe.get_cached_value("Company", cong_ty, "default_expense_account") if cong_ty else None
+
+
+def _tk_nhap_kho_khong_hd(cd_ban) -> str | None:
+	"""TK chênh lệch của phiếu nhập kho tay `IN-` không công nợ (M4 — quyết định tạm Q9, cùng dòng M3 "TK nợ NCC lập tay"): TK trung gian "hàng về
+	chưa có hoá đơn" (`Company.stock_received_but_not_billed` — 3388): phiếu nhập kho ghi Có, nợ NCC lập tay `NTN-` gắn phiếu ấy ghi Nợ — tất toán đúng
+	phần kho đã ghi. Tồn đầu kỳ (`DK-`) dùng `tk_tam_dau_ky` (lõi bắt TK tài sản / nợ cho tờ mở đầu)."""
+	cong_ty = cd_ban.get("cong_ty")
+	return frappe.get_cached_value("Company", cong_ty, "stock_received_but_not_billed") if cong_ty else None
+
+
 def dam_bao() -> None:
 	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
@@ -128,11 +144,11 @@ def dam_bao() -> None:
 			tk = _tk_giam_dau_phieu_nhap(cai_dat_ban())
 			if tk:
 				frappe.db.set_single_value("NPP Cai Dat", "tk_giam_dau_phieu_nhap", tk)
-		if frappe.get_meta("NPP Cai Dat").has_field("tk_no_ncc_lap_tay") and not frappe.db.get_single_value("NPP Cai Dat",
-				"tk_no_ncc_lap_tay", cache=False):
-			tk = _tk_no_ncc_lap_tay(cai_dat_ban())
-			if tk:
-				frappe.db.set_single_value("NPP Cai Dat", "tk_no_ncc_lap_tay", tk)
+		for truong, ham in (("tk_no_ncc_lap_tay", _tk_no_ncc_lap_tay), ("tk_xuat_le", _tk_xuat_le), ("tk_nhap_kho_khong_hd", _tk_nhap_kho_khong_hd)):
+			if frappe.get_meta("NPP Cai Dat").has_field(truong) and not frappe.db.get_single_value("NPP Cai Dat", truong, cache=False):
+				tk = ham(cai_dat_ban())
+				if tk:
+					frappe.db.set_single_value("NPP Cai Dat", truong, tk)
 		frappe.local._npp_cai_dat_ban = None
 
 
@@ -175,7 +191,9 @@ def kiem() -> list[dict]:
 		for truong, vi_sao in (("kho_ban", "vùng sale"), ("kho_can_date", "vùng date"), ("mau_thue_mua", "dòng VAT của phiếu nhập / trả NCC"),
 				("tk_thue_dau_vao", "dòng Actual thuế gõ tay của phiếu nhập; chênh VAT của bút toán DCN-"),
 				("tk_giam_dau_phieu_nhap", "dòng Actual + Deduct giảm đầu phiếu nhập (CFD-11) — thiếu thì phiếu có giảm đầu phiếu không lưu được"),
-				("tk_no_ncc_lap_tay", "dòng của tờ nợ NCC lập tay NTN- (màn Thêm công nợ NCC) — thiếu thì dùng TK hàng về chưa có hoá đơn của công ty")):
+				("tk_no_ncc_lap_tay", "dòng của tờ nợ NCC lập tay NTN- (màn Thêm công nợ NCC) — thiếu thì dùng TK hàng về chưa có hoá đơn của công ty"),
+				("tk_xuat_le", "TK chênh lệch phiếu xuất lẻ XKL- — thiếu thì ghi sổ xuất lẻ báo CAI_DAT_THIEU"),
+				("tk_nhap_kho_khong_hd", "TK chênh lệch phiếu nhập kho tay IN- không công nợ — thiếu thì nhập kho tay báo CAI_DAT_THIEU")):
 			if not g.get(truong):
 				lech("NPP Cai Dat", truong, None, "(có giá trị)", vi_sao)
 		ng = g.get("nguong_kho_date_ngay")
