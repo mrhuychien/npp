@@ -1419,7 +1419,10 @@ Không port: `org_id` (hằng).
   `dau_ky` còn hiệu lực trước khi lập tờ `DK-` (trùng → 23505 nêu `uq_receivables_opening`, như nppsale).
 - **Dấu quá hạn**: người có quyền đặt / bỏ qua cổng (`receivables.update({status:'overdue'})`, mig 214) → `npp_qua_han_tay` của nguồn; `void_cash_receipt` đặt dấu
   cho khoản vừa bị gỡ tiền mà hạn đã qua (mig 120 — `v_due < vn_today()` → `overdue`).
-- `han_thanh_toan`: HĐ = `posting_date` + NETn của điều khoản (`_wf2b_payment_terms_days`); tờ đầu kỳ = hạn người nhập; tờ ghi có / tiền thừa = ngày chứng từ.
+- `han_thanh_toan`: HĐ = `posting_date` + NETn của điều khoản (`_wf2b_payment_terms_days`); tờ đầu kỳ = hạn người nhập; dòng âm của phiếu trả tự lập
+  độc lập = **ngày phiếu lúc Hoàn thành** (`_cong_no_phieu_tra` mig 191: `COALESCE(return_date, ngày hoàn thành)` — chụp vào `npp_han_thanh_toan` của tờ ghi có
+  `HDT-` khi lập tờ, `luat.phieu_tra.han_no_am`; đổi ngày phiếu sau đó không dời hạn, Ghi nhận lại chụp lại; tờ lập trước bản sửa không có số chụp → ngày ghi sổ
+  tờ — 🔧 P3-HAN-NO-AM, sửa ở P6 M0); tiền thừa = ngày chứng từ.
 
 #### Submission / vòng đời
 Không submit; không có thao tác của người dùng trên bản ghi này. Mọi "ghi" của cổng lên `receivables` được chuyển thành thao tác trên chứng từ nguồn (§6.1).
@@ -3409,7 +3412,7 @@ sẽ mang RefID / số HĐĐT của tờ huỷ (`reissue_invoice` dựng tờ m�
 | receivables | Sales Invoice | npp_nv_giu_no | NV giữ nợ | Link | NPP Nhan Vien | npp_tim_kd | `sales_user_id` của khoản nợ; **AOS**; RO; idx — luật đổi người ở §4.3 (`NPP Cong No`); khác NV đứng tên HĐ sau bàn giao / nghỉ việc |
 | receivables | Sales Invoice | npp_giao_tu_nv | Nợ giao từ NV | Link | NPP Nhan Vien | npp_nv_giu_no | `giao_tu_nv` (mig 246); **AOS**; RO; Sửa HĐ chép sang tờ mới — `reissue_invoice` chép tường minh cùng `npp_nhan_vien` / `npp_nv_giu_no` / `npp_ve_npp_luc` (tờ mới dựng từ tải trọng như `post_invoice`, chỉ đặt `amended_from`; nppsale cũng chép tường minh từ dòng nợ cũ — mig 227 / 246) |
 | receivables | Sales Invoice | npp_ve_npp_luc | Nợ về NPP lúc | Datetime |  | npp_giao_tu_nv | `ve_npp_luc` (mig 223); **AOS**; RO |
-| receivables | Sales Invoice | npp_han_thanh_toan | Hạn nợ | Date |  | due_date | `due_date` của khoản nợ; **AOS**. Lõi bắt `due_date` ≥ `posting_date` (`accounts/party.py:753–762`, gọi ở `accounts_controller.py:1165`) — tờ đầu kỳ nợ quá hạn có hạn cũ hơn ngày ghi, nên method đặt lõi `due_date` = max(ngày ghi, hạn) và giữ hạn thật ở đây; HĐ thường hai số bằng nhau |
+| receivables | Sales Invoice | npp_han_thanh_toan | Hạn nợ | Date |  | due_date | `due_date` của khoản nợ; **AOS**. Lõi bắt `due_date` ≥ `posting_date` (`accounts/party.py:753–762`, gọi ở `accounts_controller.py:1165`) — tờ đầu kỳ nợ quá hạn có hạn cũ hơn ngày ghi, nên method đặt lõi `due_date` = max(ngày ghi, hạn) và giữ hạn thật ở đây; HĐ thường hai số bằng nhau; tờ ghi có `HDT-` của phiếu tự lập độc lập: hạn dòng nợ âm = ngày phiếu lúc Hoàn thành (§4.3 `NPP Cong No`, `han_thanh_toan`) |
 | receivables | Sales Invoice | npp_qua_han_tay | Đánh dấu quá hạn | Check |  | npp_han_thanh_toan | `status = 'overdue'` đặt tay (mig 214) / do huỷ phiếu thu (mig 120); **AOS** |
 | sales_invoice_lines | Sales Invoice Item | item_code / uom / conversion_factor / qty | (lõi) |  |  | — | dùng: `product_id` / `unit_name` / `conversion_factor` **chụp** (HĐ mới tra danh mục — mig 174; Sửa HĐ: cùng mặt hàng + đơn vị với tờ cũ giữ hệ số tờ cũ, thay cờ `npp.he_so_tu_hd` — mig 247) / `quantity` (tờ ghi có: âm) |
 | sales_invoice_lines | Sales Invoice Item | rate / price_list_rate / discount_amount / amount | (lõi) | Currency |  | — | dùng: `unit_price` = **đơn giá dòng SO, không tính lại theo SL HĐ** kể cả xuất thiếu (dòng gõ giảm mới / thêm tay mới tính ở màn — PoC 2) / giá bảng mọi dòng / **mọi dòng đơn giá 0 — hàng đổi và dòng giảm 100 % của đơn: `rate` 0 + `price_list_rate` = giá bảng + `discount_amount` = giá bảng** (không gửi %, không để thiếu giá bảng — PoC 2; mã gửi `discount_amount` = giá bảng − đơn giá cho mọi dòng thấp hơn giá bảng) / `line_total` (SL lẻ: lõi làm tròn tiền dòng — câu 19 a, Q3) |

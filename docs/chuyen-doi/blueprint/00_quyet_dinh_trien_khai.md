@@ -91,7 +91,7 @@ chỗ khác nppsale ghi ở `LECH_PT` / `SUA_MONG` trong bài, đổi được m
 | Q8c — đơn vị lạ | nhận chữ tự do | nhận, tự tạo UOM (như dòng đơn) |
 | Q8d, e, g, h | thuế 100 %, phiếu nháp cờ tự sinh, ngày tương lai, POS sửa phiếu theo đơn | giữ như nppsale |
 | Q9 — lý do huỷ phiếu trả | không bắt | giữ như nppsale |
-| Q10 — đổi ngày phiếu tự lập đã hoàn thành | chỉ dời mốc ghi có / ngày trừ doanh số | giữ như nppsale (không lập lại tờ ghi có) |
+| Q10 — đổi ngày phiếu tự lập đã hoàn thành | chỉ dời mốc ghi có / ngày trừ doanh số; hạn dòng nợ âm giữ ngày phiếu LÚC Hoàn thành (`_cong_no_phieu_tra` chỉ chạy khi Hoàn thành / Ghi nhận lại) | giữ như nppsale (không lập lại tờ ghi có); hạn dòng nợ âm = ngày phiếu chụp vào `npp_han_thanh_toan` của tờ ghi có lúc lập tờ (P6 M0 sửa — trước đó Frappe lấy ngày bấm Hoàn thành, bộ vàng P6 bắt: P3-HAN-NO-AM) |
 | Q11 — phiếu rỗng hoàn thành | lập phiếu nhập rỗng, `entry_id` có | hoàn thành không chứng từ kho, `entry_id` rỗng |
 | Q12 — tài khoản chênh lệch phiếu nhập lại `NL-` | — | mặc định của lõi (Stock Adjustment) — chưa thêm ô `tk_*` |
 | Q13 — hệ số quy đổi | tra danh mục lúc hoàn thành | chụp lúc lập chứng từ (tờ ghi có / phiếu nhập) — cùng thời điểm |
