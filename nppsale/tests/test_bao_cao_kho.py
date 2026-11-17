@@ -320,8 +320,11 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 			ket, _ = self._buoc(b, st)
 			self.assertNotIn("error", ket, f"{b['buoc']}: {ket.get('error')}")
 		hd, r = st["nhan"]["hd:H1"], self._cuoi(st["nhan"]["ptn:R"])
-		gv = lambda dt, ten: flt(frappe.db.sql("""SELECT SUM(`stock_value_difference`) FROM `tabStock Ledger Entry` WHERE `voucher_type` = %s  # noqa: E731
-			AND `voucher_no` = %s AND `is_cancelled` = 0""", (dt, ten))[0][0])
+
+		def gv(dt: str, ten: str) -> float:
+			return flt(frappe.db.sql("""SELECT SUM(`stock_value_difference`) FROM `tabStock Ledger Entry` WHERE `voucher_type` = %s
+				AND `voucher_no` = %s AND `is_cancelled` = 0""", (dt, ten))[0][0])
+
 		self.assertEqual(gv("Sales Invoice", hd), -250000)
 		self.assertEqual(gv("Purchase Invoice", r), -45000)
 		cty = frappe.db.get_value("Purchase Invoice", r, "company")
@@ -353,6 +356,7 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		self._pk_nhap("CKL", "transfer", "sale", [("@A", "hộp", 2)], dich="date")
 		self._ok(buoc="chuyen", nguoi="TK", nhan="CKL")
 		self._ok(buoc="chi", nguoi="KT", nhan="C", ncc="@S2", tien=50000, cach="cash")  # S2 không nợ → trả trước 50.000
+		self._ok(buoc="chi", nguoi="KT", nhan="C3", ncc="@S3", tien=20000, cach="cash")  # S3 không nợ → trả trước 20.000
 		self._ok(buoc="pn", nguoi="TK", nhan="PH", dau={"org_id": "@org", "supplier_id": "@S1", "invoice_number": None, "warehouse_zone": "sale",
 			"discount": 0, "vat_override": None, "notes": None, "status": "draft", "created_by": "@u:TK", "subtotal": 1000, "vat": 0, "total": 1000},
 			dong=[{"product_id": "@A", "unit_name": "hộp", "quantity": 1, "unit_price": 1000, "line_discount": 0, "vat_rate": 0, "conversion_factor": 1,
@@ -365,8 +369,8 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 			"dong_ncc_am_mo", "ptncc_dang_tru_no", "ncc_tra_truoc", "tra_truoc_ncc_tong", "pn_co_hang_da_xuat", "pn_da_huy", "ptncc_da_huy",
 			"nhap_mang_dau_huy", "phieu_chi_ncc", "tra_truoc_con", "bin_am_khong_lo")}, {
 			"phieu_kho_dao_huy_rieng": 0, "the_kho_lech": 0, "lo_am": 0, "ncc_trung_ten": 0, "gia_nhap_trung": 0, "ncc_paid_lech": 0,
-			"dong_ncc_am_mo": 1, "ptncc_dang_tru_no": 1, "ncc_tra_truoc": 1, "tra_truoc_ncc_tong": 50000, "pn_co_hang_da_xuat": 2, "pn_da_huy": 0,
-			"ptncc_da_huy": 0, "nhap_mang_dau_huy": 1, "phieu_chi_ncc": 1, "tra_truoc_con": 50000, "bin_am_khong_lo": 0})
+			"dong_ncc_am_mo": 1, "ptncc_dang_tru_no": 1, "ncc_tra_truoc": 2, "tra_truoc_ncc_tong": 70000, "pn_co_hang_da_xuat": 2, "pn_da_huy": 0,
+			"ptncc_da_huy": 0, "nhap_mang_dau_huy": 1, "phieu_chi_ncc": 2, "tra_truoc_con": 70000, "bin_am_khong_lo": 0})
 		self.assertGreaterEqual(tk["gia_nhap"], 1)
 
 	def test_kham_so_kho_mua_bat_lech(self):
@@ -403,7 +407,7 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		self.ma["S9"] = s
 		kq = self._kham()
 		self.assertEqual(self._nhom(kq), [31])
-		self.assertEqual(kq["can_xem"][0]["chung_tu"], ", ".join(sorted([self.ma["S1"], s])))
+		self.assertEqual((kq["can_xem"][0]["chung_tu"], kq["can_xem"][0]["chi_tiet"]), (", ".join(sorted([self.ma["S1"], s])), "tên “ncc một”"))
 		self.assertEqual(kq["thong_ke"]["ncc_trung_ten"], 1)
 		del self.ma["S9"]
 		# 32: hai giá nhập cho một (mặt hàng, đơn vị)
@@ -438,12 +442,29 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		pt = frappe.db.get_value("NPP Phieu Tra", {"hoa_don": ket["data"][0]["invoice_id"]}, "name")
 		ket = self._goi("CHU", "complete_return", {"p_return_id": pt, "p_zone": "sale"})
 		self.assertNotIn("error", ket, ket)
+		nl0 = frappe.db.get_value("NPP Phieu Tra", pt, "phieu_nhap_kho")
+		# huỷ nhập kho (phiếu tự sinh về Chờ xử lý — NL- cũ đã huỷ) rồi hoàn thành lại (NL- mới): phiếu Hoàn thành CÓ chứng từ nhập kho → sạch
+		for ten, ts in (("cancel_return", {"p_reason": "nhập lại"}), ("complete_return", {"p_zone": "sale"})):
+			ket = self._goi("CHU", ten, {"p_return_id": pt, **ts})
+			self.assertNotIn("error", ket, ket)
 		nl = frappe.db.get_value("NPP Phieu Tra", pt, "phieu_nhap_kho")
+		self.assertTrue(nl != nl0 and frappe.db.get_value("Stock Entry", nl0, "docstatus") == 2)
 		self.assertTrue(nl and frappe.db.get_value("Stock Entry", nl, "npp_loai") == "nhap_lai_tra")
 		self.assertEqual(self._nhom(), [])
 		se = frappe.get_doc("Stock Entry", nl)
 		se.flags.ignore_permissions = True
 		se.cancel()
 		kq = self._kham()
-		self.assertEqual([(x["nhom"], x["chung_tu"], x["phieu_tra"]) for x in kq["can_xem"]], [(27, nl, pt)])
+		self.assertEqual([(x["nhom"], x["chung_tu"], x["phieu_kho"]) for x in kq["can_xem"]], [(27, pt, nl)])
 		self.assertEqual(kq["thong_ke"]["phieu_kho_dao_huy_rieng"], 1)
+
+	def test_kham_so_viec_dem_noi_tiep(self):
+		"""Việc đêm 01:00: kham_so_cong_no → kham_so_cong_no_ncc → kham_so_kho_mua (khám sổ P4 cả sổ)."""
+		from unittest.mock import patch
+
+		from nppsale import kham_so
+
+		goi = []
+		with patch.object(kham_so, "kham_so_kho_mua", lambda: goi.append(1)):
+			kham_so.kham_so_cong_no_ncc()
+		self.assertEqual(goi, [1])

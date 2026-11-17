@@ -397,8 +397,8 @@ def quet_kho_mua(hang: list[str] | None = None, ncc: list[str] | None = None) ->
 	`hang` / `ncc`: chỉ xét các mặt hàng / NCC này (bài thử — site có dữ liệu dựng thử cũ); bỏ trống = cả sổ. Chỉ hai kho của NPP (`kho_ban`,
 	`kho_can_date` — nguồn lô cổng `batches`).
 	can_xem (bất biến — sổ sạch không có dòng nào):
-	  27. (dòng 66) Phiếu nhập lại hàng khách trả (Stock Entry `nhap_lai_tra`) bị huỷ RIÊNG — phiếu trả `npp_phieu_tra` vẫn Hoàn thành mà không còn chứng
-	      từ nhập kho nào đang ghi sổ (nppsale: phiếu kho của chứng từ đã đảo bị huỷ riêng; bản app chặn ở cancel_stock_entry — việc #24 — còn Desk).
+	  27. (dòng 66) Phiếu trả Hoàn thành mà phiếu nhập lại hàng (Stock Entry `nhap_lai_tra`) đã bị huỷ RIÊNG — không còn chứng từ nhập kho nào đang
+	      ghi sổ (nppsale: phiếu kho của chứng từ đã đảo bị huỷ riêng; bản app chặn ở cancel_stock_entry — việc #24 — còn Desk). Một dòng mỗi phiếu.
 	  28. (dòng 67) Tồn theo (mặt hàng theo lô, kho) của nguồn lô cổng (Σ gói lô chưa huỷ) ≠ `Bin.actual_qty` (nppsale: thẻ kho ≠ tồn lô theo vùng).
 	  29. (dòng 67) `Bin.actual_qty` ≠ Σ `Stock Ledger Entry.actual_qty` (`is_cancelled = 0`) của (mặt hàng, kho).
 	  30. (dòng 67 / 77) Lô có tồn âm ở một kho — CFD-05 B: hàng theo lô không bao giờ âm (nppsale: lô âm của phiếu nhập đã huỷ khi cho tồn âm).
@@ -422,18 +422,18 @@ def quet_kho_mua(hang: list[str] | None = None, ncc: list[str] | None = None) ->
 
 	# 27 — phiếu nhập lại hàng khách trả bị huỷ riêng
 	if frappe.db.exists("DocType", DT):
-		for se, pt in frappe.db.sql(f"""SELECT se.`name`, se.`npp_phieu_tra` FROM `tabStock Entry` se
-				JOIN `tab{DT}` p ON p.`name` = se.`npp_phieu_tra` AND p.`trang_thai` = 'completed'
+		for pt, ds in frappe.db.sql(f"""SELECT se.`npp_phieu_tra`, GROUP_CONCAT(se.`name` ORDER BY se.`modified` DESC SEPARATOR ', ')
+				FROM `tabStock Entry` se JOIN `tab{DT}` p ON p.`name` = se.`npp_phieu_tra` AND p.`trang_thai` = 'completed'
 				WHERE se.`docstatus` = 2 AND se.`npp_loai` = 'nhap_lai_tra'
 					AND NOT EXISTS (SELECT 1 FROM `tabStock Entry` x WHERE x.`docstatus` = 1 AND x.`npp_loai` = 'nhap_lai_tra'
 						AND x.`npp_phieu_tra` = se.`npp_phieu_tra`)
 					AND NOT EXISTS (SELECT 1 FROM `tabSales Invoice` x WHERE x.`docstatus` = 1 AND x.`is_return` = 1 AND x.`update_stock` = 1
 						AND x.`npp_phieu_tra` = se.`npp_phieu_tra`)
 					{loc_h.format(c="(SELECT d.`item_code` FROM `tabStock Entry Detail` d WHERE d.`parent` = se.`name` LIMIT 1)")}
-				ORDER BY se.`name`""", ts):
-			ra.append(_dong_kho(27, "Phiếu nhập lại hàng khách trả bị huỷ riêng — phiếu trả vẫn Hoàn thành", se,
-				f"phiếu trả {pt}: không còn chứng từ nhập kho nào đang ghi sổ", "Huỷ / ghi nhận lại phiếu trả (cancel_return rồi complete_return) — "
-				"không sửa tay sổ kho", phieu_tra=pt))
+				GROUP BY se.`npp_phieu_tra` ORDER BY se.`npp_phieu_tra`""", ts):
+			ra.append(_dong_kho(27, "Phiếu trả Hoàn thành mà phiếu nhập lại hàng (Stock Entry nhap_lai_tra) đã bị huỷ riêng", pt,
+				f"không còn chứng từ nhập kho nào đang ghi sổ — phiếu nhập lại đã huỷ: {ds}", "Huỷ / ghi nhận lại phiếu trả (cancel_return rồi "
+				"complete_return) — không sửa tay sổ kho", phieu_kho=ds.split(", ")[0]))
 	tk["phieu_kho_dao_huy_rieng"] = len([x for x in ra if x["nhom"] == 27])
 
 	# 28 / 29 / 30 — tồn lô ↔ Bin ↔ sổ kho (chỉ hai kho NPP)
@@ -503,12 +503,12 @@ def quet_kho_mua(hang: list[str] | None = None, ncc: list[str] | None = None) ->
 			AND NOT EXISTS (SELECT 1 FROM `tabStock Entry` x WHERE x.`supplier` = d.`default_supplier`)""", ts)[0][0])
 	loc_pi = "AND p.`supplier` IN %(n)s" if ncc else ""
 	pn_xuat = set()
-	for pi, sp, k_, lo, sl in frappe.db.sql(f"""SELECT p.`name`, d.`item_code`, d.`warehouse`, e.`batch_no`, SUM(e.`qty`)
+	for pi, _sp, k_, lo, sl in frappe.db.sql(f"""SELECT p.`name`, d.`item_code`, d.`warehouse`, e.`batch_no`, SUM(e.`qty`)
 			FROM `tabPurchase Invoice` p JOIN `tabPurchase Invoice Item` d ON d.`parent` = p.`name` AND d.`parenttype` = 'Purchase Invoice'
 			JOIN `tabSerial and Batch Bundle` b ON b.`name` = d.`serial_and_batch_bundle` AND b.`docstatus` = 1 AND b.`is_cancelled` = 0
 			JOIN `tabSerial and Batch Entry` e ON e.`parent` = b.`name`
 			WHERE p.`docstatus` = 1 AND p.`npp_loai` = 'phieu_nhap' {loc_pi} GROUP BY p.`name`, d.`item_code`, d.`warehouse`, e.`batch_no`""", ts):
-		con = frappe.db.sql(f"""SELECT COALESCE(SUM(e.`qty`), 0) FROM `tabSerial and Batch Entry` e JOIN `tabSerial and Batch Bundle` b
+		con = frappe.db.sql("""SELECT COALESCE(SUM(e.`qty`), 0) FROM `tabSerial and Batch Entry` e JOIN `tabSerial and Batch Bundle` b
 			ON b.`name` = e.`parent` AND b.`docstatus` = 1 AND b.`is_cancelled` = 0 WHERE e.`is_cancelled` = 0 AND e.`batch_no` = %s
 			AND e.`warehouse` = %s""", (lo, k_))[0][0]
 		if abs(flt(con) - flt(sl)) > 0.0001:

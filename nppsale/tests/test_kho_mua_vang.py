@@ -6,7 +6,8 @@
 Dữ liệu vàng du_lieu/kho_mua_mau.json (tools/vang_kho_mua.py — đặc tả kho_mua §6: kịch bản V01–V87 trên bộ dữ liệu F §6.0). Bài dựng cùng người / NCC /
 mặt hàng / khách / bảng giá bán trên site, phát lại cùng chuỗi bước qua cổng RPC / cổng bảng DƯỚI ĐÚNG NGƯỜI và so: từng bước (thành / bại, mã + câu lỗi
 TỪNG KÝ TỰ — §2.5), số trả về, ảnh chụp cuối theo KHOÁ NGHIỆP VỤ (phiếu nhập + dòng, lô, công nợ NCC, bảng giá nhập, phiếu kho của phiếu nhập, HĐ bán nền,
-nhãn) — cùng luật đọc với bộ sinh (`quy_uoc` của tệp vàng). Sau mỗi kịch bản: khám sổ công nợ NCC của các NCC nền phải sạch.
+nhãn) — cùng luật đọc với bộ sinh (`quy_uoc` của tệp vàng). Sau mỗi kịch bản: khám sổ công nợ NCC của các NCC nền + khám sổ P4 (kho / mua — M9) phải sạch.
+Từ M9 mọi mốc M1–M9 đã dựng: không còn kịch bản "chưa dựng" (112 tình huống chạy, 11 chỉ nppsale).
 
 Phạm vi theo mốc (đặc tả §8): kịch bản của mốc CHƯA DỰNG (`DA_DUNG`) bỏ qua và in số; `chi_nppsale` (kịch bản / bước — NPP thứ hai, dữ liệu cũ đặt bằng
 quyền máy chủ) bỏ; `nguon: dac_ta` (chỉ có ở Frappe — mong là chữ của đặc tả) kiểm bằng hàm riêng ở `KIEM_DAC_TA`.
@@ -34,6 +35,10 @@ Chuẩn hoá trước khi so (khác có chủ đích — không phải lệch; q
   bỏ), `hang` (trạng thái + NCC chính của mặt hàng nền — trừ X chỉ Frappe), `phan_cong` (NV ↔ NCC); tệp vàng chỉ ghi ba mục ấy khi khác nền (`nen.ct_nen`)
   — vắng mặt = như nền; NCC chính của nền = `Item Default.default_supplier` (B / N → S3, M → S1, R → S4); ngày trong ghi chú gộp ("<@hom_nay>") → ngày VN
   thật; số phiên danh mục so MỨC TĂNG (V84 — nppsale tăng theo từng lệnh trên products, kể cả 0 dòng).
+- M9 — báo cáo / đầu-cuối: `bao_cao_ton_kho` so theo tập (id `<lô>::<vùng>` → "lo:<mã>@<vùng>"; lô có sẵn trên site / lô ảo hàng không lô và dòng
+  của HĐ có sẵn bỏ), "hoa_don_mua_con_no" mô phỏng câu của /purchasing/invoices QUA CỔNG (mã phiếu theo nhãn), V80 kiểm đặc tả (`_v80`); sau MỌI kịch
+  bản còn chạy khám sổ P4 (`nppsale.kham_so.quet_kho_mua` trên hàng / NCC của bộ dữ liệu — tồn lô = Σ gói lô = Bin = Σ sổ kho, lô không âm, một giá
+  nhập mỗi đơn vị…) bên cạnh khám sổ công nợ NCC.
 - tiền: Frappe làm tròn đồng (BP §7.2 điểm 3); giá vốn lô so 2 chữ số lẻ (§7.1 #5).
 LECH: kịch bản bản Frappe khác hẳn (⚠K / ❓) → hàm sửa phần MONG (bước + ảnh chụp) thành kết quả Frappe, kèm lý do — 00_quyet_dinh_trien_khai.md Q9.
 """

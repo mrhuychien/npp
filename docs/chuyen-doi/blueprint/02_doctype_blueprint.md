@@ -1218,7 +1218,9 @@ của `NPP Phieu Thu`); số tiền lấy từ **Payment Ledger Entry** của l�
 - **Ai gọi**: `doc_events` `on_submit` / `on_cancel` của Sales Invoice (HĐ, tờ ghi có, tờ đầu kỳ), Purchase Invoice, Payment Entry, Journal Entry
   (`npp_loai` khác trống), `on_update_after_submit` của các trường AOS ở §5; method gọi thẳng sau `reconcile_against_document` (lõi đổi tham chiếu PE không
   qua `on_submit`); việc đêm `kham_so_cong_no` (01:00): chiếu lại mọi khách / NCC có Payment Ledger đổi trong ngày, so Σ `con_no` với Σ Payment Ledger theo
-  đối tác — lệch thì chiếu lại + ghi Error Log (bộ so số của P3 dùng chính phép so này).
+  đối tác — lệch thì chiếu lại + ghi Error Log (bộ so số của P3 dùng chính phép so này); cùng lượt chạy khám sổ P4 kho / mua / NCC (`nppsale.kham_so.quet_kho_mua`
+  — đặc tả kho_mua §8.1, dựng P4 M9: phiếu nhập lại hàng trả bị huỷ riêng, tồn lô ↔ Bin ↔ sổ kho, lô âm, NCC trùng tên, giá nhập trùng đơn vị) — có dòng
+  cần xem thì Error Log.
 - Tổng nợ khách (`loadCustomerDebt`, `loadDebtByCustomer`, `no_khach` của hạn mức) = Σ (`so_tien − da_thu`) các dòng `trang_thai <> 'paid'` — đúng công
   thức nppsale, không kẹp từng dòng về 0 (mig 186 / 195 / 199); bằng số dư Payment Ledger của khách.
 
@@ -3790,8 +3792,10 @@ theo luật "hàm chỉ đọc gọi GET" của nppsale, CLAUDE.md 29/10/2026) �
 - **Kho**: `post_stock_import` (nhập kho; có NCC + tiền → **phiếu nhập `PN-`** — CFD-13, câu 17; không thì Material Receipt `IN-`; lô mã người gõ hoặc `LOT-…`, hạn người gõ,
   `posted_at` lùi được) · `post_stock_issue` · `post_stock_transfer` (`HANG_GAN_HAN`) · `post_stock_adjustment` · `reject_stock_adjustment` · `cancel_stock_entry` (chỉ phiếu `IN-` /
   `XKL-`; chuyển kho không huỷ — lập phiếu chuyển ngược, mig 148; phiếu của HĐ / PI → huỷ ở chứng từ gốc) · `refresh_warehouse_zones` (= chạy tay việc đêm "Rà soát kho date": phiếu
-  `CKL-` `chuyen_date_tu_dong` cho lô vừa vào ngưỡng — dựng P4 M5: `nppsale/rpc/lo_kho.py`, việc đêm `ra_soat_kho_date` cron `0 1 * * *` giờ VN; mọi NV của NPP gọi được, khác NPP / tài khoản khoá → `ORG_MISMATCH` 42501) · `stock_value_summary` · `ton_kho_trang` · `ton_ban_theo_hang` · `bao_cao_ton_kho` (GET). `post_stock_export` (màn
-  `/inventory/stock-out` đã chặn từ 22/09/2026) → giữ tên, trả `LEGACY_FLOW_REMOVED` (như các màn luồng cũ).
+  `CKL-` `chuyen_date_tu_dong` cho lô vừa vào ngưỡng — dựng P4 M5: `nppsale/rpc/lo_kho.py`, việc đêm `ra_soat_kho_date` cron `0 1 * * *` giờ VN; mọi NV của NPP gọi được, khác NPP / tài khoản khoá → `ORG_MISMATCH` 42501) · `stock_value_summary` · `ton_kho_trang` · `ton_ban_theo_hang` · `bao_cao_ton_kho` (GET — dựng P4 M9: `nppsale/rpc/kho.py`, đọc
+  QUA CỔNG dưới người gọi: `lo` = dòng cổng `batches` còn hàng sắp `id` (`<lô>::<vùng>`, lô ảo hàng không lô, giá vốn che theo `inventory.cost`), `dong` = dòng HĐ
+  ghi sổ trong kỳ theo vế đọc `sales_invoices`; phần lưu trữ `NPP LS *` chưa có — P8). `post_stock_export` (màn `/inventory/stock-out` đã chặn từ
+  22/09/2026) → giữ tên, trả `LEGACY_FLOW_REMOVED` (như các màn luồng cũ — dựng P4 M9: `nppsale/rpc/kho_tay.py`).
 - **Báo cáo đọc các nguồn trên** (viết ở P6): `finance_pnl`, `finance_cash_flow`, `finance_balance_sheet`, `dashboard_summary` (phần nợ mở / quá hạn).
 
 **HĐĐT** — `nppsale.api.misa.*` + một việc theo lịch (đồng bộ rồi kéo snapshot trong cùng việc — §4.6.9). **Nhân sự** — `compute_payroll_run` (chủ / QL / KT — `FORBIDDEN_ROLE`, kỳ khoá →
@@ -3865,7 +3869,7 @@ khi tiện (bàn bạc mục 1) — cổng rỗng chỉ là lưới an toàn cho
 | Cột di sản của chứng từ | `returns.approved_by` / `photo_url` / `applied_receipt_id` / `return_seq` (tách từ `name`); `sales_orders.discount` (= 0), `approved_*`, `closed_*`, `current_workflow_stage`, `merged_into`; `sales_order_lines.batch_id`; `purchase_invoices.po_id` (mig 012 — màn báo cáo NCC còn chọn cột này: `reports/suppliers/page.tsx:155`); `cash_receipts.total_amount` → null / hằng |
 | Vai `driver` trong ma trận quyền | Đã ngưng (mig 122); NV cũ giữ vai để có lịch sử, không gán mới (`ROLE_RETIRED`) |
 | Bucket `pod-photos`, ảnh mới vào `visit-photos` | Chuyến giao bỏ (24/09/2026); đi tuyến không chụp ảnh (12/10/2026) |
-| `post_stock_export` (màn `/inventory/stock-out`) | Màn đã chặn từ 22/09/2026 — giữ tên, trả `LEGACY_FLOW_REMOVED` |
+| `post_stock_export` (màn `/inventory/stock-out`) | Màn đã chặn từ 22/09/2026 — giữ tên, trả `LEGACY_FLOW_REMOVED` (dựng P4 M9 — `nppsale/rpc/kho_tay.py`) |
 | `normalize_phone`, `user_assigned_customer_ids`, `user_is_assigned_to_customer`, `user_sells_to_customer`, `khach_toi_da_ban`, `customer_org_id`, `_rls_tinh_mot_lan*` | Hàm phục vụ RLS / đăng nhập Supabase — vế lọc chép vào sổ đăng ký cổng (§6.1) và guard Python; luật chuẩn hoá SĐT ở `nppsale/luat/sdt.py`. (`lookup_email_by_identifier`, `user_org_id`, `user_role` có lời gọi từ giao diện nên port cùng tên — §6.4) |
 
 ---

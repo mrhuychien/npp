@@ -149,7 +149,7 @@ def bao_cao_ton_kho(p_tu=None, p_den=None):
 	lo = doc({"bang": "batches", "select": "id, product_id, batch_code, qty_on_hand, unit_cost, expires_at, created_at",
 		"loc": [{"op": "gt", "cot": "qty_on_hand", "gt": 0}], "thu_tu": [{"cot": "id", "tang": True}]}, nc)["data"] or []
 	dong = []
-	if tu is not None and den is not None and tu <= den:
+	if tu is not None and den is not None:  # kỳ ngược: hai vế lọc ngày tự ra rỗng như BETWEEN ngược
 		for hd in doc({"bang": "sales_invoices", "select": "id, invoice_date, lines:sales_invoice_lines(product_id, unit_name, conversion_factor, "
 				"quantity, is_exchange)", "loc": [{"op": "eq", "cot": "status", "gt": "posted"}, {"op": "gte", "cot": "invoice_date",
 				"gt": tu.isoformat()}, {"op": "lte", "cot": "invoice_date", "gt": den.isoformat()}]}, nc)["data"] or []:
