@@ -461,7 +461,7 @@ class TestKhoTay(V.TestKhoMuaVang):
 	# ------------------------------------------------------------------------------------------------ cổng ghi nháp
 	def test_cong_ghi_nhap(self):
 		"""Ràng buộc nppsale (CHECK / FK / NOT NULL), RLS (NVBH chèn → 42501, quản lý sửa → 0 dòng), dòng lệch SL × hệ số về đơn vị kho, khoá tìm,
-		phiếu nhập nháp `IN-` (kho người chọn), phiếu kiểm kê (M6), ghi chú của chứng từ gốc (HĐ / PI) không sửa ở phiếu kho."""
+		phiếu nhập nháp `IN-` (kho người chọn), phiếu kiểm kê nháp (M6), ghi chú của chứng từ gốc (HĐ / PI) không sửa ở phiếu kho."""
 		ins = lambda g, nguoi="TK": self._cong(nguoi, {"bang": "stock_entries", "hanh_dong": "insert", "select": "id",  # noqa: E731
 			"gia_tri": {"org_id": self.ma["org"], "status": "draft", **g}})
 		self.assertEqual(ins({"type": "lạ"})["error"]["message"], 'new row for relation "stock_entries" violates check constraint '
@@ -476,7 +476,8 @@ class TestKhoTay(V.TestKhoMuaVang):
 		# trigger mig 170 chạy TRƯỚC RLS: quên cột `status` (mặc định posted) → SO_KHO_KHOA kể cả với NVBH
 		khong_tt = self._cong("NV", {"bang": "stock_entries", "hanh_dong": "insert", "gia_tri": {"org_id": self.ma["org"], "type": "export"}})
 		self.assertEqual(khong_tt["error"]["message"], "SO_KHO_KHOA: phiếu kho lập từ màn hình phải là phiếu NHÁP — ghi sổ đi qua nút Duyệt / Hoàn thành.")
-		self.assertTrue(ins({"type": "stocktake"})["error"]["message"].startswith("KIEM_KE_CHUA_DUNG:"))
+		kk = ins({"type": "stocktake"})["data"][0]["id"]  # M6: phiếu kiểm kê nháp `NPP Kiem Ke` (chi tiết ở nppsale.tests.test_kiem_ke)
+		self.assertEqual(frappe.db.get_value("NPP Kiem Ke", kk, ["trang_thai", "kho"]), ("draft", self.cd.kho_ban))
 		ten = ins({"type": "import", "warehouse_zone": "date", "notes": "nhap nhap"})["data"][0]["id"]
 		se = frappe.get_doc("Stock Entry", ten)
 		self.assertEqual((se.docstatus, se.purpose, se.npp_kho_nhap, se.to_warehouse, se.npp_ghi_chu, se.npp_tim_kd), (0, "Material Receipt",

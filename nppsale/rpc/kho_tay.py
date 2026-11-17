@@ -20,6 +20,8 @@ RPC (giữ tên nppsale — hàm Postgres nguồn ở scratchpad kho_mua/src/<t�
   `chuyen_date_tu_dong`, không động gì khác) → huỷ trước phiếu ấy (§7.3 điểm 8 — M5, `nppsale.rpc.lo_kho.hoan_chuyen_date`) → `ALREADY_ISSUED` khi lô /
   Bin đã xuất bớt (không nới khi cho bán vượt tồn), rồi huỷ (`lines_reversed` = số dòng) → xếp repost. Nháp xoá KHÔNG lùi dãy số (`xoa_nhap`).
 - `confirm_driver_handover` (chuyến giao — luồng cũ, §4.8 soát thiếu S14 / §7.3 điểm 40): `LEGACY_FLOW_REMOVED`.
+Phiếu KIỂM KÊ (`NPP Kiem Ke` — M6, nguồn (2) của cổng `stock_entries`): `nguon_phieu` nhận cả nó; huỷ nháp = `cancelled` + ghi chú (giữ phiếu), đã duyệt
+→ `CANNOT_REVERSE_TYPE (stocktake)`; ghi thẳng nháp / dòng chuyển sang nppsale.rpc.kiem_ke (dòng có dấu, dòng 0 được).
 Ghi thẳng phiếu kho NHÁP qua cổng (`stock_entries` / `stock_entry_lines` — nppsale.cong.bang.phieu_kho; trigger mig 170 + RLS owner / warehouse): lập
 nháp (`status` khác `draft` hoặc quên cột → `SO_KHO_KHOA`), sửa nháp (đổi `type` → câu "chỉ sửa được ghi chú"; `draft → cancelled` = XOÁ nháp), phiếu
 đã ghi sổ / đã huỷ chỉ sửa `notes` (⚠K: nppsale cho sửa cả `entry_code`, `issue_reason`, `supplier_id`, `ref_order_ids`), xoá chỉ nháp; dòng chỉ khi
@@ -48,6 +50,7 @@ from . import phieu_nhap as PN
 from . import rpc
 
 DT = "Stock Entry"
+KK_DT = "NPP Kiem Ke"  # phiếu kiểm kê (M6 — nppsale.rpc.kiem_ke)
 BANG = "stock_entries"
 BANG_DONG = "stock_entry_lines"
 # `stock_entries.type` của nháp lập qua cổng → (Stock Entry Type / purpose, `npp_loai`, dãy số)
@@ -87,22 +90,23 @@ def _xep_repost():
 	PN._xep_repost()  # đọc tại chỗ — bài kiểm thay `nppsale.rpc.phieu_nhap._xep_repost`
 
 
-def xoa_nhap(ten: str) -> None:
+def xoa_nhap(ten: str, dt: str = DT) -> None:
 	"""Xoá phiếu kho NHÁP (huỷ nháp = xoá — §7.3 điểm 1) mà KHÔNG lùi dãy số: lõi lùi `tabSeries` khi xoá tờ số cuối (`frappe/model/delete_doc.py:195`
 	→ `revert_series_if_last`) nên phiếu lập sau nhận lại ĐÚNG tên ấy — màn còn giữ id cũ (danh sách, chi tiết, dọn nháp hỏng của màn xuất lẻ) sẽ chạm
 	nhầm phiếu mới (nppsale id uuid không bao giờ dùng lại; mã `XKL-<base36>` cũng không). Giữ số đếm của mọi dãy là tiền tố của tên."""
 	tien_to = tuple(ten[:i] for i in range(1, len(ten)))
 	truoc = frappe.db.sql("SELECT `name`, `current` FROM `tabSeries` WHERE `name` IN %s", (tien_to,)) if tien_to else ()
-	frappe.delete_doc(DT, ten, ignore_permissions=True, force=True)
+	frappe.delete_doc(dt, ten, ignore_permissions=True, force=True)
 	for day, hien in truoc:
 		frappe.db.sql("UPDATE `tabSeries` SET `current` = %s WHERE `name` = %s AND `current` < %s", (hien, day, hien))
 
 
 # ================================================================================================ nguồn của cổng `stock_entries` (§4.5)
 def nguon_phieu(ten: str | None, khoa: bool = False) -> frappe._dict | None:
-	"""Phiếu kho `ten` theo đúng các nguồn của cổng `stock_entries`: Stock Entry (trừ `dieu_chinh_kiem_ke` — đi theo phiếu kiểm kê, M6) → Sales
-	Invoice có kho đã / thôi ghi sổ (HĐ → `export`, tờ ghi có → `import`) → Purchase Invoice phiếu nhập / trả NCC đã / thôi ghi sổ (nháp không có phiếu
-	kho). `khoa` → `FOR UPDATE` dòng nguồn. → {dt, name, trang_thai, loai, npp_loai, purpose, phieu_tra, is_return} hoặc None."""
+	"""Phiếu kho `ten` theo đúng các nguồn của cổng `stock_entries`: Stock Entry (trừ `dieu_chinh_kiem_ke` — đi theo phiếu kiểm kê) → phiếu kiểm kê
+	`NPP Kiem Ke` (M6 — `stocktake`) → Sales Invoice có kho đã / thôi ghi sổ (HĐ → `export`, tờ ghi có → `import`) → Purchase Invoice phiếu nhập / trả
+	NCC đã / thôi ghi sổ (nháp không có phiếu kho). `khoa` → `FOR UPDATE` dòng nguồn. → {dt, name, trang_thai, loai, npp_loai, purpose, phieu_tra,
+	is_return} hoặc None."""
 	if not ten or not isinstance(ten, str):
 		return None
 	sau = " FOR UPDATE" if khoa else ""
@@ -113,6 +117,12 @@ def nguon_phieu(ten: str | None, khoa: bool = False) -> frappe._dict | None:
 		return frappe._dict(dt=DT, name=x.name, docstatus=cint(x.docstatus), trang_thai=K.trang_thai_phieu_kho(x.docstatus),
 			loai=T.LOAI_SE.get(x.purpose, "import"), purpose=x.purpose, npp_loai=x.npp_loai, phieu_tra=x.npp_phieu_tra or None,
 			kho=x.from_warehouse, kho_dich=x.to_warehouse, is_return=0)
+	if _co_kiem_ke():
+		from nppsale.rpc.kiem_ke import phieu
+
+		x = phieu(ten, khoa=khoa)
+		if x is not None:
+			return x
 	r = frappe.db.sql(f"""SELECT `name`, `docstatus`, `is_return`, `npp_phieu_tra` FROM `tabSales Invoice`
 		WHERE `name` = %s AND `update_stock` = 1 AND `docstatus` IN (1, 2){sau}""", ten, as_dict=True)
 	if r:
@@ -128,9 +138,19 @@ def nguon_phieu(ten: str | None, khoa: bool = False) -> frappe._dict | None:
 	return None
 
 
+def _co_kiem_ke() -> bool:
+	from nppsale.cong.bang._chung import co_cot
+
+	return co_cot(KK_DT, "trang_thai")
+
+
 def _hang_cua(x) -> set:
 	if not x:
 		return set()
+	if x.dt == KK_DT:
+		from nppsale.rpc.kiem_ke import hang_cua
+
+		return hang_cua(x.name)
 	bang = {DT: "Stock Entry Detail", "Sales Invoice": "Sales Invoice Item", "Purchase Invoice": "Purchase Invoice Item"}[x.dt]
 	return {r[0] for r in frappe.db.sql(f"SELECT DISTINCT `item_code` FROM `tab{bang}` WHERE `parent` = %s AND `parenttype` = %s", (x.name, x.dt))}
 
@@ -171,7 +191,7 @@ def _mo(ten_rpc: str, p_entry_id, khong_ton_tai: str):
 	cd = cai_dat_kho()
 	ten, hang = _da_chuan_bi(p_entry_id)
 	x = _khoa(ten, hang, cd)
-	if x is None or x.dt != DT:  # chỉ Stock Entry ghi sổ được ở đây (§3.15 Frappe bước 2)
+	if x is None or x.dt not in (DT, KK_DT):  # chỉ Stock Entry ghi sổ được ở đây (§3.15 Frappe bước 2); phiếu kiểm kê → sai loại như nppsale
 		raise NppLoi(khong_ton_tai)
 	PN._kiem_vai(ten_rpc, nc)
 	return nc, cd, x
@@ -482,9 +502,15 @@ def cancel_stock_entry(p_entry_id=None, p_reason=None):
 		if _la_tra_khach(x):
 			_loi_tra_khach(x)
 		return T.ket_qua_huy(True, False, 0)
-	if x.trang_thai == "draft":  # chỉ Stock Entry có nháp — XOÁ nháp (§7.3 điểm 1: Frappe không cho nháp sang docstatus 2)
-		xoa_nhap(x.name)
+	if x.trang_thai == "draft":
+		if x.dt == KK_DT:  # phiếu kiểm kê không submit — giữ phiếu `cancelled` + ghi chú như nppsale (bước 5)
+			from nppsale.rpc.kiem_ke import huy_nhap
+
+			return huy_nhap(x, ly_do)
+		xoa_nhap(x.name)  # Stock Entry nháp — XOÁ nháp (§7.3 điểm 1: Frappe không cho nháp sang docstatus 2)
 		return T.ket_qua_huy(True, False, 0)
+	if x.dt == KK_DT:  # phiếu kiểm kê đã duyệt: nppsale bước 6f (`type` ∉ {import, export})
+		raise T.loi_khong_hoan_duoc(x.name, "stocktake")
 	if x.dt == "Purchase Invoice":
 		raise (T.loi_nguon_phieu_nhap if x.npp_loai == PN.LOAI else T.loi_nguon_tra_ncc)(x.name)
 	if _la_tra_khach(x):
@@ -643,7 +669,7 @@ def _luu_nhap(doc) -> None:
 def them_phieu(ds: list[dict], nc) -> list[str]:
 	"""INSERT stock_entries: phiếu NHÁP (trigger mig 170 chạy TRƯỚC RLS: `status` khác `draft` — kể cả quên cột, mặc định `posted` — →
 	`SO_KHO_KHOA`), rồi vai owner / warehouse (RLS → 42501). `export` → Material Issue `XKL-`, `transfer` → Material Transfer `CKL-`, `import` →
-	Material Receipt `IN-` nháp (không có đường ghi sổ — như nppsale), `stocktake` → phiếu kiểm kê (M6)."""
+	Material Receipt `IN-` nháp (không có đường ghi sổ — như nppsale), `stocktake` → phiếu kiểm kê nháp `NPP Kiem Ke` (M6)."""
 	cd = cai_dat_kho()
 	ra = []
 	for g in ds:
@@ -655,7 +681,10 @@ def them_phieu(ds: list[dict], nc) -> list[str]:
 		kiem_org(g, BANG)
 		loai = _loai_cua(g.get("type"))
 		if loai == "stocktake":
-			raise NppLoi("KIEM_KE_CHUA_DUNG: phiếu kiểm kê (NPP Kiem Ke) dựng ở mốc M6 — chưa lập được trên bản này.")
+			from nppsale.rpc.kiem_ke import them_phieu as them_kk
+
+			ra.append(them_kk(g, cd))
+			continue
 		muc, npp_loai, day = LOAI_NHAP[loai]
 		doc = frappe.new_doc(DT)
 		luc = now_datetime()
@@ -686,6 +715,10 @@ def _gia_tri_cot(x, k: str, cd):
 		return lay_org_id()
 	if k == "entry_code":
 		return x.name
+	if x.dt == KK_DT:
+		from nppsale.rpc.kiem_ke import gia_tri_cot
+
+		return gia_tri_cot(x, k, cd)
 	if x.dt != DT:
 		return None
 	r = frappe.db.get_value(DT, x.name, ["npp_ly_do_xuat", "supplier", "posting_date", "posting_time", "owner", "npp_kho_nhap", "from_warehouse",
@@ -735,6 +768,15 @@ def sua_phieu(gia_tri: dict, ids: list[str], nc) -> list[str]:
 			if x.trang_thai == "draft" and g["status"] == "cancelled" and x.dt == DT:
 				xoa_nhap(x.name)  # huỷ nháp = xoá (§7.3 điểm 1)
 				continue
+			if x.trang_thai == "draft" and g["status"] == "cancelled" and x.dt == KK_DT:
+				from nppsale.rpc.kiem_ke import doi_trang_thai_huy
+
+				for k in ("type", "org_id"):
+					if k in g and _khac(x, k, g[k], cd):
+						raise NppLoi(T.CHI_SUA_GHI_CHU)
+				doi_trang_thai_huy(x, g, cd)  # phiếu kiểm kê giữ phiếu (không submit) — như nppsale: cột của lệnh + trạng thái, ghi chú giữ
+				ra.append(x.name)
+				continue
 			raise T.loi_doi_trang_thai(x.trang_thai, g["status"])
 		for k in ("type", "org_id"):
 			if k in g and _khac(x, k, g[k], cd):
@@ -746,9 +788,20 @@ def sua_phieu(gia_tri: dict, ids: list[str], nc) -> list[str]:
 				if _khac(x, k, v, cd):
 					raise NppLoi(T.CHI_SUA_GHI_CHU)
 			if "notes" in g:
-				if x.dt != DT:
+				if x.dt == KK_DT:
+					from nppsale.rpc.kiem_ke import sua_ghi_chu
+
+					sua_ghi_chu(x, g["notes"])
+				elif x.dt != DT:
 					raise NppLoi(T.SUA_O_CHUNG_TU_GOC)
-				frappe.db.set_value(DT, x.name, "npp_ghi_chu", _chu(g["notes"]))
+				else:
+					frappe.db.set_value(DT, x.name, "npp_ghi_chu", _chu(g["notes"]))
+			ra.append(x.name)
+			continue
+		if x.dt == KK_DT:
+			from nppsale.rpc.kiem_ke import sua_nhap
+
+			sua_nhap(x, {k: v for k, v in g.items() if k != "status"}, cd)
 			ra.append(x.name)
 			continue
 		doc = frappe.get_doc(DT, x.name)
@@ -770,7 +823,7 @@ def xoa_phieu(ids: list[str], nc) -> list[str]:
 			continue
 		if x.trang_thai != "draft":
 			raise T.loi_xoa_khong_nhap(x.name, x.trang_thai)
-		xoa_nhap(x.name)
+		xoa_nhap(x.name, x.dt)
 		ra.append(x.name)
 	return ra
 
@@ -789,7 +842,7 @@ def _phieu_cha(ten, nc, ghi_moi: bool):
 		if ghi_moi:
 			tu_choi(BANG_DONG)
 		return None
-	return frappe.get_doc(DT, x.name)
+	return frappe.get_doc(x.dt, x.name)
 
 
 def _ap_dong(r, g: dict) -> None:
@@ -857,6 +910,11 @@ def them_dong(ds: list[dict], nc) -> list[str]:
 	ra = []
 	for ten, dong in theo_phieu.items():
 		doc = _phieu_cha(ten, nc, True)
+		if doc.doctype == KK_DT:  # dòng kiểm kê: chênh có dấu, dòng 0 được (nppsale.rpc.kiem_ke)
+			from nppsale.rpc.kiem_ke import them_dong as them_kk
+
+			ra += [r.name for r in them_kk(doc, dong)]
+			continue
 		moi = [_dong_moi(doc, g) for g in dong]
 		_luu_nhap(doc)
 		ra += [r.name for r in moi]
@@ -874,6 +932,12 @@ def sua_dong(gia_tri: dict, ids: list[str], nc) -> list[str]:
 	for pk, ds in theo_phieu.items():
 		doc = _phieu_cha(pk, nc, False)
 		if doc is None:
+			continue
+		if doc.doctype == KK_DT:
+			from nppsale.rpc.kiem_ke import sua_dong as sua_kk
+
+			sua_kk(doc, ds, g)
+			ra += ds
 			continue
 		for ten in ds:
 			r = next(x for x in doc.items if x.name == ten)
@@ -896,6 +960,12 @@ def xoa_dong(ids: list[str], nc) -> list[str]:
 		doc = _phieu_cha(pk, nc, False)
 		if doc is None:
 			continue
+		if doc.doctype == KK_DT:
+			from nppsale.rpc.kiem_ke import xoa_dong as xoa_kk
+
+			xoa_kk(doc, ds)
+			ra += ds
+			continue
 		doc.set("items", [x for x in doc.items if x.name not in ds])
 		for i, r in enumerate(doc.items, 1):
 			r.idx = i
@@ -905,8 +975,11 @@ def xoa_dong(ids: list[str], nc) -> list[str]:
 
 
 def _phieu_cua_dong(ten: str) -> str | None:
-	"""Phiếu cha của một dòng cổng: Stock Entry Detail → Sales Invoice Item → Purchase Invoice Item (dòng nguồn HĐ / PI chỉ để báo khoá)."""
-	for bang in ("Stock Entry Detail", "Sales Invoice Item", "Purchase Invoice Item"):
+	"""Phiếu cha của một dòng cổng: Stock Entry Detail → NPP Kiem Ke Dong → Sales Invoice Item → Purchase Invoice Item (dòng nguồn HĐ / PI chỉ để
+	báo khoá)."""
+	for bang in ("Stock Entry Detail", "NPP Kiem Ke Dong", "Sales Invoice Item", "Purchase Invoice Item"):
+		if bang == "NPP Kiem Ke Dong" and not _co_kiem_ke():
+			continue
 		x = frappe.db.get_value(bang, ten, "parent")
 		if x:
 			return x

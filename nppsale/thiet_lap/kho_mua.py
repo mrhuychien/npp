@@ -5,7 +5,10 @@
   (`tk_giam_dau_phieu_nhap` — dòng Actual + Deduct của CFD-11; M1, quyết định tạm Q9: "Chiet khau mua hang duoc huong" dưới thu nhập khác 711, chờ
   kế toán chốt 711 hay 632 — BP §7.1 điểm 16) khi NPP Cai Dat còn trống; trỏ TK nợ NCC lập tay (`tk_no_ncc_lap_tay` — M3, quyết định tạm Q9: TK "hàng
   về chưa có hoá đơn" của công ty) khi còn trống; trỏ TK xuất lẻ (`tk_xuat_le` — M4: giá vốn hàng bán của công ty) và TK nhập kho tay không công nợ
-  (`tk_nhap_kho_khong_hd` — M4: "hàng về chưa có hoá đơn") khi còn trống (quyết định tạm Q9, chờ kế toán — BP §7.1 điểm 16). Dãy số phiếu nhập / trả NCC /
+  (`tk_nhap_kho_khong_hd` — M4: "hàng về chưa có hoá đơn") khi còn trống (quyết định tạm Q9, chờ kế toán — BP §7.1 điểm 16); M6 kiểm kê: lập TK thừa kiểm kê
+  (`tk_thua_kiem_ke` — "Thua kiem ke" dưới thu nhập khác 711, CFD-09 "thừa ghi thu nhập khác") và trỏ TK chi phí mặc định (`tk_chi_phi_mac_dinh` — chi phí
+  khác của công ty) khi còn trống; gieo tám danh mục chi phí mig 016 (`NPP Danh Muc Chi Phi` — MỘT lần, khi bảng còn rỗng: xoá danh mục rồi migrate
+  không tự lập lại) với `COGS_ADJ` gắn TK giá vốn hàng bán (hao hụt kiểm kê — BP §7.1 điểm 16 "632?"). Dãy số phiếu nhập / trả NCC /
   nợ NCC / sửa giá (`PN-`, `PTNCC-`, `DKN-`, `NTN-`, `SGN-`) đặt cùng các dãy khác ở `mac_dinh._dat_ten_chung_tu`; phiếu kho tay (`IN-…`, `XKL-`,
   `CKL-`) đặt dãy ngay trên tờ (nppsale.rpc.kho_tay).
 - `kiem()` (chỉ đọc): mỗi chỗ lệch một dòng {doi_tuong, truong, dang_co, can, vi_sao} — Single lõi, Property Setter, dãy số, mẫu thuế "VAT n%" thiếu
@@ -116,6 +119,55 @@ def _tk_nhap_kho_khong_hd(cd_ban) -> str | None:
 	return frappe.get_cached_value("Company", cong_ty, "stock_received_but_not_billed") if cong_ty else None
 
 
+def _tk_thua_kiem_ke(cd_ban) -> str | None:
+	"""TK chênh lệch của phiếu nhập điều chỉnh `DCK-` phần thừa kiểm kê (M6 — CFD-09 "thừa ghi thu nhập khác"; quyết định tạm Q9, chờ kế toán chốt cùng
+	BP §7.1 điểm 16 "711?"): tài khoản lá "Thua kiem ke" dưới thu nhập khác (Indirect Income — 711), tạo khi chưa có."""
+	cong_ty, abbr = cd_ban.get("cong_ty"), cd_ban.get("abbr")
+	if not cong_ty or not abbr:
+		return None
+	ma = f"Thua kiem ke - {abbr}"
+	if frappe.db.exists("Account", ma):
+		return ma
+	nhom = frappe.db.get_value("Account", {"company": cong_ty, "account_name": "Indirect Income", "is_group": 1}) or frappe.db.get_value(
+		"Account", {"company": cong_ty, "root_type": "Income", "is_group": 1}, order_by="lft desc")
+	if not nhom:
+		return None
+	return frappe.get_doc({"doctype": "Account", "account_name": "Thua kiem ke", "parent_account": nhom, "company": cong_ty, "account_type": "",
+		"is_group": 0}).insert(ignore_permissions=True).name
+
+
+def _tk_chi_phi_mac_dinh(cd_ban) -> str | None:
+	"""TK chi phí mặc định (phiếu chi không danh mục / danh mục chưa gắn TK — BP §4.5; M6: phiếu xuất hao hụt khi danh mục `COGS_ADJ` thiếu TK): tạm
+	"Miscellaneous Expenses" (chi phí khác) của công ty — chờ kế toán chốt cùng BP §7.1 điểm 16 (quyết định tạm Q9)."""
+	abbr = cd_ban.get("abbr")
+	ma = f"Miscellaneous Expenses - {abbr}" if abbr else None
+	return ma if ma and frappe.db.exists("Account", ma) else None
+
+
+# Tám danh mục chi phí mẫu (mig 016 — `INSERT … ON CONFLICT (org_id, code) DO NOTHING` cho mọi NPP lúc chạy migration): (mã, tên, nhóm)
+DANH_MUC_CHI_PHI: tuple = (
+	("COGS_ADJ", "Điều chỉnh kiểm kê (giá vốn)", "cogs"),
+	("RENT", "Tiền thuê mặt bằng", "operating"),
+	("UTIL", "Điện nước", "operating"),
+	("FUEL", "Xăng xe / vận chuyển", "operating"),
+	("MKT", "Marketing / khuyến mãi", "operating"),
+	("SALARY", "Lương", "hr"),
+	("TAX", "Thuế", "tax"),
+	("OTHER", "Chi phí khác", "other"),
+)
+
+
+def _gieo_danh_muc_chi_phi(cd_ban) -> None:
+	"""Gieo tám danh mục mig 016 MỘT lần — khi `NPP Danh Muc Chi Phi` còn rỗng (nppsale gieo lúc chạy migration một lần; after_migrate của Frappe chạy
+	mỗi lần migrate — gieo theo mã thiếu là lập lại danh mục người dùng đã xoá). `COGS_ADJ` gắn TK giá vốn hàng bán của công ty (hao hụt kiểm kê)."""
+	if not frappe.db.exists("DocType", "NPP Danh Muc Chi Phi") or frappe.db.count("NPP Danh Muc Chi Phi"):
+		return
+	gv = frappe.get_cached_value("Company", cd_ban.get("cong_ty"), "default_expense_account") if cd_ban.get("cong_ty") else None
+	for ma, ten, nhom in DANH_MUC_CHI_PHI:
+		frappe.get_doc({"doctype": "NPP Danh Muc Chi Phi", "ma": ma, "ten": ten, "nhom": nhom, "dang_dung": 1,
+			"tai_khoan": gv if ma == "COGS_ADJ" else None}).insert(ignore_permissions=True)
+
+
 def dam_bao() -> None:
 	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
@@ -146,11 +198,13 @@ def dam_bao() -> None:
 			tk = _tk_giam_dau_phieu_nhap(cai_dat_ban())
 			if tk:
 				frappe.db.set_single_value("NPP Cai Dat", "tk_giam_dau_phieu_nhap", tk)
-		for truong, ham in (("tk_no_ncc_lap_tay", _tk_no_ncc_lap_tay), ("tk_xuat_le", _tk_xuat_le), ("tk_nhap_kho_khong_hd", _tk_nhap_kho_khong_hd)):
+		for truong, ham in (("tk_no_ncc_lap_tay", _tk_no_ncc_lap_tay), ("tk_xuat_le", _tk_xuat_le), ("tk_nhap_kho_khong_hd", _tk_nhap_kho_khong_hd),
+				("tk_thua_kiem_ke", _tk_thua_kiem_ke), ("tk_chi_phi_mac_dinh", _tk_chi_phi_mac_dinh)):
 			if frappe.get_meta("NPP Cai Dat").has_field(truong) and not frappe.db.get_single_value("NPP Cai Dat", truong, cache=False):
 				tk = ham(cai_dat_ban())
 				if tk:
 					frappe.db.set_single_value("NPP Cai Dat", truong, tk)
+		_gieo_danh_muc_chi_phi(cai_dat_ban())
 		frappe.local._npp_cai_dat_ban = None
 
 
@@ -195,7 +249,10 @@ def kiem() -> list[dict]:
 				("tk_giam_dau_phieu_nhap", "dòng Actual + Deduct giảm đầu phiếu nhập (CFD-11) — thiếu thì phiếu có giảm đầu phiếu không lưu được"),
 				("tk_no_ncc_lap_tay", "dòng của tờ nợ NCC lập tay NTN- (màn Thêm công nợ NCC) — thiếu thì dùng TK hàng về chưa có hoá đơn của công ty"),
 				("tk_xuat_le", "TK chênh lệch phiếu xuất lẻ XKL- — thiếu thì ghi sổ xuất lẻ báo CAI_DAT_THIEU"),
-				("tk_nhap_kho_khong_hd", "TK chênh lệch phiếu nhập kho tay IN- không công nợ — thiếu thì nhập kho tay báo CAI_DAT_THIEU")):
+				("tk_nhap_kho_khong_hd", "TK chênh lệch phiếu nhập kho tay IN- không công nợ — thiếu thì nhập kho tay báo CAI_DAT_THIEU"),
+				("tk_thua_kiem_ke", "TK chênh lệch phiếu nhập điều chỉnh DCK- phần thừa kiểm kê — thiếu thì duyệt kiểm kê có thừa báo CAI_DAT_THIEU"),
+				("tk_chi_phi_mac_dinh", "TK chi phí khi danh mục chưa gắn TK (phiếu xuất hao hụt kiểm kê, phiếu chi) — thiếu mà COGS_ADJ cũng thiếu TK thì "
+					"duyệt kiểm kê có hụt báo CAI_DAT_THIEU")):
 			if not g.get(truong):
 				lech("NPP Cai Dat", truong, None, "(có giá trị)", vi_sao)
 		ng = g.get("nguong_kho_date_ngay")
@@ -210,6 +267,14 @@ def kiem() -> list[dict]:
 				continue
 			if not vao or not frappe.db.exists("Item Tax Template Detail", {"parent": ten, "tax_type": vao}):
 				lech("Item Tax Template", ten, "thiếu TK đầu vào", vao, "thiếu TK đầu vào → phiếu nhập tính VAT = 0 mà không báo (PoC 05/11)")
+	if frappe.db.exists("DocType", "NPP Danh Muc Chi Phi"):
+		dm = frappe.db.get_value("NPP Danh Muc Chi Phi", {"ma": "COGS_ADJ"}, ["name", "tai_khoan"], as_dict=True)
+		if not dm:
+			lech("NPP Danh Muc Chi Phi", "COGS_ADJ", None, "(có)", "danh mục hao hụt kiểm kê (mig 016 / 123) — thiếu thì phiếu chi hao hụt vào danh mục "
+				"đầu theo mã")
+		elif not dm.tai_khoan:
+			lech("NPP Danh Muc Chi Phi", "COGS_ADJ.tai_khoan", None, "(TK giá vốn hàng bán)", "TK chênh lệch phiếu xuất hao hụt kiểm kê — trống thì dùng "
+				"tk_chi_phi_mac_dinh")
 	for ncc in frappe.get_all("Supplier", filters={"disabled": 1}, pluck="name"):
 		lech("Supplier", ncc, "disabled = 1", "disabled = 0 (ngừng hợp tác = npp_ngung_hop_tac)",
 			"lõi chặn mọi bút toán với NCC bị tắt (party.py:881–889) — không huỷ / trả / chi được")

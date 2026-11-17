@@ -1,8 +1,10 @@
 """Bảng PHIẾU KHO của nppsale trên cổng (P4 — mốc M4; đặc tả kho_mua §4.5, §4.7, §4.8, §10; blueprint 02 §5.11, §6.1):
 
-- stock_entries ← UNION ALL các nguồn có sổ kho (BP dòng `stock_entries`): (1) Stock Entry (trừ `dieu_chinh_kiem_ke` — đi theo phiếu kiểm kê, M6) mọi
+- stock_entries ← UNION ALL các nguồn có sổ kho (BP dòng `stock_entries`): (1) Stock Entry (trừ `dieu_chinh_kiem_ke` — đi theo phiếu kiểm kê) mọi
   docstatus: Material Receipt → `import` (`IN-` nhập kho tay, `DK-…` tồn đầu kỳ, `NL-` nhập lại hàng khách trả), Material Issue → `export` (`XKL-`),
-  Material Transfer → `transfer` (`CKL-`); (2) phiếu kiểm kê — M6; (3) Sales Invoice có kho đã / thôi ghi sổ (HĐ → `export`, tờ ghi có `HDT-` → `import`);
+  Material Transfer → `transfer` (`CKL-`); (2) phiếu kiểm kê `NPP Kiem Ke` → `stocktake` (M6: `status` = `trang_thai`, `posted_at` = `duyet_luc`, `notes` =
+  `ghi_chu`, `warehouse_zone` = `kho`; hai phiếu `DCK-` của nó không hiện riêng); (3) Sales Invoice có kho đã / thôi ghi sổ (HĐ → `export`, tờ ghi có
+  `HDT-` → `import`);
   (4) Purchase Invoice phiếu nhập / trả NCC đã / thôi ghi sổ (nháp KHÔNG có phiếu kho — thiếu điều kiện này thì phiếu nhập nháp hiện thành phiếu kho
   nháp). `id` = `entry_code` = tên chứng từ (⚠K §7.2 #14 — phiếu kho của PN / PTNCC / HĐ = chính chứng từ); `status` = docstatus (0 `draft`, 1 `posted`,
   2 `cancelled`); `posted_at` = ngày + giờ ghi sổ (nháp NULL như nppsale); `notes` (§10 điểm 1 — ƯU TIÊN hơn §2.12 / §4.5): phiếu `NL-` / tờ ghi có có
@@ -17,7 +19,10 @@
   (⚠K: nppsale dòng xuất lẻ / chuyển kho luôn NULL, vết lấy lô ở `stock_line_consumptions`); `unit_cost` = giá vốn mỗi đơn vị cơ sở theo MỘT luật với hằng
   P6 (`nppsale.cong.bang.kho.gia_dong_se` / `gia_tra_ncc`: xuất lẻ / chuyển kho 0 — §10 điểm 3; trả NCC giá lô từ sổ kho — S2; HĐ / tờ ghi có
   `incoming_rate`; PN / nhập kho `valuation_rate`), che theo `inventory.cost` như `batches.unit_cost` (§7.3 điểm 21). Không có `created_at` (§7.3 điểm
-  28 — giữ hành vi nppsale). Ghi: dòng của phiếu kho tay NHÁP — nppsale.rpc.kho_tay (them_dong / sua_dong / xoa_dong).
+  28 — giữ hành vi nppsale). Dòng kiểm kê (`NPP Kiem Ke Dong`): `quantity` = `qty_in_base_uom` = `qty_in_transaction_uom` = chênh CÓ DẤU, ĐV = `don_vi`,
+  hệ số 1, `unit_cost` = `gia_von` (giá màn gửi — duyệt KHÔNG ghi lại, như nppsale), `batch_id` = `<lo>::<vùng của kho>` (hàng không lô có kho → lô ảo;
+  dòng chưa duyệt không lô → NULL). Ghi: dòng của phiếu kho tay / kiểm kê NHÁP — nppsale.rpc.kho_tay (them_dong / sua_dong / xoa_dong) → kiểm kê:
+  nppsale.rpc.kiem_ke.
 - v_stock_movements ← sổ kho lõi (Stock Ledger Entry chưa huỷ — §4.7): chuyển kho tự ra hai dòng (nguồn −, đích +); đơn vị / SL giao dịch / hệ số NỐI
   dòng chứng từ qua `voucher_detail_no` (§7.3 điểm 39 — màn "+2 thùng (= +48)"); `unit_cost` cùng luật dòng phiếu kho (xuất lẻ / chuyển kho 0 như
   `sel.unit_cost` của view nppsale); `signed_qty_in_base_uom` = `actual_qty`. ⚠K (sạch hơn nppsale): không phiếu nháp, không đổi vùng hồi tố, chứng từ
@@ -42,7 +47,7 @@ def _vung(kho: str) -> str:
 	return f"(SELECT z.`vung` FROM {KHO} z WHERE z.`kho` = {kho} LIMIT 1)"
 
 
-NGUON_PHIEU_KHO = f"""(
+_NGUON_PHIEU_KHO = f"""(
 	SELECT se.`name`, se.`docstatus` AS `_ds`, se.`owner`, se.`creation`, se.`posting_date`, se.`posting_time`,
 		CASE se.`purpose` WHEN 'Material Issue' THEN 'export' WHEN 'Material Transfer' THEN 'transfer' ELSE 'import' END AS `loai`,
 		CASE WHEN se.`npp_loai` = 'nhap_lai_tra' AND IFNULL(se.`npp_phieu_tra`, '') <> '' THEN {GHI_CHU_NHAP_LAI.format(x='se')}
@@ -65,30 +70,65 @@ NGUON_PHIEU_KHO = f"""(
 		CASE WHEN p.`is_return` = 1 THEN 'export' ELSE 'import' END, p.`npp_ghi_chu`, p.`supplier`, '[]', NULL,
 		COALESCE(NULLIF(p.`npp_kho_nhap`, ''), p.`set_warehouse`), NULL, COALESCE(NULLIF(p.`npp_tim_kd`, ''), LOWER(p.`name`))
 	FROM `tabPurchase Invoice` p WHERE p.`update_stock` = 1 AND p.`docstatus` IN (1, 2) AND p.`npp_loai` IN ('phieu_nhap', 'tra_ncc')
+	{{kiem_ke}}
 )"""
 
-NGUON_DONG_KHO = f"""(
+KHO_BAN = "(SELECT s.`value` FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'kho_ban')"
+# (2) phiếu kiểm kê (M6): trạng thái là trường; `posted_at` = `duyet_luc` (từ chối / huỷ: NULL như nppsale — chưa từng ghi sổ)
+_PHIEU_KIEM_KE = f"""UNION ALL
+	SELECT kk.`name`, CASE kk.`trang_thai` WHEN 'posted' THEN 1 WHEN 'cancelled' THEN 2 ELSE 0 END, kk.`owner`, kk.`creation`,
+		DATE(kk.`duyet_luc`), TIME(kk.`duyet_luc`), 'stocktake', kk.`ghi_chu`, NULL, '[]', NULL, COALESCE(NULLIF(kk.`kho`, ''), {KHO_BAN}), NULL,
+		COALESCE(NULLIF(kk.`tim_kd`, ''), LOWER(kk.`name`))
+	FROM `tabNPP Kiem Ke` kk"""
+
+
+def _co_kiem_ke() -> bool:
+	return co_cot("NPP Kiem Ke", "trang_thai")
+
+
+def nguon_phieu_kho() -> str:
+	"""Nguồn `stock_entries` — nhánh phiếu kiểm kê chỉ khi `NPP Kiem Ke` đã có trên site (DocType M6)."""
+	return _NGUON_PHIEU_KHO.replace("{kiem_ke}", _PHIEU_KIEM_KE if _co_kiem_ke() else "")
+
+
+_NGUON_DONG_KHO = f"""(
 	SELECT d.`name`, d.`parent` AS `phieu`, se.`docstatus` AS `_ds`, d.`item_code` AS `hang`, d.`uom` AS `dv`, d.`qty` AS `sl_gd`,
 		d.`transfer_qty` AS `sl_cs`, d.`conversion_factor` AS `hs`, {gia_dong_se('se', 'd')} AS `gia`, d.`npp_ghi_chu` AS `ghi_chu`, d.`idx`,
-		CASE WHEN se.`purpose` = 'Material Receipt' THEN d.`t_warehouse` ELSE d.`s_warehouse` END AS `kho`
+		CASE WHEN se.`purpose` = 'Material Receipt' THEN d.`t_warehouse` ELSE d.`s_warehouse` END AS `kho`, NULL AS `lo_kk`, 0 AS `la_kk`
 	FROM `tabStock Entry Detail` d JOIN `tabStock Entry` se ON se.`name` = d.`parent` AND d.`parenttype` = 'Stock Entry'
 	WHERE IFNULL(se.`npp_loai`, '') <> 'dieu_chinh_kiem_ke'
 	UNION ALL
 	SELECT ii.`name`, ii.`parent`, si.`docstatus`, ii.`item_code`, ii.`uom`, ABS(ii.`qty`), ABS(ii.`stock_qty`), ii.`conversion_factor`,
-		IFNULL(ii.`incoming_rate`, 0), ii.`npp_ghi_chu`, ii.`idx`, ii.`warehouse`
+		IFNULL(ii.`incoming_rate`, 0), ii.`npp_ghi_chu`, ii.`idx`, ii.`warehouse`, NULL, 0
 	FROM `tabSales Invoice Item` ii JOIN `tabSales Invoice` si ON si.`name` = ii.`parent` AND ii.`parenttype` = 'Sales Invoice'
 	WHERE si.`update_stock` = 1 AND si.`docstatus` IN (1, 2)
 	UNION ALL
 	SELECT pii.`name`, pii.`parent`, p.`docstatus`, pii.`item_code`, pii.`uom`, ABS(pii.`qty`), ABS(pii.`stock_qty`), pii.`conversion_factor`,
-		CASE WHEN p.`is_return` = 1 THEN {gia_tra_ncc('p', 'pii')} ELSE IFNULL(pii.`valuation_rate`, 0) END, pii.`npp_ghi_chu`, pii.`idx`, pii.`warehouse`
+		CASE WHEN p.`is_return` = 1 THEN {gia_tra_ncc('p', 'pii')} ELSE IFNULL(pii.`valuation_rate`, 0) END, pii.`npp_ghi_chu`, pii.`idx`, pii.`warehouse`,
+		NULL, 0
 	FROM `tabPurchase Invoice Item` pii JOIN `tabPurchase Invoice` p ON p.`name` = pii.`parent` AND pii.`parenttype` = 'Purchase Invoice'
 	WHERE p.`update_stock` = 1 AND p.`docstatus` IN (1, 2) AND p.`npp_loai` IN ('phieu_nhap', 'tra_ncc')
+	{{kiem_ke}}
 )"""
+# dòng kiểm kê (M6): chênh CÓ DẤU (không ABS), hệ số 1, giá = `gia_von` màn gửi
+_DONG_KIEM_KE = """UNION ALL
+	SELECT kd.`name`, kd.`parent`, CASE kk.`trang_thai` WHEN 'posted' THEN 1 WHEN 'cancelled' THEN 2 ELSE 0 END, kd.`mat_hang`, kd.`don_vi`,
+		kd.`chenh_lech`, kd.`chenh_lech`, 1, IFNULL(kd.`gia_von`, 0), kd.`ghi_chu`, kd.`idx`, kd.`kho`, kd.`lo`, 1
+	FROM `tabNPP Kiem Ke Dong` kd JOIN `tabNPP Kiem Ke` kk ON kk.`name` = kd.`parent` AND kd.`parenttype` = 'NPP Kiem Ke'"""
+
+
+def nguon_dong_kho() -> str:
+	return _NGUON_DONG_KHO.replace("{kiem_ke}", _DONG_KIEM_KE if _co_kiem_ke() else "")
+
 
 # lô của dòng: gói lô gắn dòng (mọi docstatus của gói — huỷ tờ thì lõi bỏ liên kết trên dòng, gói giữ `voucher_detail_no`)
 LO_DONG = ("(SELECT CASE WHEN COUNT(DISTINCT e.`batch_no`) = 1 THEN MIN(e.`batch_no`) END FROM `tabSerial and Batch Bundle` b "
 	"JOIN `tabSerial and Batch Entry` e ON e.`parent` = b.`name` WHERE b.`voucher_detail_no` = {t}.`name` AND IFNULL(e.`batch_no`, '') <> '')")
 LO_AO = ("CASE WHEN {t}.`_ds` <> 0 AND (SELECT it.`has_batch_no` FROM `tabItem` it WHERE it.`name` = {t}.`hang`) = 0 "
+	"THEN CONCAT('~', {t}.`hang`, '::', " + _vung("{t}.`kho`") + ") END")
+# dòng kiểm kê: lô đã đếm / đã điền khi duyệt (`lo` + `kho`); hàng không lô có kho → lô ảo (cả nháp — dòng mang sẵn kho); chưa duyệt không lô → NULL
+LO_KK = ("CASE WHEN IFNULL({t}.`lo_kk`, '') <> '' THEN CONCAT({t}.`lo_kk`, '::', " + _vung("{t}.`kho`") + ") "
+	"WHEN IFNULL({t}.`kho`, '') <> '' AND (SELECT it.`has_batch_no` FROM `tabItem` it WHERE it.`name` = {t}.`hang`) = 0 "
 	"THEN CONCAT('~', {t}.`hang`, '::', " + _vung("{t}.`kho`") + ") END")
 
 NGUON_BIEN_DONG = """(
@@ -204,7 +244,7 @@ def nap():
 		return
 	dang_ky(Bang(
 		ten="stock_entries",
-		nguon=NGUON_PHIEU_KHO,
+		nguon=nguon_phieu_kho(),
 		cot={
 			"id": c("{t}.`name`"), "org_id": org(), "entry_code": c("{t}.`name`"), "type": c("loai"),
 			"created_by": c(NGUOI.format(o="{t}.`owner`")), "notes": c("ghi_chu"), "created_at": c("creation", "gio"), "supplier_id": c("ncc"),
@@ -224,10 +264,10 @@ def nap():
 	))
 	dang_ky(Bang(
 		ten="stock_entry_lines",
-		nguon=NGUON_DONG_KHO,
+		nguon=nguon_dong_kho(),
 		cot={
 			"id": c("{t}.`name`"), "entry_id": c("phieu"), "product_id": c("hang"),
-			"batch_id": c(f"COALESCE(CONCAT({LO_DONG}, '::', {_vung('{t}.`kho`')}), {LO_AO})"),
+			"batch_id": c(f"CASE WHEN {{t}}.`la_kk` = 1 THEN {LO_KK} ELSE COALESCE(CONCAT({LO_DONG}, '::', {_vung('{t}.`kho`')}), {LO_AO}) END"),
 			"unit_name": c("dv"), "transaction_uom": c("dv"), "quantity": c("sl_gd", "so"), "qty_in_transaction_uom": c("sl_gd", "so"),
 			"qty_in_base_uom": c("sl_cs", "so"), "conversion_factor_snapshot": c("hs", "so"), "unit_cost": c("gia", "so"), "notes": c("ghi_chu"),
 		},

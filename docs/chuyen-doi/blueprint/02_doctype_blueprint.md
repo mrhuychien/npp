@@ -1663,7 +1663,7 @@ Không submit; mọi ghi của cổng lên `payables` chuyển thành thao tác 
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| trang_thai | Trạng thái | Select | `draft`↵`posted`↵`cancelled` | ✓ | ✓ | ✓ | `stock_entries.status` (CHECK mig 016); `draft` = chờ duyệt; RO — chỉ method |
+| trang_thai | Trạng thái | Select | `draft`↵`posted`↵`cancelled` | ✓ | ✓ | ✓ | `stock_entries.status` (CHECK mig 016); `draft` = chờ duyệt, default `draft`; RO — chỉ method |
 | kho | Kho | Link | Warehouse | | | | `warehouse_zone` (mặc định kho bán — mig 144); dòng có lô mang kho riêng |
 | ghi_chu | Ghi chú | Small Text | | | ✓ | | `notes`; từ chối nối "Từ chối: …" (mig 170) |
 | duyet_luc | Duyệt lúc | Datetime | | | ✓ | | `posted_at`; RO |
@@ -1671,9 +1671,9 @@ Không submit; mọi ghi của cổng lên `payables` chuyển thành thao tác 
 | phieu_nhap_dc | Phiếu nhập điều chỉnh | Link | Stock Entry | | | | **mới**; RO — Material Receipt `DCK-` cho phần thừa |
 | phieu_chi_hao_hut | Phiếu chi hao hụt | Link | NPP Phieu Chi | | | | `expense_id` RPC trả về (mig 123); RO |
 | so_lo_cham | Số lô đã đụng | Int | | | | | `batches_touched`; RO |
-| sl_hao_hut | SL hao hụt | Float | | | | | `shrink_qty` (đơn vị cơ sở); RO |
-| gia_tri_hao_hut | Giá trị hao hụt | Currency | | | | | `shrink_value` — đọc từ sổ kho của phiếu xuất; RO |
-| sl_thua | SL thừa | Float | | | | | `surplus_qty`; RO |
+| sl_hao_hut | SL hao hụt | Float | | | | | `shrink_qty` (đơn vị cơ sở); precision 6; RO |
+| gia_tri_hao_hut | Giá trị hao hụt | Currency | | | | | `shrink_value` — số RPC trả = tiền phiếu chi hao hụt (luật nppsale: một giá mỗi dòng — đặc tả kho_mua §7.3 điểm 15, M6); sổ kho / GL của phiếu xuất `DCK-` đúng từng lô; RO |
+| sl_thua | SL thừa | Float | | | | | `surplus_qty`; precision 6; RO |
 | gia_tri_thua | Giá trị thừa | Currency | | | | | `surplus_value`; RO |
 | tim_kd | Khoá tìm | Data | | | | | `tim_kd` (`entry_code` — mig 249); RO; idx |
 | dong | Dòng chênh lệch | Table | NPP Kiem Ke Dong | | | | `stock_entry_lines` của phiếu |
@@ -1712,7 +1712,7 @@ xoá nháp hỏng giữa chừng). Đã duyệt không huỷ (`cancel_stock_entr
 | lo | Lô | Link | Batch | | ✓ | | `batch_id` — lô đã đếm (trống = để method chọn theo luật mig 123); sau duyệt method điền lô đầu tiên đã đụng |
 | kho | Kho của lô | Link | Warehouse | | | | **mới** — nppsale mang vùng trong dòng lô (`batches.warehouse_zone`); cổng tách từ `batch_id` `<lô>::<vùng>` |
 | don_vi | Đơn vị | Link | UOM | | | | `unit_name` = đơn vị cơ sở (màn kiểm kê luôn ghi đơn vị cơ sở) |
-| chenh_lech | Chênh lệch | Float | | ✓ | ✓ | | `quantity` có dấu (+ thừa, − hụt), đơn vị cơ sở, numeric (mig 228); cổng trả cả `qty_in_base_uom` = `qty_in_transaction_uom` = số này, `transaction_uom` = `don_vi`, `conversion_factor_snapshot` = 1 |
+| chenh_lech | Chênh lệch | Float | | ✓ | ✓ | | `quantity` có dấu (+ thừa, − hụt), đơn vị cơ sở, numeric (mig 228; `post_stock_adjustment` đọc cột này); precision 6; cổng trả cả `qty_in_base_uom` = `qty_in_transaction_uom` = số này, `transaction_uom` = `don_vi`, `conversion_factor_snapshot` = 1 |
 | gia_von | Giá vốn / đơn vị cơ sở | Currency | | | | | `unit_cost` (0 → giá vốn lô); precision 6 (§2.7) |
 | ghi_chu | Ghi chú | Small Text | | | | | `notes` |
 
@@ -1853,15 +1853,15 @@ muốn sửa thì huỷ, lập phiếu mới).
 #### Fields
 | Fieldname | Label | Type | Options | Reqd | InList | InStandard | Notes |
 |---|---|---|---|---|---|---|---|
-| ngay_chi | Ngày chi phí | Date | | ✓ | ✓ | ✓ | `expense_date` (mặc định hôm nay giờ VN); idx |
+| ngay_chi | Ngày chi phí | Date | | ✓ | ✓ | ✓ | `expense_date` (default hôm nay — giờ VN của site); idx |
 | so_tien | Số tiền | Currency | | ✓ | ✓ | | `amount` ≥ 0 (CHECK mig 016) |
 | danh_muc | Danh mục | Link | NPP Danh Muc Chi Phi | | ✓ | ✓ | `category_id` (được trống như nppsale → tài khoản chi phí mặc định của `NPP Cai Dat`); idx |
 | dien_giai | Diễn giải | Small Text | | | ✓ | | `description` |
 | so_tham_chieu | Số tham chiếu | Data | | | ✓ | | `reference_code` |
 | nguon_loai | Nguồn | Data | | | | | `source_type` (`stocktake` do duyệt kiểm kê; trống = lập tay); RO |
 | kiem_ke | Phiếu kiểm kê | Link | NPP Kiem Ke | | | | `source_id` khi nguồn `stocktake`; RO |
-| da_tra | Đã trả | Check | | | ✓ | ✓ | `is_paid` |
-| tra_luc | Trả lúc | Datetime | | | | | `paid_at` (dòng tiền kiểu nppsale đọc cột này) |
+| da_tra | Đã trả | Check | | | ✓ | ✓ | `is_paid`, default 0 |
+| tra_luc | Trả lúc | Datetime | | | | | `paid_at` (dòng tiền kiểu nppsale đọc cột này); idx (đặc tả báo cáo P6 — `finance_cash_flow` lọc theo ngày trả) |
 | hinh_thuc | Hình thức trả | Select | ↵`cash`↵`transfer`↵`ewallet` | | | | `payment_method` (CHECK mig 016) |
 | but_toan_ghi_nhan | Bút toán chi phí | Link | Journal Entry | | | | **mới**; RO — Nợ tài khoản danh mục / Có tiền (trả ngay trong ngày chi) hoặc Có "chi phí phải trả" |
 | but_toan_tra | Bút toán trả tiền | Link | Journal Entry | | | | **mới**; RO — Nợ chi phí phải trả / Có tiền, ngày `tra_luc` (chỉ khi trả sau ngày chi phí) |
@@ -1900,8 +1900,8 @@ Không submit. Lập → sửa (lập lại bút toán) → xoá (huỷ bút to�
 |---|---|---|---|---|---|---|---|
 | ma | Mã | Data | | ✓ | ✓ | ✓ | `code`; **unique** (UQ org + code); `COGS_ADJ` là mã `post_stock_adjustment` tra để ghi hao hụt (mig 123) |
 | ten | Tên | Data | | ✓ | ✓ | | `name` |
-| nhom | Nhóm | Select | `cogs`↵`operating`↵`hr`↵`financial`↵`tax`↵`other` | ✓ | ✓ | ✓ | `bucket` (CHECK mig 016), mặc định `operating` — nhóm của báo cáo lãi lỗ kiểu nppsale |
-| dang_dung | Đang dùng | Check | | | ✓ | ✓ | `is_active`, mặc định 1 |
+| nhom | Nhóm | Select | `cogs`↵`operating`↵`hr`↵`financial`↵`tax`↵`other` | ✓ | ✓ | ✓ | `bucket` (CHECK mig 016), default `operating` — nhóm của báo cáo lãi lỗ kiểu nppsale |
+| dang_dung | Đang dùng | Check | | | ✓ | ✓ | `is_active`, default 1 |
 | tai_khoan | Tài khoản chi phí | Link | Account | | | | **mới** — tài khoản Nợ của bút toán phiếu chi / tài khoản chênh lệch của phiếu xuất hao hụt; trống → `NPP Cai Dat.tk_chi_phi_mac_dinh`; link_filters `is_group = 0` |
 
 #### Relationships / Computed / vòng đời

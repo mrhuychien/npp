@@ -1,0 +1,145 @@
+{
+ "actions": [],
+ "autoname": "PC-.####",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "ngay_chi",
+  "so_tien",
+  "danh_muc",
+  "dien_giai",
+  "so_tham_chieu",
+  "nguon_loai",
+  "kiem_ke",
+  "da_tra",
+  "tra_luc",
+  "hinh_thuc",
+  "but_toan_ghi_nhan",
+  "but_toan_tra",
+  "chung_tu_kho"
+ ],
+ "fields": [
+  {
+   "default": "Today",
+   "fieldname": "ngay_chi",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ngày chi phí",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "so_tien",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Số tiền",
+   "reqd": 1
+  },
+  {
+   "fieldname": "danh_muc",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Danh mục",
+   "options": "NPP Danh Muc Chi Phi",
+   "search_index": 1
+  },
+  {
+   "fieldname": "dien_giai",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Diễn giải"
+  },
+  {
+   "fieldname": "so_tham_chieu",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Số tham chiếu"
+  },
+  {
+   "fieldname": "nguon_loai",
+   "fieldtype": "Data",
+   "label": "Nguồn",
+   "read_only": 1
+  },
+  {
+   "fieldname": "kiem_ke",
+   "fieldtype": "Link",
+   "label": "Phiếu kiểm kê",
+   "options": "NPP Kiem Ke",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "da_tra",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Đã trả"
+  },
+  {
+   "fieldname": "tra_luc",
+   "fieldtype": "Datetime",
+   "label": "Trả lúc",
+   "search_index": 1
+  },
+  {
+   "fieldname": "hinh_thuc",
+   "fieldtype": "Select",
+   "label": "Hình thức trả",
+   "options": "\ncash\ntransfer\newallet"
+  },
+  {
+   "fieldname": "but_toan_ghi_nhan",
+   "fieldtype": "Link",
+   "label": "Bút toán chi phí",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "but_toan_tra",
+   "fieldtype": "Link",
+   "label": "Bút toán trả tiền",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "chung_tu_kho",
+   "fieldtype": "Link",
+   "label": "Phiếu xuất điều chỉnh",
+   "options": "Stock Entry",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Tien",
+ "name": "NPP Phieu Chi",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "so_tham_chieu,danh_muc,ngay_chi",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "dien_giai",
+ "track_changes": 1
+}

@@ -1,0 +1,149 @@
+{
+ "actions": [],
+ "autoname": "KK-.YY.MM.DD.-.####",
+ "creation": "2026-11-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "trang_thai",
+  "kho",
+  "ghi_chu",
+  "duyet_luc",
+  "phieu_xuat_dc",
+  "phieu_nhap_dc",
+  "phieu_chi_hao_hut",
+  "so_lo_cham",
+  "sl_hao_hut",
+  "gia_tri_hao_hut",
+  "sl_thua",
+  "gia_tri_thua",
+  "tim_kd",
+  "dong"
+ ],
+ "fields": [
+  {
+   "default": "draft",
+   "fieldname": "trang_thai",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trạng thái",
+   "options": "draft\nposted\ncancelled",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "kho",
+   "fieldtype": "Link",
+   "label": "Kho",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "ghi_chu",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Ghi chú"
+  },
+  {
+   "fieldname": "duyet_luc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Duyệt lúc",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phieu_xuat_dc",
+   "fieldtype": "Link",
+   "label": "Phiếu xuất điều chỉnh",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phieu_nhap_dc",
+   "fieldtype": "Link",
+   "label": "Phiếu nhập điều chỉnh",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phieu_chi_hao_hut",
+   "fieldtype": "Link",
+   "label": "Phiếu chi hao hụt",
+   "options": "NPP Phieu Chi",
+   "read_only": 1
+  },
+  {
+   "fieldname": "so_lo_cham",
+   "fieldtype": "Int",
+   "label": "Số lô đã đụng",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sl_hao_hut",
+   "fieldtype": "Float",
+   "label": "SL hao hụt",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gia_tri_hao_hut",
+   "fieldtype": "Currency",
+   "label": "Giá trị hao hụt",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sl_thua",
+   "fieldtype": "Float",
+   "label": "SL thừa",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gia_tri_thua",
+   "fieldtype": "Currency",
+   "label": "Giá trị thừa",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tim_kd",
+   "fieldtype": "Data",
+   "label": "Khoá tìm",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "dong",
+   "fieldtype": "Table",
+   "label": "Dòng chênh lệch",
+   "options": "NPP Kiem Ke Dong"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "NPP Kho Mua",
+ "name": "NPP Kiem Ke",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "tim_kd,trang_thai",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
