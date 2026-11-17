@@ -1,7 +1,8 @@
 """RPC KHO chỉ đọc (STABLE ở nppsale — gọi GET): tồn kho bán theo mặt hàng (POS), tổng giá trị tồn, hàng đã đặt chưa xuất, báo cáo tồn kho một lượt.
 
 Cùng một nguồn với bảng cổng `batches` (nppsale.cong.bang.kho.NGUON_LO: lô × kho từ gói lô chưa huỷ + lô ảo của hàng không lô) — một
-luật tồn cho mọi nơi đọc. Giá trị tồn (tồn × giá vốn) chỉ người được xem giá vốn (`xemDuocGiaVon`) — người khác nhận NULL, như cột
+luật tồn cho mọi nơi đọc; các hàm chỉ cần dòng tồn > 0 đọc `NGUON_LO_CON_TON` (cùng dòng, chỉ gộp gói lô của lô `batch_qty > 0` — P6 M0, đặc tả báo cáo
+§2.2). Giá trị tồn (tồn × giá vốn) chỉ người được xem giá vốn (`xemDuocGiaVon`) — người khác nhận NULL, như cột
 `batches.unit_cost` ở cổng (nppsale chỉ che ở giao diện).
 
 `bao_cao_ton_kho(p_tu, p_den)` (P4 — M9, đặc tả kho_mua §5.4; mig 204 / 256): hàm nppsale SQL STABLE **SECURITY INVOKER** → đọc QUA CỔNG dưới người gọi
@@ -13,7 +14,7 @@ from __future__ import annotations
 import frappe
 from frappe.utils import flt
 
-from nppsale.cong.bang.kho import NGUON_LO
+from nppsale.cong.bang.kho import NGUON_LO_CON_TON
 from nppsale.cong.loi import NppLoi
 from nppsale.cong.ngu_canh import hien_tai, xem_gia_von
 
@@ -31,7 +32,7 @@ def ton_ban_theo_hang():
 	"""mig 257: {mặt hàng: Σ tồn > 0 của các dòng lô vùng bán} — POS / bán hàng đọc MỘT câu thay vì tải từng lô."""
 	if not _la_nv():
 		return {}
-	return {hang: flt(sl) for hang, sl in frappe.db.sql(f"""SELECT x.`hang`, SUM(x.`ton`) FROM {NGUON_LO} x
+	return {hang: flt(sl) for hang, sl in frappe.db.sql(f"""SELECT x.`hang`, SUM(x.`ton`) FROM {NGUON_LO_CON_TON} x
 		WHERE x.`ton` > 0 AND x.`vung` = 'sale' GROUP BY x.`hang`""")}
 
 
@@ -40,7 +41,7 @@ def stock_value_summary():
 	"""Σ tồn × giá vốn và số dòng lô còn hàng (mọi vùng)."""
 	if not _la_nv():
 		return [{"inventory_value": 0, "batch_count": 0}]
-	gt, so = frappe.db.sql(f"""SELECT COALESCE(SUM(x.`ton` * COALESCE(x.`gia_von`, 0)), 0), COUNT(*) FROM {NGUON_LO} x
+	gt, so = frappe.db.sql(f"""SELECT COALESCE(SUM(x.`ton` * COALESCE(x.`gia_von`, 0)), 0), COUNT(*) FROM {NGUON_LO_CON_TON} x
 		WHERE COALESCE(x.`ton`, 0) > 0""")[0]
 	return [{"inventory_value": flt(gt) if xem_gia_von(hien_tai()) else None, "batch_count": int(so)}]
 
@@ -96,7 +97,7 @@ def ton_kho_trang(p_tim=None, p_con_ton=True, p_sap="ten", p_offset=0, p_limit=2
 				COALESCE(SUM(CASE WHEN x.`vung` = 'date' THEN x.`ton` * COALESCE(x.`gia_von`, 0) END), 0) AS `date_value`,
 				COALESCE(SUM(CASE WHEN x.`vung` != 'date' THEN x.`ton` END), 0) AS `sale_qty`,
 				COALESCE(SUM(CASE WHEN x.`vung` != 'date' THEN x.`ton` * COALESCE(x.`gia_von`, 0) END), 0) AS `sale_value`
-			FROM {NGUON_LO} x WHERE x.`ton` > 0 GROUP BY x.`hang`
+			FROM {NGUON_LO_CON_TON} x WHERE x.`ton` > 0 GROUP BY x.`hang`
 		), s AS (
 			SELECT i.`name` AS `product_id`, i.`item_code` AS `sku`, i.`item_name` AS `name`, i.`stock_uom` AS `base_unit`,
 				CASE WHEN IFNULL(i.`npp_ngung_ban`, 0) = 1 THEN 'inactive' ELSE 'active' END AS `status`,
@@ -139,12 +140,17 @@ def bao_cao_ton_kho(p_tu=None, p_den=None):
 	  (Sales Invoice docstatus 1, `is_return = 0`, `is_opening = No`, ngày = `posting_date`) + dòng cổng `sales_invoice_lines`.
 	Ép kiểu `date` như Postgres trước khi đọc (chuỗi sai → 22007 / 22008). Phần lưu trữ trước ngày cắt (`NPP LS *` — BP §2.11) chưa có DocType
 	(P8) nên chưa UNION."""
+	from nppsale.luat.bao_cao import HET_GIO_BAO_CAO
+
+	from .bao_cao import _chay, _ngay
+
+	tu, den = _ngay(p_tu), _ngay(p_den)  # ép kiểu như PostgREST TRƯỚC thân hàm (22007 / 22008)
+	return _chay(lambda: _bao_cao_ton_kho(tu, den), HET_GIO_BAO_CAO)  # P6 M0 — L11: 40 s, quá hạn → 57014
+
+
+def _bao_cao_ton_kho(tu, den) -> dict:
 	from nppsale.cong.truy_van import doc
 
-	from .phieu_tra import _ngay_pg
-
-	tu = _ngay_pg(p_tu) if p_tu is not None else None
-	den = _ngay_pg(p_den) if p_den is not None else None
 	nc = hien_tai()
 	lo = doc({"bang": "batches", "select": "id, product_id, batch_code, qty_on_hand, unit_cost, expires_at, created_at",
 		"loc": [{"op": "gt", "cot": "qty_on_hand", "gt": 0}], "thu_tu": [{"cot": "id", "tang": True}]}, nc)["data"] or []

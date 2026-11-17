@@ -19,6 +19,8 @@ pn_hoan / pn_huy / ptn / ptn_gui / pk / xuat_le / chuyen / kk_duyet / nguong / r
 """
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import frappe
 from frappe.utils import add_days, flt, get_datetime
 
@@ -153,6 +155,24 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		finally:
 			self._ve_admin()
 		self.assertFalse(h1 == h2)
+		self._kiem_con_ton()  # sau HĐ / HĐ huỷ / lô hết / lô rỗng
+
+	def _kiem_con_ton(self):
+		"""P6 M0 (đặc tả báo cáo §2.2 — tối ưu NGUON_LO): nguồn chỉ lô còn hàng (`NGUON_LO_CON_TON` — gộp gói lô của lô `batch_qty > 0`) ra ĐÚNG các dòng
+		tồn > 0 của nguồn đủ trên sổ sau mọi chứng từ của bài; cổng `batches` lọc `gt qty_on_hand 0` (tự chọn nguồn còn tồn) = cùng câu trên nguồn đủ."""
+		from nppsale.cong import dang_ky as D
+		from nppsale.cong.bang.kho import NGUON_LO, NGUON_LO_CON_TON
+
+		cot = "x.`name`, x.`lo`, x.`vung`, x.`ton`, x.`nhap`, x.`hang`, x.`gia_von`, x.`expiry_date`, x.`creation`, x.`disabled`"
+		du = frappe.db.sql(f"SELECT {cot} FROM {NGUON_LO} x WHERE x.`ton` > 0 ORDER BY x.`name`")
+		self.assertTrue(du)
+		self.assertEqual(frappe.db.sql(f"SELECT {cot} FROM {NGUON_LO_CON_TON} x WHERE x.`ton` > 0 ORDER BY x.`name`"), du)
+		nc = NguCanh(user="Administrator", vai=None, bo_qua_rls=True)
+		yc = {"bang": "batches", "select": "id, product_id, batch_code, qty_on_hand, qty_initial, unit_cost, expires_at, status, warehouse_zone, "
+			"created_at", "loc": [{"op": "gt", "cot": "qty_on_hand", "gt": 0}], "thu_tu": [{"cot": "id", "tang": True}]}
+		theo_loc = doc_cong(yc, nc)["data"]
+		with patch.object(D.lay("batches"), "nguon_theo_loc", None):
+			self.assertEqual(theo_loc, doc_cong(yc, nc)["data"])
 
 	# ------------------------------------------------------------------------------------------------ luồng cũ (§3.21, V80)
 	def test_post_stock_export_luong_cu(self):
@@ -260,6 +280,7 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		self.assertEqual((ket["data"][0]["id"], self._ton_lo("BC-RONG", "date")), ("BC-RONG::date", 0))
 		self._kiem(a, (51, 498000), (4, 40000), "lô rỗng / hết tồn")
 		self.assertNotIn(ten, [])
+		self._kiem_con_ton()  # sau PN, PTNCC, IN-, XKL-, CKL-, DCK-, CKL- tự động, lô hết / lô rỗng
 
 	def _pk_nhap(self, nhan: str, loai: str, vung: str, dong: list, **dau) -> str:
 		d = [{"product_id": sp, "batch_id": None, "unit_name": dv, "quantity": sl, "qty_in_base_uom": sl, "qty_in_transaction_uom": sl,
@@ -339,6 +360,7 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		lo = doc_cong({"bang": "batches", "select": "qty_on_hand, unit_cost", "loc": [{"op": "eq", "cot": "id", "gt": f"{l2}::sale"}]},
 			NguCanh(user="Administrator", vai=None, bo_qua_rls=True))["data"][0]
 		self.assertEqual((flt(lo["qty_on_hand"]), round(flt(lo["unit_cost"]), 2)), (38, 9000))  # 50 − 10 bán − 5 trả NCC + 2 thừa + 1 khách trả
+		self._kiem_con_ton()  # sau trả NCC, kiểm kê thừa, nhập lại hàng khách trả
 
 	# ------------------------------------------------------------------------------------------------ khám sổ P4 (§8.1)
 	def _kham(self) -> dict:

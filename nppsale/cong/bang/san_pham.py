@@ -291,10 +291,19 @@ class GhiGiaBan(GhiDocType):
 		super()._gan(dich, g)
 
 
+# 🔧 C4 (đặc tả báo cáo P6 §3.3, R20, VB-E15): nguồn CHỈ gồm bảng giá của NPP — bảng giá chung (`NPP Cai Dat.bang_gia_chung`) và bảng là
+# `default_price_list` của một nhóm khách — Price List bán đang bật. Bản cũ lấy MỌI Price List `selling = 1` trừ bảng giá nhập ⇒ bảng ngoài NPP (vd
+# `Standard Selling` của lõi: poc.local 40 dòng, 31 khác giá `Gia chuan`) ra `group_id` NULL y như giá chung; `giaNiemYetDonVi` (units.ts:53), `napDanhMuc`
+# (lọc `!group_id`) và giá POS `unitPriceFor` (src/lib/sell/pricing.ts:36-39) lấy dòng ĐẦU có `group_id` rỗng trong dòng lồng KHÔNG thứ tự ⇒ "Theo bảng
+# giá" / chênh lệch giá NV / giá POS có thể lấy nhầm giá ngoài NPP.
+NGUON_GIA_BAN = ("(SELECT ip.* FROM `tabItem Price` ip JOIN `tabPrice List` pl ON pl.`name` = ip.`price_list` "
+	f"WHERE pl.`selling` = 1 AND pl.`enabled` = 1 AND ip.`price_list` != {BANG_GIA_NHAP_SQL} "
+	f"AND (ip.`price_list` = {BANG_GIA_CHUNG_SQL} OR EXISTS (SELECT 1 FROM `tabCustomer Group` cg "
+	"WHERE cg.`default_price_list` = ip.`price_list`)))")
+
 dang_ky(Bang(
 	ten="price_lists",
-	nguon="(SELECT ip.* FROM `tabItem Price` ip JOIN `tabPrice List` pl ON pl.`name` = ip.`price_list` "
-	f"WHERE pl.`selling` = 1 AND ip.`price_list` != {BANG_GIA_NHAP_SQL})",
+	nguon=NGUON_GIA_BAN,
 	cot={"id": c("{t}.`name`"), "org_id": org(), "product_id": c("item_code"),
 		"group_id": c("CASE WHEN {t}.`price_list` = " + BANG_GIA_CHUNG_SQL + " THEN NULL ELSE " + _NHOM_CUA_BANG + " END"),
 		"unit_name": c("uom"), "price": c("price_list_rate", "tien"), "effective_from": c("valid_from", "ngay"),

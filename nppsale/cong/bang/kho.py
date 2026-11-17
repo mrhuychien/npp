@@ -26,27 +26,41 @@ KHONG_HAN = "2099-12-31"
 _GOI = ("JOIN `tabSerial and Batch Bundle` sb ON sb.`name` = e.`parent` AND sb.`docstatus` = 1 AND sb.`is_cancelled` = 0")
 _DONG = "e.`is_cancelled` = 0 AND IFNULL(e.`batch_no`, '') != ''"
 
-NGUON_LO = f"""(
+def nguon_lo(con_ton: bool = False) -> str:
+	"""Nguồn (lô × vùng) của cổng `batches` và mọi chỗ đọc tồn theo lô. `con_ton=True` (P6 M0 — đặc tả báo cáo §2.2 "🔧 Hiệu năng NGUON_LO"): chỉ lô CÒN
+	HÀNG — gộp gói lô của lô `Batch.batch_qty > 0` thay vì TOÀN BỘ `Serial and Batch Entry` (lõi tự giữ `batch_qty` = Σ gói lô ở mọi kho —
+	`serial_batch_bundle.update_batch_qty`, gọi khi ghi sổ / huỷ chứng từ kho; lô âm bị chặn — CFD-05 — nên lô tổng 0 không dương ở kho nào), bỏ nhánh lô
+	chưa phát sinh (tồn 0). Dòng có tồn > 0 GIỐNG HỆT bản đủ — chỉ dùng khi người đọc lọc `ton > 0` (`NGUON_LO_CON_TON`; cổng `batches` tự chọn khi yêu cầu
+	lọc `qty_on_hand > 0` — `nguon_theo_loc`)."""
+	# còn tồn: đi TỪ `tabBatch` (lô `batch_qty > 0`) sang dòng gói lô qua chỉ mục `batch_no` (`STRAIGHT_JOIN` — để `batch_no IN (…)` thì MariaDB vẫn quét
+	# gần hết gói lô: chỉ nhanh ~20 %). Đo P6 M0 trên poc.local + gói lô giả (2.000 / 20.000 lô, 15 dòng / lô, 20 % còn hàng — giao dịch lui cuối):
+	# stock_value_summary 183 → 62 ms (30.000 dòng gói lô), 1.655 → 616 ms (300.000); cổng `batches` lọc `gt qty_on_hand 0` 163 → 62 ms / 1.760 → 651 ms;
+	# đếm lô sắp hết `/dashboard` 117 → 74 ms / 1.254 → 411 ms — cùng dòng / cùng số
+	tu = ("FROM `tabBatch` b1 STRAIGHT_JOIN `tabSerial and Batch Entry` e ON e.`batch_no` = b1.`name`" if con_ton
+		else "FROM `tabSerial and Batch Entry` e")
+	loc_lo = " AND b1.`batch_qty` > 0" if con_ton else ""
+	lo_rong = "" if con_ton else f"""
+		UNION ALL
+		SELECT b0.`name`, z.`vung`, 0, 0
+		FROM `tabBatch` b0 JOIN {KHO} z ON z.`kho` = COALESCE(NULLIF(b0.`npp_kho_tao`, ''),
+			(SELECT s.`value` FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'kho_ban'))
+		WHERE NOT EXISTS (SELECT 1 FROM `tabSerial and Batch Entry` e {_GOI} WHERE {_DONG} AND e.`batch_no` = b0.`name`)"""
+	return f"""(
 	SELECT CONCAT(t.`lo`, '::', t.`vung`) AS `name`, t.`lo`, t.`vung`, t.`ton`, t.`nhap`, b.`item` AS `hang`, b.`name` AS `ma_lo`,
 		b.`manufacturing_date`, b.`expiry_date`, b.`npp_vi_tri`, b.`disabled`, b.`npp_chuyen_vung_luc`, b.`npp_chuyen_vung_boi`,
 		b.`npp_ngay_nhap`, b.`creation`, b.`npp_tim_kd`,
 		COALESCE(gv.`gia`, b.`npp_gia_von_lo_rong`, 0) AS `gia_von`
 	FROM (
 		SELECT e.`batch_no` AS `lo`, z.`vung`, SUM(e.`qty`) AS `ton`, SUM(GREATEST(e.`qty`, 0)) AS `nhap`
-		FROM `tabSerial and Batch Entry` e {_GOI} JOIN {KHO} z ON z.`kho` = e.`warehouse`
-		WHERE {_DONG}
-		GROUP BY e.`batch_no`, z.`vung`
-		UNION ALL
-		SELECT b0.`name`, z.`vung`, 0, 0
-		FROM `tabBatch` b0 JOIN {KHO} z ON z.`kho` = COALESCE(NULLIF(b0.`npp_kho_tao`, ''),
-			(SELECT s.`value` FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'kho_ban'))
-		WHERE NOT EXISTS (SELECT 1 FROM `tabSerial and Batch Entry` e {_GOI} WHERE {_DONG} AND e.`batch_no` = b0.`name`)
+		{tu} {_GOI} JOIN {KHO} z ON z.`kho` = e.`warehouse`
+		WHERE {_DONG}{loc_lo}
+		GROUP BY e.`batch_no`, z.`vung`{lo_rong}
 	) t
 	JOIN `tabBatch` b ON b.`name` = t.`lo`
 	LEFT JOIN (
 		SELECT e.`batch_no`, SUM(e.`stock_value_difference`) / NULLIF(SUM(e.`qty`), 0) AS `gia`
-		FROM `tabSerial and Batch Entry` e {_GOI}
-		WHERE {_DONG} AND e.`qty` > 0
+		{tu} {_GOI}
+		WHERE {_DONG} AND e.`qty` > 0{loc_lo}
 		GROUP BY e.`batch_no`
 	) gv ON gv.`batch_no` = t.`lo`
 	UNION ALL
@@ -54,6 +68,28 @@ NGUON_LO = f"""(
 		NULL, NULL, NULL, 0, NULL, NULL, NULL, bi.`creation`, NULL, bi.`valuation_rate`
 	FROM `tabBin` bi JOIN {KHO} z ON z.`kho` = bi.`warehouse` JOIN `tabItem` it ON it.`name` = bi.`item_code` AND it.`has_batch_no` = 0
 )"""
+
+
+NGUON_LO = nguon_lo()
+NGUON_LO_CON_TON = nguon_lo(con_ton=True)
+
+
+def nguon_theo_loc(dieu_goc: list) -> str | None:
+	"""Cổng `batches`: yêu cầu lọc ở mức gốc (AND) `qty_on_hand > x` (x ≥ 0) hoặc `qty_on_hand >= x` (x > 0), không phủ định → `NGUON_LO_CON_TON` (cùng dòng
+	kết quả, chỉ gộp gói lô của lô còn hàng): `bao_cao_ton_kho.lo`, màn chọn lô / tồn (`gt qty_on_hand 0`), `/dashboard` (`gt 0` + `lt 10`). Bộ lọc khác
+	(kể cả trong `or(...)`) → nguồn đủ."""
+	from ..loc import Dieu
+
+	for d in dieu_goc:
+		if not isinstance(d, Dieu) or d.cot != "qty_on_hand" or d.phu_dinh or d.op not in ("gt", "gte") or isinstance(d.gt, bool):
+			continue
+		try:
+			x = float(d.gt)
+		except (TypeError, ValueError):
+			continue
+		if (d.op == "gt" and x >= 0) or (d.op == "gte" and x > 0):
+			return NGUON_LO_CON_TON
+	return None
 
 
 # ------------------------------------------------------------------------------------------------ giá dòng chứng từ kho (đặc tả kho_mua §10 điểm 3–5)
@@ -169,6 +205,7 @@ def nap():
 		rls=rls_moi_nv,
 		ghi=GhiLo(),
 		an_cot={"unit_cost": xem_gia_von},
+		nguon_theo_loc=nguon_theo_loc,
 	))
 
 

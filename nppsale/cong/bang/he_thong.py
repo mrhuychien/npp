@@ -475,12 +475,16 @@ class GhiBoQua:
 		return []
 
 
+# 🔧 C2 (đặc tả báo cáo P6 §3.3): ĐÚNG 12 cột của bảng nppsale (`workflow_sessions` mig T-05) — `/dashboard` → `PendingWorkWidget` → `listOpenSessions`
+# (src/lib/workflow/sessions.ts:141-156) chọn đủ 12 cột, lọc `is('closed_at', null)`, sắp `last_action_at desc`; thiếu cột cổng trả 42703 (widget chỉ
+# console.error). Nguồn rỗng: đọc trả `[]` sạch, ghi trả thành công không lưu (GhiBoQua). Bản cũ có `state` / `updated_at` — nppsale không có hai cột ấy.
+_COT_WS = {"id": "chuoi", "org_id": "chuoi", "user_id": "chuoi", "entity_type": "chuoi", "entity_id": "chuoi", "stage": "chuoi", "last_url": "chuoi",
+	"form_draft": "json", "entity_label": "chuoi", "last_action_at": "gio", "created_at": "gio", "closed_at": "gio"}
+
 dang_ky(Bang(
 	ten="workflow_sessions",
-	nguon="(SELECT NULL AS `id`, NULL AS `user_id`, NULL AS `entity_type`, NULL AS `entity_id`, NULL AS `stage`, NULL AS `state`, "
-	"NULL AS `updated_at` FROM DUAL WHERE 1 = 0)",
-	cot={k: c("{t}.`" + k + "`", "json" if k == "state" else "gio" if k == "updated_at" else "chuoi") for k in
-		("id", "user_id", "entity_type", "entity_id", "stage", "state", "updated_at")},
+	nguon="(SELECT " + ", ".join(f"NULL AS `{k}`" for k in _COT_WS) + " FROM DUAL WHERE 1 = 0)",
+	cot={k: c("{t}.`" + k + "`", kieu) for k, kieu in _COT_WS.items()},
 	rls=rls_moi_nv,
 	ghi=GhiBoQua(),
 ))

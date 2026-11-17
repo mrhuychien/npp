@@ -38,6 +38,46 @@ def _bieu(bang: D.Bang, ten_cot: str, bd: str) -> tuple[str, D.CotDef]:
 	return cd.sql.replace("{t}", bd), cd
 
 
+# Múi giờ của site (System Settings.time_zone — Frappe lưu datetime KHÔNG múi giờ theo giờ ấy). Tệp này thuần: phía Frappe gắn hàm đọc múi giờ
+# (`truy_van._mui_gio`, `dat_mui_gio`); bài thuần dùng mặc định giờ VN (một site = một NPP ở VN — đặc tả báo cáo §0.3).
+_MUI_GIO: dict = {"ham": None}
+
+
+def dat_mui_gio(ham) -> None:
+	_MUI_GIO["ham"] = ham
+
+
+def _mui_gio_site():
+	ham = _MUI_GIO["ham"]
+	if ham is not None:
+		return ham()
+	from zoneinfo import ZoneInfo
+
+	return ZoneInfo("Asia/Ho_Chi_Minh")
+
+
+def gio_loc(v):
+	"""🔧 C1 (đặc tả báo cáo P6 §3.3, L5): giá trị lọc của cột kiểu `gio` — chuỗi / datetime CÓ múi giờ (`…Z`, `…+07:00`, `…-05:00`) → chuỗi giờ SITE
+	không múi giờ `YYYY-MM-DD HH:MM:SS.ffffff` (như phía ghi `_chung.gio_vao`). MariaDB 10.11 tự cắt đuôi múi giờ (cảnh báo 1292) rồi so như giờ địa
+	phương: `+07:00` đúng nhờ trùng giờ site, `Z` LỆCH 7 GIỜ (`/reports` trang gộp lọc `receivables.created_at ≥ toISOString()`, `/analytics/customers/
+	overview` đếm khách mới). Chuỗi KHÔNG múi giờ / chỉ ngày giữ nguyên (đọc như giờ site — Postgres phiên UTC hiểu là UTC: ⚠K nhỏ, ❓Q5); giá trị
+	không đọc được giữ nguyên (MariaDB tự xử như trước)."""
+	import datetime as _dt
+
+	if isinstance(v, str):
+		try:
+			d = _dt.datetime.fromisoformat(v.strip())
+		except ValueError:
+			return v
+	elif isinstance(v, _dt.datetime):
+		d = v
+	else:
+		return v
+	if d.tzinfo is None:
+		return v
+	return d.astimezone(_mui_gio_site()).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
 def _ep(cd: D.CotDef, v):
 	"""Giá trị bộ lọc → giá trị so sánh theo kiểu cột."""
 	if v is None:
@@ -46,6 +86,8 @@ def _ep(cd: D.CotDef, v):
 		if isinstance(v, str):
 			return 1 if v.strip().lower() in ("true", "t", "1", "yes") else 0
 		return 1 if v else 0
+	if cd.kieu == "gio":
+		return gio_loc(v)
 	return v
 
 
@@ -242,6 +284,12 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 		dieu_goc, dieu_long = L.doc_loc(yc.get("loc"))
 	except (C.LoiChon, L.LoiLoc) as e:
 		raise LoiCong("PGRST100", str(e))
+	if bang.nguon_theo_loc is not None:
+		khac = bang.nguon_theo_loc(dieu_goc)
+		if khac:
+			from dataclasses import replace
+
+			bang = replace(bang, nguon=khac)
 	ts = BoThamSo()
 	bd = "q_b"  # bí danh bảng gốc — đặt lạ để không đụng bí danh trong câu con của sổ đăng ký (b, d, l…)
 	cot, nut_long, nut_gop = _cot_chon(bang, nut_chon, bd)

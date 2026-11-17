@@ -8,28 +8,18 @@ thấy dòng công nợ nào. Nợ = Σ(amount − paid) KHÔNG kẹp 0 (dư có
 """
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 import frappe
 from frappe.utils import getdate, nowdate
 
 from nppsale.cong.ngu_canh import hien_tai
 from nppsale.cong.truy_van import doc
+from nppsale.luat.so import d as _d
+from nppsale.luat.so import ra as _ra
+from nppsale.luat.so import tron as _tron
 
 from . import rpc
-
-
-def _d(v) -> Decimal:
-	return Decimal(str(v)) if v is not None else Decimal(0)
-
-
-def _ra(x: Decimal):
-	"""numeric của Postgres ra JSON: số nguyên không phần lẻ."""
-	return int(x) if x == x.to_integral_value() else float(x)
-
-
-def _tron(x: Decimal) -> int:
-	return int(x.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def _doc(nc, bang: str, select: str, loc: list | None = None) -> list[dict]:
@@ -137,19 +127,30 @@ def receivables_summary():
 
 @rpc("bao_cao_cong_no", ghi=False)
 def bao_cao_cong_no(p_tu_thu=None, p_tu_90=None):
+	"""P6 M0 (đặc tả báo cáo §2.12 / L11): tham số ép kiểu `date` như PostgREST (`_ngay`: '' / chữ → 22007 — trước đây '' bị coi như NULL); thân chạy dưới
+	hẹn 40 s của `bao_cao_*` (quá hạn → 57014)."""
+	from nppsale.luat.bao_cao import HET_GIO_BAO_CAO
+
+	from .bao_cao import _chay, _ngay
+
+	tu_thu, tu_90 = _ngay(p_tu_thu), _ngay(p_tu_90)
+	return _chay(lambda: _bao_cao_cong_no(tu_thu, tu_90), HET_GIO_BAO_CAO)
+
+
+def _bao_cao_cong_no(tu_thu, tu_90) -> dict:
 	nc = hien_tai()
 	phieu = _doc(nc, "receivables", "id, customer_id, sales_user_id, invoice_id, return_id, amount, paid, due_date, status, created_at, "
 		"invoice:sales_invoices(invoice_code, invoice_date)")
 	theo_id = {p["id"]: p for p in phieu}
 	mo = [p for p in phieu if p["status"] != "paid"]
 	gan90 = []
-	if p_tu_90:
-		moc = f"{getdate(p_tu_90).isoformat()}T00:00:00+07:00"
+	if tu_90 is not None:
+		moc = f"{tu_90.isoformat()}T00:00:00+07:00"
 		gan90 = _doc(nc, "receivables", "id", [{"op": "gte", "cot": "created_at", "gt": moc}])
 		gan90 = [theo_id[x["id"]] for x in gan90 if x["id"] in theo_id]
 	thu = []
-	if p_tu_thu:
-		moc = f"{getdate(p_tu_thu).isoformat()}T00:00:00+07:00"
+	if tu_thu is not None:
+		moc = f"{tu_thu.isoformat()}T00:00:00+07:00"
 		for t in _doc(nc, "payments", "id, amount, method, collected_at, receivable_id", [{"op": "gte", "cot": "collected_at", "gt": moc}]):
 			thu.append({**t, "receivable": theo_id.get(t["receivable_id"])})
 	return {"mo": mo, "gan90": gan90, "thu": thu}

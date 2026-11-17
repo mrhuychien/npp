@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 import frappe
 
 from . import dang_ky as D
+from . import sql as _S
 from .sql import KeHoach, KeHoachLong, LoiCong, cau_long, ke_hoach_doc
 
 LO = 500  # số khoá mỗi câu lấy bảng lồng
@@ -17,9 +18,14 @@ LO = 500  # số khoá mỗi câu lấy bảng lồng
 def _mui_gio():
 	tz = getattr(frappe.local, "_npp_tz", None)
 	if tz is None:
-		ten = frappe.db.get_single_value("System Settings", "time_zone") or "Asia/Ho_Chi_Minh"
+		# ngoài site (bài thuần nạp chung tiến trình với mô-đun nhập tệp này) không có sổ: giờ VN — một site = một NPP ở VN (đặc tả báo cáo §0.3)
+		ten = (frappe.db.get_single_value("System Settings", "time_zone") if getattr(frappe.local, "db", None) is not None else None) \
+			or "Asia/Ho_Chi_Minh"
 		tz = frappe.local._npp_tz = ZoneInfo(ten)
 	return tz
+
+
+_S.dat_mui_gio(_mui_gio)  # C1: giá trị lọc cột `gio` có múi giờ đổi sang giờ site (sql.gio_loc)
 
 
 def chuan_gia_tri(kieu: str | None, v):

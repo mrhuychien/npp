@@ -59,6 +59,9 @@ class Bang:
 	an_cot: dict = field(default_factory=dict)
 	# khi yêu cầu không sắp: [{"cot": …, "tang": bool}] hoặc `sql.SapXepNoiBo` (biểu thức trên cột nguồn — dòng con theo idx như Postgres)
 	thu_tu_mac_dinh: list = field(default_factory=list)
+	# nguồn thay theo bộ lọc mức gốc của yêu cầu (danh sách điều kiện AND): trả biểu thức FROM khác (CÙNG dòng kết quả với bộ lọc ấy, rẻ hơn) hoặc None —
+	# vd `batches` lọc `qty_on_hand > 0` chỉ gộp gói lô của lô còn hàng (nppsale.cong.bang.kho.nguon_theo_loc — P6 M0)
+	nguon_theo_loc: Callable[[list], str | None] | None = None
 
 	def cot_def(self, ten: str) -> CotDef | None:
 		return self.cot.get(ten)

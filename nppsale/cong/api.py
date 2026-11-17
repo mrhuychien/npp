@@ -38,6 +38,13 @@ def _phuong_thuc() -> str:
 def _loi(e: Exception) -> dict:
 	if isinstance(e, (LoiCong, NppLoi)):
 		return {"error": e.to_dict(), "status": e.http}
+	if getattr(frappe.local, "db", None) is not None and frappe.db.is_statement_timeout(e):
+		# 🔧 L11 (đặc tả báo cáo P6, soát thiếu S6 / R21): MariaDB `1969 Query execution was interrupted (max_statement_time exceeded)` — Frappe không đổi
+		# lỗi này thành QueryTimeoutError (chỉ 1205) ⇒ trước đây rơi ra `500 XX000 "Lỗi máy chủ…"`. Trả đúng mã + câu Postgres (`57014`, HTTP 500 như
+		# PostgREST) để giao diện dịch `QUA_HAN_VI` (src/lib/errors.ts: bắt mã 57014 hoặc câu "canceling statement due to statement timeout").
+		from nppsale.luat.bao_cao import CAU_QUA_HAN, MA_QUA_HAN
+
+		return {"error": {"message": CAU_QUA_HAN, "code": MA_QUA_HAN, "details": None, "hint": None}, "status": 500}
 	if isinstance(e, frappe.PermissionError):
 		return {"error": {"message": "permission denied", "code": "42501", "details": str(e), "hint": None}, "status": 403}
 	if isinstance(e, frappe.ValidationError):
