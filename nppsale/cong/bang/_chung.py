@@ -170,7 +170,9 @@ class GhiDocType:
 				continue
 			if self.truoc_xoa:
 				self.truoc_xoa(ten)
-			frappe.delete_doc(self.doctype, ten, ignore_permissions=True)
+			from nppsale.day_so import xoa_giu_day_so
+
+			xoa_giu_day_so(self.doctype, ten)  # khách `KH-`: không lùi dãy — khách lập sau không nhận lại id vừa xoá (P4 đuôi; bảng UUID không đổi)
 			ra.append(ten)
 		return ra
 

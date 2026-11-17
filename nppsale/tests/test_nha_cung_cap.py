@@ -400,6 +400,30 @@ class TestNhaCungCap(IntegrationTestCase):
 		self.assertEqual((cint(frappe.db.get_value("Item", self.ma["B"], "npp_ngung_ban")), self._ncc_chinh("B")), (1, None))
 		self.assertFalse(frappe.db.exists("Item", self.ma["N"]))
 
+	def test_xoa_gop_khong_lui_day_so(self):
+		"""P4 đuôi (như F2 của phiếu nháp): xoá / gộp NCC mang số CUỐI của dãy `NCC-` KHÔNG lùi dãy — lõi `revert_series_if_last` (xoá thẳng lẫn
+		`rename_doc(merge)`) từng làm NCC lập sau nhận lại ĐÚNG id vừa xoá; màn còn giữ id cũ (danh sách, tab khác) sẽ chạm NCC mới. nppsale id uuid
+		không dùng lại (`nppsale.day_so`)."""
+		def moi(ten: str) -> str:
+			return self._ok(self._cong("CHU", {"bang": "suppliers", "hanh_dong": "insert", "select": "id", "gia_tri": {"org_id": self.ma["org"],
+				"name": ten}}))[0]["id"]
+
+		def so_dem(ten: str) -> int:
+			return cint(frappe.db.sql("SELECT `current` FROM `tabSeries` WHERE `name` = %s", ten.rsplit("-", 1)[0] + "-")[0][0])
+
+		a = moi("NCC Xoá Dãy")
+		dem = so_dem(a)
+		self.assertEqual(dem, cint(a.rsplit("-", 1)[1]))  # a mang số CUỐI của dãy
+		self._ok(self._rpc("CHU", "xoa_nha_cung_cap", {"p_id": a}))
+		self.assertFalse(frappe.db.exists("Supplier", a))
+		self.assertEqual(so_dem(a), dem)
+		b = moi("NCC Gộp Dãy")
+		self.assertNotEqual(b, a)
+		self._ok(self._rpc("KT", "gop_nha_cung_cap", {"p_tu": b, "p_vao": self.ma["S1"]}))
+		self.assertFalse(frappe.db.exists("Supplier", b))
+		self.assertEqual(so_dem(b), cint(b.rsplit("-", 1)[1]))
+		self.assertNotIn(moi("NCC Sau Gộp"), (a, b))
+
 	def test_mat_hang_co_chung_tu(self):
 		"""`_mat_hang_co_chung_tu`: dòng phiếu (nháp cũng tính), lô có gói lô (kể cả tồn 0), dòng kiểm kê; lô rỗng / giá KHÔNG tính."""
 		from nppsale.rpc.nha_cung_cap import mat_hang_co_chung_tu

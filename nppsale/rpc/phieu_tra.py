@@ -27,6 +27,7 @@ from frappe.utils import flt, nowdate
 
 from nppsale.cong.loi import NppLoi
 from nppsale.cong.sql import LoiCong
+from nppsale.day_so import xoa_giu_day_so
 
 from . import rpc
 
@@ -189,7 +190,7 @@ def xoa_phieu(ids: list[str], nc) -> list[str]:
 				continue
 			if r.tu_sinh:
 				raise NppLoi("RETURN_FOLLOWS_INVOICE: phiếu trả tự sinh theo hóa đơn — muốn sửa thì sửa hóa đơn")
-		frappe.delete_doc(DT, ten, ignore_permissions=True, force=True)
+		xoa_giu_day_so(DT, ten, force=True)  # P4 đuôi: không lùi dãy `PT-` (phiếu lập sau không nhận lại id vừa xoá — nppsale uuid)
 		ra.append(ten)
 	return ra
 

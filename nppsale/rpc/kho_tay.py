@@ -94,12 +94,11 @@ def _xep_repost():
 def xoa_nhap(ten: str, dt: str = DT) -> None:
 	"""Xoá phiếu kho NHÁP (huỷ nháp = xoá — §7.3 điểm 1) mà KHÔNG lùi dãy số: lõi lùi `tabSeries` khi xoá tờ số cuối (`frappe/model/delete_doc.py:195`
 	→ `revert_series_if_last`) nên phiếu lập sau nhận lại ĐÚNG tên ấy — màn còn giữ id cũ (danh sách, chi tiết, dọn nháp hỏng của màn xuất lẻ) sẽ chạm
-	nhầm phiếu mới (nppsale id uuid không bao giờ dùng lại; mã `XKL-<base36>` cũng không). Giữ số đếm của mọi dãy là tiền tố của tên."""
-	tien_to = tuple(ten[:i] for i in range(1, len(ten)))
-	truoc = frappe.db.sql("SELECT `name`, `current` FROM `tabSeries` WHERE `name` IN %s", (tien_to,)) if tien_to else ()
-	frappe.delete_doc(dt, ten, ignore_permissions=True, force=True)
-	for day, hien in truoc:
-		frappe.db.sql("UPDATE `tabSeries` SET `current` = %s WHERE `name` = %s AND `current` < %s", (hien, day, hien))
+	nhầm phiếu mới (nppsale id uuid không bao giờ dùng lại; mã `XKL-<base36>` cũng không). Giữ số đếm của mọi dãy là tiền tố của tên — một luật với
+	mọi chỗ xoá bản ghi đặt tên theo dãy (`nppsale.day_so`)."""
+	from nppsale.day_so import xoa_giu_day_so
+
+	xoa_giu_day_so(dt, ten, force=True)
 
 
 # ================================================================================================ nguồn của cổng `stock_entries` (§4.5)

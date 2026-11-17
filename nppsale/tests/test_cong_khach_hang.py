@@ -67,6 +67,21 @@ class TestCongKhachHang(IntegrationTestCase):
 		r = doc({"bang": "customers", "select": "id, group_id", "loc": [{"op": "eq", "cot": "id", "gt": k}]}, self.chu)["data"][0]
 		self.assertIsNone(r["group_id"])
 
+	def test_xoa_khach_khong_lui_day_so(self):
+		"""P4 đuôi: xoá khách mang số CUỐI của dãy `KH-` qua cổng (bộ ghi chung `GhiDocType.xoa` — chỉ Chủ NPP) KHÔNG lùi dãy — khách lập sau không
+		nhận lại id vừa xoá (lõi `revert_series_if_last`; nppsale id uuid, màn / bộ đệm danh mục còn giữ id cũ — `nppsale.day_so`)."""
+		def so_dem(ten: str) -> int:
+			return int(frappe.db.sql("SELECT `current` FROM `tabSeries` WHERE `name` = %s", ten.rsplit("-", 1)[0] + "-")[0][0])
+
+		k = _them_khach(self.chu, "Tạp hoá xoá dãy", "0916000790")
+		dem = so_dem(k)
+		self.assertEqual(dem, int(k.rsplit("-", 1)[1]))  # k mang số CUỐI của dãy
+		ra = _ghi({"bang": "customers", "hanh_dong": "delete", "loc": [{"op": "eq", "cot": "id", "gt": k}], "select": "id"}, self.chu)
+		self.assertEqual(ra["data"], [{"id": k}])
+		self.assertFalse(frappe.db.exists("Customer", k))
+		self.assertEqual(so_dem(k), dem)
+		self.assertNotEqual(_them_khach(self.chu, "Tạp hoá sau xoá", "0916000791"), k)
+
 	def test_nvbh_chi_thay_khach_minh(self):
 		k_a = _them_khach(self.a, "Tạp hoá A", "0987 000 001")  # A tạo → A thấy (created_by)
 		k_chu = _them_khach(self.chu, "Tạp hoá Chủ", "0987000002")

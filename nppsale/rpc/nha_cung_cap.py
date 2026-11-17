@@ -36,6 +36,7 @@ from frappe.utils import cint, flt, getdate, nowdate
 
 from nppsale.cong.loi import NppLoi
 from nppsale.cong.ngu_canh import hien_tai
+from nppsale.day_so import giu_day_so, xoa_giu_day_so
 from nppsale.luat import kho_mua as K
 from nppsale.luat import nha_cung_cap as L
 from nppsale.luat.tim import khoa_tim_ds
@@ -187,7 +188,8 @@ def gop_nha_cung_cap(p_tu=None, p_vao=None):
 	# 4. đổi mọi Dynamic Link rồi mọi Link sang NCC giữ lại, xoá NCC bị gộp (merge của lõi luôn xoá — ⚠K: không có nhánh "xoá không được → ngừng hợp
 	#    tác"); `frappe.model.rename_doc` vì `frappe.rename_doc` không nhận ignore_permissions (vai NPP không có quyền ghi Supplier ở lớp Frappe)
 	_doi_dynamic_link(tu, vao)
-	rename_doc(doctype="Supplier", old=tu, new=vao, merge=True, force=True, ignore_permissions=True, show_alert=False, rebuild_search=False)
+	with giu_day_so(tu):  # merge xoá NCC bị gộp bằng delete_doc → lõi lùi dãy `NCC-` nếu là số cuối (P4 đuôi — `nppsale.day_so`)
+		rename_doc(doctype="Supplier", old=tu, new=vao, merge=True, force=True, ignore_permissions=True, show_alert=False, rebuild_search=False)
 	frappe.local.message_log = []
 	# 5. chiếu lại các dòng công nợ vừa sang NCC giữ lại (khoá chờ đầu kỳ, tên NCC); KHÔNG dồn trả trước (như nppsale — tới sự kiện kế tiếp)
 	for r in dong_no:
@@ -262,7 +264,7 @@ def xoa_nha_cung_cap(p_id=None, p_xoa_hang=_KHONG_TRUYEN):
 	# 3. phân công NV (`user_suppliers` CASCADE) rồi NCC
 	frappe.db.delete(DT_PC, {"nha_cung_cap": ncc})
 	try:
-		frappe.delete_doc("Supplier", ncc, ignore_permissions=True)
+		xoa_giu_day_so("Supplier", ncc)  # P4 đuôi: không lùi dãy `NCC-` — NCC lập sau không nhận lại id vừa xoá (nppsale uuid)
 	except frappe.LinkExistsError:
 		# chứng từ ngoài các bảng nppsale (lập ở Desk…) còn trỏ NCC — nppsale không có; giữ mã + lời mời của câu
 		frappe.local.message_log = []

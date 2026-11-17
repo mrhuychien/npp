@@ -93,6 +93,58 @@ class TestPhieuTraCong(IntegrationTestCase):
 		self.assertEqual(xoa["data"], [{"id": pt["id"]}])
 		self.assertFalse(frappe.db.exists("NPP Phieu Tra", pt["id"]))
 
+	def test_xoa_nhap_khong_lui_day_so(self):
+		"""P4 đuôi (như F2 của phiếu kho nháp): xoá qua cổng phiếu trả NHÁP và đơn NHÁP (kèm phiếu trả nháp của đơn) mang số CUỐI của dãy `PT-` / `DH-`
+		KHÔNG lùi dãy — phiếu / đơn lập sau không nhận lại id vừa xoá (lõi `revert_series_if_last`; nppsale id uuid — `nppsale.day_so`)."""
+		import uuid
+
+		from nppsale.tests.test_tao_don import doi_khoa
+
+		def so_dem(ten: str) -> int:
+			return int(frappe.db.sql("SELECT `current` FROM `tabSeries` WHERE `name` = %s", ten.rsplit("-", 1)[0] + "-")[0][0])
+
+		def xoa(nguoi: str, bang: str, ten: str) -> list:
+			return self._ghi(nguoi, {"bang": bang, "hanh_dong": "delete", "loc": [{"op": "eq", "cot": "id", "gt": ten}], "select": "id"})["data"]
+
+		k = self.ma["C1"]
+
+		def pt_moi() -> str:
+			return self._ghi("sales_a", {"bang": "returns", "hanh_dong": "insert", "gia_tri": {"customer_id": k, "status": "draft"},
+				"select": "id"})["data"][0]["id"]
+
+		a = pt_moi()
+		dem = so_dem(a)
+		self.assertEqual(dem, int(a.rsplit("-", 1)[1]))  # a mang số CUỐI của dãy
+		self.assertEqual(xoa("sales_a", "returns", a), [{"id": a}])
+		self.assertFalse(frappe.db.exists("NPP Phieu Tra", a))
+		self.assertEqual(so_dem(a), dem)
+		self.assertNotEqual(pt_moi(), a)
+		# đơn nháp kèm phiếu trả của đơn: xoá đơn (cổng sales_orders → sua_don.xoa_don) xoá theo phiếu trả nháp — cả hai dãy giữ số
+		t = next(x for x in self.vang["tinh_huong"] if x["ma"] == "xuat_du_mot_lo")
+
+		def don_moi() -> tuple:
+			p = doi_khoa(t["buoc"][0]["p"], self.ma)
+			p["client_request_id"] = str(uuid.uuid4())
+			p["order"]["status"] = "draft"
+			p["returns"] = {"reason": "damaged"}
+			p["return_lines"] = [{"product_id": self.ma["P1"], "unit_name": "Lon", "quantity": 1, "unit_price": 9500, "vat_rate": 0.08}]
+			p["order"]["total"] = p["order"]["total"] - 10260
+			ket = self._goi("sales_a", "create_order_with_lines", {"p": p})
+			self.assertNotIn("error", ket, ket)
+			don = ket["data"][0]["order_id"]
+			return don, frappe.db.get_value("NPP Phieu Tra", {"don_hang": don}, "name")
+
+		d1, p1 = don_moi()
+		self.assertTrue(p1)
+		dem_dh, dem_pt = so_dem(d1), so_dem(p1)
+		self.assertEqual((dem_dh, dem_pt), (int(d1.rsplit("-", 1)[1]), int(p1.rsplit("-", 1)[1])))
+		self.assertEqual(xoa("sales_a", "sales_orders", d1), [{"id": d1}])  # đơn nháp chỉ người đứng tên thấy / xoá (RLS sales_orders)
+		self.assertFalse(frappe.db.exists("Sales Order", d1) or frappe.db.exists("NPP Phieu Tra", p1))
+		self.assertEqual((so_dem(d1), so_dem(p1)), (dem_dh, dem_pt))
+		d2, p2 = don_moi()
+		self.assertNotEqual(d2, d1)
+		self.assertNotEqual(p2, p1)
+
 	def _goi(self, nguoi: str, ten: str, ts: dict) -> dict:
 		from nppsale.cong import api
 

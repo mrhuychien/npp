@@ -21,6 +21,7 @@ from frappe.utils import flt, now_datetime
 from nppsale.cong.loi import NppLoi
 from nppsale.cong.ngu_canh import co_quyen, hien_tai
 from nppsale.cong.sql import LoiCong
+from nppsale.day_so import xoa_giu_day_so
 from nppsale.luat import gia_don as L
 from nppsale.npp_he_thong.doctype.npp_nhat_ky_don.npp_nhat_ky_don import ghi_nhat_ky_don
 from nppsale.npp_he_thong.doctype.npp_thong_bao.npp_thong_bao import gui_thong_bao
@@ -424,7 +425,7 @@ def xoa_don(ids: list[str], nc) -> list[str]:
 				raise NppLoi(f"Đơn {ten} có {xong} phiếu trả hàng ĐÃ HOÀN THÀNH (đã trừ công nợ / nhập lại kho) nên không xoá được. Huỷ phiếu "
 					"trả đó trước, hoặc giữ đơn.", goi_y="returns.order_id")
 			for pt in frappe.get_all("NPP Phieu Tra", filters={"don_hang": ten}, pluck="name"):
-				frappe.delete_doc("NPP Phieu Tra", pt, ignore_permissions=True, force=True)
+				xoa_giu_day_so("NPP Phieu Tra", pt, force=True)  # không lùi dãy `PT-` (P4 đuôi — nppsale.day_so)
 		for g in frappe.get_all("NPP Ghe Tham", filters={"don_hang": ten}, pluck="name"):
 			frappe.db.set_value("NPP Ghe Tham", g, "don_hang", None, update_modified=False)
 		if da_xuat:
@@ -432,7 +433,7 @@ def xoa_don(ids: list[str], nc) -> list[str]:
 				'table "sales_invoices"', f'Key (id)=({ten}) is still referenced from table "sales_invoices".', http=409)
 		for k in frappe.get_all("NPP Nhat Ky Don", filters={"don": ten}, pluck="name"):  # ON DELETE CASCADE
 			frappe.delete_doc("NPP Nhat Ky Don", k, ignore_permissions=True, force=True)
-		frappe.delete_doc("Sales Order", ten, ignore_permissions=True, force=True)
+		xoa_giu_day_so("Sales Order", ten, force=True)  # không lùi dãy `DH-`: đơn lập sau không nhận lại id vừa xoá (P4 đuôi — nppsale uuid)
 		ra.append(ten)
 	return ra
 
