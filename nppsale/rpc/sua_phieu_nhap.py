@@ -77,12 +77,13 @@ def _tu_dong_ra(lo: str, kho: str, cd) -> float:
 	return -sum(flt(q) for vt, vn, k, q, _l in _phat_sinh(lo) if k == kho and flt(q) < 0 and vt == "Stock Entry" and _tu_dong(vn, cd))
 
 
-def _lo_cu(doc, cd) -> tuple[list[K.LoCu], dict, set]:
-	"""Lô của tờ: ([LoCu], {mã lô: (dòng, kho, SL nhập)}, chứng từ đã lấy hàng từ các lô — HĐ, xuất lẻ, trả NCC, chuyển kho tay… — cho câu lỗi nhánh B)."""
+def _lo_cu(doc, cd) -> tuple[list[K.LoCu], set]:
+	"""Lô của tờ: ([LoCu — đã xuất theo `luat.sua_phieu_nhap.da_xuat_lo`], chứng từ đã lấy hàng từ các lô — HĐ, xuất lẻ, trả NCC, chuyển kho tay… —
+	cho câu lỗi nhánh B; phiếu rà soát tự động không tính)."""
 	from nppsale.rpc.lo_kho import _phat_sinh, _tu_dong
 
 	lo_dong = P._lo_cua_dong(doc.name)
-	ra, chi_tiet, chung_tu = [], {}, set()
+	ra, chung_tu = [], set()
 	for d in sorted(doc.items, key=lambda x: x.idx):
 		lo = lo_dong.get(d.name)
 		if not lo:
@@ -94,11 +95,10 @@ def _lo_cu(doc, cd) -> tuple[list[K.LoCu], dict, set]:
 		tu_dong = _tu_dong_ra(lo, d.warehouse, cd)
 		da_xuat = S.da_xuat_lo(round(nhap, 6), round(ton_dong, 6), round(tu_dong, 6), round(ton_khac, 6))
 		ra.append(K.LoCu(ma=lo, hang=d.item_code, da_xuat=da_xuat))
-		chi_tiet[lo] = (d, d.warehouse, nhap)
 		for vt, vn, _k, q, _l in ps:
 			if flt(q) < 0 and vn != doc.name and not (vt == "Stock Entry" and _tu_dong(vn, cd)):
 				chung_tu.add(vn)
-	return ra, chi_tiet, chung_tu
+	return ra, chung_tu
 
 
 def _tk_giam(cd) -> str:
@@ -177,7 +177,7 @@ def sua_phieu_nhap(p_invoice_id=None, p_head=None, p_lines=None):
 		from nppsale.rpc.xuat_hang import _khoa_bin
 
 		_khoa_bin(moi_hang, cd)
-	lo_cu, chi_tiet, chung_tu = _lo_cu(doc, cd)
+	lo_cu, chung_tu = _lo_cu(doc, cd)
 	ten_hang = dict(frappe.get_all("Item", filters={"name": ("in", list({d.hang for d in dong} | {o.hang for o in lo_cu}))},
 		fields=["name", "item_name"], as_list=True))
 	dv_cs = dict(frappe.get_all("Item", filters={"name": ("in", list({o.hang for o in lo_cu}) or [""])}, fields=["name", "stock_uom"], as_list=True))

@@ -3,6 +3,7 @@
 Ép kiểu đo trên Postgres 16 của bản tham chiếu (/tmp/pg-npp, 17/11/2026): `' 12 '::numeric` = 12, `'1e3'::numeric` = 1000, `'  '::numeric` / `'true'::numeric`
 / `'2026-02-30'::date` → 22P02, `'2026-10-01T10:00:00'::date` / `' 2026-10-01 '::date` = 2026-10-01, `'[1,2]'::jsonb->>'a'` / `'"x"'::jsonb->>'a'` = NULL.
 """
+import json
 import unittest
 from datetime import date
 from decimal import Decimal
@@ -56,7 +57,11 @@ class TestThamSo(unittest.TestCase):
 		self.assertEqual(S.ngay_hd(S.doc_dau({"invoice_date": "2026-11-02T10:00:00"}, "S1", "sale"), cu), date(2026, 11, 2))
 		self.assertEqual(S.ngay_hd(S.doc_dau({"invoice_date": " 2026-11-02 "}, "S1", "sale"), cu), date(2026, 11, 2))
 		d = S.doc_dau({"invoice_date": "2026-02-30"}, "S1", "sale")  # doc_dau KHÔNG ép kiểu ngày (hàm gốc ép ở câu UPDATE cuối)
-		for x in ("2026-02-30", "02/11/2026", "abc"):
+		# phần giờ hợp lệ Postgres bỏ (đo Postgres 16, 17/11/2026)
+		for x in ("2026-11-02T10:00:00Z", "2026-11-02T10:00:00.123Z", "2026-11-02 10:00:00 +0700", "2026-11-02T10:00:00+07:00", "2026-11-02T1:5"):
+			self.assertEqual(S.ngay_hd(S.doc_dau({"invoice_date": x}, "S1", "sale"), cu), date(2026, 11, 2), x)
+		for x in ("2026-02-30", "02/11/2026", "abc", "2026-11-02abc", "2026-11-02 abc", "2026-11-02T", "2026-11-02 10", "2026-11-02T25:00:00",
+				"2026-11-02T10:61"):
 			with self.assertRaises(NppLoi) as e:
 				S.ngay_hd(S.doc_dau({"invoice_date": x}, "S1", "sale"), cu)
 			self.assertEqual(_ma(e), S.BAD_PAYLOAD, x)
@@ -122,6 +127,9 @@ class TestDaXuatVaNhanh(unittest.TestCase):
 		self.assertEqual(S.da_xuat_lo(48, 0, 18, 13), 35)  # … rồi xuất lẻ 5 ở kho date
 		self.assertEqual(S.da_xuat_lo(48, 40, 0, 8), 8)  # chuyển kho TAY 8 sang date: vẫn là đã xuất (nppsale lô nguồn giảm)
 		self.assertEqual(S.da_xuat_lo(10, 12, 0, 0), -2)  # lô nhận thêm (hàng khách trả nhập lại) — âm giữ nguyên
+		# phần rà soát chỉ trừ khi CẢ HAI vế dương (chuyển tự động vào lại kho dòng / tồn âm ở kho kia không cộng thêm "đã xuất")
+		self.assertEqual(S.da_xuat_lo(10, 4, -3, 5), 6)
+		self.assertEqual(S.da_xuat_lo(10, 4, 3, -2), 6)
 
 	def test_chi_sua_gia(self):
 		moi = S.doc_dong([{"product_id": "A", "unit_name": "thùng", "quantity": 2, "unit_price": 264000, "conversion_factor": 24}])
@@ -141,6 +149,9 @@ class TestDaXuatVaNhanh(unittest.TestCase):
 		self.assertEqual(S.loi_ncc_da_tra_tien(Decimal(100000)).ma,
 			"NCC_DA_TRA_TIEN: Phiếu đã trả NCC 100000 — không đổi nhà cung cấp được. Gỡ phiếu chi / Ghi trả trước.")
 		self.assertEqual(S.loi_ncc_da_tra_tien(K.so(round(100000.0, 2))).ma.split(" — ")[0], "NCC_DA_TRA_TIEN: Phiếu đã trả NCC 100000")
+		# số in như RAISE '%' của numeric kể cả khi nhận float của Frappe (`100000.0` → `100000`, `6.5` giữ)
+		self.assertEqual(S.loi_ncc_da_tra_tien(100000.0).ma.split(" — ")[0], "NCC_DA_TRA_TIEN: Phiếu đã trả NCC 100000")
+		self.assertEqual(S.loi_ncc_da_tra_tien(6.5).ma.split(" — ")[0], "NCC_DA_TRA_TIEN: Phiếu đã trả NCC 6.5")
 
 
 class TestSuaGia(unittest.TestCase):
@@ -184,6 +195,8 @@ class TestSuaGia(unittest.TestCase):
 		self.assertEqual(x["dong"], {"1": {"don_gia": 264000, "giam_dong": 0, "thue_suat": 0.1, "thanh_tien": 528000, "ghi_chu": "n"}})
 		self.assertEqual(x["dau_phieu"], {"giam": 5000, "giam_ap": 5000, "thue_go_tay": None, "tien_hang": 528000, "thue": 52800, "tong": 575800})
 		self.assertEqual([y["but_toan"] for y in x["lan_sua"]], ["DCN-0001", "DCN-0002"])  # lần sửa nối tiếp
+		# chữ JSON lưu ở sổ: số nguyên không mang `.0` (đọc trên Desk / cổng CAST như nhau)
+		self.assertIn('"don_gia": 264000, "giam_dong": 0, "thue_suat": 0.1, "thanh_tien": 528000', json.dumps(x["dong"]))
 		self.assertEqual(S.json_sua_gia(None, [], S.doc_dau({"vat_override": 0}, "S1", "sale"), so, {})["dau_phieu"]["thue_go_tay"], 0)
 
 

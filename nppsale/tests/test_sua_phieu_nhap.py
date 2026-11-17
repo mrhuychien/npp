@@ -241,6 +241,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self.assertEqual(self._lo(f"{ten}-001"), {"sale": (18.0, 11000.0, 48.0, "available")})
 		self.assertEqual({k: flt(v) if k != "trang_thai" and k != "nha_cung_cap" else v for k, v in self._no(ten).items()},
 			{"so_tien": 528000, "da_tra": 100000, "con_no": 428000, "trang_thai": "partial", "nha_cung_cap": self.ma["S1"]})
+		self.assertEqual(frappe.db.get_value("NPP Cong No NCC", {"chung_tu": ten}, "so_hd_ncc"), "HD-NCC-9")  # số HĐ mới về dòng nợ
 		self.assertEqual(flt(frappe.db.get_value("Item Price", {"item_code": self.ma["A"], "price_list": self.cd.bang_gia_nhap, "uom": pi.items[0].uom},
 			"price_list_rate")), 264000)
 		self.assertTrue(self.repost)
@@ -260,7 +261,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		dau = {"supplier_id": "@S1", "invoice_number": "HD-NCC-9", "invoice_date": "@hom_nay-46", "warehouse_zone": "sale", "discount": 0,
 			"vat_override": None, "notes": "sửa giá"}
 		dong = [("A", "thùng", 2, 264000, 0, 0, 24)]
-		for mo_ta, ket in (
+		for _mo_ta, ket in (
 				("đổi đơn vị", self._sua("P", [("A", "hộp", 48, 11000)], dau=dau)),
 				("đổi SL", self._sua("P", [("A", "thùng", 3, 264000, 0, 0, 24)], dau=dau)),
 				("đổi hệ số", self._sua("P", [("A", "thùng", 2, 264000, 0, 0, 20)], dau=dau)),
@@ -382,7 +383,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 	# ------------------------------------------------------------------------------------------------ nhánh A — huỷ + amend
 	def test_nhanh_a_lo_va_kho(self):
 		ten = self._pn("P", [("A", "thùng", 2, 240000, 0, 0, 24)])
-		ket, tv = self._sua("P", [("A", "hộp", 30, 11000), ("B", "gói", 10, 5000)])
+		_ket, tv = self._sua("P", [("A", "hộp", 30, 11000), ("B", "gói", 10, 5000)])
 		self.assertEqual(tv, {"id": "pn:P", "total": 380000, "paid": 0, "so_dong": 2, "doi_gia_lo": 1})
 		p1 = self._ten("P")
 		self.assertEqual((p1, frappe.db.get_value(DT, ten, "docstatus"), frappe.db.get_value(DT, ten, "npp_ly_do_huy")),
@@ -396,7 +397,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		# bỏ dòng B → lô -002 tắt (cổng `cancelled`); thêm lại B → lô MỚI -003 (hậu tố theo MỌI Batch — nppsale cấp lại -002, KB21)
 		self._sua("P", [("A", "hộp", 30, 11000)])
 		self.assertEqual(self._lo(f"{ten}-002"), {"sale": (0.0, 5000.0, 0.0, "cancelled")})
-		ket, tv = self._sua("P", [("A", "hộp", 30, 11000), ("B", "gói", 4, 5000)])
+		_ket, tv = self._sua("P", [("A", "hộp", 30, 11000), ("B", "gói", 4, 5000)])
 		self.assertEqual((tv["id"], tv["total"], tv["doi_gia_lo"]), ("pn:P", 350000, 0))
 		self.assertEqual(self._lo(f"{ten}-003"), {"sale": (4.0, 5000.0, 4.0, "available")})
 		self.assertEqual(self._ten("P"), f"{ten}-3")
@@ -420,7 +421,9 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self._ok(buoc="chi", nguoi="KT", nhan="C1", ncc="@S1", tien=200000, cach="cash")
 		gtn = frappe.get_all("Payment Entry", filters={"npp_loai": "ghi_tra_ncc", "party": self.ma["S1"], "docstatus": 1}, pluck="name")[0]
 		pc = self.st["nhan"]["pc:C1"]
-		ket, tv = self._sua("P2", [("A", "thùng", 5, 160000, 0, 0, 24)])
+		p0 = self._pn("P0", [("B", "gói", 10, 5000)])  # khoản khác còn mở: thân huỷ nội bộ KHÔNG được dồn tiền phiếu chi vừa gỡ sang đây
+		_ket, tv = self._sua("P2", [("A", "thùng", 5, 160000, 0, 0, 24)])
+		self.assertEqual(flt(self._no(p0).da_tra), 0)
 		self.assertEqual(tv, {"id": "pn:P2", "total": 800000, "paid": 1200000, "so_dong": 1, "doi_gia_lo": 1})
 		moi = self._ten("P2")
 		self.assertEqual({k: flt(v) if k not in ("trang_thai", "nha_cung_cap") else v for k, v in self._no(moi).items()},
@@ -447,7 +450,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self.assertEqual(flt(self._no(moi).da_tra), 1000000)
 		self._kham()
 		# sửa LẦN NỮA lên 1.100.000: phần dư cũ gộp lại vào phiếu tiền, phân bổ lại hết
-		ket, tv = self._sua("P2", [("A", "thùng", 5, 220000, 0, 0, 24)])
+		_ket, tv = self._sua("P2", [("A", "thùng", 5, 220000, 0, 0, 24)])
 		self.assertEqual((tv["total"], tv["paid"]), (1100000, 1000000))
 		moi2 = self._ten("P2")
 		self.assertEqual(flt(frappe.db.sql("SELECT SUM(`allocated_amount`) FROM `tabPayment Entry Reference` WHERE `reference_name` = %s", moi2)[0][0]),
@@ -466,7 +469,12 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		huỷ P3-1 → bút toán dư huỷ trước, toàn bộ tiền phiếu chi về trả trước rồi dồn vào P4 (mig 242 `_tra_phan_bo_ve_truoc`)."""
 		self._pn("P3", [("A", "hộp", 10, 10000)])
 		self._ok(buoc="chi", nguoi="KT", nhan="C1", ncc="@S1", tien=100000, cach="cash")
-		ket, tv = self._sua("P3", [("A", "hộp", 6, 10000)])
+		# sửa TĂNG (TK): phiếu chi về trọn tờ mới, không phần dư — dòng trả trước tạm (hook huỷ chiếu ra) phải mất
+		_ket, tv = self._sua("P3", [("A", "hộp", 12, 10000)], nguoi="TK")
+		self.assertEqual((tv["total"], tv["paid"]), (120000, 100000))
+		self.assertFalse(frappe.db.exists("NPP Cong No NCC", {"phieu_chi": self.st["nhan"]["pc:C1"], "loai": "tra_truoc"}))
+		self._kham()
+		_ket, tv = self._sua("P3", [("A", "hộp", 6, 10000)], nguoi="TK")
 		self.assertEqual((tv["total"], tv["paid"]), (60000, 100000))
 		p4 = self._pn("P4", [("B", "gói", 10, 5000)])
 		self.assertEqual(flt(self._no(p4).da_tra), 0)
@@ -476,6 +484,11 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self.assertEqual((flt(self._no(p4).da_tra), self._no(p4).trang_thai), (50000, "paid"))
 		pc = self.st["nhan"]["pc:C1"]
 		self.assertEqual(flt(frappe.db.get_value("NPP Cong No NCC", {"phieu_chi": pc, "loai": "tra_truoc"}, "da_tra")), 50000)
+		self._kham()
+		# sửa P4 TĂNG (nhánh A): tờ amend là PI dương ghi sổ → dồn trả trước còn lại vào (đặc tả §2.8)
+		_ket, tv = self._sua("P4", [("B", "gói", 20, 5000)])
+		self.assertEqual((tv["total"], tv["paid"]), (100000, 100000))
+		self.assertFalse(frappe.db.exists("NPP Cong No NCC", {"phieu_chi": pc, "loai": "tra_truoc"}))
 		self._kham()
 
 	def test_nhanh_a_bu_tru_lap_lai(self):
@@ -488,7 +501,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		p = self._pn("P", [("A", "hộp", 10, 10000)])
 		self._ok(buoc="ghi_tra", nguoi="KT", no="@no:pn:P", tien=15000, cach="offset")
 		ctn = frappe.get_all("Journal Entry", filters={"npp_loai": "bu_tru_ncc", "docstatus": 1}, pluck="name")
-		ket, tv = self._sua("P", [("A", "hộp", 12, 10000)])
+		_ket, tv = self._sua("P", [("A", "hộp", 12, 10000)])
 		self.assertEqual((tv["total"], tv["paid"]), (120000, 15000))
 		moi = self._ten("P")
 		self.assertEqual(frappe.db.get_value("Journal Entry", ctn[0], "docstatus"), 2)
@@ -497,6 +510,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		x = frappe.get_doc("Journal Entry", lai[0])
 		self.assertEqual(sorted((a.reference_name, flt(a.debit_in_account_currency), flt(a.credit_in_account_currency)) for a in x.accounts),
 			sorted([(moi, 15000, 0), (self._b_ten("ptn:R"), 0, 15000)]))
+		self.assertEqual(x.npp_phieu_nhap, moi)  # khoản được trả của bút toán bù trừ = tờ còn hiệu lực
 		self.assertNotEqual(moi, p)
 		self.assertEqual(flt(self._no(moi).da_tra), 15000)
 		self._kham()
@@ -510,7 +524,7 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self._loi(self._sua("P", [("A", "hộp", 10, 10000)], dau={"supplier_id": "@S2"})[0],
 			"NCC_DA_TRA_TIEN: Phiếu đã trả NCC 1000 — không đổi nhà cung cấp được. Gỡ phiếu chi / Ghi trả trước.")
 		q = self._pn("Q", [("A", "hộp", 5, 10000)])
-		ket, tv = self._sua("Q", [("A", "hộp", 5, 10000)], dau={"supplier_id": "@S2"})
+		ket, _tv = self._sua("Q", [("A", "hộp", 5, 10000)], dau={"supplier_id": "@S2"})
 		self.assertNotIn("error", ket, ket)
 		moi = self._ten("Q")
 		self.assertEqual((frappe.db.get_value(DT, moi, "supplier"), self._no(moi).nha_cung_cap, self._no(q)), (self.ma["S2"], self.ma["S2"], None))

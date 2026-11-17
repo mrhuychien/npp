@@ -85,16 +85,18 @@ def so_jsonb(obj, khoa: str, mac_dinh=None) -> Decimal | None:
 	return g
 
 
-_NGAY = re.compile(r"(\d{4})-(\d{2})-(\d{2})([ T].*)?")
+_NGAY = re.compile(r"(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.\d+)?)?\s*(?:Z|[+-]\d{2}(?::?\d{2})?)?)?")
 
 
 def ngay_jsonb(obj, khoa: str, cu):
-	"""`COALESCE(NULLIF(x->>'khoa', '')::date, cũ)` — `YYYY-MM-DD` (có thể kèm giờ — `date_in` của Postgres bỏ phần giờ); sai → BAD_PAYLOAD."""
+	"""`COALESCE(NULLIF(x->>'khoa', '')::date, cũ)` — `YYYY-MM-DD`, có thể kèm giờ hợp lệ (`date_in` của Postgres bỏ phần giờ: `T10:00:00Z`,
+	` 10:00:00 +0700`, `T1:5`); sai → BAD_PAYLOAD (đo Postgres 16: `2026-11-02abc` / `2026-11-02 abc` / `2026-11-02T` / `2026-11-02 10` /
+	`T25:00:00` → 22P02 / 22008). Lệch còn lại (không gặp ở giao diện): `2026-11-021` Postgres đọc thành 2026-11-21, ở đây BAD_PAYLOAD."""
 	x = _nullif(obj, khoa)
 	if x is None:
 		return cu
 	m = _NGAY.fullmatch(x.strip())
-	if not m:
+	if not m or (m.group(4) is not None and (int(m.group(4)) > 24 or int(m.group(5)) > 59 or int(m.group(6) or 0) > 60)):
 		raise NppLoi(BAD_PAYLOAD)
 	try:
 		return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
