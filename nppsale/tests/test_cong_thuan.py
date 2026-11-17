@@ -111,14 +111,50 @@ class TestSql(unittest.TestCase):
 		self.assertEqual([c[0] for c in kh.cot_ra], ["id", "order_code", "total"])
 
 	def test_thu_tu_mac_dinh_bieu_thuc_nguon(self):
-		"""`thu_tu_mac_dinh` nhận `{"sql": …}` — biểu thức trên cột NGUỒN không phải cột nppsale (dòng phiếu kho theo `idx` như Postgres trả theo thứ tự
-		chèn — nppsale.cong.bang.phieu_kho); yêu cầu có `thu_tu` thì bỏ thứ tự mặc định."""
+		"""`thu_tu_mac_dinh` nhận `SapXepNoiBo(…)` — biểu thức trên cột NGUỒN không phải cột nppsale (dòng phiếu kho theo `idx` như Postgres trả theo
+		thứ tự chèn — nppsale.cong.bang.phieu_kho); yêu cầu có `thu_tu` thì bỏ thứ tự mặc định."""
 		D.dang_ky(D.Bang(ten="dong_thu", nguon="`tabX Detail`", khoa="id", cot={"id": D.CotDef("{t}.`name`"), "cha": D.CotDef("{t}.`parent`")},
-			thu_tu_mac_dinh=[{"cot": "cha"}, {"sql": "{t}.`idx`"}]))
+			thu_tu_mac_dinh=[{"cot": "cha"}, S.SapXepNoiBo("{t}.`idx`")]))
 		kh, _ = S.ke_hoach_doc({"bang": "dong_thu", "select": "id"}, D.NguCanh(user="a", vai="owner"))
 		self.assertIn("ORDER BY (q_b.`parent` IS NULL) ASC, q_b.`parent` ASC, (q_b.`idx` IS NULL) ASC, q_b.`idx` ASC", kh.sql)
 		kh, _ = S.ke_hoach_doc({"bang": "dong_thu", "select": "id", "thu_tu": [{"cot": "id", "tang": False}]}, D.NguCanh(user="a", vai="owner"))
 		self.assertNotIn("`idx`", kh.sql)
+
+	def test_thu_tu_khong_nhan_bieu_thuc_tho(self):
+		"""Soát P4 (tiêm SQL — nghiêm trọng): mục `thu_tu` của YÊU CẦU chỉ nhận `cot` / `tang` / `null_dau` / `bang_ngoai` — khoá `sql` / `_bieu` (từng được
+		chèn NGUYÊN VĂN vào ORDER BY: NVBH gửi `GET /rest/v1/suppliers?q=…` là dò mù theo thời gian được mọi bảng, kể cả `__Auth`) hay khoá lạ → PGRST100,
+		ở bảng gốc, bảng lồng (`bang_ngoai`), nhánh gộp và gộp kèm bảng lồng; kiểu sai → PGRST100 (không TypeError → 500); cột lạ → 42703."""
+		nc = D.NguCanh(user="nv@x", vai="sales")
+		tiem = "(SELECT IF(ASCII(SUBSTRING((SELECT `password` FROM `__Auth` LIMIT 1),1,1))>77,SLEEP(3),0))"
+		for yc in ({"bang": "sales_orders", "select": "id", "thu_tu": [{"cot": "status", "sql": tiem}]},
+				{"bang": "sales_orders", "select": "id", "thu_tu": [{"cot": "status", "_bieu": tiem}]},
+				{"bang": "sales_orders", "select": "id, lines:sales_order_lines(quantity)",
+					"thu_tu": [{"cot": "quantity", "bang_ngoai": "lines", "sql": tiem}]},
+				{"bang": "sales_orders", "select": "status, count()", "thu_tu": [{"cot": "status", "sql": tiem}]},
+				{"bang": "sales_orders", "select": "count(), customer:customers!inner(channel)", "thu_tu": [{"cot": "status", "_bieu": tiem}]}):
+			with self.assertRaises(S.LoiCong) as e:
+				S.ke_hoach_doc(yc, nc)
+			self.assertEqual(e.exception.ma, "PGRST100", yc)
+		for cot, ma in ((tiem, "PGRST108"), ("status` DESC, `name", "42703")):  # cột không khai → lỗi, không chèn chữ của trình duyệt
+			with self.assertRaises(S.LoiCong) as e:
+				S.ke_hoach_doc({"bang": "sales_orders", "select": "id", "thu_tu": [{"cot": cot}]}, nc)
+			self.assertEqual(e.exception.ma, ma, cot)
+		for o in ({"cot": ["status"]}, {"cot": "status", "tang": "desc"}, {"cot": "status", "null_dau": 1}, {"cot": "status", "bang_ngoai": {"x": 1}},
+				"status"):
+			with self.assertRaises(S.LoiCong) as e:
+				S.ke_hoach_doc({"bang": "sales_orders", "select": "id", "thu_tu": [o]}, nc)
+			self.assertEqual(e.exception.ma, "PGRST100", o)
+		with self.assertRaises(S.LoiCong) as e:
+			S.ke_hoach_doc({"bang": "sales_orders", "select": "id", "thu_tu": {"cot": "status"}}, nc)
+		self.assertEqual(e.exception.ma, "PGRST100")
+		# mục của lớp client cổng (`order(cot, {ascending, nullsFirst, referencedTable})`) vẫn chạy — bảng gốc lẫn bảng lồng
+		kh, _ = S.ke_hoach_doc({"bang": "sales_orders", "select": "id, lines:sales_order_lines(quantity)", "thu_tu": [
+			{"cot": "status", "tang": False, "null_dau": None, "bang_ngoai": None},
+			{"cot": "quantity", "tang": True, "null_dau": None, "bang_ngoai": "lines"}]}, nc)
+		self.assertIn("ORDER BY (q_b.`npp_trang_thai` IS NULL) DESC, q_b.`npp_trang_thai` DESC", kh.sql)
+		sql, _tham, _cot = S.cau_long(kh.long[0], ["SO-1"], nc)
+		self.assertTrue(sql.endswith("ORDER BY (q_l.`qty` IS NULL) ASC, q_l.`qty` ASC"), sql)
+		self.assertNotIn("__Auth", kh.sql + sql)
 
 	def test_khong_rls_cho_chu(self):
 		kh, _ = S.ke_hoach_doc({"bang": "sales_orders", "select": "id"}, D.NguCanh(user="chu@x", vai="owner"))

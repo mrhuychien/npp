@@ -214,6 +214,24 @@ def chieu_ncc(ncc: str) -> None:
 		chieu_dong(r)
 
 
+def khoa_ncc_truoc(ds) -> set:
+	"""Khoá dòng Supplier (theo tên — thứ tự cố định, hai lượt chéo nhau không khoá chết) làm câu khoá NGAY SAU khoá Bin của các method đổi tờ / nợ của
+	NCC (phiếu nhập: hoàn thành / huỷ / khôi phục / sửa; phiếu trả NCC: gửi / huỷ / khôi phục / sửa; nhập kho tay có NCC) — TRƯỚC khoá PI và câu đọc
+	thường đầu tiên (CFD-05, PoC 1d). Soát P4: khoá NCC muộn (chỉ trong `don_tra_truoc_ncc`, lại chỉ khi còn tiền trả trước) để hook chiếu chạy trên ảnh
+	chụp cũ — xoá mất dòng trả trước lượt song song vừa lập — và ngược thứ tự với Ghi trả / phiếu chi / cổng `payables` (NCC → dòng → PI) → khoá chết.
+	Thứ tự mọi method: Bin → Supplier → PI / dòng `NPP Cong No NCC`. Trả tập NCC CÓ dòng (câu khoá thấy bản mới nhất — NCC vừa bị gộp / xoá thì không)."""
+	ds = sorted({x for x in ds or () if x})
+	if not ds:
+		return set()
+	return {r[0] for r in frappe.db.sql("SELECT `name` FROM `tabSupplier` WHERE `name` IN %s ORDER BY `name` FOR UPDATE", (tuple(ds),))}
+
+
+def ncc_doi_giua_chung() -> None:
+	"""NCC của tờ đổi giữa bước chuẩn bị và lúc khoá (gộp NCC / sửa nháp đổi NCC song song): khoá NCC đúng thứ tự không còn được → lui cả lượt, cổng
+	thử lại từ bước chuẩn bị (`nppsale.cong.api._goi_co_khoa` thử lại `QueryDeadlockError`)."""
+	raise frappe.QueryDeadlockError("NCC của chứng từ đổi giữa bước chuẩn bị và lúc khoá — thử lại")
+
+
 def khoa_ncc(ncc: str) -> list:
 	"""Khoá chung của mọi method đổi nợ một NCC (như `cong_no.khoa_khach` — Q15 của đặc tả phiếu thu): dòng Supplier rồi mọi dòng `NPP Cong No NCC`
 	của NCC theo `name` (nppsale `_don_tra_truoc_ncc`: `PERFORM 1 FROM payables … ORDER BY id FOR UPDATE`). Method gọi TRƯỚC mọi câu đọc thường."""

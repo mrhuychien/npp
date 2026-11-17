@@ -443,7 +443,9 @@ def them_no(ds: list[dict], nc) -> list[str]:
 		if so <= 0:  # ⚠K §4.4 (đề xuất): tờ nợ không âm / không 0 — nppsale trigger không chặn
 			raise NppLoi(L.KHOA_THEM)
 		ncc = str(g.get("supplier_id"))
-		if not frappe.db.exists("Supplier", ncc):
+		# câu KHOÁ dòng NCC thay `exists` (đọc theo ảnh chụp đầu request): gộp / xoá NCC song song (khoá `FOR UPDATE`) commit trước → câu khoá thấy bản
+		# mới nhất, không còn dòng → 23503 như khoá ngoại của nppsale, không lập tờ `DKN-` / `NTN-` trỏ NCC đã mất (soát P4)
+		if not N.khoa_ncc_truoc({ncc}):
 			raise LoiCong("23503", f'insert or update on table "{BANG}" violates foreign key constraint "payables_supplier_id_fkey"',
 				chi_tiet=f'Key (supplier_id)=({ncc}) is not present in table "suppliers".', http=409)
 		N.khoa_ncc(ncc)

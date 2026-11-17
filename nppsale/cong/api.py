@@ -54,24 +54,41 @@ def truy_van(yeu_cau=None):
 	hd = yc.get("hanh_dong") or "select"
 	if _la_ghi_kho(yc):
 		return _ghi_kho(yc, hd)
-	# Một lời ghi là một đơn vị: hỏng thì quay lui ĐÚNG phần của nó (savepoint), không cả giao dịch của request.
-	diem = "npp_cong_ghi"
 	if hd != "select":
-		frappe.db.savepoint(diem)
+		return _ghi_thuong(yc, hd)
 	try:
-		nc = hien_tai()
-		if hd == "select":
-			ket = ap_mot(doc(yc, nc), yc.get("mot"))
-		else:
+		ket = ap_mot(doc(yc, hien_tai()), yc.get("mot"))
+		ket["status"] = 200
+		return ket
+	except Exception as e:  # noqa: BLE001 — dịch sang lỗi kiểu PostgREST, lỗi lạ thì ném tiếp
+		return _loi(e)
+
+
+def _ghi_thuong(yc: dict, hd: str) -> dict:
+	"""Lời ghi thường của cổng: một lời ghi là một đơn vị — hỏng thì quay lui ĐÚNG phần của nó (savepoint), không cả giao dịch của request. Khoá chết /
+	quá hạn chờ khoá / tờ đổi giữa lúc đọc và lúc lưu (`THU_LAI_LOI`) → lui HẲN rồi thử lại có giãn cách như `_goi_co_khoa`. Soát P4: khoá chết thì
+	InnoDB lui CẢ giao dịch — điểm lưu không còn, `rollback(save_point=…)` hỏng 1305 ngay trong nhánh bắt lỗi → 500 "Lỗi máy chủ…" thay vì thử lại."""
+	import time
+
+	diem = "npp_cong_ghi"
+	for lan in range(len(THU_LAI_KHOA) + 1):
+		frappe.db.savepoint(diem)
+		try:
+			nc = hien_tai()
 			if _phuong_thuc() != "POST":
 				raise LoiCong("PGRST105", "ghi phải gửi bằng POST", http=405)
 			ket = ap_mot(_ghi(yc, nc), yc.get("mot"))
-		ket["status"] = 200 if hd == "select" else (201 if hd in ("insert", "upsert") else 200)
-		return ket
-	except Exception as e:  # noqa: BLE001 — dịch sang lỗi kiểu PostgREST, lỗi lạ thì ném tiếp
-		if hd != "select":
+			ket["status"] = 201 if hd in ("insert", "upsert") else 200
+			return ket
+		except THU_LAI_LOI as e:
+			frappe.db.rollback()
+			frappe.local._npp_ngu_canh = None
+			if lan >= len(THU_LAI_KHOA):
+				return _loi(LoiCong("40P01", f"Máy chủ đang bận ghi — thử lại sau ít giây ({type(e).__name__}).", http=503))
+			time.sleep(THU_LAI_KHOA[lan])
+		except Exception as e:  # noqa: BLE001 — dịch sang lỗi kiểu PostgREST, lỗi lạ thì ném tiếp
 			frappe.db.rollback(save_point=diem)
-		return _loi(e)
+			return _loi(e)
 
 
 def _ghi_kho(yc: dict, hd: str) -> dict:
@@ -96,7 +113,7 @@ def _ghi_kho(yc: dict, hd: str) -> dict:
 			ket = ap_mot(_ghi(yc, nc, truoc), yc.get("mot"))
 			ket["status"] = 200
 			return ket
-		except (frappe.QueryDeadlockError, frappe.QueryTimeoutError) as e:
+		except THU_LAI_LOI as e:
 			frappe.db.rollback()
 			frappe.local._npp_ngu_canh = None
 			if lan >= len(THU_LAI_KHOA):
@@ -141,26 +158,39 @@ def rpc(ten=None, tham_so=None, sau=None):
 	ts = _doc_json(tham_so)
 	if muc.chuan_bi is not None:
 		return _goi_co_khoa(ten, muc, ts, sau, diem)
-	frappe.db.savepoint(diem)
-	try:
-		frappe.local._npp_je_cho = None
-		kq = muc.ham(**ts)
-		_sau_rpc()
-		sau = _doc_json(sau)
-		if sau:
-			if not isinstance(kq, list):
-				raise LoiCong("PGRST100", f"{ten} không trả tập dòng — không lọc / sắp / phân trang được kết quả")
-			from .sau_ham import ap
+	import time
 
-			kq, dem = ap(kq, sau)
-			return {"data": kq, "count": dem, "status": 200}
-		return {"data": kq, "status": 200}
-	except Exception as e:  # noqa: BLE001 — RPC là một đơn vị: hỏng thì quay lui đúng phần của nó (như hàm Postgres)
-		frappe.db.rollback(save_point=diem)
-		return _loi(e)
+	for lan in range(len(THU_LAI_KHOA) + 1):
+		frappe.db.savepoint(diem)
+		try:
+			frappe.local._npp_je_cho = None
+			kq = muc.ham(**ts)
+			_sau_rpc()
+			sau_ = _doc_json(sau)
+			if sau_:
+				if not isinstance(kq, list):
+					raise LoiCong("PGRST100", f"{ten} không trả tập dòng — không lọc / sắp / phân trang được kết quả")
+				from .sau_ham import ap
+
+				kq, dem = ap(kq, sau_)
+				return {"data": kq, "count": dem, "status": 200}
+			return {"data": kq, "status": 200}
+		except (frappe.QueryDeadlockError, frappe.QueryTimeoutError) as e:
+			# khoá chết: InnoDB lui CẢ giao dịch — điểm lưu không còn (lui về nó hỏng 1305 → 500); lui hẳn rồi thử lại như `_goi_co_khoa` (soát P4)
+			frappe.db.rollback()
+			frappe.local._npp_ngu_canh = None
+			if lan >= len(THU_LAI_KHOA):
+				return _loi(LoiCong("40P01", f"Máy chủ đang bận — thử lại sau ít giây ({type(e).__name__}).", http=503))
+			time.sleep(THU_LAI_KHOA[lan])
+		except Exception as e:  # noqa: BLE001 — RPC là một đơn vị: hỏng thì quay lui đúng phần của nó (như hàm Postgres)
+			frappe.db.rollback(save_point=diem)
+			return _loi(e)
 
 
 THU_LAI_KHOA = (0.2, 0.5, 1.0)  # giây chờ trước lượt thử lại thứ 2, 3, 4
+# lỗi lui HẲN + thử lại của lời ghi kho / RPC ghi kho / lời ghi thường của cổng: khoá chết, quá hạn chờ khoá, tờ đổi giữa lúc đọc (ảnh chụp) và lúc lưu
+# (`check_if_latest` — đọc có khoá thấy bản mới hơn: thử lại là đọc lại từ đầu; soát P4)
+THU_LAI_LOI = (frappe.QueryDeadlockError, frappe.QueryTimeoutError, frappe.TimestampMismatchError)
 
 
 def _sau_rpc():
@@ -188,7 +218,7 @@ def _goi_co_khoa(ten, muc, ts, sau, diem):
 			if _doc_json(sau):
 				raise LoiCong("PGRST100", f"{ten} không trả tập dòng — không lọc / sắp / phân trang được kết quả")
 			return {"data": kq, "status": 200}
-		except (frappe.QueryDeadlockError, frappe.QueryTimeoutError) as e:
+		except THU_LAI_LOI as e:
 			frappe.db.rollback()
 			frappe.local._npp_ngu_canh = None
 			if lan >= len(THU_LAI_KHOA):

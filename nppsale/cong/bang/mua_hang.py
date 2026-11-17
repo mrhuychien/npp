@@ -24,6 +24,8 @@ from .kho import KHO
 VAI_MUA = ("owner", "manager", "accountant", "warehouse")
 NGUON_PN = "(SELECT * FROM `tabPurchase Invoice` WHERE `npp_loai` = 'phieu_nhap')"
 TK_GIAM = "(SELECT s.`value` FROM `tabSingles` s WHERE s.`doctype` = 'NPP Cai Dat' AND s.`field` = 'tk_giam_dau_phieu_nhap')"
+# dòng thuế bù nợ lệch giá vốn của phiếu nhập sinh từ màn Nhập kho (nppsale.rpc.phieu_nhap.MO_TA_LECH — một chữ, không import mã RPC vào sổ cổng)
+MO_TA_LECH_SQL = "'Phần nợ NCC lệch giá vốn (nhập kho)'"
 # tờ GỐC của chuỗi amend: `PN-0042-1` → `PN-0042` (dãy `PN-.####` không có gạch nối khác)
 GOC = "SUBSTRING_INDEX({t}.`name`, '-', 2)"
 
@@ -111,9 +113,11 @@ def nap():
 		cot={
 			"id": c("{t}.`name`"), "org_id": org(), "po_id": CotDef("NULL"), "supplier_id": c("supplier"), "invoice_number": c("bill_no"),
 			"invoice_date": c("bill_date", "ngay"), "subtotal": c(phu("tien_hang", "COALESCE({t}.`total`, 0)"), "tien"),
+			# `vat` không gồm dòng nợ lệch giá vốn của phiếu sinh từ màn Nhập kho (`phieu_nhap.dong_lech` — gắn lại mỗi lần dựng bảng thuế): màn sửa / POS
+			# nạp `vat` làm thuế gõ tay là đếm hai lần (soát P4); `total` vẫn gồm
 			"vat": c(phu("thue", "(SELECT COALESCE(SUM(CASE WHEN x.`add_deduct_tax` = 'Deduct' THEN -x.`tax_amount` ELSE x.`tax_amount` END), 0) "
 				"FROM `tabPurchase Taxes and Charges` x WHERE x.`parent` = {t}.`name` AND x.`parenttype` = 'Purchase Invoice' "
-				f"AND x.`account_head` <> IFNULL({TK_GIAM}, ''))"), "tien"),
+				f"AND x.`account_head` <> IFNULL({TK_GIAM}, '') AND NOT (x.`charge_type` = 'Actual' AND x.`description` <=> {MO_TA_LECH_SQL}))"), "tien"),
 			"total": c(phu("tong", "COALESCE({t}.`grand_total`, 0)"), "tien"),
 			"status": c("CASE WHEN {t}.`docstatus` = 1 THEN 'completed' WHEN {t}.`docstatus` = 2 OR {t}.`npp_huy_luc` IS NOT NULL "
 				"THEN 'cancelled' ELSE 'draft' END"),

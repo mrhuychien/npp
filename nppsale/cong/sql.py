@@ -105,6 +105,42 @@ def vế_rls(bang: D.Bang, nc: D.NguCanh, bd: str, ts: BoThamSo) -> str:
 	return "(" + sql.replace("{t}", bd) + ")"
 
 
+@dataclass(frozen=True)
+class SapXepNoiBo:
+	"""Mục sắp do MÃ dựng — biểu thức SQL thô (`{t}` = bí danh bảng): thứ tự mặc định trên cột NGUỒN không phải cột nppsale (dòng con theo `idx` —
+	nppsale.cong.bang.phieu_kho), câu con sắp theo cột bảng lồng nhiều-một (`_thu_tu_long_mot`). JSON của trình duyệt KHÔNG dựng được kiểu này: mục
+	`thu_tu` của yêu cầu đi qua `_thu_tu_vao` (chỉ cột đã khai) — soát P4: khoá `sql` / `_bieu` gửi từ trình duyệt từng được chèn nguyên văn vào ORDER
+	BY (tiêm SQL — mọi NV đăng nhập đọc dò được bảng bất kỳ)."""
+	bieu: str
+	tang: bool = True
+	null_dau: bool | None = None
+
+
+KHOA_THU_TU = ("cot", "tang", "null_dau", "bang_ngoai")
+
+
+def _thu_tu_vao(ds) -> list[dict]:
+	"""`thu_tu` của yêu cầu (trình duyệt — `.order(cot, {ascending, nullsFirst, referencedTable})` của lớp client cổng) → dict MỚI chỉ gồm `cot` (chuỗi),
+	`tang` (bool), `null_dau` (bool | None), `bang_ngoai` (chuỗi | None); khoá lạ / sai kiểu → PGRST100 (PostgREST: "failed to parse order")."""
+	if ds is None:
+		return []
+	if not isinstance(ds, list):
+		raise LoiCong("PGRST100", "failed to parse order: thu_tu phải là mảng")
+	ra = []
+	for o in ds:
+		if not isinstance(o, dict):
+			raise LoiCong("PGRST100", f"failed to parse order: {o!r}")
+		la = sorted(set(o) - set(KHOA_THU_TU))
+		if la:
+			raise LoiCong("PGRST100", f"failed to parse order: khoá lạ {', '.join(la)}")
+		cot, tang, null_dau, ngoai = o.get("cot"), o.get("tang", True), o.get("null_dau"), o.get("bang_ngoai")
+		if not isinstance(cot, str) or not cot or not isinstance(tang, bool) or not isinstance(null_dau, (bool, type(None))) \
+				or not isinstance(ngoai, (str, type(None))):
+			raise LoiCong("PGRST100", f"failed to parse order: {o!r}")
+		ra.append({"cot": cot, "tang": tang, "null_dau": null_dau, "bang_ngoai": ngoai or None})
+	return ra
+
+
 @dataclass
 class KeHoachLong:
 	nut: C.Long
@@ -144,13 +180,17 @@ def _cot_chon(bang: D.Bang, nut_chon: list, bd: str, ts_unused=None):
 	return cot, long, gop
 
 
-def _sap_xep(bang: D.Bang, thu_tu: list[dict], bd: str) -> str:
+def _sap_xep(bang: D.Bang, thu_tu: list, bd: str) -> str:
+	"""ORDER BY: mục dict (từ yêu cầu — đã qua `_thu_tu_vao`, hoặc thứ tự mặc định khai `{"cot": …}`) LUÔN qua `_bieu` (cột đã khai của bảng);
+	biểu thức thô chỉ từ `SapXepNoiBo` (mã dựng)."""
 	phan = []
 	for o in thu_tu or []:
-		# `sql`: biểu thức của thứ tự mặc định trên cột nguồn KHÔNG phải cột nppsale (dòng con theo `idx` — vd `stock_entry_lines`), {t} = bí danh
-		e = o["_bieu"] if o.get("_bieu") else o["sql"].replace("{t}", bd) if o.get("sql") else _bieu(bang, o["cot"], bd)[0]
-		tang = o.get("tang", True)
-		null_dau = o.get("null_dau")
+		if isinstance(o, SapXepNoiBo):
+			e, tang, null_dau = o.bieu.replace("{t}", bd), o.tang, o.null_dau
+		else:
+			e = _bieu(bang, o["cot"], bd)[0]
+			tang = o.get("tang", True)
+			null_dau = o.get("null_dau")
 		if null_dau is None:
 			null_dau = not tang  # mặc định PostgREST: asc → NULL cuối; desc → NULL đầu
 		phan.append(f"({e} IS NULL) {'DESC' if null_dau else 'ASC'}")
@@ -158,7 +198,7 @@ def _sap_xep(bang: D.Bang, thu_tu: list[dict], bd: str) -> str:
 	return (" ORDER BY " + ", ".join(phan)) if phan else ""
 
 
-def _thu_tu_long_mot(bang: D.Bang, thu_tu: list[dict], nut_long: list, nc: D.NguCanh, ts: BoThamSo, bd: str) -> list[dict]:
+def _thu_tu_long_mot(bang: D.Bang, thu_tu: list[dict], nut_long: list, nc: D.NguCanh, ts: BoThamSo, bd: str) -> list:
 	"""`.order('supplier(name)')` — PostgREST sắp bảng gốc theo cột của bảng lồng NHIỀU-MỘT có trong select (`supplier:suppliers(name, code)`;
 	đặc tả kho_mua §4.1: `/payables`, `/purchasing/invoices` — `SAP_XEP_CONG_NO_NCC`, `SAP_XEP_HD_MUA` của src/lib/list/sap-xep-may-chu.ts).
 	Biểu thức sắp = câu con lấy cột ấy của dòng nối (kèm vế RLS của bảng đích — dòng không thấy được thì NULL như PostgREST). Bảng lồng không
@@ -187,8 +227,8 @@ def _thu_tu_long_mot(bang: D.Bang, thu_tu: list[dict], nut_long: list, nc: D.Ngu
 		e_nay, _ = _bieu(bang, qh.cot_nay, bd)
 		e_kia, _ = _bieu(bang_dich, qh.cot_kia, al)
 		e_cot, _ = _bieu(bang_dich, con.strip(), al)
-		ra.append({**o, "_bieu": f"(SELECT {e_cot} FROM {bang_dich.nguon} {al} WHERE {e_kia} = {e_nay} AND {vế_rls(bang_dich, nc, al, ts)} "
-			"LIMIT 1)"})
+		ra.append(SapXepNoiBo(f"(SELECT {e_cot} FROM {bang_dich.nguon} {al} WHERE {e_kia} = {e_nay} AND {vế_rls(bang_dich, nc, al, ts)} "
+			"LIMIT 1)", o.get("tang", True), o.get("null_dau")))
 	return ra
 
 
@@ -207,11 +247,12 @@ def ke_hoach_doc(yc: dict, nc: D.NguCanh) -> tuple[KeHoach, D.Bang]:
 	cot, nut_long, nut_gop = _cot_chon(bang, nut_chon, bd)
 	where = [vế_rls(bang, nc, bd, ts)] + [dieu_kien(bang, d, bd, ts) for d in dieu_goc]
 
-	# Thứ tự: phần của bảng gốc và phần của bảng lồng
-	thu_tu_goc = [o for o in (yc.get("thu_tu") or []) if not o.get("bang_ngoai")]
+	# Thứ tự: phần của bảng gốc và phần của bảng lồng — mục của yêu cầu dựng lại thành dict mới (chỉ cột đã khai — soát P4: tiêm SQL qua `thu_tu`)
+	thu_tu_yc = _thu_tu_vao(yc.get("thu_tu"))
+	thu_tu_goc = [o for o in thu_tu_yc if not o["bang_ngoai"]]
 	thu_tu_long: dict[str, list] = {}
-	for o in yc.get("thu_tu") or []:
-		if o.get("bang_ngoai"):
+	for o in thu_tu_yc:
+		if o["bang_ngoai"]:
 			thu_tu_long.setdefault(o["bang_ngoai"], []).append(o)
 
 	if nut_gop and nut_long:

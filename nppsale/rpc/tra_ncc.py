@@ -137,7 +137,7 @@ def _ap_dau(doc, g: dict, cd) -> None:
 			continue
 		if k == "supplier_id":
 			PN._khong_null(v, k, BANG)
-			if not frappe.db.exists("Supplier", v):
+			if not PN.co_ncc_khoa_chia_se(v):
 				raise LoiCong("23503", f'insert or update on table "{BANG}" violates foreign key constraint "supplier_returns_supplier_id_fkey"',
 					http=409)
 			doc.supplier = v
@@ -230,16 +230,11 @@ def sua_phieu(gia_tri: dict, ids: list[str], nc) -> list[str]:
 
 def xoa_phieu(ids: list[str], nc) -> list[str]:
 	"""DELETE supplier_returns: chỉ phiếu chưa ghi sổ (nháp, kể cả nháp mang dấu huỷ); đã gửi / đã huỷ sau khi gửi → USE_RPC (nppsale xoá được
-	phiếu đã xuất — K25: nợ âm + phiếu kho mồ côi)."""
+	phiếu đã xuất — K25: nợ âm + phiếu kho mồ côi). Trạng thái đọc có khoá, xoá không lùi dãy số `PTNCC-` (soát P4 — `phieu_nhap.xoa_nhap_pi`; ⚠K:
+	nppsale `_danh_so_tra_ncc` MAX + 1 cấp lại MÃ của nháp cuối đã xoá, nhưng id uuid mới)."""
 	if nc.vai not in K.VAI_MUA_HANG and not nc.bo_qua_rls:
 		return []
-	ra = []
-	for ten in ids:
-		if cint(frappe.db.get_value(DT, ten, "docstatus")) != 0:
-			raise NppLoi(T.USE_RPC)
-		frappe.delete_doc(DT, ten, ignore_permissions=True, force=True)
-		ra.append(ten)
-	return ra
+	return [ten for ten in ids if PN.xoa_nhap_pi(ten, LOAI, T.USE_RPC)]
 
 
 def _ap_dong(doc, r, g: dict, cd) -> None:
@@ -378,30 +373,44 @@ def _hang_moi(p_lines) -> set:
 	return {str(d.get("product_id")) for d in ds if isinstance(d, dict) and d.get("product_id")}
 
 
+def _ncc_moi(p_head) -> set:
+	"""NCC gửi lên ở `p_head` của lời sửa (khoá cả NCC mới — soát P4)."""
+	try:
+		x = _json(p_head, {}).get("supplier_id")
+	except NppLoi:
+		return set()
+	return {x} if isinstance(x, str) and x else set()
+
+
 def _chuan_bi_tra(p_return_id=None, p_reason=None, p_head=None, p_lines=None, p_chi_luu_nhap=None):
 	"""Đọc trước khi khoá (cổng commit sau bước này): người gọi, cài đặt, tờ cuối của chuỗi + mặt hàng của nó (∪ mặt hàng của `p_lines` khi
-	sửa) → frappe.local — câu ĐẦU của hàm là khoá Bin (PoC 1d)."""
+	sửa) + NCC (∪ NCC của `p_head`) → frappe.local — câu ĐẦU của hàm là khoá Bin, rồi khoá NCC (PoC 1d; soát P4)."""
 	hien_tai()
 	cai_dat_kho()
 	ten = PN._hieu_luc(PN._chu(p_return_id))
-	frappe.local._npp_ptn = (PN._chu(p_return_id), ten, PN._hang_cua(ten) | _hang_moi(p_lines))
+	frappe.local._npp_ptn = (PN._chu(p_return_id), ten, PN._hang_cua(ten) | _hang_moi(p_lines), PN._ncc_cua(ten) | _ncc_moi(p_head))
 
 
-def _da_chuan_bi(p_return_id, p_lines=None) -> tuple[str | None, set]:
+def _da_chuan_bi(p_return_id, p_lines=None, p_head=None) -> tuple[str | None, set, set]:
 	x = getattr(frappe.local, "_npp_ptn", None)
 	frappe.local._npp_ptn = None  # dùng MỘT lần
 	if x and x[0] == PN._chu(p_return_id):
-		return x[1], x[2]
+		return x[1], x[2], x[3]
 	ten = PN._hieu_luc(PN._chu(p_return_id))  # gọi nội bộ không qua cổng
-	return ten, PN._hang_cua(ten) | _hang_moi(p_lines)
+	return ten, PN._hang_cua(ten) | _hang_moi(p_lines), PN._ncc_cua(ten) | _ncc_moi(p_head)
 
 
-def _khoa(ten: str | None, hang: set, cd):
-	"""Khoá Bin (mặt hàng đọc ở bước chuẩn bị) → khoá PI `FOR UPDATE` theo chuỗi amend tới tờ cuối; mặt hàng của tờ đổi giữa hai bước (sửa nháp
-	đồng thời) → khoá thêm Bin của hàng mới. None = không có phiếu trả NCC."""
+def _khoa(ten: str | None, hang: set, cd, ncc: set | None = None):
+	"""Khoá Bin (mặt hàng đọc ở bước chuẩn bị) → khoá NCC (`ncc` — soát P4: thứ tự Bin → Supplier → PI như phiếu nhập) → khoá PI `FOR UPDATE` theo
+	chuỗi amend tới tờ cuối; NCC của tờ ngoài `ncc` → lui, cổng thử lại; mặt hàng của tờ đổi giữa hai bước (sửa nháp đồng thời) → khoá thêm Bin của
+	hàng mới (đọc mặt hàng CÓ KHOÁ — khoá bù trước ảnh chụp). `ncc` None (gọi thẳng từ bài kiểm) → khoá NCC của tờ sau khoá PI. None = không có
+	phiếu trả NCC."""
 	from nppsale.rpc.xuat_hang import _khoa_bin
+	from nppsale.su_kien.cong_no_ncc import khoa_ncc_truoc, ncc_doi_giua_chung
 
 	_khoa_bin(hang, cd)
+	if ncc is not None:
+		khoa_ncc_truoc(ncc)
 	for _ in range(100):
 		r = frappe.db.sql(f"""SELECT `name`, `docstatus`, `npp_huy_luc`, `supplier` FROM `tab{DT}` WHERE `name` = %s AND `npp_loai` = %s
 			FOR UPDATE""", (ten or "", LOAI), as_dict=True)
@@ -411,18 +420,22 @@ def _khoa(ten: str | None, hang: set, cd):
 		if not x:
 			break
 		ten = x[0][0]
-	moi = PN._hang_cua(r[0].name) - set(hang)
+	if ncc is None:
+		khoa_ncc_truoc({r[0].supplier})
+	elif r[0].supplier and r[0].supplier not in ncc:
+		ncc_doi_giua_chung()
+	moi = PN._hang_cua(r[0].name, khoa=True) - set(hang)
 	if moi:
 		_khoa_bin(moi, cd)
 	return r[0]
 
 
-def _mo(ten_rpc: str, p_return_id, p_lines=None):
+def _mo(ten_rpc: str, p_return_id, p_lines=None, p_head=None):
 	"""Phần đầu chung của bốn RPC: người gọi, cài đặt, khoá, `PHIEU_KHONG_TON_TAI`, vai."""
 	nc = hien_tai()
 	cd = cai_dat_kho()
-	ten, hang = _da_chuan_bi(p_return_id, p_lines)
-	r = _khoa(ten, hang, cd)
+	ten, hang, ncc = _da_chuan_bi(p_return_id, p_lines, p_head)
+	r = _khoa(ten, hang, cd, ncc)
 	if r is None:
 		raise NppLoi(T.KHONG_TON_TAI)
 	PN._kiem_vai(ten_rpc, nc)
@@ -630,7 +643,7 @@ def _ap_sua(doc, head: dict, lines: list, cd) -> None:
 def sua_phieu_tra_ncc(p_return_id=None, p_reason=None, p_head=None, p_lines=None, p_chi_luu_nhap=None):
 	"""Sửa phiếu trả NCC trong MỘT giao dịch: nháp → sửa tại chỗ; đã gửi → thân huỷ (lý do `p_reason`, mặc định "Sửa phiếu — lập lại") + amend
 	nháp theo số mới; rồi (trừ `p_chi_luu_nhap`) thân gửi. Đã huỷ → `PHIEU_DA_HUY` (khôi phục trước). Trả {id: tờ còn hiệu lực, trang_thai}."""
-	nc, cd, r = _mo("sua_phieu_tra_ncc", p_return_id, p_lines)
+	nc, cd, r = _mo("sua_phieu_tra_ncc", p_return_id, p_lines, p_head)
 	head, lines = _json(p_head, {}), _json(p_lines, [])
 	tt = K.trang_thai_pi(r.docstatus, r.npp_huy_luc)
 	if tt == "cancelled":

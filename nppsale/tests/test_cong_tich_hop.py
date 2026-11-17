@@ -106,6 +106,24 @@ class TestCongTichHop(IntegrationTestCase):
 		self.assertEqual(len(ket["data"]), 2)
 		self.assertEqual(ket["status"], 200)
 
+	def test_tiem_sql_qua_thu_tu_bi_chan(self):
+		"""Soát P4 (tiêm SQL — nghiêm trọng): `GET /rest/v1/<bảng>?q=…` qua đúng bộ xử lý đường dẫn của portal, `thu_tu` mang khoá `sql` / `_bieu` (biểu
+		thức thô từng chèn nguyên văn vào ORDER BY) → 400 PGRST100, câu KHÔNG chạy (SLEEP không tốn thời gian)."""
+		import json
+		import time
+		from types import SimpleNamespace
+
+		from nppsale.portal.rest import xu_ly
+
+		frappe.set_user("Administrator")
+		for khoa in ("sql", "_bieu"):
+			q = json.dumps({"select": "id", "thu_tu": [{"cot": "status", khoa: "(SELECT SLEEP(2))"}], "limit": 1})
+			req = SimpleNamespace(method="GET", args={"q": q}, get_data=lambda as_text=True: "")
+			bat_dau = time.monotonic()
+			ma, than = xu_ly("t_sales_orders", req)
+			self.assertLess(time.monotonic() - bat_dau, 1.5, khoa)
+			self.assertEqual((ma, than.get("error", {}).get("code")), (400, "PGRST100"), than)
+
 
 class TestGopNhomLong(IntegrationTestCase):
 	"""count() kèm bảng lồng nhiều-một (đếm theo tuyến — gopMayChu / docDemTheoTuyen của nppsale)."""

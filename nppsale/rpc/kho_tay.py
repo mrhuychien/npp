@@ -145,24 +145,31 @@ def _co_kiem_ke() -> bool:
 	return co_cot(KK_DT, "trang_thai")
 
 
-def _hang_cua(x) -> set:
+def _hang_cua(x, khoa: bool = False) -> set:
+	"""Mặt hàng của phiếu; `khoa` → đọc CÓ KHOÁ (`LOCK IN SHARE MODE` — không lập ảnh chụp) để khoá Bin bù của hàng mới vẫn đứng trước câu đọc thường
+	đầu tiên (soát P4, PoC 1d)."""
 	if not x:
 		return set()
 	if x.dt == KK_DT:
 		from nppsale.rpc.kiem_ke import hang_cua
 
-		return hang_cua(x.name)
+		return hang_cua(x.name, khoa=khoa)
 	bang = {DT: "Stock Entry Detail", "Sales Invoice": "Sales Invoice Item", "Purchase Invoice": "Purchase Invoice Item"}[x.dt]
-	return {r[0] for r in frappe.db.sql(f"SELECT DISTINCT `item_code` FROM `tab{bang}` WHERE `parent` = %s AND `parenttype` = %s", (x.name, x.dt))}
+	return {r[0] for r in frappe.db.sql(f"SELECT DISTINCT `item_code` FROM `tab{bang}` WHERE `parent` = %s AND `parenttype` = %s"
+		+ (" LOCK IN SHARE MODE" if khoa else ""), (x.name, x.dt))}
 
 
 def _chuan_bi(p_entry_id=None, p_reason=None):
 	"""Đọc trước khi khoá (cổng commit sau bước này): người gọi, cài đặt, phiếu + mặt hàng của nó → frappe.local — câu ĐẦU của thân hàm là khoá
 	Bin (PoC 1d)."""
+	from nppsale.rpc.lo_kho import hang_phieu_tu_dong
+
 	hien_tai()
 	cai_dat_kho()
 	ten = _chu(p_entry_id)
-	frappe.local._npp_pk = (ten, _hang_cua(nguon_phieu(ten)))
+	x = nguon_phieu(ten)
+	# + mặt hàng của phiếu rà soát tự động chạm lô của phiếu nhập kho tay (huỷ có thể huỷ + lập lại phần lô KHÁC — `hoan_chuyen_date`; soát P4)
+	frappe.local._npp_pk = (ten, _hang_cua(x) | (hang_phieu_tu_dong(DT, x.name) if x and x.dt == DT and x.purpose == "Material Receipt" else set()))
 
 
 def _da_chuan_bi(p_entry_id) -> tuple[str | None, set]:
@@ -180,7 +187,7 @@ def _khoa(ten, hang: set, cd) -> frappe._dict | None:
 
 	_khoa_bin(hang, cd)
 	x = nguon_phieu(ten, khoa=True)
-	moi = _hang_cua(x) - set(hang)
+	moi = _hang_cua(x, khoa=True) - set(hang)
 	if moi:
 		_khoa_bin(moi, cd)
 	return x
@@ -340,8 +347,13 @@ def post_stock_import(p=None):
 	t = T.doc_tai_nhap(p)  # khối DECLARE: ép kiểu sai → 22007 / 22P02 trước cả vai
 	PN._kiem_vai("post_stock_import", nc)
 	T.kiem_dau_nhap(t)
-	if t.ncc is not None and not frappe.db.exists("Supplier", t.ncc):
-		raise NppLoi(T.NCC_KHAC, code="42501", http=403)
+	# NCC: khoá dòng Supplier ngay sau Bin, trước câu đọc thường đầu tiên (soát P4 — thứ tự Bin → Supplier của mọi method đổi nợ NCC; câu khoá thấy
+	# bản mới nhất: NCC vừa bị gộp / xoá song song → như khoá ngoại của nppsale, không lập chứng từ trỏ NCC đã mất)
+	if t.ncc is not None:
+		from nppsale.su_kien.cong_no_ncc import khoa_ncc_truoc
+
+		if not khoa_ncc_truoc({t.ncc}):
+			raise NppLoi(T.NCC_KHAC, code="42501", http=403)
 	T.kiem_vung_no(t)
 	dong = [T.doc_dong_nhap(n, l, lambda h: bool(frappe.db.exists("Item", h))) for n, l in enumerate(t.dong, 1)]
 	bay_gio = now_datetime()
@@ -383,9 +395,14 @@ def _lap_lo(t, dong, luc, kho_chon: str, cd) -> dict:
 			raise T.loi_lo_trung(ma)
 		han = T.han_lo(d.han, bool(it.has_expiry_date))
 		kho = kho_nhan_lo(t.vung, han, cd, hom_nay)
-		b = frappe.get_doc({"doctype": "Batch", "batch_id": ma, "item": d.hang, "manufacturing_date": d.nsx, "expiry_date": han,
-			"npp_vi_tri": d.vi_tri, "npp_ngay_nhap": luc, "npp_kho_tao": kho, "npp_gia_von_lo_rong": float(d.gia_von),
-			"npp_tim_kd": khoa_tim_ds(ma)}).insert(ignore_permissions=True)
+		try:
+			b = frappe.get_doc({"doctype": "Batch", "batch_id": ma, "item": d.hang, "manufacturing_date": d.nsx, "expiry_date": han,
+				"npp_vi_tri": d.vi_tri, "npp_ngay_nhap": luc, "npp_kho_tao": kho, "npp_gia_von_lo_rong": float(d.gia_von),
+				"npp_tim_kd": khoa_tim_ds(ma)}).insert(ignore_permissions=True)
+		except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
+			# lượt song song (khác mặt hàng — khoá Bin không xếp hàng) vừa lập CÙNG mã sau bước kiểm trên: khoá chính báo trùng → đúng câu, không 500
+			# (soát P4; một luật với cổng `batches` — lo_kho.them_lo)
+			raise T.loi_lo_trung(ma) from None
 		if not d.nsx:
 			frappe.db.set_value("Batch", b.name, "manufacturing_date", None, update_modified=False)
 		ra[d.n] = (b.name, kho)
@@ -443,7 +460,8 @@ def _phieu_nhap_ncc(t, dong, lo: dict, luc, kho_chon: str, cd) -> str:
 	pi.update({"naming_series": PN.DAY_SO, "npp_loai": PN.LOAI, "company": cd.cong_ty, "supplier": t.ncc, "posting_date": ngay, "posting_time": gio,
 		"set_posting_time": 1, "update_stock": 1, "disable_rounded_total": 1, "ignore_pricing_rule": 1, "buying_price_list": cd.bang_gia_nhap,
 		"set_warehouse": kho_chon, "npp_kho_nhap": kho_chon, "bill_no": t.so_hd, "bill_date": ngay, "npp_giam_dau_phieu": 0, "npp_ghi_chu": t.ghi_chu,
-		"npp_ghi_chu_no": f"Nhập kho {t.ma}", "npp_hoan_thanh_luc": now_datetime(), "taxes_and_charges": ""})
+		"npp_ghi_chu_no": f"Nhập kho {t.ma}", "npp_hoan_thanh_luc": now_datetime(), "taxes_and_charges": "", "npp_ma_nhap_kho": t.ma,
+		"npp_no_lech_gia_von": 0})
 	for d in dong:
 		it = _thong_tin(d.hang)
 		sl, hs = T.sl_dong_se(d)
@@ -465,10 +483,10 @@ def _phieu_nhap_ncc(t, dong, lo: dict, luc, kho_chon: str, cd) -> str:
 	pi.calculate_taxes_and_totals()
 	chenh = flt(t.no) - flt(pi.grand_total)
 	if abs(chenh) >= 0.5:
-		if not cd.get("tk_thue_dau_vao"):
-			raise NppLoi("CAI_DAT_THIEU: NPP Cai Dat chưa có tài khoản thuế GTGT đầu vào (tk_thue_dau_vao).")
-		pi.append("taxes", {"charge_type": "Actual", "account_head": cd.tk_thue_dau_vao, "description": "Phần nợ NCC lệch giá vốn (nhập kho)",
-			"tax_amount": abs(chenh), "category": "Total", "add_deduct_tax": "Add" if chenh > 0 else "Deduct"})
+		# số lệch lưu ở `npp_no_lech_gia_von` (cùng `npp_ma_nhap_kho` — dấu phiếu sinh từ màn này): `dung_thue` gắn lại đúng dòng này mỗi lần dựng lại
+		# bảng thuế — sửa / khôi phục không đánh rơi phần nợ (soát P4)
+		pi.npp_no_lech_gia_von = chenh
+		PN.dong_lech(pi, cd)
 	pi.insert()
 	pi.submit()  # hook on_submit: chiếu dòng công nợ NCC (tao_luc = npp_hoan_thanh_luc)
 	frappe.local.message_log = []
@@ -625,7 +643,7 @@ def _vung_vao(v, cot: str, null_duoc: bool) -> str | None:
 def _ncc_vao(v) -> str | None:
 	if v in (None, ""):
 		return None
-	if not frappe.db.exists("Supplier", v):
+	if not PN.co_ncc_khoa_chia_se(v):  # đọc có khoá chia sẻ — xếp hàng với gộp / xoá NCC (soát P4)
 		raise LoiCong("23503", f'insert or update on table "{BANG}" violates foreign key constraint "stock_entries_supplier_id_fkey"', http=409)
 	return v
 
@@ -771,7 +789,7 @@ def sua_phieu(gia_tri: dict, ids: list[str], nc) -> list[str]:
 	g = dict(gia_tri or {})
 	ra = []
 	for ten in ids:
-		x = nguon_phieu(ten)
+		x = nguon_phieu(ten, khoa=True)  # đọc CÓ KHOÁ — bản mới nhất: nháp vừa được ghi sổ song song không bị xoá / sửa như nháp (soát P4)
 		if x is None:
 			continue
 		if "status" in g and g["status"] != x.trang_thai:
@@ -828,7 +846,9 @@ def xoa_phieu(ids: list[str], nc) -> list[str]:
 		return []
 	ra = []
 	for ten in ids:
-		x = nguon_phieu(ten)
+		# đọc CÓ KHOÁ (soát P4): đọc thường theo ảnh chụp đầu request + `delete_doc` đọc lại bằng đọc thường → phiếu vừa được ghi sổ / duyệt song song
+		# (post_stock_issue / transfer / adjustment) bị xoá như nháp, phiếu `DCK-` / phiếu chi hao hụt mồ côi; khoá giữ tới lúc xoá
+		x = nguon_phieu(ten, khoa=True)
 		if x is None:
 			continue
 		if x.trang_thai != "draft":

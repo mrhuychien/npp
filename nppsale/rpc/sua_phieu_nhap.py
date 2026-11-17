@@ -61,12 +61,28 @@ def _hang_tham_so(p_lines) -> set:
 	return {K.chu_json(x.get("product_id")) for x in ds if isinstance(x, dict) and x.get("product_id") not in (None, "")}
 
 
+def _ncc_tham_so(p_head) -> set:
+	"""NCC gửi lên ở `p_head` (đổi NCC — khoá cả NCC mới; soát P4)."""
+	x = p_head
+	if isinstance(x, str):
+		try:
+			x = json.loads(x)
+		except ValueError:
+			x = None
+	v = x.get("supplier_id") if isinstance(x, dict) else None
+	return {v} if isinstance(v, str) and v else set()
+
+
 def _chuan_bi_sua(p_invoice_id=None, p_head=None, p_lines=None):
-	"""Đọc trước khi khoá (cổng commit sau bước này): người gọi, cài đặt, tờ cuối chuỗi amend, mặt hàng cũ ∪ mặt hàng gửi lên (khoá Bin cả hai — §2.1)."""
+	"""Đọc trước khi khoá (cổng commit sau bước này): người gọi, cài đặt, tờ cuối chuỗi amend, mặt hàng cũ ∪ mặt hàng gửi lên (khoá Bin cả hai — §2.1),
+	NCC cũ ∪ NCC gửi lên (khoá Supplier ngay sau Bin — soát P4)."""
+	from nppsale.rpc.lo_kho import hang_phieu_tu_dong
+
 	hien_tai()
 	cai_dat_kho()
 	ten = P._hieu_luc(P._chu(p_invoice_id))
-	frappe.local._npp_sua_pn = (P._chu(p_invoice_id), ten, P._hang_cua(ten) | _hang_tham_so(p_lines))
+	frappe.local._npp_sua_pn = (P._chu(p_invoice_id), ten, P._hang_cua(ten) | _hang_tham_so(p_lines) | hang_phieu_tu_dong(DT, ten),
+		P._ncc_cua(ten) | _ncc_tham_so(p_head))
 
 
 # ================================================================================================ đọc lô / số hiện hành
@@ -106,13 +122,15 @@ def _tk_giam(cd) -> str:
 
 
 def _so_cua(doc, cd) -> S.SoPhieu:
-	"""Số tiền của một tờ lõi (đã làm tròn đồng): tiền hàng = `total`; thuế = Σ dòng thuế khác dòng giảm đầu phiếu; giảm đã áp = Σ dòng giảm (Deduct +)."""
+	"""Số tiền của một tờ lõi (đã làm tròn đồng): tiền hàng = `total`; thuế = Σ dòng thuế khác dòng giảm đầu phiếu và dòng nợ lệch giá vốn của phiếu
+	sinh từ màn Nhập kho (`phieu_nhap.dong_lech` — cố định, hai bên lượt sửa bằng nhau nên Δ = 0; cổng `vat` cũng không gồm); giảm đã áp = Σ dòng giảm
+	(Deduct +); tổng = `grand_total` (gồm dòng lệch)."""
 	thue = giam = 0.0
 	for t in doc.get("taxes") or []:
 		x = flt(t.tax_amount) * (-1 if t.add_deduct_tax == "Deduct" else 1)
 		if t.account_head == _tk_giam(cd):
 			giam -= x
-		else:
+		elif not P.la_dong_lech(t):
 			thue += x
 	return S.SoPhieu(tien_hang=K.so(round(flt(doc.total), 2)), thue=K.so(round(thue, 2)), giam_ap=K.so(round(giam, 2)),
 		tong=K.so(round(flt(doc.grand_total), 2)))
@@ -150,11 +168,17 @@ def sua_phieu_nhap(p_invoice_id=None, p_head=None, p_lines=None):
 	x = getattr(frappe.local, "_npp_sua_pn", None)
 	frappe.local._npp_sua_pn = None  # dùng MỘT lần
 	if x and x[0] == P._chu(p_invoice_id):
-		ten, hang = x[1], x[2]
+		ten, hang, ncc = x[1], x[2], x[3]
 	else:  # gọi nội bộ không qua cổng
 		ten = P._hieu_luc(P._chu(p_invoice_id))
 		hang = P._hang_cua(ten) | _hang_tham_so(p_lines)
-	r = P._khoa(ten, hang, cd)
+		ncc = P._ncc_cua(ten) | _ncc_tham_so(p_head)
+	r = P._khoa(ten, hang, cd, ncc)
+	moi_hang = _hang_tham_so(p_lines) - set(hang)
+	if moi_hang:  # mặt hàng gửi lên ngoài bước chuẩn bị (gọi nội bộ) — khoá Bin thêm NGAY sau khoá phiếu, trước câu đọc thường đầu tiên (soát P4)
+		from nppsale.rpc.xuat_hang import _khoa_bin
+
+		_khoa_bin(moi_hang, cd)
 	if r is None:
 		raise NppLoi(S.PHIEU_KHONG_TON_TAI)
 	P._kiem_vai("sua_phieu_nhap", nc)
@@ -172,11 +196,6 @@ def sua_phieu_nhap(p_invoice_id=None, p_head=None, p_lines=None):
 	dong = S.doc_dong(mang)
 	co = set(frappe.get_all("Item", filters={"name": ("in", [d.hang for d in dong if d.hang] or [""])}, pluck="name"))
 	S.kiem_dong(dong, co)
-	moi_hang = {d.hang for d in dong} - set(hang)
-	if moi_hang:  # mặt hàng gửi lên ngoài bước chuẩn bị (gọi nội bộ) — khoá Bin thêm trước mọi ghi
-		from nppsale.rpc.xuat_hang import _khoa_bin
-
-		_khoa_bin(moi_hang, cd)
 	lo_cu, chung_tu = _lo_cu(doc, cd)
 	ten_hang = dict(frappe.get_all("Item", filters={"name": ("in", list({d.hang for d in dong} | {o.hang for o in lo_cu}))},
 		fields=["name", "item_name"], as_list=True))

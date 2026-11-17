@@ -95,6 +95,28 @@ def hom_nay():
 
 
 # ================================================================================================ bảng thuế (§2.4, CFD-11, PoC 3)
+MO_TA_LECH = "Phần nợ NCC lệch giá vốn (nhập kho)"
+
+
+def dong_lech(doc, cd) -> None:
+	"""Dòng thuế `Actual` / `Total` "Phần nợ NCC lệch giá vốn (nhập kho)" của phiếu nhập SINH TỪ màn Nhập kho (`post_stock_import` có NCC + nợ — §7.3
+	điểm 3, Q9 M4): dòng `rate` = giá vốn (giá lô = `base_cost`), nợ = `payable.amount` màn tính → MỘT dòng bù chênh `npp_no_lech_gia_von` (có dấu: Add /
+	Deduct) vào `tk_thue_dau_vao`. Lưu số ở trường riêng để mọi lần dựng lại bảng thuế (sửa nhánh A / B, khôi phục tờ đã sửa giá) gắn lại ĐÚNG dòng
+	này — soát P4: `dung_thue` từng xoá sạch bảng thuế, sửa ghi chú phiếu là nợ NCC + sổ cái tụt / tăng đúng phần lệch mà không ai thấy."""
+	lech = flt(doc.get("npp_no_lech_gia_von"))
+	if abs(lech) < 0.5:
+		return
+	if not cd.get("tk_thue_dau_vao"):
+		raise NppLoi("CAI_DAT_THIEU: NPP Cai Dat chưa có tài khoản thuế GTGT đầu vào (tk_thue_dau_vao).")
+	doc.append("taxes", {"charge_type": "Actual", "account_head": cd.tk_thue_dau_vao, "description": MO_TA_LECH, "tax_amount": abs(lech),
+		"category": "Total", "add_deduct_tax": "Add" if lech > 0 else "Deduct"})
+
+
+def la_dong_lech(t) -> bool:
+	"""Dòng thuế bù nợ lệch giá vốn (`dong_lech`) — không phải thuế: không tính vào `vat` / số thuế của lượt sửa giá."""
+	return t.get("description") == MO_TA_LECH and t.get("charge_type") == "Actual"
+
+
 def dung_thue(doc, cd) -> None:
 	"""Bảng thuế phiếu nhập do method dựng (`add_taxes_from_item_tax_template = 0`; mọi dòng `category = Total` — giá vốn lô không gồm VAT):
 	thuế gõ tay (`npp_co_thue_go_tay`) → MỘT dòng `Actual` vào `tk_thue_dau_vao` = max(0, số gõ) thay các dòng VAT; không thì dòng VAT của mẫu
@@ -113,6 +135,7 @@ def dung_thue(doc, cd) -> None:
 	else:
 		for t in _get_taxes_and_charges("Purchase Taxes and Charges Template", cd.mau_thue_mua) or []:
 			doc.append("taxes", t)
+	dong_lech(doc, cd)  # phiếu sinh từ màn Nhập kho: phần nợ lệch giá vốn đi theo mọi lần dựng lại (soát P4)
 	giam = flt(doc.get("npp_giam_dau_phieu"))
 	if not giam:
 		return
@@ -150,7 +173,7 @@ def _ap_dau(doc, g: dict, cd) -> None:
 			continue
 		if k == "supplier_id":
 			_khong_null(v, k, BANG)
-			if not frappe.db.exists("Supplier", v):
+			if not co_ncc_khoa_chia_se(v):
 				raise LoiCong("23503", f'insert or update on table "{BANG}" violates foreign key constraint "purchase_invoices_supplier_id_fkey"',
 					http=409)
 			doc.supplier = v
@@ -169,6 +192,13 @@ def _ap_dau(doc, g: dict, cd) -> None:
 			doc.npp_ghi_chu = _chu(v)
 		else:
 			raise LoiCong("PGRST204", f"Could not find the '{k}' column of '{BANG}' in the schema cache", http=400)
+
+
+def co_ncc_khoa_chia_se(ncc) -> bool:
+	"""NCC còn (khoá ngoại `…_supplier_id_fkey`): đọc `LOCK IN SHARE MODE` — như KEY SHARE của khoá ngoại Postgres, xếp hàng với gộp / xoá NCC (khoá
+	`FOR UPDATE`) và thấy bản mới nhất: NCC vừa bị gộp / xoá song song → 23503, không lập nháp trỏ NCC đã mất (soát P4; `frappe.db.exists` đọc theo
+	ảnh chụp đầu request)."""
+	return bool(isinstance(ncc, str) and ncc and frappe.db.sql("SELECT `name` FROM `tabSupplier` WHERE `name` = %s LOCK IN SHARE MODE", ncc))
 
 
 def kho_phieu(doc) -> str | None:
@@ -249,17 +279,31 @@ def sua_phieu(gia_tri: dict, ids: list[str], nc) -> list[str]:
 	return ra
 
 
+def xoa_nhap_pi(ten: str, loai: str, use_rpc: str) -> bool:
+	"""Xoá MỘT Purchase Invoice nháp (phiếu nhập / phiếu trả NCC) của lời xoá cổng. Soát P4:
+	- trạng thái đọc CÓ KHOÁ (`FOR UPDATE` — câu khoá thấy bản đã commit mới nhất): đọc thường theo ảnh chụp REPEATABLE READ lập từ đầu request, rồi
+	  `delete_doc` của lõi đọc lại bằng đọc thường sau khoá NOWAIT (`delete_doc.py:159–174`) → tờ vừa được Hoàn thành / Gửi song song bị XOÁ mất, sổ
+	  kho / sổ cái / công nợ trỏ tờ không còn (nppsale `DELETE … WHERE status = 'draft'` đánh giá lại trên bản mới nhất → 0 dòng). Khoá giữ tới lúc xoá
+	  (câu NOWAIT của lõi gặp khoá của chính mình nên vẫn qua); đã ghi sổ → `use_rpc`.
+	- KHÔNG lùi dãy số (`kho_tay.xoa_nhap`): lõi lùi `tabSeries` khi xoá tờ mang số cuối → tờ lập sau nhận lại ĐÚNG tên (id) ấy, màn còn giữ id cũ ghi
+	  đè phiếu nháp của người khác (nppsale id uuid không bao giờ dùng lại) — lỗ số như câu 18.
+	False = không còn tờ (đã bị xoá / không đúng loại)."""
+	from nppsale.rpc.kho_tay import xoa_nhap
+
+	r = frappe.db.sql(f"SELECT `docstatus` FROM `tab{DT}` WHERE `name` = %s AND `npp_loai` = %s FOR UPDATE", (ten, loai))
+	if not r:
+		return False
+	if cint(r[0][0]) != 0:
+		raise NppLoi(use_rpc)
+	xoa_nhap(ten, DT)
+	return True
+
+
 def xoa_phieu(ids: list[str], nc) -> list[str]:
-	"""DELETE purchase_invoices: chỉ phiếu chưa ghi sổ (nháp, kể cả nháp mang dấu huỷ) — số PN bỏ trống (câu 18); đã ghi sổ → USE_RPC."""
+	"""DELETE purchase_invoices: chỉ phiếu chưa ghi sổ (nháp, kể cả nháp mang dấu huỷ) — số PN bỏ trống, không cấp lại (câu 18); đã ghi sổ → USE_RPC."""
 	if nc.vai not in K.VAI_MUA_HANG and not nc.bo_qua_rls:
 		return []
-	ra = []
-	for ten in ids:
-		if cint(frappe.db.get_value(DT, ten, "docstatus")) != 0:
-			raise NppLoi(USE_RPC)
-		frappe.delete_doc(DT, ten, ignore_permissions=True, force=True)
-		ra.append(ten)
-	return ra
+	return [ten for ten in ids if xoa_nhap_pi(ten, LOAI, USE_RPC)]
 
 
 def _ap_dong(doc, r, g: dict, cd) -> None:
@@ -410,34 +454,52 @@ def _hieu_luc(ten: str | None) -> str | None:
 	return ten
 
 
-def _hang_cua(ten: str | None) -> set:
-	return {r[0] for r in frappe.db.sql("SELECT DISTINCT `item_code` FROM `tabPurchase Invoice Item` WHERE `parent` = %s", ten)} if ten else set()
+def _hang_cua(ten: str | None, khoa: bool = False) -> set:
+	"""Mặt hàng của tờ. `khoa` → đọc CÓ KHOÁ (`LOCK IN SHARE MODE` — không lập ảnh chụp REPEATABLE READ): dùng SAU khoá PI để khoá Bin bù của hàng mới
+	vẫn đứng TRƯỚC câu đọc thường đầu tiên (soát P4 — đọc thường ở đây là tồn lô của hàng mới đọc theo ảnh chụp cũ, PoC 1d)."""
+	if not ten:
+		return set()
+	return {r[0] for r in frappe.db.sql("SELECT DISTINCT `item_code` FROM `tabPurchase Invoice Item` WHERE `parent` = %s"
+		+ (" LOCK IN SHARE MODE" if khoa else ""), ten)}
+
+
+def _ncc_cua(ten: str | None) -> set:
+	x = frappe.db.get_value(DT, ten, "supplier") if ten else None
+	return {x} if x else set()
 
 
 def _chuan_bi_pn(p_invoice_id=None, p_reason=None):
-	"""Đọc trước khi khoá (cổng commit sau bước này): người gọi, cài đặt, tờ cuối của chuỗi + mặt hàng của nó → frappe.local — câu ĐẦU của hàm là
-	khoá Bin (ảnh chụp REPEATABLE READ lập ở câu đọc thường đầu tiên SAU khoá — PoC 1d)."""
+	"""Đọc trước khi khoá (cổng commit sau bước này): người gọi, cài đặt, tờ cuối của chuỗi + mặt hàng + NCC của nó → frappe.local — câu ĐẦU của hàm là
+	khoá Bin, rồi khoá NCC (ảnh chụp REPEATABLE READ lập ở câu đọc thường đầu tiên SAU các khoá — PoC 1d)."""
+	from nppsale.rpc.lo_kho import hang_phieu_tu_dong
+
 	hien_tai()
 	cai_dat_kho()
 	ten = _hieu_luc(_chu(p_invoice_id))
-	frappe.local._npp_pn = (_chu(p_invoice_id), ten, _hang_cua(ten))
+	# + mặt hàng của phiếu rà soát tự động chạm lô của tờ (huỷ có thể huỷ + lập lại phần lô KHÁC của phiếu ấy — `hoan_chuyen_date`)
+	frappe.local._npp_pn = (_chu(p_invoice_id), ten, _hang_cua(ten) | hang_phieu_tu_dong(DT, ten), _ncc_cua(ten))
 
 
-def _da_chuan_bi(p_invoice_id) -> tuple[str | None, set]:
+def _da_chuan_bi(p_invoice_id) -> tuple[str | None, set, set]:
 	x = getattr(frappe.local, "_npp_pn", None)
 	frappe.local._npp_pn = None  # dùng MỘT lần — lời gọi nội bộ sau đó (cùng tiến trình) đọc lại, không lấy ảnh cũ của lượt trước
 	if x and x[0] == _chu(p_invoice_id):
-		return x[1], x[2]
+		return x[1], x[2], x[3]
 	ten = _hieu_luc(_chu(p_invoice_id))  # gọi nội bộ không qua cổng
-	return ten, _hang_cua(ten)
+	return ten, _hang_cua(ten), _ncc_cua(ten)
 
 
-def _khoa(ten: str | None, hang: set, cd):
-	"""Khoá Bin (mặt hàng của tờ, đọc ở bước chuẩn bị) → khoá PI `FOR UPDATE`, theo chuỗi amend tới tờ cuối (đọc có khoá — tờ amend lập đúng lúc
-	này thì đi tiếp sang nó). Mặt hàng của tờ đổi giữa hai bước (sửa nháp đồng thời) → khoá thêm Bin của hàng mới. None = không có phiếu nhập."""
+def _khoa(ten: str | None, hang: set, cd, ncc: set | None = None):
+	"""Khoá Bin (mặt hàng của tờ, đọc ở bước chuẩn bị) → khoá NCC (`ncc` — đọc ở bước chuẩn bị; soát P4, thứ tự Bin → Supplier → PI của mọi method đổi
+	nợ NCC) → khoá PI `FOR UPDATE`, theo chuỗi amend tới tờ cuối (đọc có khoá — tờ amend lập đúng lúc này thì đi tiếp sang nó). NCC của tờ không nằm
+	trong `ncc` (đổi giữa hai bước) → lui, cổng thử lại. Mặt hàng của tờ đổi giữa hai bước (sửa nháp đồng thời) → khoá thêm Bin của hàng mới — đọc mặt
+	hàng CÓ KHOÁ nên khoá bù vẫn trước ảnh chụp. `ncc` None (gọi thẳng từ bài kiểm) → khoá NCC của tờ sau khoá PI. None = không có phiếu nhập."""
 	from nppsale.rpc.xuat_hang import _khoa_bin
+	from nppsale.su_kien.cong_no_ncc import khoa_ncc_truoc, ncc_doi_giua_chung
 
 	_khoa_bin(hang, cd)
+	if ncc is not None:
+		khoa_ncc_truoc(ncc)
 	for _ in range(100):
 		r = frappe.db.sql(f"""SELECT `name`, `docstatus`, `npp_huy_luc`, `supplier` FROM `tab{DT}` WHERE `name` = %s AND `npp_loai` = %s
 			FOR UPDATE""", (ten or "", LOAI), as_dict=True)
@@ -447,7 +509,11 @@ def _khoa(ten: str | None, hang: set, cd):
 		if not x:
 			break
 		ten = x[0][0]
-	moi = _hang_cua(r[0].name) - set(hang)
+	if ncc is None:
+		khoa_ncc_truoc({r[0].supplier})
+	elif r[0].supplier and r[0].supplier not in ncc:
+		ncc_doi_giua_chung()
+	moi = _hang_cua(r[0].name, khoa=True) - set(hang)
 	if moi:
 		_khoa_bin(moi, cd)
 	return r[0]
@@ -464,8 +530,8 @@ def _kiem_vai(ham: str, nc, noi_bo: bool = False) -> None:
 def complete_purchase_invoice(p_invoice_id=None):
 	nc = hien_tai()
 	cd = cai_dat_kho()
-	ten, hang = _da_chuan_bi(p_invoice_id)
-	r = _khoa(ten, hang, cd)
+	ten, hang, ncc = _da_chuan_bi(p_invoice_id)
+	r = _khoa(ten, hang, cd, ncc)
 	if r is None:
 		raise NppLoi("PHIEU_KHONG_TON_TAI: Không tìm thấy phiếu nhập này.")
 	_kiem_vai("complete_purchase_invoice", nc)
@@ -495,7 +561,9 @@ def hoan_thanh(r, nc, cd) -> str:
 
 	luc = now_datetime()
 	ngay = luc.date()
-	gio = luc.strftime("%H:%M:%S")
+	# giờ ghi sổ đủ micro giây như mọi RPC kho (tra_ncc.gui, kho_tay, kiem_ke, lo_kho; HĐ P3 `nowtime()`): cắt về giây là phiếu đứng TRƯỚC chứng từ
+	# đã ghi sổ trong cùng giây → lõi coi là ghi lùi, xếp repost, giá vốn chứng từ đã chốt đổi (soát P4)
+	gio = luc.strftime("%H:%M:%S.%f")
 	kho = kho_phieu(doc)
 	vung = vung_cua_kho(kho, cd) or "sale"
 	goc = "-".join(doc.name.split("-")[:2])  # lô theo số GỐC của chuỗi amend (`PN-0042-1` → lô `PN-0042-NNN`)
@@ -509,12 +577,16 @@ def hoan_thanh(r, nc, cd) -> str:
 		han = add_days(ngay, cint(it.shelf_life_in_days)) if cint(it.shelf_life_in_days) > 0 else None  # không hạn: trống (CFD-10)
 		kho_lo = kho_nhan_lo(vung, han, cd, ngay)
 		ma = K.ma_lo_phieu_nhap(goc, stt)
+		loi_trung = NppLoi(f"LO_TRUNG_MA: Mã lô {ma} đã có trong sổ — đổi mã lô ấy rồi hoàn thành lại phiếu.")
 		if frappe.db.exists("Batch", ma):
-			raise NppLoi(f"LO_TRUNG_MA: Mã lô {ma} đã có trong sổ — đổi mã lô ấy rồi hoàn thành lại phiếu.")
-		frappe.get_doc({"doctype": "Batch", "batch_id": ma, "item": d.item_code, "manufacturing_date": ngay, "expiry_date": han,
-			"npp_ngay_nhap": luc, "reference_doctype": DT, "reference_name": doc.name, "npp_kho_tao": kho_lo, "npp_tim_kd": khoa_tim_ds(ma),
-			"npp_gia_von_lo_rong": float(K.gia_von_lo(d.qty, d.price_list_rate, d.get("npp_giam_dong"), d.conversion_factor or 1)),
-		}).insert(ignore_permissions=True)
+			raise loi_trung
+		try:
+			frappe.get_doc({"doctype": "Batch", "batch_id": ma, "item": d.item_code, "manufacturing_date": ngay, "expiry_date": han,
+				"npp_ngay_nhap": luc, "reference_doctype": DT, "reference_name": doc.name, "npp_kho_tao": kho_lo, "npp_tim_kd": khoa_tim_ds(ma),
+				"npp_gia_von_lo_rong": float(K.gia_von_lo(d.qty, d.price_list_rate, d.get("npp_giam_dong"), d.conversion_factor or 1)),
+			}).insert(ignore_permissions=True)
+		except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
+			raise loi_trung from None  # lô cùng mã vừa được lập song song sau bước kiểm (soát P4) — đúng câu, không 500
 		d.warehouse = kho_lo
 		gan_goi_lo(d, lap_goi_lo("Inward", DT, d.item_code, kho_lo, {ma: base}, ngay, gio, cd.cong_ty))
 	doc.update({"posting_date": ngay, "posting_time": gio, "set_posting_time": 1, "update_stock": 1, "disable_rounded_total": 1,
@@ -555,8 +627,8 @@ def _ton_lo(lo: str, kho: str | None = None) -> float:
 def cancel_purchase_invoice(p_invoice_id=None, p_reason=None):
 	nc = hien_tai()
 	cd = cai_dat_kho()
-	ten, hang = _da_chuan_bi(p_invoice_id)
-	r = _khoa(ten, hang, cd)
+	ten, hang, ncc = _da_chuan_bi(p_invoice_id)
+	r = _khoa(ten, hang, cd, ncc)
 	if r is None:
 		raise NppLoi("PHIEU_KHONG_TON_TAI: Không tìm thấy phiếu nhập này.")
 	_kiem_vai("cancel_purchase_invoice", nc)
@@ -668,8 +740,8 @@ def huy(ten: str, ly_do: str | None, nc, cd, *, sua: bool = False) -> None:
 def khoi_phuc_phieu_nhap(p_invoice_id=None):
 	nc = hien_tai()
 	cd = cai_dat_kho()
-	ten, hang = _da_chuan_bi(p_invoice_id)
-	r = _khoa(ten, hang, cd)
+	ten, hang, ncc = _da_chuan_bi(p_invoice_id)
+	r = _khoa(ten, hang, cd, ncc)
 	if r is None:
 		raise NppLoi("PHIEU_KHONG_TON_TAI: Không tìm thấy phiếu nhập này.")
 	_kiem_vai("khoi_phuc_phieu_nhap", nc)
@@ -688,7 +760,7 @@ def lap_lai(ten_cu: str, cd) -> tuple[str, int]:
 	giữ ngày nhập gốc của phiếu kho), mốc hoàn thành gốc (`npp_hoan_thanh_luc` — ngày ghi nợ = completed_at gốc), gói lô Inward vào ĐÚNG lô cũ của
 	từng dòng (lô đã tắt lúc huỷ thì mở lại — nppsale `status 'available'`). Tờ cũ đã SỬA GIÁ (`npp_sua_gia` — M7 nhánh B; bút toán / LCV đã huỷ cùng
 	tờ): tờ mới mang thẳng giá / giảm / thuế đã sửa và dựng lại bảng thuế (nppsale khôi phục đúng số đã sửa). Trả (tên tờ mới, số lô đã nhập lại)."""
-	from nppsale.rpc.goi_lo import gan_goi_lo, lap_goi_lo
+	from nppsale.rpc.goi_lo import gan_goi_lo, kho_nhan_lo, lap_goi_lo, vung_cua_kho
 
 	cu = frappe.get_doc(DT, ten_cu)
 	lo_idx = {}
@@ -701,10 +773,13 @@ def lap_lai(ten_cu: str, cd) -> tuple[str, int]:
 	for d in moi.get_all_children():
 		d.docstatus = 0
 	moi.amended_from = cu.name
-	# trường no_copy của lõi mà phiếu cần giữ: dãy số, chiều tờ, ngày HĐ NCC (ngày hiệu lực giá nhập), ghi chú phiếu, giờ ghi sổ
+	# trường no_copy của lõi mà phiếu cần giữ: dãy số, chiều tờ, ngày HĐ NCC (ngày hiệu lực giá nhập), ghi chú phiếu, giờ ghi sổ. Ba trường dòng nợ
+	# (`npp_qua_han_tay` / `npp_han_thanh_toan` / `npp_ghi_chu_no` — màn công nợ NCC ghi lên tờ cũ) KHÔNG đi theo: nppsale khôi phục lập dòng `payables`
+	# MỚI (`open`, hạn NULL, chữ hệ thống "Phiếu nhập hàng …" — khoi_phuc_phieu_nhap.sql:71–74; huỷ đã xoá dòng cũ) — soát P4
 	moi.update({"naming_series": cu.naming_series, "is_return": cu.is_return, "bill_date": cu.bill_date, "npp_ghi_chu": cu.get("npp_ghi_chu"),
 		"npp_huy_luc": None, "npp_huy_boi": None, "npp_ly_do_huy": None, "npp_hoan_thanh_luc": cu.get("npp_hoan_thanh_luc"),
-		"posting_date": cu.posting_date, "posting_time": str(cu.posting_time), "set_posting_time": 1})
+		"posting_date": cu.posting_date, "posting_time": str(cu.posting_time), "set_posting_time": 1,
+		"npp_qua_han_tay": 0, "npp_han_thanh_toan": None, "npp_ghi_chu_no": None})
 	gio = str(cu.posting_time)
 	phu = sua_gia_cua(cu)
 	moi.npp_sua_gia = None
@@ -721,12 +796,18 @@ def lap_lai(ten_cu: str, cd) -> tuple[str, int]:
 				d.warehouse = kho
 		moi.flags.ignore_permissions = True
 		dung_thue(moi, cd)
+	vung = vung_cua_kho(kho_phieu(cu), cd) or "sale"
 	for d in moi.items:
 		d.allow_zero_valuation_rate = 1 if not flt(d.rate) else 0  # dòng 0 đ (hàng tặng)
 		lo = lo_idx.get(d.idx)
 		if not lo:
 			continue
-		if cint(frappe.db.get_value("Batch", lo, "disabled")):
+		b = frappe.db.get_value("Batch", lo, ["disabled", "expiry_date"], as_dict=True)
+		# kho của lô theo luật kho date HÔM NAY (một luật với hoàn thành / sửa nhánh A — V70): lô đã bị RÀ sang kho cận date rồi phiếu bị huỷ (huỷ
+		# đưa hàng về kho bán rồi mới đảo — `hoan_chuyen_date`) nhập lại vào KHO CẬN DATE — nppsale giữ cờ vùng `date` của lô qua huỷ / khôi phục;
+		# chép kho dòng của tờ huỷ là đặt hàng cận date vào kho bán, bán được tới lượt rà đêm (soát P4)
+		d.warehouse = kho_nhan_lo(vung, b.expiry_date if b else None, cd)
+		if b and cint(b.disabled):
 			frappe.db.set_value("Batch", lo, "disabled", 0)
 		gan_goi_lo(d, lap_goi_lo("Inward", DT, d.item_code, d.warehouse, {lo: flt(d.stock_qty) or flt(d.qty) * flt(d.conversion_factor or 1)},
 			moi.posting_date, gio, cd.cong_ty))
@@ -744,9 +825,20 @@ def lap_lai(ten_cu: str, cd) -> tuple[str, int]:
 
 
 # ================================================================================================ bảng giá nhập (§2.9, §3.5)
+def _khoa_hang_gia(ds) -> None:
+	"""Khoá dòng Item của các mặt hàng sắp ghi giá nhập (theo tên — thứ tự cố định) — hàng đợi chung của `luu_gia_nhap` và bước ghi giá khi Hoàn thành /
+	sửa / khôi phục phiếu: hai lượt cùng (mặt hàng, đơn vị) chưa có giá xếp hàng thay vì cùng thấy "chưa có" rồi cùng chèn → HAI Item Price một đơn vị
+	(`tabItem Price` không có chỉ mục duy nhất; `check_duplicates` của lõi đọc thường và so cả `valid_from` — soát P4, §2.9)."""
+	ds = sorted({x for x in ds or () if x})
+	if ds:
+		frappe.db.sql("SELECT `name` FROM `tabItem` WHERE `name` IN %s ORDER BY `name` FOR UPDATE", (tuple(ds),))
+
+
 def _gia_nhap(sp: str, dv: str, bang: str):
-	r = frappe.get_all("Item Price", filters={"price_list": bang, "item_code": sp, "uom": dv}, fields=["name", "valid_from"],
-		order_by="creation asc", limit=1)
+	"""Item Price của (mặt hàng, đơn vị) trên bảng giá nhập — đọc CÓ KHOÁ (thấy bản đã commit mới nhất, kể cả giá lượt song song vừa chèn sau ảnh chụp
+	đầu request — soát P4); bản cũ nhất nếu dữ liệu cũ đã trùng."""
+	r = frappe.db.sql("""SELECT `name`, `valid_from` FROM `tabItem Price` WHERE `price_list` = %s AND `item_code` = %s AND `uom` = %s
+		ORDER BY `creation`, `name` LIMIT 1 FOR UPDATE""", (bang, sp, dv), as_dict=True)
 	return r[0] if r else None
 
 
@@ -776,11 +868,14 @@ def ghi_gia_nhap_tu_phieu(doc) -> int:
 
 	if cint(doc.docstatus) != 1:
 		return 0
+	if doc.get("npp_ma_nhap_kho"):
+		return 0  # phiếu sinh từ màn Nhập kho (§7.3 điểm 3): giá dòng là GIÁ VỐN, nppsale màn ấy không ghi giá nhập — kể cả khi sửa / khôi phục (soát P4)
 	ngay = getdate(doc.bill_date) if doc.get("bill_date") else hom_nay()
 	bang = bang_gia_nhap()
 	phu = (sua_gia_cua(doc) or {}).get("dong") or {}  # giá đã sửa ở phiếu đã bán (M7 nhánh B — đặc tả §3.3 bước 6: ghi theo giá đã sửa)
 	moi = K.dong_ghi_gia({"product_id": d.item_code, "unit_name": d.uom,
 		"unit_price": (phu.get(str(d.idx)) or {}).get("don_gia", d.price_list_rate)} for d in sorted(doc.items, key=lambda x: x.idx))
+	_khoa_hang_gia(sp for sp, _dv in moi)
 	so = 0
 	for (sp, dv), gia in moi.items():
 		cu = _gia_nhap(sp, dv, bang)
@@ -808,6 +903,7 @@ def luu_gia_nhap(p_dong=None):
 			ds = None
 	if not isinstance(ds, list):
 		raise NppLoi("GIA_NHAP_SAI: cần danh sách dòng giá")
+	_khoa_hang_gia(str(d.get("product_id")) for d in ds if isinstance(d, dict) and d.get("product_id"))  # câu khoá TRƯỚC mọi đọc giá (soát P4)
 	bang = bang_gia_nhap()
 	luu = bo = 0
 	for d in ds:
@@ -819,7 +915,8 @@ def luu_gia_nhap(p_dong=None):
 		gia = K.gia_nhap_so(chu)
 		cu = _gia_nhap(sp, dv, bang)
 		if gia is None:
-			for x in frappe.get_all("Item Price", filters={"price_list": bang, "item_code": sp, "uom": dv}, pluck="name"):
+			for (x,) in frappe.db.sql("""SELECT `name` FROM `tabItem Price` WHERE `price_list` = %s AND `item_code` = %s AND `uom` = %s
+					ORDER BY `name` FOR UPDATE""", (bang, sp, dv)):  # đọc có khoá — cả giá lượt trước vừa chèn (soát P4)
 				frappe.delete_doc("Item Price", x, ignore_permissions=True)
 			bo += 1
 			continue

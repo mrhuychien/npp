@@ -35,6 +35,7 @@ from __future__ import annotations
 
 from ..dang_ky import Bang, CotDef, QuanHe, dang_ky
 from ..ngu_canh import xem_gia_von
+from ..sql import SapXepNoiBo
 from ._chung import c, co_cot, la_nv, org, rls_moi_nv
 from .kho import KHO, gia_dong_se, gia_tra_ncc
 from .tien import GhiDaGo
@@ -279,7 +280,7 @@ def nap():
 		rls=rls_moi_nv,
 		ghi=GhiDongKho(),
 		an_cot={"unit_cost": xem_gia_von},
-		thu_tu_mac_dinh=[{"cot": "entry_id"}, {"sql": "{t}.`idx`"}],  # như Postgres trả dòng theo thứ tự chèn
+		thu_tu_mac_dinh=[{"cot": "entry_id"}, SapXepNoiBo("{t}.`idx`")],  # như Postgres trả dòng theo thứ tự chèn
 	))
 	dang_ky(Bang(
 		ten="v_stock_movements",

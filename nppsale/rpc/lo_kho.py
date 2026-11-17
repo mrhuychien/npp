@@ -157,11 +157,12 @@ def refresh_warehouse_zones(p_org_id=None):
 
 
 def ra_soat(cd, da_khoa: set) -> int:
-	"""Thân rà soát (Bin của `da_khoa` đã khoá): đọc lại lô SAU khoá; mặt hàng mới lọt vào giữa hai bước → khoá thêm."""
+	"""Thân rà soát (Bin của `da_khoa` đã khoá): đọc lại lô SAU khoá; mặt hàng mới lọt vào giữa hai bước → lui, cổng thử lại từ bước chuẩn bị (đọc lại
+	lô — Bin của hàng mới khoá ngay câu đầu). Soát P4: khoá bù SAU câu đọc lô là đọc tồn của hàng mới theo ảnh chụp cũ (PoC 1d) — lô âm."""
 	lo = _lo_ban(cd)
 	moi = {x.hang for x in lo} - set(da_khoa)
 	if moi:
-		_khoa_bin(moi, cd)
+		raise frappe.QueryDeadlockError("mặt hàng cần rà đổi giữa bước chuẩn bị và lúc khoá — thử lại")
 	if not lo:
 		return 0
 	lap_ckl([(x.ma, x.hang, x.ton) for x in lo], cd.kho_ban, cd.kho_can_date, cd, loai=T.SE_CHUYEN_DATE, ghi_chu=L.ghi_chu_ra_soat(cd.get("nguong")))
@@ -488,6 +489,25 @@ def _yen_tu(lo: str, se: str, moc) -> bool:
 	return not any(vn != se and get_datetime(luc) >= get_datetime(moc) for _vt, vn, _k, _q, luc in _phat_sinh(lo))
 
 
+def hang_phieu_tu_dong(voucher_type: str, voucher_no: str | None) -> set:
+	"""Mặt hàng của MỌI phiếu `CKL-` `chuyen_date_tu_dong` đang ghi sổ chạm lô của chứng từ (gói lô của chứng từ, mọi trạng thái) — bước CHUẨN BỊ của
+	huỷ / sửa / khôi phục phiếu nhập và huỷ phiếu kho đọc để khoá Bin ngay câu đầu: `hoan_chuyen_date` có thể huỷ các phiếu ấy rồi lập lại phần lô KHÁC
+	(rà soát gộp mọi lô một phiếu) — Bin của mặt hàng lô khác khoá muộn (sau câu đọc thường) là đọc tồn theo ảnh chụp cũ (soát P4, PoC 1d)."""
+	if not voucher_no:
+		return set()
+	se = frappe.db.sql_list("""SELECT DISTINCT b2.`voucher_no` FROM `tabSerial and Batch Bundle` b1
+		JOIN `tabSerial and Batch Entry` e1 ON e1.`parent` = b1.`name` AND IFNULL(e1.`batch_no`, '') != ''
+		JOIN `tabSerial and Batch Entry` e2 ON e2.`batch_no` = e1.`batch_no`
+		JOIN `tabSerial and Batch Bundle` b2 ON b2.`name` = e2.`parent` AND b2.`voucher_type` = 'Stock Entry' AND b2.`docstatus` = 1
+			AND b2.`is_cancelled` = 0
+		JOIN `tabStock Entry` se ON se.`name` = b2.`voucher_no` AND se.`docstatus` = 1 AND se.`npp_loai` = %s
+		WHERE b1.`voucher_type` = %s AND b1.`voucher_no` = %s""", (T.SE_CHUYEN_DATE, voucher_type, voucher_no))
+	if not se:
+		return set()
+	return set(frappe.db.sql_list("""SELECT DISTINCT `item_code` FROM `tabSerial and Batch Bundle` WHERE `voucher_type` = 'Stock Entry'
+		AND `voucher_no` IN %s""", (tuple(se),)))
+
+
 def hoan_chuyen_date(nguon: tuple[str, str], lo_kho: dict[str, tuple[str, float]], cd) -> set[str]:
 	"""§7.3 điểm 8 (đề xuất). `nguon` = (DocType, tên) chứng từ NHẬP sắp huỷ (Bin của nó đã khoá); `lo_kho` = {lô: (kho nhận, SL nhập cơ sở)}. Lô mà
 	phần thiếu ở kho nhận (kho bán) CHỈ do phiếu `CKL-` `chuyen_date_tu_dong` (mọi dòng gói lô chưa huỷ của lô thuộc chứng từ nguồn hoặc các phiếu ấy)
@@ -533,6 +553,8 @@ def hoan_chuyen_date(nguon: tuple[str, str], lo_kho: dict[str, tuple[str, float]
 		se = r.name
 		khac = [x for x in _dong_ra(se) if x[0] not in ung]
 		if khac:
+			# Bin của mặt hàng lô khác đã khoá ở câu đầu (bước chuẩn bị đọc `hang_phieu_tu_dong` — soát P4); khoá lại ở đây chỉ là lưới cho lời gọi
+			# nội bộ / phiếu tự động lập đúng lúc giữa hai bước (khoá của chính mình: không chờ)
 			_khoa_bin({x[1] for x in khac}, cd)
 		doc = frappe.get_doc(DT, se)
 		doc.flags.ignore_permissions = True

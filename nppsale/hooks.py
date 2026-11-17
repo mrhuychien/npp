@@ -211,6 +211,10 @@ doc_events = {
 		"on_cancel": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",
 		"on_update_after_submit": "nppsale.su_kien.cong_no_ncc.sau_ghi_so_phieu_nhap",
 	},
+	# Phiếu kho: khoá tìm `npp_tim_kd` theo mã phiếu ở mọi lần lưu qua validate (đặc tả kho_mua §4.5 — soát P4: `IN-` / `NL-` lập bằng method thiếu khoá)
+	"Stock Entry": {
+		"validate": "nppsale.su_kien.phieu_kho.validate",
+	},
 	# Payment Entry / Journal Entry: nhánh khách (cong_no) rồi nhánh NCC (cong_no_ncc) — mỗi hàm tự lọc theo party_type
 	"Payment Entry": {
 		"on_submit": ["nppsale.su_kien.cong_no.sau_thanh_toan", "nppsale.su_kien.cong_no_ncc.sau_thanh_toan"],

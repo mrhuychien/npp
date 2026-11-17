@@ -674,6 +674,22 @@
    "label": "Giá đã sửa",
    "module": "NPP Kho Mua",
    "read_only": 1
+  },
+  {
+   "fieldname": "npp_ma_nhap_kho",
+   "fieldtype": "Data",
+   "insert_after": "npp_sua_gia",
+   "label": "Mã phiếu nhập kho",
+   "module": "NPP Kho Mua",
+   "read_only": 1
+  },
+  {
+   "fieldname": "npp_no_lech_gia_von",
+   "fieldtype": "Currency",
+   "insert_after": "npp_ma_nhap_kho",
+   "label": "Nợ lệch giá vốn (nhập kho)",
+   "module": "NPP Kho Mua",
+   "read_only": 1
   }
  ],
  "Purchase Invoice Item": [

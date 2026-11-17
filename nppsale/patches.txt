@@ -8,3 +8,4 @@ nppsale.patches.v0_1.bo_module_npp_sale
 nppsale.patches.v0_1.tim_kd_nhan_vien
 nppsale.patches.v0_1.ghi_chu_ncc_sang_lo
 nppsale.patches.v0_1.chieu_cong_no_ncc
+nppsale.patches.v0_1.tim_kd_phieu_kho

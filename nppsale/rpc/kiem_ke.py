@@ -82,13 +82,14 @@ def phieu(ten: str | None, khoa: bool = False) -> frappe._dict | None:
 		ghi_chu=x.ghi_chu)
 
 
-def hang_cua(ten: str | None) -> set:
-	"""Mặt hàng cần khoá Bin: mặt hàng các dòng ∪ mặt hàng của lô dòng trỏ (dòng có thể trỏ lô của mặt hàng khác — nppsale không kiểm)."""
+def hang_cua(ten: str | None, khoa: bool = False) -> set:
+	"""Mặt hàng cần khoá Bin: mặt hàng các dòng ∪ mặt hàng của lô dòng trỏ (dòng có thể trỏ lô của mặt hàng khác — nppsale không kiểm). `khoa` → đọc
+	CÓ KHOÁ (`LOCK IN SHARE MODE` — không lập ảnh chụp): khoá Bin bù của hàng mới đứng trước câu đọc thường đầu tiên (soát P4, PoC 1d)."""
 	if not ten:
 		return set()
 	ra = set()
 	for hang, hang_lo in frappe.db.sql(f"""SELECT d.`mat_hang`, b.`item` FROM `tab{DT_DONG}` d LEFT JOIN `tabBatch` b ON b.`name` = d.`lo`
-			WHERE d.`parent` = %s AND d.`parenttype` = %s""", (ten, DT)):
+			WHERE d.`parent` = %s AND d.`parenttype` = %s{' LOCK IN SHARE MODE' if khoa else ''}""", (ten, DT)):
 		ra |= {x for x in (hang, hang_lo) if x}
 	return ra
 
@@ -124,9 +125,9 @@ def post_stock_adjustment(p_entry_id=None):
 	x = phieu(ten, khoa=True)
 	if x is None:
 		raise NppLoi(KK.KHONG_THAY)
-	moi = hang_cua(x.name) - set(hang)
+	moi = hang_cua(x.name, khoa=True) - set(hang)
 	if moi:
-		_khoa_bin(moi, cd)  # dòng đổi giữa bước chuẩn bị và khoá (sửa nháp đồng thời)
+		_khoa_bin(moi, cd)  # dòng đổi giữa bước chuẩn bị và khoá (sửa nháp đồng thời) — đọc mặt hàng có khoá: khoá bù vẫn trước ảnh chụp (soát P4)
 	if x.trang_thai == "posted":
 		raise KK.loi_da_duyet(x.name, x.duyet_luc)  # chốt idempotent (mig 123): bấm hai lần không cộng / trừ kho hai lần
 	if x.trang_thai != "draft":
