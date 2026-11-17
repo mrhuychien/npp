@@ -240,7 +240,10 @@ scheduler_events = {
 		# cron hằng ngày của nppsale (18:00 UTC = 01:00 giờ VN — giờ hệ thống của site): nhắc khách chưa có tuyến mỗi ngày,
 		# nhắc ảnh điểm bán thứ Hai; HĐĐT MISA (đặc tả HĐĐT §5.1): MỘT mục — `dong_bo` chỉ xếp hàng `long` việc đồng bộ trạng thái RỒI kéo
 		# snapshot (hai mục riêng là hai Scheduled Job Type: thứ tự xáo, chạy song song được ⇒ vòng khớp đọc sổ chưa cập nhật số)
-		"0 1 * * *": ["nppsale.lich.nhac_khach.nhac_khach_chua_tuyen", "nppsale.kham_so.kham_so_cong_no", "nppsale.lich.misa.dong_bo"],
+		# Rà soát kho cận date (đặc tả kho_mua §3.20 — mới, bàn bạc dòng 209: nppsale không có lịch tự chạy): lô có tồn ở kho bán mà hạn vào
+		# ngưỡng → một phiếu `CKL-` `chuyen_date_tu_dong` (nppsale.rpc.lo_kho)
+		"0 1 * * *": ["nppsale.lich.nhac_khach.nhac_khach_chua_tuyen", "nppsale.kham_so.kham_so_cong_no", "nppsale.lich.misa.dong_bo",
+			"nppsale.rpc.lo_kho.ra_soat_kho_date"],
 		"0 1 * * 1": ["nppsale.lich.nhac_khach.nhac_anh_diem_ban"],
 	},
 }

@@ -531,6 +531,10 @@ def _kiem_rut_nhap(doc, cd) -> int:
 		JOIN `tabSerial and Batch Entry` e ON e.`parent` = b.`name`
 		WHERE b.`voucher_type` = %s AND b.`voucher_no` = %s AND b.`docstatus` = 1 AND b.`is_cancelled` = 0 AND IFNULL(e.`batch_no`, '') != ''""",
 		(DT, doc.name))}
+	# §7.3 điểm 8 (M5 — đề xuất): lô đã bị rà sang kho cận date (phiếu `CKL-` `chuyen_date_tu_dong`) mà không động gì khác → huỷ trước phiếu ấy
+	from nppsale.rpc.lo_kho import hoan_chuyen_date
+
+	hoan_chuyen_date((DT, doc.name), {lo_dong[d.name]: (d.t_warehouse, flt(d.transfer_qty)) for d in doc.items if lo_dong.get(d.name)}, cd)
 	khong_lo: dict = {}
 	n = 0
 	for d in sorted(doc.items, key=lambda r: r.idx):

@@ -191,6 +191,9 @@ dang_ky(Bang(
 		QuanHe("product_units", "id", "product_id", True, ("product_units_product_id_fkey",)),
 		QuanHe("price_lists", "id", "product_id", True, ("price_lists_product_id_fkey",)),
 		QuanHe("suppliers", "primary_supplier_id", "id", False, ("products_primary_supplier_id_fkey",)),
+		# ngược sang lô (đặc tả kho_mua §4.6 / §4.9 — màn kiểm kê `stocktake-adjust`: `batches(id, batch_code, qty_on_hand, unit_cost, expires_at)`,
+		# `batches!inner(id)` + `gt('batches.qty_on_hand', 0)`)
+		QuanHe("batches", "id", "product_id", True, ("batches_product_id_fkey",)),
 	],
 	rls=lambda nc: ve_san_pham(nc),
 	ghi=GhiSanPham(),

@@ -13,7 +13,9 @@ import json
 import frappe
 
 from . import bang as _bang
+from .ghi import chuan_bi_kho as _chuan_bi_kho
 from .ghi import ghi as _ghi
+from .ghi import la_ghi_kho as _la_ghi_kho
 from .loi import NppLoi
 from .ngu_canh import hien_tai
 from .sql import LoiCong
@@ -50,6 +52,8 @@ def truy_van(yeu_cau=None):
 	_bang.nap()
 	yc = _doc_json(yeu_cau)
 	hd = yc.get("hanh_dong") or "select"
+	if _la_ghi_kho(yc):
+		return _ghi_kho(yc, hd)
 	# Một lời ghi là một đơn vị: hỏng thì quay lui ĐÚNG phần của nó (savepoint), không cả giao dịch của request.
 	diem = "npp_cong_ghi"
 	if hd != "select":
@@ -68,6 +72,39 @@ def truy_van(yeu_cau=None):
 		if hd != "select":
 			frappe.db.rollback(save_point=diem)
 		return _loi(e)
+
+
+def _ghi_kho(yc: dict, hd: str) -> dict:
+	"""Lời ghi cổng sinh chứng từ kho (bảng `batches`: sửa hạn / vùng → phiếu `CKL-`, xoá kiểm tồn — đặc tả kho_mua §2.1, BP §4.4.0): đọc dòng khớp
+	bộ lọc + mặt hàng (`chuan_bi_kho`) → COMMIT → savepoint → bộ ghi khoá Bin làm câu ĐẦU (PoC 1d) → ghi; deadlock / quá hạn khoá → lui hẳn và thử
+	lại có giãn cách (như `_goi_co_khoa` của RPC ghi kho). Lỗi ở bước đọc trả thẳng (chưa ghi gì, chưa có savepoint)."""
+	import time
+
+	diem = "npp_cong_ghi"
+	for lan in range(len(THU_LAI_KHOA) + 1):
+		try:
+			nc = hien_tai()
+			if _phuong_thuc() != "POST":
+				raise LoiCong("PGRST105", "ghi phải gửi bằng POST", http=405)
+			truoc = _chuan_bi_kho(yc, nc)
+		except Exception as e:  # noqa: BLE001 — bước đọc: chưa có gì để lui
+			return _loi(e)
+		try:
+			if not frappe.flags.in_test:  # bài kiểm chạy trong một giao dịch lui cuối bài — commit là ghi hẳn dữ liệu thử
+				frappe.db.commit()
+			frappe.db.savepoint(diem)
+			ket = ap_mot(_ghi(yc, nc, truoc), yc.get("mot"))
+			ket["status"] = 200
+			return ket
+		except (frappe.QueryDeadlockError, frappe.QueryTimeoutError) as e:
+			frappe.db.rollback()
+			frappe.local._npp_ngu_canh = None
+			if lan >= len(THU_LAI_KHOA):
+				return _loi(LoiCong("40P01", f"Máy chủ đang bận ghi kho — thử lại sau ít giây ({type(e).__name__}).", http=503))
+			time.sleep(THU_LAI_KHOA[lan])
+		except Exception as e:  # noqa: BLE001 — như lời ghi thường: lui đúng phần của nó
+			frappe.db.rollback(save_point=diem)
+			return _loi(e)
 
 
 def _gioi_han_khach(ten: str, toi_da: int) -> bool:

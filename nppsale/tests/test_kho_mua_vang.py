@@ -22,7 +22,9 @@ Chuẩn hoá trước khi so (khác có chủ đích — không phải lệch; q
   cũng vậy (tên Frappe / mã nppsale của phiếu kho, phiếu nhập, phiếu trả NCC, HĐ, chứng từ của phiếu trả khách → "<nhãn>" — từ M4); vết lấy lô
   (`stock_line_consumptions` ↔ gói lô Outward) so GỘP theo lô ở mức phiếu (V42: nppsale thứ tự dòng theo uuid); dòng xuất / chuyển không so `lo`
   (⚠K cổng: `batch_id` khi dòng lấy đúng một lô, nppsale luôn NULL); lô dựng sẵn ở kho bán mà hạn trong ngưỡng vào thẳng kho date (trigger
-  `batches_auto_zone` lúc chèn — bản Frappe ở M5).
+  `batches_auto_zone` lúc chèn — bản Frappe: kho tạo theo `goi_lo.kho_nhan_lo` của app, M5).
+- M5 — lô + kho cận date: chỗ giữ "@lo:<mã>[@vùng]" → id cổng `<lô>::<vùng>`; rà soát / sửa hạn chuyển lô bằng phiếu `CKL-` (⚠K §7.2 #7) → lô có thêm
+  dòng kho bán tồn 0 và thẻ kho không đổi vùng hồi tố (hàm LECH từng kịch bản); số lô rà soát trừ lô CÓ SẴN trên site mà phiếu rà soát chở.
 - §7.2 #26: lô mà mọi gói lô đã huỷ (huỷ phiếu nhập) → cổng `batches` ra dòng "lô chưa phát sinh" `qty_initial 0` (nppsale giữ số nhập cũ, `status
   cancelled`); trạng thái tắt = `cancelled` như nppsale (Batch `disabled` — §7.3 điểm 35).
 - tiền: Frappe làm tròn đồng (BP §7.2 điểm 3); giá vốn lô so 2 chữ số lẻ (§7.1 #5).
@@ -56,7 +58,7 @@ NS = uuid.UUID("6f1c2a77-1d0e-4b8f-9a3c-2b4d5e6f7081")
 # mốc dựng → số kịch bản (đặc tả §8; V81–V87 gắn mốc theo §9.3)
 MOC = {"M1": range(1, 17), "M2": (*range(17, 29), 87), "M3": (*range(29, 41), 86), "M4": (*range(41, 56), 81, 85), "M5": (*range(56, 60), 82),
 	"M6": range(60, 65), "M7": (*range(65, 72), 83), "M8": (72, 73, 84), "M9": range(74, 81)}
-DA_DUNG = ("M1", "M2", "M3", "M4")
+DA_DUNG = ("M1", "M2", "M3", "M4", "M5")
 # mục ảnh chụp đã so theo mốc (mục của mốc sau — tra_no, phieu_chi, chi_phi… — thêm khi dựng)
 MUC_SO = ("pn", "ptn", "lo", "no", "tra_no", "phieu_chi", "gia_nhap", "phieu_kho", "hd", "tra_khach", "nhan")
 BUOC_PK = ("nhap_kho", "pk", "xuat_le", "chuyen", "huy_pk")  # bước phiếu kho tay (M4)
@@ -456,8 +458,83 @@ def _v85(t, mong):
 	_chuyen_vung(mong, "PN-0001-001")
 
 
+# ------------------------------------------------------------------------------------------------ M5 — lô + kho cận date
+def _con_dong_ban(mong, ma_lo: str) -> None:
+	"""⚠K §3.20 / §4.6 (§7.2 #7): rà soát / sửa hạn chuyển lô bằng phiếu `CKL-` `chuyen_date_tu_dong` → cổng `batches` còn dòng KHO BÁN của lô (tồn 0,
+	nhập = số đã vào kho bán) bên cạnh dòng kho date — nppsale lật cờ vùng của MỘT dòng lô tại chỗ (thẻ kho đổi vùng hồi tố)."""
+	x = next(y for y in mong["ct"]["lo"] if y["ma"] == ma_lo and y["vung"] == "date")
+	mong["ct"]["lo"].append({**x, "vung": "sale", "ton": 0.0})
+
+
+def _v56b(t, mong):
+	_con_dong_ban(mong, "L5")
+
+
+def _v57(t, mong):
+	_con_dong_ban(mong, "L46")
+
+
+def _lo_pk(ct: dict, nhan: str, cu: str, moi: str) -> None:
+	"""Lô của dòng / vết lấy lô trong ảnh chụp phiếu kho `nhan`: nppsale in VÙNG HIỆN TẠI của dòng lô (đổi vùng hồi tố khi lô bị rà soát / sửa hạn), Frappe
+	in kho của chính chứng từ (sổ kho không hồi tố — ⚠K §7.2 #13)."""
+	pk = _pk(ct, nhan)
+	for d in pk.get("dong") or []:
+		if d.get("lo") == cu:
+			d["lo"] = moi
+		for v in d.get("vet") or []:
+			if v.get("lo") == cu:
+				v["lo"] = moi
+
+
+def _v58(t, mong):
+	"""⚠K §3.20: rà soát = `CKL-` 3 cái kho bán → date (nppsale lật cả dòng lô G-1 sang date); huỷ XKL-C trả 3 về KHO BÁN — nơi đã lấy (nppsale: về
+	dòng lô gốc nay ở date) → G-1 bán 3 (nhập 10) / date 7 (4 + 3); thẻ kho không đổi vùng hồi tố (IN-B, vết CKL-B / XKL-C ở kho bán). Dấu chuyển vùng
+	của Batch: lúc = lúc rà soát, người = TK của CKL-B (rà soát không ghi người — giữ người cũ như nppsale giữ `zone_moved_by`)."""
+	ct = mong["ct"]
+	goc = next(x for x in ct["lo"] if x["ma"] == "G-1")
+	ct["lo"] = [{**goc, "vung": "sale", "ton": 3.0, "nhap": 10.0, "chuyen_boi": "@u:TK"},
+		{**goc, "vung": "date", "ton": 7.0, "nhap": 7.0, "chuyen_boi": "@u:TK"}]
+	for nhan in ("IN-B", "CKL-B", "XKL-C"):
+		_lo_pk(ct, nhan, "G-1@date", "G-1@sale")
+
+
+def _v59(t, mong):
+	"""Bước 13 xoá lô của phiếu nhập P theo mã nppsale `PN-0001-001` → mã Frappe của P (dãy `PN-` của site — câu 18, so theo nhãn); ⚠K §4.6: sửa hạn L7
+	vào ngưỡng = `CKL-` 7 sang date (dòng kho bán còn lại tồn 0)."""
+	t["buoc"][12]["loc"] = {"id": "@lo:<pn:P>-001"}
+	_con_dong_ban(mong, "L7")
+
+
+def _v82a(t, mong):
+	"""⚠K §4.6 S7 / V82a: hạn gửi lại không đổi vẫn chạy luật kho date → `CKL-` `chuyen_date_tu_dong` 10 cái (nppsale lật cả dòng lô, thẻ kho IN40 hồi tố
+	sang date); vị trí 'Ke 2' ở cả hai dòng (một Batch)."""
+	_con_dong_ban(mong, "L-40")
+	_lo_pk(mong["ct"], "IN40", "L-40@date", "L-40@sale")
+
+
+def _v82b(t, mong):
+	"""⚠K §7.2 #27 / V82b: hạn là của Batch (một lô cho hai kho) — sửa trên dòng `::date` đổi hạn cả hai dòng (+20) và kéo tồn kho bán còn 6 sang date
+	(`CKL-` tự động): date 10 (nhập 4 + 6), bán 0 (nhập 10); nppsale chỉ đổi hạn dòng date, dòng bán giữ +90 / tồn 6. Dấu chuyển vùng của CKL tay ở cả
+	hai dòng (như M4)."""
+	ct = mong["ct"]
+	for x in ct["lo"]:
+		if x["ma"] == "L-90":
+			x.update({"han": "@hom_nay+20"} | ({"ton": 10.0, "nhap": 10.0} if x["vung"] == "date" else {"ton": 0.0}))
+	_chuyen_vung(mong, "L-90")
+
+
+def _v82d(t, mong):
+	"""❓ §7.3 điểm 37 (đề xuất): "lô đang có tồn" xét Σ tồn MỌI kho của Batch (dòng kho bán tồn 0 nhưng dòng date còn 4) → sửa giá báo SO_KHO_KHOA, giá
+	giữ 10.000 (nppsale nhận — chỉ đổi giá dòng tồn 0)."""
+	mong["buoc"][6] = _loi("SO_KHO_KHOA: không sửa giá vốn của lô đang có tồn — giá vốn đã đi vào các phiếu xuất trước đó.")
+	for x in mong["ct"]["lo"]:
+		if x["ma"] == "L-90":
+			x["gia"] = 10000
+	_chuyen_vung(mong, "L-90")
+
+
 # kịch bản [Frappe] (`nguon: dac_ta` — mong là chữ của đặc tả) → hàm kiểm riêng của lớp bài
-KIEM_DAC_TA = {"V02c": "_v02c", "V12b": "_v12b", "V19b": "_v19b", "V43c": "_v43c", "V44c": "_v44c"}
+KIEM_DAC_TA = {"V02c": "_v02c", "V12b": "_v12b", "V19b": "_v19b", "V43c": "_v43c", "V44c": "_v44c", "V57b": "_v57b"}
 
 LECH: dict[str, tuple] = {
 	"V05d": (_v05d, "BP §4.3.0: khoản nợ 0 đ (giảm đầu phiếu nuốt hết tiền) là ĐÃ TRẢ ĐỦ — một luật với phải thu; nppsale chèn dòng `open` amount 0"),
@@ -497,6 +574,14 @@ LECH: dict[str, tuple] = {
 	"V55": (_v55, "⚠K §3.16: dấu chuyển vùng ở cả hai dòng cổng batches"),
 	"V81": (_v81, "finance_pnl / bao_cao_so_ban thuộc P6 → giá vốn kỳ đọc qua cổng (fetchCogsForRange) — cùng số 130.000"),
 	"V85": (_v85, "⚠K §3.16: dấu chuyển vùng ở cả hai dòng cổng batches"),
+	# M5 — lô + kho cận date
+	"V56b": (_v56b, "⚠K §4.6: sửa hạn vào ngưỡng = phiếu CKL- chuyen_date_tu_dong — dòng kho bán còn lại tồn 0"),
+	"V57": (_v57, "⚠K §3.20: rà soát = phiếu CKL- chuyen_date_tu_dong — dòng kho bán còn lại tồn 0"),
+	"V58": (_v58, "⚠K §3.20: rà soát = CKL- bán → date; huỷ xuất lẻ trả về kho bán (nơi đã lấy); thẻ kho không đổi vùng hồi tố"),
+	"V59": (_v59, "câu 18: mã lô của PN theo nhãn; ⚠K §4.6: sửa hạn vào ngưỡng = CKL- (dòng kho bán tồn 0)"),
+	"V82a": (_v82a, "⚠K §4.6 S7: hạn gửi lại không đổi vẫn đổi kho = CKL-; thẻ kho không hồi tố"),
+	"V82b": (_v82b, "⚠K §7.2 #27: một Batch cho hai kho — sửa hạn dòng date đổi hạn cả lô, kéo tồn kho bán sang date"),
+	"V82d": (_v82d, "❓ §7.3 điểm 37: lô đang có tồn xét theo cả Batch → sửa giá dòng tồn 0 vẫn chặn"),
 }
 
 
@@ -751,6 +836,8 @@ class TestKhoMuaVang(IntegrationTestCase):
 				return self._ten(st, v[1:])
 			if v.startswith("@no:"):
 				return self._dong_no(st, v[4:])
+			if v.startswith("@lo:"):
+				return self._id_lo(st, v[4:])
 			if v.startswith("@"):
 				return self.ma.get(v[1:], v)
 			return v
@@ -802,6 +889,21 @@ class TestKhoMuaVang(IntegrationTestCase):
 			ten = st["nhan"].get("pc:" + nhan)
 			return frappe.db.get_value("NPP Cong No NCC", {"phieu_chi": ten, "loai": "tra_truoc"}, "name") if ten else None
 		raise ValueError(f"chỗ giữ dòng nợ lạ: @no:{k}")
+
+	def _id_lo(self, st: dict, k: str) -> str | None:
+		"""Chỗ giữ lô "@lo:<mã>[@vùng]" (bộ sinh `_vp4_id`: dòng `batches` cùng mã — đúng vùng nếu có — tạo sớm nhất) → id cổng `<lô>::<vùng>`; "<pn:P>"
+		trong mã = tên Frappe của phiếu nhập nhãn P (gốc chuỗi amend — lô `<PN gốc>-NNN`). Không vùng: nppsale một dòng lô (vùng HIỆN TẠI — trigger /
+		rà soát lật cờ tại chỗ) ↔ dòng cổng còn tồn nhiều nhất của Batch, hoà thì dòng kho bán (dòng tạo trước)."""
+		ma, _, vung = k.partition("@")
+		m = re.match(r"<pn:([^>]+)>", ma)
+		if m:
+			ma = "-".join(str(self._goc(st["nhan"].get("pn:" + m.group(1)))).split("-")[:2]) + ma[m.end():]
+		ds = doc_cong({"bang": "batches", "select": "id, warehouse_zone, qty_on_hand", "loc": [{"op": "eq", "cot": "batch_code", "gt": ma}]},
+			ADMIN)["data"]
+		if vung:
+			ds = [r for r in ds if r["warehouse_zone"] == vung]
+		ds.sort(key=lambda r: (-flt(r["qty_on_hand"]), r["warehouse_zone"] != "sale"))
+		return ds[0]["id"] if ds else None
 
 	def _khoa_no(self, st: dict, ten_dong: str | None) -> str | None:
 		"""Khoá nghiệp vụ của một dòng công nợ NCC — cùng dạng `_vp4_khoa_no` của bộ sinh: PN:<nhãn> | PTNCC:<nhãn> | DK:<NCC> | TT:<nhãn phiếu
@@ -1061,7 +1163,35 @@ class TestKhoMuaVang(IntegrationTestCase):
 			return ket, None if "error" in ket else {}  # `entry_id` bỏ như kết quả HĐ (`_chuan_tra`)
 		if k == "gia_von_ky":
 			return self._gia_von_ky(b, st)
+		# ------------------------------------------------------------------ M5 — lô + kho cận date
+		if k == "ra_soat":
+			return self._ra_soat(b, st)
 		raise ValueError(f"bước chưa dựng ở bài so: {k}")
+
+	def _ckl_tu_dong(self) -> set:
+		return set(frappe.get_all("Stock Entry", filters={"npp_loai": "chuyen_date_tu_dong", "docstatus": 1}, pluck="name"))
+
+	def _lo_cu_trong(self, phieu: set) -> int:
+		"""Số lô CÓ SẴN trên site (dữ liệu dựng thử cũ — `co_san`) mà các phiếu rà soát mới chở — trừ ra để so số của kịch bản (tồn kho bán của lô cũ
+		vào ngưỡng hay không tuỳ ngày chạy)."""
+		if not phieu:
+			return 0
+		return len({r[0] for r in frappe.db.sql("""SELECT DISTINCT e.`batch_no` FROM `tabSerial and Batch Bundle` b
+			JOIN `tabSerial and Batch Entry` e ON e.`parent` = b.`name` WHERE b.`voucher_type` = 'Stock Entry' AND b.`voucher_no` IN %s
+			AND b.`type_of_transaction` = 'Outward'""", (tuple(phieu),)) if r[0] in self.co_san["Batch"]})
+
+	def _ra_soat(self, b: dict, st: dict) -> tuple[dict, object]:
+		"""`refresh_warehouse_zones(NPP)` dưới đúng người; "HE_THONG" = không người đăng nhập (nppsale: vai service_role, cron) ↔ Administrator."""
+		truoc = self._ckl_tu_dong()
+		ts = {"p_org_id": self._thay(b.get("org", "@org"), st)}
+		if b["nguoi"] == "HE_THONG":
+			self._ve_admin()
+			ket = api.rpc(ten="refresh_warehouse_zones", tham_so=ts)
+		else:
+			ket = self._goi(b["nguoi"], "refresh_warehouse_zones", ts)
+		if "error" in ket:
+			return ket, None
+		return ket, ket["data"] - self._lo_cu_trong(self._ckl_tu_dong() - truoc)
 
 	def _tong_no_co_san(self, nguoi: str, tu) -> tuple[float, float]:
 		"""Phần của các dòng công nợ NCC CÓ SẴN trên site trước kịch bản (NCC ngoài bộ dữ liệu) trong `payables_summary` — trừ ra để so số của
@@ -1098,14 +1228,15 @@ class TestKhoMuaVang(IntegrationTestCase):
 		return self._cong(b["nguoi"], {"bang": "supplier_return_lines", "hanh_dong": "insert", "gia_tri": dong, "select": "id"})
 
 	def _lo(self, b: dict) -> str:
-		"""Lô dựng sẵn: nppsale chèn `batches` → trigger `batches_auto_zone` (mig 028) đẩy lô kho bán có hạn trong ngưỡng sang kho date NGAY lúc chèn
-		(L-C hạn +10 — đặc tả §6.4); bản Frappe làm việc ấy ở M5 (lô mới `npp_kho_tao = kho_can_date`) → bài dựng lô thẳng vào kho date theo CÙNG luật
-		`vung_nhan` (ngưỡng hiện tại của `NPP Cai Dat`)."""
-		from nppsale.luat.kho_mua import nguong, vung_nhan
+		"""Lô dựng sẵn: nppsale chèn `batches` bằng quyền máy chủ → trigger `batches_auto_zone` (mig 028) đẩy lô kho bán có hạn trong ngưỡng sang kho date
+		NGAY lúc chèn (L-C hạn +10 — đặc tả §6.4). Bản Frappe (M5): kho tạo theo CHÍNH hàm của app (`goi_lo.kho_nhan_lo` — cổng `batches` tạo lô rỗng,
+		phiếu nhập, nhập kho tay dùng chung; ngưỡng hiện tại của `NPP Cai Dat`) rồi phiếu nhập kho có gói lô vào kho ấy."""
+		from nppsale.rpc.goi_lo import kho_nhan_lo, vung_cua_kho
 
 		han = add_days(XH.hom_nay(), b["han"]) if b.get("han") is not None else None
-		vung = vung_nhan(b["vung"], han, XH.hom_nay(), nguong(frappe.db.get_single_value("NPP Cai Dat", "nguong_kho_date_ngay")))
-		return dung_lo(self.ma, self.cd, {**b, "vung": vung})
+		frappe.local._npp_cai_dat_ban = None
+		cd = cai_dat_kho()
+		return dung_lo(self.ma, self.cd, {**b, "vung": vung_cua_kho(kho_nhan_lo(b["vung"], han, cd, XH.hom_nay()), cd)})
 
 	def _pk_nguon(self, st: dict, k: str) -> str | None:
 		"""Chỗ giữ phiếu kho của chứng từ gốc (bộ sinh `_pk_khoa`): "pk:hd:<nhãn>" HĐ bán (phiếu kho của HĐ = chính HĐ — ⚠K §7.2 #14), "pk:pn:<nhãn>" /
@@ -1759,6 +1890,35 @@ class TestKhoMuaVang(IntegrationTestCase):
 			sai.append(f"V44c: huỷ mong [true, true, 1] — có {ket.get('error') or tv}")
 		if self._bin_x() != dau:
 			sai.append(f"V44c: sau huỷ mong Bin về {dau} — có {self._bin_x()}")
+		return sai
+
+	def _v57b(self, t: dict) -> list[str]:
+		"""Việc đêm 01:00 VN (`nppsale.rpc.lo_kho.ra_soat_kho_date` — hooks.py) rà soát kho date cho NPP, không người: ngưỡng 100, lô L46 (+46) tồn 10 ở
+		kho bán → MỘT phiếu `CKL-` `chuyen_date_tu_dong` chở 10 cái L46 sang kho date, `npp_chuyen_vung_luc` ghi, người không ghi; chạy lại → không
+		phiếu mới (đặc tả §3.20, V57b)."""
+		from nppsale.rpc.lo_kho import ra_soat_kho_date
+
+		st = {"ma": t["ma"], "nhan": {}}
+		sai = self._chay_het({**t, "buoc": [b for b in t["buoc"] if b["buoc"] != "viec_dem"]}, st)
+		if sai:
+			return sai
+		dau = self._ckl_tu_dong()
+		self._ve_admin()
+		ra_soat_kho_date()
+		moi = self._ckl_tu_dong() - dau
+		dong = frappe.db.sql("""SELECT b.`voucher_no`, e.`batch_no`, e.`warehouse`, e.`qty` FROM `tabSerial and Batch Bundle` b
+			JOIN `tabSerial and Batch Entry` e ON e.`parent` = b.`name` WHERE b.`voucher_type` = 'Stock Entry' AND b.`voucher_no` IN %s
+			AND e.`batch_no` = 'L46'""", (tuple(moi) or ("",),))
+		if len(moi) != 1 or sorted((k, flt(q)) for _se, _lo, k, q in dong) != sorted([(self.cd.kho_ban, -10.0), (self.cd.kho_can_date, 10.0)]):
+			sai.append(f"V57b: lượt đêm 1 mong MỘT phiếu CKL- chở L46 10 cái bán → date — có phiếu {moi}, dòng {dong}")
+		lo = frappe.db.get_value("Batch", "L46", ["npp_chuyen_vung_luc", "npp_chuyen_vung_boi"], as_dict=True)
+		if not lo.npp_chuyen_vung_luc or abs((get_datetime(lo.npp_chuyen_vung_luc) - now_datetime()).total_seconds()) > 300 or lo.npp_chuyen_vung_boi:
+			sai.append(f"V57b: dấu chuyển vùng mong lúc ≈ bây giờ, không người — có {lo}")
+		ra_soat_kho_date()
+		if self._ckl_tu_dong() - dau != moi:
+			sai.append("V57b: lượt đêm 2 không được lập phiếu mới")
+		if self.nhat_ky:
+			sai.append(f"V57b: việc đêm ghi Error Log {self.nhat_ky}")
 		return sai
 
 	# ------------------------------------------------------------------------------------------------ chạy

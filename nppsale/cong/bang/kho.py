@@ -9,7 +9,9 @@ batches: một dòng nppsale = một lô ở MỘT vùng → cổng dựng theo 
   (âm được khi cho bán vượt tồn), giá vốn = Bin.valuation_rate.
 Hạn trống → 2099-12-31 (quy ước "không hạn" của giao diện, src/lib/pos/load.ts). RLS "Org members can view batches" (mig 002): mọi NV;
 `unit_cost` chỉ người được xem giá vốn (`xemDuocGiaVon`) — người khác đọc ra NULL.
-Ghi (lô rỗng, đổi mã / hạn / vị trí / vùng — trigger mig 170) dựng ở bước kho (P4); hiện từ chối như RLS.
+Ghi (P4 — M5; đặc tả kho_mua §4.6, trigger mig 170 + mig 028, RLS "Owner/Warehouse can manage batches"): tạo lô RỖNG, đổi mã (`doi_ma_lo`), hạn (luật
+kho date → phiếu `CKL-`), vị trí, ngày SX, vùng (`CKL-`), giá vốn lô rỗng, xoá lô rỗng chưa có sổ kho — nppsale.rpc.lo_kho; sửa / xoá theo khuôn ghi
+kho (bộ ghi có `chuan_bi`: cổng đọc dòng khớp + mặt hàng → COMMIT → khoá Bin là câu đầu — nppsale.cong.api).
 """
 from __future__ import annotations
 
@@ -121,22 +123,29 @@ NGUON_DONG_XUAT = nguon_dong_xuat()
 NGUON_DONG_NHAP_LAI = nguon_dong_nhap_lai()
 
 
-class _ChuaGhi:
-	"""Ghi lô (mig 170) dựng ở bước kho — tới lúc ấy từ chối như RLS (vai khác owner / warehouse cũng bị từ chối ở nppsale)."""
+class GhiLo:
+	"""batches: lô rỗng / sửa / xoá theo trigger mig 170 + mig 028 — nppsale.rpc.lo_kho. Có `chuan_bi` ⇒ cổng ghi theo khuôn ghi kho (đọc dòng khớp +
+	mặt hàng → COMMIT → bộ ghi khoá Bin làm câu đầu — sửa hạn / vùng lập phiếu `CKL-`, xoá kiểm tồn)."""
 
-	def _tu_choi(self):
-		from ..sql import LoiCong
+	def chuan_bi(self, hanh_dong, gia_tri, ids, nc):
+		from nppsale.rpc.lo_kho import chuan_bi_ghi
 
-		raise LoiCong("42501", 'new row violates row-level security policy for table "batches"', "Ghi lô dựng ở bước kho (P4).", http=403)
+		chuan_bi_ghi(hanh_dong, gia_tri, ids, nc)
 
 	def them(self, ds, nc):
-		self._tu_choi()
+		from nppsale.rpc.lo_kho import them_lo
+
+		return them_lo(ds, nc)
 
 	def sua(self, gia_tri, ids, nc):
-		self._tu_choi()
+		from nppsale.rpc.lo_kho import sua_lo
+
+		return sua_lo(gia_tri, ids, nc)
 
 	def xoa(self, ids, nc):
-		self._tu_choi()
+		from nppsale.rpc.lo_kho import xoa_lo
+
+		return xoa_lo(ids, nc)
 
 
 def nap():
@@ -158,7 +167,7 @@ def nap():
 		},
 		quan_he=[QuanHe("products", "product_id", "id", False, ("batches_product_id_fkey", "product_id"))],
 		rls=rls_moi_nv,
-		ghi=_ChuaGhi(),
+		ghi=GhiLo(),
 		an_cot={"unit_cost": xem_gia_von},
 	))
 

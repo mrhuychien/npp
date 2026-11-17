@@ -582,6 +582,12 @@ def huy(ten: str, ly_do: str | None, nc, cd) -> None:
 	if tra > 0.005:
 		raise loi_da_tra_tien(round(tra, 2))
 	lo_dong = _lo_cua_dong(ten)
+	# §7.3 điểm 8 (M5 — đề xuất): lô đã bị RÀ sang kho cận date (phiếu `CKL-` `chuyen_date_tu_dong`) mà không động gì khác → huỷ trước phiếu ấy, hàng
+	# về kho nhận rồi mới xét HANG_DA_XUAT (nppsale lật cờ vùng tại chỗ nên huỷ được)
+	from nppsale.rpc.lo_kho import hoan_chuyen_date
+
+	hoan_chuyen_date((DT, ten), {lo_dong[d.name]: (d.warehouse, flt(d.stock_qty) or flt(d.qty) * flt(d.conversion_factor or 1))
+		for d in doc.items if lo_dong.get(d.name)}, cd)
 	cho = bool(cd.get("cho_ban_vuot_ton"))
 	chan = []
 	khong_lo: dict = {}  # (mặt hàng, kho) → [tên hàng, Σ SL nhập, mặt hàng cho âm]
