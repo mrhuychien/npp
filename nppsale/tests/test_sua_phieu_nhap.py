@@ -335,11 +335,13 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self._kham()
 
 	def test_huy_khoi_phuc_va_sua_lai_sau_sua_gia(self):
-		"""Sửa giá (LCV + DCN) → huỷ HĐ (lô về đủ) → huỷ phiếu nhập: huỷ DCN rồi LCV trước; khôi phục → tờ amend mang THẲNG giá đã sửa (nppsale khôi
-		phục số đã sửa), bỏ phủ; sửa tiếp (nhánh A) trên tờ khôi phục."""
+		"""Sửa giá (LCV + DCN, kèm giảm đầu phiếu 8.000) → huỷ HĐ (lô về đủ) → huỷ phiếu nhập: huỷ LCV rồi DCN trước; khôi phục → tờ amend mang THẲNG
+		giá + giảm đầu phiếu đã sửa (bảng thuế dựng lại — dòng giảm của tờ cũ là số cũ; nppsale khôi phục số đã sửa), bỏ phủ; sửa tiếp (nhánh A) trên tờ
+		khôi phục."""
 		ten = self._pn("P", [("A", "thùng", 2, 240000, 0, 0, 24)])
 		self._ban("H1", "A", "hộp", 30)
-		self.assertNotIn("error", self._sua("P", [("A", "thùng", 2, 264000, 0, 0, 24)])[0])
+		self.assertNotIn("error", self._sua("P", [("A", "thùng", 2, 264000, 0, 0, 24)], dau={"supplier_id": "@S1", "invoice_number": None,
+			"invoice_date": "@hom_nay", "warehouse_zone": "sale", "discount": 8000, "vat_override": None, "notes": None})[0])
 		lcv = frappe.get_all("Landed Cost Voucher", filters={"npp_phieu_nhap": ten}, pluck="name")
 		je = frappe.get_all("Journal Entry", filters={"npp_phieu_nhap": ten, "npp_loai": "dieu_chinh_gia_nhap"}, pluck="name")
 		self._ok(buoc="huy_hd", nguoi="CHU", nhan="H1", ly_do="x")
@@ -351,12 +353,12 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		moi = self._ten("P")
 		self.assertEqual((tv["trang_thai"], tv["da_khoi_phuc"], moi), ("completed", True, f"{ten}-1"))
 		pi = frappe.get_doc(DT, moi)
-		self.assertEqual((flt(pi.items[0].price_list_rate), flt(pi.grand_total), pi.npp_sua_gia), (264000, 528000, None))
+		self.assertEqual((flt(pi.items[0].price_list_rate), flt(pi.npp_giam_dau_phieu), flt(pi.grand_total), pi.npp_sua_gia), (264000, 8000, 520000, None))
 		self.assertEqual(self._lo(f"{ten}-001"), {"sale": (48.0, 11000.0, 48.0, "available")})
-		self.assertEqual(flt(self._no(moi).so_tien), 528000)
-		r = self._cong({"bang": "purchase_invoices", "select": "total, lines:purchase_invoice_lines(unit_price)", "loc": [{"op": "eq", "cot": "id",
-			"gt": moi}]})[0]
-		self.assertEqual(r, {"total": 528000, "lines": [{"unit_price": 264000}]})
+		self.assertEqual(flt(self._no(moi).so_tien), 520000)
+		r = self._cong({"bang": "purchase_invoices", "select": "total, discount, lines:purchase_invoice_lines(unit_price)", "loc": [{"op": "eq",
+			"cot": "id", "gt": moi}]})[0]
+		self.assertEqual(r, {"total": 520000, "discount": 8000, "lines": [{"unit_price": 264000}]})
 		# sửa tiếp (chưa xuất → nhánh A): gọi bằng id CŨ → làm trên tờ cuối chuỗi
 		ket = self._rpc("KT", "sua_phieu_nhap", {"p_invoice_id": ten, "p_head": {"warehouse_zone": "sale"}, "p_lines": [{"product_id": self.ma["A"],
 			"unit_name": "thùng", "quantity": 3, "unit_price": 250000, "conversion_factor": 24}]})
