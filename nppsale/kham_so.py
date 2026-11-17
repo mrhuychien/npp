@@ -496,11 +496,13 @@ def quet_kho_mua(hang: list[str] | None = None, ncc: list[str] | None = None) ->
 		tk["ncc_tra_truoc"] = len([r for r in rong if r < 0])
 		tk["tra_truoc_ncc_tong"] = -sum(r for r in rong if r < 0)
 	loc_s = "AND d.`default_supplier` IN %(n)s" if ncc else ""
+	khong_dong = (f"AND NOT EXISTS (SELECT 1 FROM `tab{N.DT}` x WHERE x.`nha_cung_cap` = d.`default_supplier`)"
+		if frappe.db.exists("DocType", N.DT) else "")
 	tk["ncc_chi_con_mat_hang"] = cint(frappe.db.sql(f"""SELECT COUNT(DISTINCT d.`default_supplier`) FROM `tabItem Default` d
 		WHERE d.`parenttype` = 'Item' AND IFNULL(d.`default_supplier`, '') != '' {loc_s}
 			AND NOT EXISTS (SELECT 1 FROM `tabPurchase Invoice` x WHERE x.`supplier` = d.`default_supplier`)
 			AND NOT EXISTS (SELECT 1 FROM `tabPayment Entry` x WHERE x.`party_type` = 'Supplier' AND x.`party` = d.`default_supplier`)
-			AND NOT EXISTS (SELECT 1 FROM `tabStock Entry` x WHERE x.`supplier` = d.`default_supplier`)""", ts)[0][0])
+			AND NOT EXISTS (SELECT 1 FROM `tabStock Entry` x WHERE x.`supplier` = d.`default_supplier`) {khong_dong}""", ts)[0][0])
 	loc_pi = "AND p.`supplier` IN %(n)s" if ncc else ""
 	pn_xuat = set()
 	for pi, _sp, k_, lo, sl in frappe.db.sql(f"""SELECT p.`name`, d.`item_code`, d.`warehouse`, e.`batch_no`, SUM(e.`qty`)

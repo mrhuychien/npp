@@ -10,9 +10,12 @@ pn_hoan / pn_huy / ptn / ptn_gui / pk / xuat_le / chuyen / kk_duyet / nguong / r
 - `post_stock_export` (§3.21): luôn LEGACY_FLOW_REMOVED, không đổi gì;
 - RPC đọc kho đã có (§5.5 — `ton_ban_theo_hang`, `stock_value_summary`, `ton_kho_trang`) sau từng loại chứng từ P4 (PN, PTNCC, IN-, XKL-, CKL-,
   CKL- tự động, DCK-): khớp nguồn lô cổng `batches` + số tay; lô rỗng ở `npp_kho_tao`, lô hết tồn còn dòng;
+- giá vốn kỳ đọc cổng (§5.7 — soát thiếu S1, §10): phiếu `export` ghi sổ trong kỳ = HĐ + trả NCC (giá lô) + xuất lẻ (0); không HĐ huỷ / chuyển kho /
+  kiểm kê; giá vốn hàng trả theo ghi chú "Nhập lại từ phiếu trả <phiếu>";
 - giá vốn V74 (§6.9, §7.1): giá vốn HĐ 250.000, trả NCC giảm kho 45.000 (giá lô) + chênh 5.000 vào TK chi phí mặc định, giá lô L2 KHÔNG bình quân lại
   sau thừa kiểm kê / nhập lại hàng trả;
-- khám sổ P4 (§8.1 — nppsale.kham_so.quet_kho_mua): sổ do method lập thì sạch; bắt từng nhóm 27–32 trên sổ làm lệch; thống kê theo dòng nppsale.
+- khám sổ P4 (§8.1 — nppsale.kham_so.quet_kho_mua): sổ do method lập thì sạch; bắt từng nhóm 27–32 trên sổ làm lệch; thống kê theo dòng nppsale; việc đêm
+  nối sau khám sổ công nợ NCC (Error Log khi có dòng cần xem).
 """
 from __future__ import annotations
 
@@ -357,6 +360,8 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		self._ok(buoc="chuyen", nguoi="TK", nhan="CKL")
 		self._ok(buoc="chi", nguoi="KT", nhan="C", ncc="@S2", tien=50000, cach="cash")  # S2 không nợ → trả trước 50.000
 		self._ok(buoc="chi", nguoi="KT", nhan="C3", ncc="@S3", tien=20000, cach="cash")  # S3 không nợ → trả trước 20.000
+		self._ok(buoc="chi", nguoi="KT", nhan="C4", ncc="@S4", tien=10000, cach="cash")  # S4 (NCC chính của R): phiếu chi rồi HUỶ
+		self._ok(buoc="huy_chi", nguoi="KT", nhan="C4", ly_do="chi nhầm")
 		self._ok(buoc="pn", nguoi="TK", nhan="PH", dau={"org_id": "@org", "supplier_id": "@S1", "invoice_number": None, "warehouse_zone": "sale",
 			"discount": 0, "vat_override": None, "notes": None, "status": "draft", "created_by": "@u:TK", "subtotal": 1000, "vat": 0, "total": 1000},
 			dong=[{"product_id": "@A", "unit_name": "hộp", "quantity": 1, "unit_price": 1000, "line_discount": 0, "vat_rate": 0, "conversion_factor": 1,
@@ -367,17 +372,30 @@ class TestBaoCaoKho(V.TestKhoMuaVang):
 		tk = kq["thong_ke"]
 		self.assertEqual({k: tk[k] for k in ("phieu_kho_dao_huy_rieng", "the_kho_lech", "lo_am", "ncc_trung_ten", "gia_nhap_trung", "ncc_paid_lech",
 			"dong_ncc_am_mo", "ptncc_dang_tru_no", "ncc_tra_truoc", "tra_truoc_ncc_tong", "pn_co_hang_da_xuat", "pn_da_huy", "ptncc_da_huy",
-			"nhap_mang_dau_huy", "phieu_chi_ncc", "tra_truoc_con", "bin_am_khong_lo")}, {
+			"nhap_mang_dau_huy", "phieu_chi_ncc", "tra_truoc_con", "bin_am_khong_lo", "ncc_chi_con_mat_hang")}, {
 			"phieu_kho_dao_huy_rieng": 0, "the_kho_lech": 0, "lo_am": 0, "ncc_trung_ten": 0, "gia_nhap_trung": 0, "ncc_paid_lech": 0,
 			"dong_ncc_am_mo": 1, "ptncc_dang_tru_no": 1, "ncc_tra_truoc": 2, "tra_truoc_ncc_tong": 70000, "pn_co_hang_da_xuat": 2, "pn_da_huy": 0,
-			"ptncc_da_huy": 0, "nhap_mang_dau_huy": 1, "phieu_chi_ncc": 2, "tra_truoc_con": 70000, "bin_am_khong_lo": 0})
+			"ptncc_da_huy": 0, "nhap_mang_dau_huy": 1, "phieu_chi_ncc": 2, "tra_truoc_con": 70000, "bin_am_khong_lo": 0,
+			"ncc_chi_con_mat_hang": 0})  # NCC chính: S1 có phiếu nhập, S3 (B / N) phiếu chi còn hiệu lực, S4 (R) phiếu chi ĐÃ HUỶ — vẫn là chứng từ
 		self.assertGreaterEqual(tk["gia_nhap"], 1)
 
 	def test_kham_so_kho_mua_bat_lech(self):
 		"""Từng nhóm 28–32 trên sổ làm lệch (bằng quyền máy chủ — như dữ liệu hỏng / ghi tay ở Desk)."""
 		a = self.ma["A"]
 		self._lo({"ma": "KS-1", "sp": "@A", "vung": "sale", "ton": 10, "gia": 1000, "han": None, "nhan_ngay": -5})
-		self.assertEqual(self._kham()["can_xem"], [])
+		kq = self._kham()
+		self.assertEqual(kq["can_xem"], [])
+		# dòng 72 — NCC chỉ còn là NCC chính của mặt hàng (nền: M → S1, B / N → S3, R → S4; chưa chứng từ nào) — phiếu NHÁP / phiếu chi ĐÃ HUỶ vẫn
+		# là chứng từ (nppsale đếm mọi dòng purchase_invoices / supplier_payments, kể cả nháp / huỷ)
+		self.assertEqual(kq["thong_ke"]["ncc_chi_con_mat_hang"], 3)
+		self._ok(buoc="pn", nguoi="TK", nhan="PX", dau={"org_id": "@org", "supplier_id": "@S1", "invoice_number": None, "warehouse_zone": "sale",
+			"discount": 0, "vat_override": None, "notes": None, "status": "draft", "created_by": "@u:TK", "subtotal": 1000, "vat": 0, "total": 1000},
+			dong=[{"product_id": "@A", "unit_name": "hộp", "quantity": 1, "unit_price": 1000, "line_discount": 0, "vat_rate": 0, "conversion_factor": 1,
+			"line_total": 1000, "notes": None, "sort_order": 1}])
+		self.assertEqual(self._kham()["thong_ke"]["ncc_chi_con_mat_hang"], 2)
+		self._ok(buoc="chi", nguoi="KT", nhan="CX", ncc="@S3", tien=10000, cach="cash")
+		self._ok(buoc="huy_chi", nguoi="KT", nhan="CX", ly_do="chi nhầm")
+		self.assertEqual(self._kham()["thong_ke"]["ncc_chi_con_mat_hang"], 1)
 		kho = self.cd.kho_ban
 		# 29: Bin lệch sổ kho (và 28: lệch tồn lô)
 		frappe.db.sql("UPDATE `tabBin` SET `actual_qty` = `actual_qty` + 1 WHERE `item_code` = %s AND `warehouse` = %s", (a, kho))

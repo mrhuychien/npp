@@ -276,7 +276,13 @@ describe.skipIf(!GOC)("đầu-cuối kho + mua hàng qua cổng thật (V76–V7
     const hd = await ban(nen.A, 1, hop)
     const pt = await rpc("create_return_with_lines", { p_head: { customer_id: nen.K1, reason: "damaged", status: "draft" }, p_lines: [{ product_id: nen.A,
       unit_name: hop, quantity: 1, unit_price: 12000, vat_rate: 0, is_exchange: false }] })
-    await rpc("complete_return", { p_return_id: pt, p_zone: "sale" })
+    await rpc("complete_return", { p_return_id: pt, p_zone: "sale" }) // hàng trả vào lô còn dùng mới nhất của kho (lô PN)
+    // lô RỖNG (màn /inventory/batches/new — thủ kho) lập SAU: tồn 0 không vào báo cáo
+    nguoi = "TK"
+    const rong = await sb.from("batches").insert({ org_id: nen.org, product_id: nen.A, batch_code: "E2E-RONG", qty_initial: 0, qty_on_hand: 0, unit_cost: 5000,
+      warehouse_zone: "sale", status: "available", expires_at: "2099-12-31" }).select("id")
+    expect(rong.error).toBeNull()
+    nguoi = "CHU"
     // tồn: một lượt bao_cao_ton_kho (goiMotLuot — GET) → tinhTonTuTho
     const kq = await napTonKho(sb, nen.org, homNay(), danhMucRong())
     const tonA = kq.ton.find((t) => t.sp === nen.A)!
