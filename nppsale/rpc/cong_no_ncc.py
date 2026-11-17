@@ -62,6 +62,12 @@ def _ra(x):
 	return int(d) if d == d.to_integral_value() else float(d)
 
 
+def _tien(x) -> Decimal:
+	"""Tiền đọc từ sổ (float của Frappe — số nguyên đồng) → Decimal như numeric của Postgres: `200000.0` → `200000` (in qua RAISE '%' không
+	thêm `.0` — đặc tả §2.5 "tiền Frappe là số nguyên đồng → in str(int)"), số lẻ giữ chữ số ngắn nhất."""
+	return K.so(round(flt(x), 2))
+
+
 def _nv(nc) -> str | None:
 	return nc.user if nc.user and frappe.db.exists("NPP Nhan Vien", nc.user) else None
 
@@ -139,7 +145,7 @@ def _lap_bu_tru(r, tien: Decimal, ghi_chu: str | None, cd) -> str:
 	for x in frappe.get_all(N.DT, filters={"nha_cung_cap": r.nha_cung_cap, "loai": "tra_ncc"}, fields=["name", "chung_tu", "tao_luc"]):
 		gt = N.gia_tri_pi(x.chung_tu) if x.chung_tu else None
 		if gt and flt(gt["con_no"]) < -0.005:
-			giam.append((get_datetime(gt["tao_luc"]), x.chung_tu, Decimal(str(round(-flt(gt["con_no"]), 2)))))
+			giam.append((get_datetime(gt["tao_luc"]), x.chung_tu, _tien(-flt(gt["con_no"]))))
 	giam.sort()
 	phan = L.phan_bo_bu_tru(tien, [(t, x) for _l, t, x in giam])
 	tk = frappe.db.get_value("Purchase Invoice", r.chung_tu, "credit_to")
@@ -186,8 +192,10 @@ def record_payable_payment(p_payable_id=None, p_amount=None, p_method=None, p_no
 	r = _khoa_dong(ten, ncc) if ten else None
 	if not r:
 		raise NppLoi(L.PAYABLE_NOT_FOUND)
+	if r.chung_tu:  # khoá cả PI nguồn (đặc tả §3.10 Frappe bước 1) — xếp hàng với Huỷ phiếu nhập (khoá PI rồi kiểm DA_TRA_TIEN)
+		frappe.db.sql("SELECT `name` FROM `tabPurchase Invoice` WHERE `name` = %s FOR UPDATE", r.chung_tu)
 	gt = _gia_tri_dong(r)
-	con = Decimal(str(round(flt(gt["con_no"]), 2))) if gt else Decimal(0)
+	con = _tien(gt["con_no"]) if gt else Decimal(0)
 	if tien > con:
 		raise L.loi_overpay(con)
 	method = L.hinh_thuc_ghi_tra(p_method)  # CHECK của payable_payments — kiểm SAU OVERPAY như nppsale (lúc INSERT)
@@ -200,7 +208,7 @@ def record_payable_payment(p_payable_id=None, p_amount=None, p_method=None, p_no
 		ma = frappe.db.get_value("Payment Entry Reference", {"parent": pe, "parenttype": "Payment Entry"}, "name")
 	N.chieu_phieu_nhap(r.chung_tu)
 	moi = N.gia_tri_pi(r.chung_tu) or {}
-	da_tra, so_tien = Decimal(str(round(flt(moi.get("da_tra")), 2))), Decimal(str(round(flt(moi.get("so_tien")), 2)))
+	da_tra, so_tien = _tien(moi.get("da_tra")), _tien(moi.get("so_tien"))
 	return [{"payment_id": ma, "new_paid": _ra(da_tra), "new_status": "paid" if da_tra >= so_tien else "partial"}]
 
 
@@ -415,20 +423,21 @@ def them_no(ds: list[dict], nc) -> list[str]:
 	for g in ds:
 		g = g or {}
 		_cot_la(g)
+		# PostgREST dựng dòng từ JSON (json_populate_recordset) TRƯỚC mọi trigger / RLS: sai kiểu → 22P02 / 22007 / 22008
+		paid, so = _so_cot(g.get("paid"), "paid"), _so_cot(g.get("amount"), "amount")
+		dau_ky = _bool_pg(g.get("opening_balance"))
+		han = _ngay_pg(_van_ban(g["due_date"])) if g.get("due_date") not in (None, "") else None
 		# trigger `_khoa_ghi_thang_no_ncc` (BEFORE INSERT — trước RLS)
-		if (_so_cot(g.get("paid"), "paid") or 0) != 0 or (g.get("status") or "open") not in ("open", "overdue"):
+		if (paid or 0) != 0 or (g.get("status") or "open") not in ("open", "overdue"):
 			raise NppLoi(L.KHOA_THEM)
 		if not nc.bo_qua_rls and (nc.vai not in K.VAI_TIEN_NCC or g.get("org_id") not in (None, _org())):
 			tu_choi(BANG)
 		for cot in ("supplier_id", "amount"):
 			if g.get(cot) is None:
 				raise LoiCong("23502", f'null value in column "{cot}" of relation "{BANG}" violates not-null constraint', http=400)
-		so = _so_cot(g.get("amount"), "amount")
 		if so <= 0:  # ⚠K §4.4 (đề xuất): tờ nợ không âm / không 0 — nppsale trigger không chặn
 			raise NppLoi(L.KHOA_THEM)
 		ncc = str(g.get("supplier_id"))
-		dau_ky = _bool_pg(g.get("opening_balance"))
-		han = _ngay_pg(_van_ban(g["due_date"])) if g.get("due_date") not in (None, "") else None
 		if not frappe.db.exists("Supplier", ncc):
 			raise LoiCong("23503", f'insert or update on table "{BANG}" violates foreign key constraint "payables_supplier_id_fkey"',
 				chi_tiet=f'Key (supplier_id)=({ncc}) is not present in table "suppliers".', http=409)
@@ -458,7 +467,7 @@ def _khac(cot: str, moi, cu) -> bool:
 	if moi is None or cu is None:
 		return (moi is None) != (cu is None)
 	if cot in ("amount", "paid"):
-		return _so_cot(moi, cot) != Decimal(str(round(flt(cu), 2)))
+		return _so_cot(moi, cot) != _tien(cu)
 	if cot == "due_date":
 		return _ngay_pg(_van_ban(moi)) != getdate(cu)
 	if cot == "created_at":
@@ -468,8 +477,22 @@ def _khac(cot: str, moi, cu) -> bool:
 	return str(moi) != str(cu)
 
 
+def _ep_kieu(gt: dict) -> None:
+	"""Giá trị SET của PATCH được ép kiểu một lần (json_populate_record) trước khi lọc dòng — sai kiểu báo lỗi kể cả khi không dòng nào khớp."""
+	for k, v in gt.items():
+		if v is None:
+			continue
+		if k in ("amount", "paid"):
+			_so_cot(v, k)
+		elif k == "due_date":
+			_ngay_pg(_van_ban(v))
+		elif k == "opening_balance":
+			_bool_pg(v)
+
+
 def sua_no(gt: dict, ids: list[str], nc) -> list[str]:
 	_cot_la(gt)
+	_ep_kieu(gt)
 	if not nc.bo_qua_rls and nc.vai not in K.VAI_TIEN_NCC:
 		return []  # RLS UPDATE: 0 dòng, không lỗi
 	cd = cai_dat_kho()
@@ -485,7 +508,7 @@ def sua_no(gt: dict, ids: list[str], nc) -> list[str]:
 		if doi & {"paid", "supplier_id", "org_id", "stock_entry_id", "opening_balance", "created_at", "id"} or (
 				"amount" in doi and (r.loai != "dau_ky" or r.phieu_kho)):
 			raise NppLoi(L.KHOA_SUA)
-		amount_moi = _so_cot(gt["amount"], "amount") if "amount" in doi else Decimal(str(round(flt(r.so_tien), 2)))
+		amount_moi = _so_cot(gt["amount"], "amount") if "amount" in doi else _tien(r.so_tien)
 		doi_tt = "status" in gt and gt["status"] != r.trang_thai
 		if doi_tt and not L.trang_thai_khop(gt["status"], r.da_tra, amount_moi):
 			raise L.loi_trang_thai(gt["status"], r.da_tra, gt["amount"] if "amount" in doi else r.so_tien)

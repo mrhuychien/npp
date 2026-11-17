@@ -192,6 +192,51 @@ def _v32(t, mong):
 	_bo_buoc(t, mong, 15)
 
 
+BU_TRU_HET = {"ok": False, "ma_loi": "P0001", "loi": "BU_TRU_KHONG_CON: NCC không còn khoản giảm để bù trừ."}
+
+
+def _no(ct: dict, khoa: str) -> dict:
+	return next(x for x in ct["no"] if x["khoa"] == khoa)
+
+
+def _v36(t, mong):
+	"""§7.3 điểm 10 / BP §7.1 điểm 15 (quyết định tạm Q9): Bù trừ (`offset`) = bút toán `CTN-` trừ vào khoản giảm CÒN MỞ của phiếu trả NCC của
+	chính NCC (R −30.000) — nppsale ghi `offset` như khoản trả không tiền, không gắn khoản nào (dòng âm vẫn open). Bù 50.000 vượt khoản giảm →
+	BU_TRU_KHONG_CON; bù 30.000 (hết khoản giảm) được; bù thêm 1 → BU_TRU_KHONG_CON; "trả nốt" 170.000 thay 150.000 (khoản PN về đủ như nppsale),
+	hình thức '' → tiền mặt (cổng `cash`); Ghi trả vào dòng R (đã bù hết) → OVERPAY còn 0 (nppsale −30000); dòng R `paid` (đã dùng hết khoản giảm)."""
+	b, m = t["buoc"], mong["buoc"]
+	b[9] = {**b[9], "tiep": True}
+	m[9] = BU_TRU_HET
+	b[10] = {**b[10], "tien": 170000}
+	m[10] = {"ok": True, "tra": {"new_paid": 200000, "new_status": "paid", "payment_id": "tra:PN:PN-0001"}}
+	m[12] = {"ok": False, "ma_loi": "P0001", "loi": "OVERPAY: số tiền vượt quá công nợ còn lại (còn 0)."}
+	b[10:10] = [{"buoc": "ghi_tra", "nguoi": "KT", "no": "@no:pn:PA", "tien": 30000, "cach": "offset", "ghi_chu": ""},
+		{"buoc": "ghi_tra", "nguoi": "KT", "no": "@no:pn:PA", "tien": 1, "cach": "offset", "tiep": True}]
+	m[10:10] = [{"ok": True, "tra": {"new_paid": 30000, "new_status": "partial", "payment_id": "tra:PN:PN-0001"}}, BU_TRU_HET]
+	ct = mong["ct"]
+	_no(ct, "PTNCC:PTNCC-0001").update({"da_tra": -30000, "status": "paid"})
+	ct["tra_no"] = [
+		{"no": "PN:PN-0001", "boi": "@u:KT", "luc": "@luc_goi", "cach": "offset", "tien": 30000, "xac_nhan": False},
+		{"no": "PTNCC:PTNCC-0001", "boi": "@u:KT", "luc": "@luc_goi", "cach": "offset", "tien": -30000, "xac_nhan": False},
+		{"no": "PN:PN-0001", "boi": "@u:KT", "luc": "@luc_goi", "cach": "cash", "tien": 170000, "ghi_chu": "trả nốt", "xac_nhan": False}]
+
+
+def _v38(t, mong):
+	"""(1) ⚠K số HĐ của khoản nợ phiếu nhập = `bill_no` của chính tờ (đặc tả §4.4): sửa ở màn công nợ là đổi luôn số HĐ NCC của phiếu nhập (nppsale
+	hai cột riêng). (2) `DA_CAN_TRU` dựng bằng bút toán bù trừ `CTN-` trỏ phiếu trả NCC (KF của kịch bản) thay bước máy chủ đặt `paid −30000`: KT bù
+	30.000 vào P → huỷ R báo DA_CAN_TRU (−30000) như nppsale; dòng R đã bù hết → `paid` (nppsale dữ liệu cũ vẫn open)."""
+	b, m = t["buoc"], mong["buoc"]
+	b[22] = {"buoc": "ghi_tra", "nguoi": "KT", "no": "@no:pn:P", "tien": 30000, "cach": "offset"}
+	m[22] = {"ok": True, "tra": {"new_paid": 80000, "new_status": "partial", "payment_id": "tra:PN:PN-0001"}}
+	b[23] = {k: v for k, v in b[23].items() if k != "chi_nppsale"}
+	ct = mong["ct"]
+	ct["pn"][0]["so_hd"] = "HD-MOI"
+	_no(ct, "PN:PN-0001")["da_tra"] = 80000
+	_no(ct, "PTNCC:PTNCC-0001").update({"da_tra": -30000, "status": "paid"})
+	ct["tra_no"] += [{"no": "PN:PN-0001", "boi": "@u:KT", "luc": "@luc_goi", "cach": "offset", "tien": 30000, "xac_nhan": False},
+		{"no": "PTNCC:PTNCC-0001", "boi": "@u:KT", "luc": "@luc_goi", "cach": "offset", "tien": -30000, "xac_nhan": False}]
+
+
 def _v39(t, mong):
 	"""Phiếu nhập kho tay `IN-` không nợ (`post_stock_import` — M4 chưa dựng) → bước dựng nền `nhap_kho_tam` (Material Receipt, lô LOT-<mã>-1);
 	⚠K đổi số nợ đầu kỳ ĐÃ trả → NO_NCC_KHOA (nppsale cho — `trangThaiSauSuaSoTien`): tờ amend `DKN-…-n` không mang được tiền đã trả."""
@@ -233,6 +278,9 @@ LECH: dict[str, tuple] = {
 		"lại như nppsale (lõi lùi dãy số)"),
 	"V28": (_v28, "BP §6.1: cổng chặn sửa dòng / về nháp / xoá phiếu trả đã xuất (USE_RPC) — nppsale RLS cho ghi thẳng (K25)"),
 	"V32": (_v32, "so_chung_tu_ncc thuộc mốc M8 (đặc tả §8) — bước cuối so ở M8"),
+	"V36": (_v36, "§7.3 điểm 10: Bù trừ = bút toán CTN- trong phạm vi khoản giảm còn mở của phiếu trả NCC (vượt → BU_TRU_KHONG_CON); hình thức "
+		"'' / NULL → tiền mặt"),
+	"V38": (_v38, "§4.4: số HĐ khoản nợ PN = bill_no của tờ; DA_CAN_TRU dựng bằng bút toán CTN- thay bước máy chủ đặt paid trên dòng âm"),
 	"V39": (_v39, "M4 chưa dựng: phiếu nhập kho tay không nợ thay bằng Material Receipt dựng nền; ⚠K sửa số nợ đầu kỳ đã trả bị chặn (tờ amend "
 		"không mang được tiền đã trả)"),
 	"V40": (_v40, "so_chung_tu_ncc thuộc mốc M8 — bỏ bước ấy, phần khám sổ giữ nguyên"),
@@ -732,15 +780,36 @@ class TestKhoMuaVang(IntegrationTestCase):
 				ADMIN)["data"]
 			return ket, {**r, "payment_id": "tra:" + str(self._khoa_no(st, dong[0]["payable_id"] if dong else None))}
 		if k == "doc" and b.get("ten") in ("payables_summary", "payables_by_supplier"):
-			ket = self._goi(b["nguoi"], b["ten"], self._thay(b.get("ts") or {}, st))
+			ts = self._thay(b.get("ts") or {}, st)
+			ket = self._goi(b["nguoi"], b["ten"], ts)
 			if "error" in ket:
 				return ket, None
-			return ket, [{c: (self.khoa_cua.get(v, v) if c == "supplier_id" else v) for c, v in r.items()} for r in ket["data"]]
+			if b["ten"] == "payables_by_supplier":  # site có sẵn NCC ngoài bộ dữ liệu (dữ liệu demo) — chỉ so dòng của NCC nền
+				ncc = {v for kk, v in self.ma.items() if re.fullmatch(r"S\d", kk)}
+				return ket, [{c: (self.khoa_cua.get(v, v) if c == "supplier_id" else v) for c, v in r.items()} for r in ket["data"]
+					if r["supplier_id"] in ncc]
+			mo, thang = self._tong_no_co_san(b["nguoi"], ts.get("p_since"))
+			return ket, [{"open_payables": flt(r["open_payables"]) - mo, "month_total": flt(r["month_total"]) - thang} for r in ket["data"]]
 		if k == "kham_ncc":
 			return {"data": None}, self._kham_ncc()
 		if k == "nhap_kho_tam":
 			return self._nhap_kho_tam(b, st)
 		raise ValueError(f"bước chưa dựng ở bài so: {k}")
+
+	def _tong_no_co_san(self, nguoi: str, tu) -> tuple[float, float]:
+		"""Phần của các dòng công nợ NCC CÓ SẴN trên site trước kịch bản (NCC ngoài bộ dữ liệu) trong `payables_summary` — trừ ra để so số của
+		kịch bản. Vai không đọc được `payables` (RLS) → 0 như kết quả hàm."""
+		if self.vang["nen"]["nguoi"][nguoi][0] not in ("owner", "manager", "accountant") or not self.co_san["NPP Cong No NCC"]:
+			return 0.0, 0.0
+		tu = get_datetime(str(tu).replace("T", " ")[:19]) if tu else None
+		mo = thang = 0.0
+		for r in frappe.get_all("NPP Cong No NCC", filters={"name": ("in", list(self.co_san["NPP Cong No NCC"]))},
+				fields=["so_tien", "da_tra", "trang_thai", "phieu_kho", "tao_luc"]):
+			if r.trang_thai != "paid":
+				mo += flt(r.so_tien) - flt(r.da_tra)
+			if r.phieu_kho and tu is not None and r.tao_luc and get_datetime(r.tao_luc) >= tu:
+				thang += flt(r.so_tien)
+		return mo, thang
 
 	def _tra_pc(self, st: dict, r: dict) -> dict:
 		"""Kết quả chi_tra_ncc / huy_phieu_chi_ncc → mã phiếu chi theo nhãn (dãy `PCNCC-` của site — so theo nhãn như phiếu nhập)."""
@@ -919,7 +988,7 @@ class TestKhoMuaVang(IntegrationTestCase):
 			to = goc
 			for _ in range(50):
 				if cint(frappe.db.get_value("Purchase Invoice", to, "docstatus")) in (1, 2):
-					phieu_kho.append(self._phieu_kho_ptn(nhan, to))
+					phieu_kho.append(self._phieu_kho_ptn(nhan, to, st))
 				to = frappe.db.get_value("Purchase Invoice", {"amended_from": to}, "name", order_by="creation desc")
 				if not to:
 					break
@@ -999,12 +1068,12 @@ class TestKhoMuaVang(IntegrationTestCase):
 			"vung": r["warehouse_zone"], "ncc": self.khoa_cua.get(r["supplier_id"]), "ghi_chu": r["notes"], "luc_ghi_so": "@luc_goi",
 			"lap_boi": self.khoa_cua.get(r["created_by"]), "so_don": 0, "dong": _xep([_bo_null(x) for x in dong])})
 
-	def _phieu_kho_ptn(self, nhan: str, ten: str) -> dict:
+	def _phieu_kho_ptn(self, nhan: str, ten: str, st: dict) -> dict:
 		"""Phiếu kho của phiếu trả NCC = một tờ đã / thôi ghi sổ của chuỗi (⚠K §7.2 #14): mỗi (dòng, lô) của gói lô Outward — cả gói đã huỷ — so theo
 		(mặt hàng, lô, SL cơ sở, giá lô) (§6.0 / §4.5 ⚠K: nppsale một dòng phiếu kho mỗi lô lấy, ĐV của dòng mà SL là cơ sở)."""
 		pi = frappe.db.get_value("Purchase Invoice", ten, ["docstatus", "supplier", "npp_hoan_thanh_boi", "npp_kho_nhap", "set_warehouse",
 			"npp_ghi_chu"], as_dict=True)
-		dong = [{"sp": self.khoa_cua.get(sp), "lo": f"{lo}@{self.vung.get(kho)}", "sl_cs": abs(flt(sl)), "gia": round(flt(gia), 2)}
+		dong = [{"sp": self.khoa_cua.get(sp), "lo": f"{self._ma_lo(st, lo)}@{self.vung.get(kho)}", "sl_cs": abs(flt(sl)), "gia": round(flt(gia), 2)}
 			for sp, lo, kho, sl, gia in frappe.db.sql("""SELECT d.`item_code`, e.`batch_no`, e.`warehouse`, e.`qty`, e.`incoming_rate`
 				FROM `tabPurchase Invoice Item` d JOIN `tabSerial and Batch Bundle` b ON b.`voucher_type` = 'Purchase Invoice'
 					AND b.`voucher_no` = d.`parent` AND b.`voucher_detail_no` = d.`name`

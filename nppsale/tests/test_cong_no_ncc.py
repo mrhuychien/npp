@@ -370,7 +370,8 @@ class TestCongNoNcc(IntegrationTestCase):
 		gtn = self._pe(self.ncc, 7000, "ghi_tra_ncc")  # Ghi trả không phân bổ: tiền không thuộc dòng nào → lệch tổng NCC
 		nhom = sorted({(x["nhom"], x["chung_tu"]) for x in quet_cong_no_ncc([self.ncc, self.ncc_b])})
 		dong_pn = frappe.db.get_value(N.DT, {"khoa_nguon": f"Purchase Invoice:{pn.name}"}, "name")
-		self.assertEqual(nhom, sorted([(20, self.ncc), (20, self.ncc_b), (21, dong_pn), (22, tra.name), (22, pe_b), (22, mo_coi)]))
+		# phiếu chi mất dòng trả trước còn lệch cả bất biến dòng tiền (24 — M3: Σ phần trừ nợ + trả trước ≠ số chi)
+		self.assertEqual(nhom, sorted([(20, self.ncc), (20, self.ncc_b), (21, dong_pn), (22, tra.name), (22, pe_b), (22, mo_coi), (24, pe_b)]))
 		self.assertIn(pe.name, frappe.get_all("Payment Entry", filters={"party": self.ncc, "npp_loai": "phieu_chi_ncc"}, pluck="name"))
 		# việc đêm: chiếu lại NCC có Payment Ledger đổi → còn đúng lệch "tiền ngoài nhóm" (không tự sửa chứng từ; commit bị chặn ở setUp)
 		kham_so_cong_no_ncc()
