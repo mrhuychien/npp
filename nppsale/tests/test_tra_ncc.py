@@ -1,6 +1,7 @@
 """Phiếu trả NCC (P4 — M2) ngoài kịch bản vàng: luật ghi thẳng phiếu NHÁP qua cổng (BP §6.1 siết — USE_RPC, câu dòng của §7.3 điểm 23, vai / RLS
 đọc mọi NV), cột cổng đọc, câu `INSUFFICIENT_STOCK |` nhiều dòng (phần dòng trước lấy, lô tắt), khoá Bin là câu đầu, `DA_CAN_TRU`, khôi phục ném lỗi
-không nghiệp vụ, RPC mới `sua_phieu_tra_ncc` (một giao dịch, lùi hết khi gửi hỏng, chỉ lưu nháp, sửa nháp tại chỗ, phiếu đã huỷ, vai) — cần bench:
+không nghiệp vụ, huỷ nháp + khôi phục về nháp, khoá theo chuỗi amend (lúc chuẩn bị và lúc khoá), RPC mới `sua_phieu_tra_ncc` (một giao dịch, lùi
+hết khi gửi hỏng, chỉ lưu nháp, sửa nháp tại chỗ, phiếu đã huỷ, vai) — cần bench:
 
 	bench --site poc.local run-tests --module nppsale.tests.test_tra_ncc
 
@@ -273,6 +274,42 @@ class TestTraNcc(IntegrationTestCase):
 		self.assertEqual(self._rpc("TK", "complete_supplier_return", {"p_return_id": ten})["data"], moi)
 		self.assertEqual(self._rpc("TK", "khoi_phuc_phieu_tra_ncc", {"p_return_id": ten})["data"],
 			{"id": moi, "trang_thai": "completed", "da_khoi_phuc": False})
+
+	def test_huy_nhap_va_khoi_phuc_nhap(self):
+		"""Huỷ phiếu NHÁP = chỉ dấu huỷ (§7.3 điểm 1 — giữ nháp, chưa đụng kho / nợ; cổng trả `cancelled`); huỷ lần hai giữ lý do cũ (mig 143);
+		khôi phục = bỏ dấu, về Nháp CÙNG tên — không amend, không gửi (mig 241 bước 6–7)."""
+		ten = self._phieu(dong=[("M", "hộp", 2, 1000, 0)])
+		self.assertEqual(self._rpc("TK", "cancel_supplier_return", {"p_return_id": ten, "p_reason": "nhầm"})["data"], ten)
+		self.assertEqual(self._rpc("TK", "cancel_supplier_return", {"p_return_id": ten, "p_reason": "khác"})["data"], ten)
+		doc = lambda: self._cong("TK", {"bang": "supplier_returns", "select": "status, cancel_reason",  # noqa: E731
+			"loc": [{"op": "eq", "cot": "id", "gt": ten}]})["data"][0]
+		self.assertEqual((doc(), frappe.db.get_value("Purchase Invoice", ten, ["docstatus", "npp_huy_boi"])),
+			({"status": "cancelled", "cancel_reason": "nhầm"}, (0, self.ma["u:TK"])))
+		self.assertEqual(self._rpc("TK", "khoi_phuc_phieu_tra_ncc", {"p_return_id": ten})["data"], {"id": ten, "trang_thai": "draft",
+			"da_khoi_phuc": True})
+		self.assertEqual((doc(), frappe.db.get_value("Purchase Invoice", ten, ["docstatus", "npp_huy_luc", "npp_huy_boi"]),
+			frappe.db.exists("Purchase Invoice", {"amended_from": ten}), self._ton("L-B2"), self._so_no(ten)),
+			({"status": "draft", "cancel_reason": None}, (0, None, None), None, 5, None))
+
+	def test_khoa_theo_chuoi_amend(self):
+		"""Tên BẤT KỲ tờ nào của chuỗi amend → làm trên tờ CUỐI: bước chuẩn bị (đọc thường — khoá Bin đúng mặt hàng của tờ cuối) VÀ lúc khoá (đi
+		tiếp theo `amended_from` dưới khoá — tờ amend lập đúng lúc giữa hai bước; mặt hàng của tờ cuối chưa khoá ở bước chuẩn bị → khoá thêm Bin)."""
+		from nppsale.rpc import tra_ncc as R
+		from nppsale.rpc import xuat_hang as XH
+
+		ten = self._phieu(dong=[("M", "hộp", 2, 1000, 0)])
+		self._rpc("TK", "complete_supplier_return", {"p_return_id": ten})
+		self._rpc("TK", "cancel_supplier_return", {"p_return_id": ten, "p_reason": "x"})
+		self.assertEqual(self._rpc("TK", "khoi_phuc_phieu_tra_ncc", {"p_return_id": ten})["data"]["id"], f"{ten}-1")
+		R._chuan_bi_tra(ten)
+		self.assertEqual(frappe.local._npp_ptn, (ten, f"{ten}-1", {self.ma["M"]}))
+		self.assertEqual(R._da_chuan_bi(ten), (f"{ten}-1", {self.ma["M"]}))
+		self.assertIsNone(frappe.local._npp_ptn)  # dùng một lần
+		khoa = []
+		with patch.object(XH, "_khoa_bin", lambda hang, cd: khoa.append(set(hang))):
+			r = R._khoa(ten, set(), self.cd)  # tên cũ đưa thẳng vào bước khoá (như tờ amend vừa lập sau bước chuẩn bị)
+		self.assertEqual((r.name, r.docstatus, khoa), (f"{ten}-1", 1, [set(), {self.ma["M"]}]))
+		self.assertIsNone(R._khoa("PTNCC-KHONG-CO", set(), self.cd))
 
 	# ------------------------------------------------------------------------------------------------ sua_phieu_tra_ncc (§3.8)
 	def _sua(self, nguoi, ten, dong, **them):
