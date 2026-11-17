@@ -355,6 +355,53 @@ class TestCongNoNccRpc(IntegrationTestCase):
 		q = than("KT", "huy_phieu_chi_ncc", {"p_id": c["id"]})
 		self.assertTrue(la_khoa(q[0], "tabSupplier") and la_khoa(q[1], "tabNPP Cong No NCC") and la_khoa(q[2], "tabPayment Entry"), q[:3])
 
+	def test_cong_payables_khoa_ncc_truoc(self):
+		"""Soát P4: lời ghi cổng `payables` (chèn nợ đầu kỳ / lập tay, sửa, xoá) theo khuôn ghi kho — bước chuẩn bị đọc NCC chạm tới → COMMIT → câu ĐẦU
+		của thân ghi (sau điểm lưu `npp_cong_ghi`) là khoá NCC (`FOR UPDATE`): ảnh chụp lập SAU khoá (trước: lập từ đầu request — hook chiếu chạy trên
+		ảnh cũ xoá mất dòng trả trước lượt song song vừa lập; khoá NCC sau dòng nợ ngược chiều Ghi trả → khoá chết, 500)."""
+		cau, tham, moc, commit = [], [], [], []
+		goc_sql, goc_sp = frappe.db.sql, frappe.db.savepoint
+
+		def ghi_sql(q, *a, **kw):
+			cau.append(" ".join(str(q).split()))
+			tham.append(a[0] if a else kw.get("values"))
+			return goc_sql(q, *a, **kw)
+
+		def ghi_sp(ten_sp, *a, **kw):
+			kq = goc_sp(ten_sp, *a, **kw)
+			if ten_sp == "npp_cong_ghi":
+				moc.append(len(cau))
+			return kq
+
+		def than(fn):
+			cau.clear()
+			tham.clear()
+			moc.clear()
+			commit.clear()
+			with patch.object(frappe.db, "sql", ghi_sql), patch.object(frappe.db, "savepoint", ghi_sp), \
+					patch.dict(frappe.flags, {"in_test": False}), patch.object(frappe.db, "commit", lambda *a, **k: commit.append(len(cau))):
+				ket = fn()
+			self.assertNotIn("error", ket, ket)
+			self.assertTrue(commit and moc and commit[0] <= moc[0], (commit, moc))  # COMMIT trước điểm lưu của thân ghi
+			return ket, cau[moc[0]:]
+
+		ket, q = than(lambda: self._them_no("KT", amount=50000, opening_balance=True))
+		self.assertTrue("`tabSupplier`" in q[0] and "FOR UPDATE" in q[0], q[:2])
+		ten = ket["data"][0]["id"]
+		# chèn NHIỀU dòng của nhiều NCC: mọi NCC khoá MỘT lượt (thứ tự tên) làm câu đầu — khoá từng NCC theo vòng lặp là NCC sau khoá SAU câu đọc thường
+		# của dòng trước (ảnh chụp đã lập) và hai lượt chéo nhau theo thứ tự gửi lên → khoá chết
+		ket2, q = than(lambda: self._cong("KT", {"bang": "payables", "hanh_dong": "insert", "select": "id", "gia_tri": [
+			{"org_id": self.ma["org"], "supplier_id": self.ma[s], "paid": 0, "status": "open", "amount": 1000} for s in ("S2", "S1")]}))
+		self.assertTrue("`tabSupplier`" in q[0] and "FOR UPDATE" in q[0], q[:2])
+		self.assertEqual(sorted(tham[moc[0]][0]), sorted([self.ma["S1"], self.ma["S2"]]), q[:2])
+		self.assertEqual(len(ket2["data"]), 2)
+		_ket, q = than(lambda: self._sua_no("KT", ten, {"notes": "hẹn trả"}))
+		self.assertTrue("`tabSupplier`" in q[0] and "FOR UPDATE" in q[0], q[:2])
+		_ket, q = than(lambda: self._cong("KT", {"bang": "payables", "hanh_dong": "delete", "select": "id", "loc": [{"op": "eq", "cot": "id",
+			"gt": ten}]}))
+		self.assertTrue("`tabSupplier`" in q[0] and "FOR UPDATE" in q[0], q[:2])
+		self.assertIsNone(self._no(ten))
+
 	# ------------------------------------------------------------------------------------------------ huy_phieu_chi_ncc
 	def test_huy_phieu_chi(self):
 		"""mig 242: tìm phiếu → (NPP) → vai (SAU tìm) → đã huỷ = idempotent; huỷ gỡ mọi phân bổ, khoản mở lại ăn tiền trả trước của phiếu chi KHÁC

@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
-from frappe.utils import add_days, flt, nowdate
+from frappe.utils import add_days, flt, getdate, now_datetime, nowdate
 
 from nppsale.cong import api
 from nppsale.cong import bang as B
@@ -131,6 +131,9 @@ class TestPhieuNhap(IntegrationTestCase):
 		ket = self._cong("TK", {"bang": "purchase_invoices", "hanh_dong": "delete", "select": "id", "loc": [{"op": "eq", "cot": "id", "gt": q}]})
 		self.assertEqual(ket["data"], [{"id": q}])
 		self.assertFalse(frappe.db.exists("Purchase Invoice", q))
+		# soát P4: xoá nháp mang số CUỐI không lùi dãy `PN-` — phiếu lập sau KHÔNG nhận lại đúng tên (id) ấy (màn còn giữ id cũ sẽ chạm phiếu của người
+		# khác; nppsale id uuid không dùng lại)
+		self.assertNotEqual(self._phieu(), q)
 
 	def test_sua_ngay_hd_phieu_tam(self):
 		"""Hạn thanh toán của lõi tính lại mỗi lần lưu: lõi giữ hạn theo lịch thanh toán lập lúc tạo nháp, nên sửa ngày HĐ NCC của phiếu tạm sang SAU
@@ -367,8 +370,8 @@ class TestPhieuNhap(IntegrationTestCase):
 		self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": ten, "p_reason": "x"})
 		self._rpc("TK", "khoi_phuc_phieu_nhap", {"p_invoice_id": ten})
 		P._chuan_bi_pn(ten)
-		self.assertEqual(frappe.local._npp_pn, (ten, f"{ten}-1", {self.ma["A"]}))
-		self.assertEqual(P._da_chuan_bi(ten), (f"{ten}-1", {self.ma["A"]}))
+		self.assertEqual(frappe.local._npp_pn, (ten, f"{ten}-1", {self.ma["A"]}, {self.ma["S1"]}))  # + NCC: khoá ngay sau Bin (soát P4)
+		self.assertEqual(P._da_chuan_bi(ten), (f"{ten}-1", {self.ma["A"]}, {self.ma["S1"]}))
 		self.assertIsNone(frappe.local._npp_pn)  # dùng một lần
 		r = P._khoa(ten, set(), self.cd)  # tên cũ đưa thẳng vào bước khoá (như tờ amend vừa lập sau bước chuẩn bị)
 		self.assertEqual((r.name, r.docstatus), (f"{ten}-1", 1))
@@ -473,3 +476,166 @@ class TestPhieuNhap(IntegrationTestCase):
 		self.assertEqual(self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": pn1, "p_reason": "x"})["data"], pn1)
 		self.assertEqual((so(pn1), so(pn2)), (None, (60000, 60000, "paid")))
 		self.assertFalse(frappe.db.exists("NPP Cong No NCC", {"phieu_chi": pe}))  # dồn hết — không còn dòng trả trước
+
+	# ------------------------------------------------------------------------------------------------ soát P4
+	def test_khoi_phuc_lap_dong_no_moi(self):
+		"""Soát P4: khôi phục phiếu nhập đã huỷ lập dòng công nợ MỚI như nppsale (`khoi_phuc_phieu_nhap.sql:71–74` — `open`, hạn NULL, chữ hệ thống
+		"Phiếu nhập hàng …"): dấu quá hạn tay / hạn / ghi chú nợ mà màn công nợ NCC đặt cho tờ CŨ không đi theo tờ amend; `payables_by_supplier` không
+		đếm quá hạn. Số HĐ NCC giữ (nppsale chép `invoice_number` của phiếu)."""
+		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)], invoice_number="HD-K1")
+		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})
+		no = frappe.db.get_value("NPP Cong No NCC", {"chung_tu": ten}, "name")
+		ket = self._cong("KT", {"bang": "payables", "hanh_dong": "update", "select": "id", "loc": [{"op": "eq", "cot": "id", "gt": no}],
+			"gia_tri": {"status": "overdue", "due_date": str(add_days(nowdate(), 10)), "notes": "hẹn trả"}})
+		self.assertNotIn("error", ket, ket)
+		self.assertEqual(frappe.db.get_value("NPP Cong No NCC", no, ["trang_thai", "ghi_chu"]), ("overdue", "hẹn trả"))
+		self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": ten, "p_reason": "x"})
+		moi = self._rpc("TK", "khoi_phuc_phieu_nhap", {"p_invoice_id": ten})["data"]["id"]
+		r = frappe.db.get_value("NPP Cong No NCC", {"chung_tu": moi}, ["trang_thai", "han_thanh_toan", "ghi_chu", "qua_han_tay", "so_hd_ncc"],
+			as_dict=True)
+		self.assertEqual((r.trang_thai, r.han_thanh_toan, r.ghi_chu, r.qua_han_tay, r.so_hd_ncc), ("open", None, f"Phiếu nhập hàng {moi}", 0, "HD-K1"))
+		ds = self._rpc("KT", "payables_by_supplier", {})["data"]
+		self.assertEqual(next(x for x in ds if x["supplier_id"] == self.ma["S1"])["overdue_count"], 0)
+
+	def test_gio_ghi_so_du_micro_giay(self):
+		"""Soát P4: Hoàn thành ghi giờ ghi sổ đủ micro giây như mọi RPC kho (trả NCC, phiếu kho tay, kiểm kê, rà soát; HĐ P3 `nowtime()`) — cắt về giây
+		là phiếu đứng TRƯỚC chứng từ đã ghi trong cùng giây → lõi coi là ghi lùi, xếp repost, giá vốn chứng từ đã chốt đổi; khôi phục giữ đúng giờ ấy."""
+		from nppsale.rpc import phieu_nhap as P
+
+		ten = self._phieu(dong=[("A", "hộp", 1, 10000, 0, 1)])
+		luc = now_datetime().replace(microsecond=654321)
+		with patch.object(P, "now_datetime", lambda: luc):
+			self.assertEqual(self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})["data"], ten)
+		self.assertEqual(str(frappe.db.get_value("Purchase Invoice", ten, "posting_time")), luc.strftime("%-H:%M:%S.654321"))
+		self._rpc("TK", "cancel_purchase_invoice", {"p_invoice_id": ten, "p_reason": "x"})
+		moi = self._rpc("TK", "khoi_phuc_phieu_nhap", {"p_invoice_id": ten})["data"]["id"]
+		self.assertEqual(str(frappe.db.get_value("Purchase Invoice", moi, "posting_time")), luc.strftime("%-H:%M:%S.654321"))
+
+	def _cau_than(self, ham, ts, nguoi="TK") -> tuple[dict, list[str]]:
+		"""(kết quả RPC, mọi câu SQL của thân hàm — sau điểm lưu `npp_cong_rpc` của lượt cuối)."""
+		cau, moc = [], []
+		goc_sql, goc_sp = frappe.db.sql, frappe.db.savepoint
+
+		def ghi_sql(q, *a, **kw):
+			cau.append(" ".join(str(q).split()))
+			return goc_sql(q, *a, **kw)
+
+		def ghi_sp(ten_sp, *a, **kw):
+			kq = goc_sp(ten_sp, *a, **kw)
+			if ten_sp == "npp_cong_rpc":
+				moc.append(len(cau))
+			return kq
+
+		with patch.object(frappe.db, "sql", ghi_sql), patch.object(frappe.db, "savepoint", ghi_sp):
+			ket = self._rpc(nguoi, ham, ts)
+		return ket, cau[moc[-1]:] if moc else []
+
+	def test_khoa_bin_ncc_pi_truoc_doc_thuong(self):
+		"""Soát P4 (CFD-05, PoC 1d): thân Hoàn thành / Huỷ / Khôi phục phiếu nhập khoá Bin → khoá NCC → khoá PI (cùng thứ tự NCC trước PI với Ghi trả /
+		phiếu chi / cổng `payables` — không khoá chết ngược chiều; hook chiếu công nợ NCC không chạy trên ảnh chụp cũ), câu đọc mặt hàng sau khoá PI là
+		đọc CÓ KHOÁ (khoá Bin bù của hàng mới trước ảnh chụp) — không câu đọc thường nào trước đó."""
+		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)])
+		for ham, ts in (("complete_purchase_invoice", {"p_invoice_id": ten}), ("cancel_purchase_invoice", {"p_invoice_id": ten, "p_reason": "x"}),
+				("khoi_phuc_phieu_nhap", {"p_invoice_id": ten})):
+			ket, than = self._cau_than(ham, ts)
+			self.assertNotIn("error", ket, ket)
+			self.assertTrue("`tabBin`" in than[0] and "FOR UPDATE" in than[0], (ham, than[:1]))
+			self.assertTrue("`tabSupplier`" in than[1] and "FOR UPDATE" in than[1], (ham, than[1]))
+			self.assertTrue("`tabPurchase Invoice`" in than[2] and "FOR UPDATE" in than[2], (ham, than[2]))
+			i = next(k for k, q in enumerate(than) if "`tabPurchase Invoice Item`" in q)
+			self.assertIn("LOCK IN SHARE MODE", than[i], ham)
+			self.assertTrue(all("FOR UPDATE" in q or "LOCK IN SHARE MODE" in q for q in than[:i + 1]), (ham, than[:i + 1]))
+
+	def test_ncc_doi_giua_chuan_bi_va_khoa_thu_lai(self):
+		"""Soát P4: NCC của tờ đổi giữa bước chuẩn bị và lúc khoá (gộp NCC / sửa nháp song song) → lui `QueryDeadlockError`, cổng thử lại từ bước chuẩn
+		bị (đọc lại NCC — khoá đúng NCC, đúng thứ tự) rồi làm xong."""
+		from nppsale.rpc import phieu_nhap as P
+
+		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)])
+		with self.assertRaises(frappe.QueryDeadlockError):
+			P._khoa(ten, {self.ma["A"]}, self.cd, {self.ma["S2"]})
+		goc_ncc, goc_lui, lan = P._ncc_cua, frappe.db.rollback, []
+
+		def ncc_cu(t):
+			lan.append(t)
+			return {self.ma["S2"]} if len(lan) == 1 else goc_ncc(t)
+
+		def lui(*, save_point=None, chain=False):  # "lui hẳn" của cổng — trong bài: về điểm lưu của lượt (giữ dữ liệu bài)
+			return goc_lui(save_point=save_point or "npp_cong_rpc")
+
+		with patch.object(P, "_ncc_cua", ncc_cu), patch.object(frappe.db, "rollback", lui), patch("time.sleep"):
+			ket = self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})
+		self.assertEqual((ket.get("data"), len(lan)), (ten, 2), ket)
+		self.assertEqual(frappe.db.get_value("Purchase Invoice", ten, "docstatus"), 1)
+
+	def test_cong_khoa_chet_thu_lai(self):
+		"""Soát P4: khoá chết trong lời ghi thường của cổng / RPC không qua khuôn ghi kho — InnoDB lui CẢ giao dịch (điểm lưu mất: lui về nó hỏng 1305
+		ngay trong nhánh bắt lỗi → 500 "Lỗi máy chủ…"): cổng lui hẳn rồi thử lại có giãn cách như khuôn ghi kho; hết lượt → 503 `40P01`."""
+		from nppsale.cong import api as A
+		from nppsale.rpc import phieu_nhap as P
+
+		goc_ghi, goc_lui, goc_khoa = A._ghi, frappe.db.rollback, P._khoa_hang_gia
+		lan, lui = [], []
+
+		def ghi_hong(yc, nc, *a):
+			lan.append(1)
+			if len(lan) == 1:
+				raise frappe.QueryDeadlockError("khoá chết giả")
+			return goc_ghi(yc, nc, *a)
+
+		def lui_ve(diem):
+			def f(*, save_point=None, chain=False):
+				lui.append(save_point)
+				return goc_lui(save_point=save_point or diem)
+			return f
+
+		with patch.object(A, "_ghi", ghi_hong), patch.object(frappe.db, "rollback", lui_ve("npp_cong_ghi")), patch("time.sleep"):
+			ten = self._phieu()
+		self.assertEqual((len(lan), lui, frappe.db.get_value("Purchase Invoice", ten, "npp_loai")), (2, [None], "phieu_nhap"))
+
+		def luon_hong(*a):
+			raise frappe.QueryDeadlockError("khoá chết giả")
+
+		with patch.object(A, "_ghi", luon_hong), patch.object(frappe.db, "rollback", lui_ve("npp_cong_ghi")), patch("time.sleep"):
+			ket = self._cong("TK", {"bang": "purchase_invoices", "hanh_dong": "insert", "select": "id", "gia_tri": {"org_id": self.ma["org"],
+				"supplier_id": self.ma["S1"], "status": "draft"}})
+		self.assertEqual((ket.get("status"), ket.get("error", {}).get("code")), (503, "40P01"), ket)
+		# RPC thường (không khuôn ghi kho): `luu_gia_nhap`
+		lan.clear()
+
+		def khoa_hong(ds):
+			lan.append(1)
+			if len(lan) == 1:
+				raise frappe.QueryDeadlockError("khoá chết giả")
+			return goc_khoa(ds)
+
+		with patch.object(P, "_khoa_hang_gia", khoa_hong), patch.object(frappe.db, "rollback", lui_ve("npp_cong_rpc")), patch("time.sleep"):
+			ket = self._rpc("KT", "luu_gia_nhap", {"p_dong": [{"product_id": self.ma["A"], "unit_name": "thùng", "price": 240000}]})
+		self.assertEqual((ket.get("data"), len(lan)), ({"luu": 1, "bo": 0}, 2), ket)
+
+	def test_ghi_gia_nhap_khoa_hang(self):
+		"""Soát P4 (§2.9 MỘT Item Price mỗi (mặt hàng, đơn vị)): `luu_gia_nhap` và bước ghi giá khi Hoàn thành phiếu khoá dòng Item của các mặt hàng
+		(thứ tự tên) TRƯỚC khi đọc giá, đọc giá CÓ KHOÁ — hai lượt cùng (mặt hàng, đơn vị) chưa có giá xếp hàng và lượt sau thấy giá lượt trước vừa chèn
+		(sửa tại chỗ), thay vì cùng thấy "chưa có" rồi cùng chèn."""
+		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)])
+		for nguoi, ham, ts in (("TK", "complete_purchase_invoice", {"p_invoice_id": ten}),
+				("KT", "luu_gia_nhap", {"p_dong": [{"product_id": self.ma["A"], "unit_name": "hộp", "price": 11000}]})):
+			ket, than = self._cau_than(ham, ts, nguoi)
+			self.assertNotIn("error", ket, ket)
+			khoa = next(k for k, q in enumerate(than) if "`tabItem`" in q and "FOR UPDATE" in q)
+			doc = [k for k, q in enumerate(than) if q.startswith("SELECT `name`, `valid_from` FROM `tabItem Price`")]
+			self.assertTrue(doc and khoa < doc[0], ham)
+			self.assertTrue(all("FOR UPDATE" in than[k] for k in doc), ham)
+		self.assertEqual(frappe.get_all("Item Price", filters={"price_list": self.cd.bang_gia_nhap, "item_code": self.ma["A"]},
+			fields=["uom", "price_list_rate"]), [{"uom": frappe.db.get_value("Purchase Invoice Item", {"parent": ten}, "uom"), "price_list_rate": 11000}])
+
+	def test_lo_trung_ma_luot_song_song(self):
+		"""Soát P4: lô cùng mã vừa được lập song song SAU bước kiểm `exists` (khác mặt hàng — khoá Bin không xếp hàng; mô phỏng: bước kiểm không thấy) →
+		khoá chính báo trùng → đúng câu LO_TRUNG_MA, không 500 "Lỗi máy chủ…"."""
+		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1)])
+		frappe.get_doc({"doctype": "Batch", "batch_id": f"{ten}-001", "item": self.ma["A"]}).insert(ignore_permissions=True)
+		goc = frappe.db.exists
+		with patch.object(frappe.db, "exists", lambda dt, *a, **k: False if dt == "Batch" else goc(dt, *a, **k)):
+			ket = self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})
+		self._loi(ket, "P0001", f"LO_TRUNG_MA: Mã lô {ten}-001 đã có trong sổ — đổi mã lô ấy rồi hoàn thành lại phiếu.")
+		self.assertEqual(frappe.db.get_value("Purchase Invoice", ten, "docstatus"), 0)

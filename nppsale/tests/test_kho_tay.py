@@ -12,6 +12,7 @@ P6), v_stock_movements, v_stock_balance_by_zone, che giá vốn, bảng không p
 """
 from __future__ import annotations
 
+import re
 from unittest.mock import patch
 
 import frappe
@@ -520,3 +521,118 @@ class TestKhoTay(V.TestKhoMuaVang):
 		frappe.local._npp_cai_dat_ban = None
 		self.assertEqual(self._rpc_tk("post_stock_issue", p_entry_id=ten)["error"]["message"],
 			"CAI_DAT_THIEU: NPP Cai Dat chưa có tài khoản xuất lẻ (tk_xuat_le).")
+
+	# ------------------------------------------------------------------------------------------------ soát P4
+	def test_tim_kd_phieu_kho_lap_bang_method(self):
+		"""Soát P4 (§4.5): phiếu kho lập thẳng bằng method — nhập kho tay không NCC (`IN-…`, `_phieu_nhap_kho`) và Stock Entry lưu qua lõi như phiếu
+		nhập lại hàng khách trả `NL-` của P3 — có khoá tìm `tim_kd` = khoá của mã (hook `validate` của Stock Entry): gõ mã liền / bỏ số 0 như ô tìm của
+		danh sách (`tachTuTim` → `entry_code.ilike` OR `tim_kd.ilike`) ra phiếu, như `PN-` cùng danh sách."""
+		ten = self._nhap(nhan="INT", entry_code="IN-T-TIM")["data"][0]["entry_id"]
+		se = frappe.new_doc("Stock Entry")
+		se.update({"naming_series": "NL-.####", "stock_entry_type": "Material Receipt", "purpose": "Material Receipt", "company": self.cd.cong_ty,
+			"to_warehouse": self.cd.kho_ban, "npp_loai": "nhap_lai_tra"})
+		se.append("items", {"item_code": self.ma["X"], "qty": 1, "t_warehouse": self.cd.kho_ban, "basic_rate": 1000, "set_basic_rate_manually": 1})
+		se.flags.ignore_permissions = True
+		se.insert()
+		for x in (ten, se.name):
+			self.assertEqual(frappe.db.get_value("Stock Entry", x, "npp_tim_kd"), khoa_tim_ds(x))
+			gon = x.replace("-", "").lower()
+			for tu in (gon, re.sub(r"(?<=\D)0+(?=\d)", "", gon)):
+				ds = self._cong("TK", {"bang": "stock_entries", "select": "id", "loc": [{"op": "or",
+					"bieu_thuc": f"entry_code.ilike.*{tu.upper()}*,tim_kd.ilike.*{tu}*"}]})
+				self.assertNotIn("error", ds, ds)
+				self.assertIn(x, [r["id"] for r in ds["data"]], tu)
+
+	def test_nhap_kho_co_ncc_sua_khoi_phuc_giu_no(self):
+		"""Soát P4 (§7.3 điểm 3, Q9 M4): phiếu nhập sinh từ màn Nhập kho có NCC + nợ mang dòng thuế bù phần nợ lệch giá vốn (`npp_no_lech_gia_von`) —
+		sửa phiếu (nhánh A: lô chưa xuất — tờ amend; nhánh B: lô đã bán — chỉ giá) và khôi phục sau huỷ đều GIỮ đúng nợ = `payable.amount` (lệch dương
+		lẫn âm; sửa giá thì nợ đổi đúng phần chênh tiền hàng); cổng `vat` không gồm phần lệch (màn sửa / POS nạp lại thuế không đếm hai lần); không ghi
+		bảng giá nhập ở mọi đường (giá dòng là giá VỐN)."""
+		dong = [{"product_id": "@A", "unit_name": "hộp", "qty_tx": 10, "conv": 1, "base_qty": 10, "base_cost": 10000}]
+		pn = self._nhap("CHU", "PL", entry_code="IN-PL-1", supplier_id="@S1", payable={"amount": 130000}, lines=dong)["data"][0]["entry_id"]
+
+		def no(x):
+			return flt(frappe.db.get_value("NPP Cong No NCC", {"chung_tu": x}, "so_tien"))
+
+		self.assertEqual((flt(frappe.db.get_value("Purchase Invoice", pn, "grand_total")), no(pn)), (130000, 130000))
+		self.assertEqual(frappe.db.get_value("Purchase Invoice", pn, ["npp_ma_nhap_kho", "npp_no_lech_gia_von"]), ("IN-PL-1", 30000))
+		self.assertEqual(self._cong_doc("KT", "purchase_invoices", "subtotal, vat, total, vat_override", id=pn)[0],
+			{"subtotal": 100000, "vat": 0, "total": 130000, "vat_override": None})
+		it = frappe.get_doc("Purchase Invoice", pn).items[0]
+
+		def sua(ten, gia=10000, ghi_chu="sửa"):
+			return self._goi("KT", "sua_phieu_nhap", {"p_invoice_id": ten, "p_head": {"supplier_id": self.ma["S1"], "invoice_number": None,
+				"invoice_date": str(getdate(nowdate())), "warehouse_zone": "sale", "discount": 0, "vat_override": None, "notes": ghi_chu},
+				"p_lines": [{"product_id": it.item_code, "unit_name": it.uom, "quantity": flt(it.qty), "unit_price": gia, "line_discount": 0,
+					"vat_rate": 0, "conversion_factor": flt(it.conversion_factor), "notes": None, "sort_order": 1}]})
+
+		ket = sua(pn)  # nhánh A (lô chưa xuất): tờ amend giữ dòng lệch
+		self.assertNotIn("error", ket, ket)
+		moi = ket["data"]["id"]
+		self.assertNotEqual(moi, pn)
+		self.assertEqual((flt(frappe.db.get_value("Purchase Invoice", moi, "grand_total")), no(moi), ket["data"]["total"]), (130000, 130000, 130000))
+		# nhánh B (lô đã bán): sửa ghi chú → không bút toán, nợ giữ; sửa giá 11.000 → nợ tăng đúng 10.000 tiền hàng, thuế (cổng) vẫn 0
+		self._ok(buoc="ban", nguoi="CHU", nhan="HL", khach="@K1", dong=[{"product_id": "@A", "unit_name": "hộp", "quantity": 2}])
+		ket = sua(moi, ghi_chu="sửa lần hai")
+		self.assertEqual(((ket.get("data") or {}).get("id"), no(moi)), (moi, 130000), ket)
+		self.assertFalse(frappe.db.exists("Journal Entry", {"npp_phieu_nhap": moi, "docstatus": 1}))
+		ket = sua(moi, gia=11000)
+		self.assertEqual(((ket.get("data") or {}).get("total"), no(moi)), (140000, 140000), ket)
+		self.assertEqual(self._cong_doc("KT", "purchase_invoices", "vat, total", id=moi)[0], {"vat": 0, "total": 140000})
+		# lệch ÂM (nợ < giá vốn): huỷ → khôi phục → sửa nhánh A — nợ giữ 80.000
+		pn2 = self._nhap("CHU", "PL2", entry_code="IN-PL-2", supplier_id="@S1", payable={"amount": 80000}, lines=dong)["data"][0]["entry_id"]
+		self.assertEqual((no(pn2), frappe.db.get_value("Purchase Invoice", pn2, "npp_no_lech_gia_von")), (80000, -20000))
+		self.assertEqual(self._goi("KT", "cancel_purchase_invoice", {"p_invoice_id": pn2, "p_reason": "x"}).get("data"), pn2)
+		moi2 = self._goi("KT", "khoi_phuc_phieu_nhap", {"p_invoice_id": pn2})["data"]["id"]
+		self.assertEqual(no(moi2), 80000)
+		ket = sua(moi2)
+		self.assertNotIn("error", ket, ket)
+		self.assertEqual(no(ket["data"]["id"]), 80000)
+		self.assertFalse(frappe.db.exists("Item Price", {"item_code": self.ma["A"], "price_list": self.cd.bang_gia_nhap}))
+
+	def test_lo_trung_ma_luot_song_song_nhap_kho(self):
+		"""Soát P4: lô cùng mã vừa được lập song song SAU bước kiểm (khác mặt hàng — khoá Bin không xếp hàng; mô phỏng: bước kiểm không thấy) → khoá
+		chính báo trùng → câu LO_TRUNG_MA của màn Nhập kho, không 500 "Lỗi máy chủ…"."""
+		frappe.get_doc({"doctype": "Batch", "batch_id": "L-SS", "item": self.ma["A"]}).insert(ignore_permissions=True)
+		goc = frappe.db.exists
+		with patch.object(frappe.db, "exists", lambda dt, *a, **k: False if dt == "Batch" else goc(dt, *a, **k)):
+			ket = self._nhap(nhan="INS", entry_code="IN-S-1", lines=[{"product_id": "@A", "unit_name": "hộp", "qty_tx": 1, "conv": 1, "base_qty": 1,
+				"base_cost": 1000, "batch_code": "L-SS"}])
+		self.assertEqual((ket.get("error") or {}).get("message"), "LO_TRUNG_MA: Mã lô L-SS đã có trong sổ — đổi mã lô ấy rồi ghi lại phiếu nhập kho.",
+			ket)
+
+	def test_khoa_bu_hang_them_giua_hai_buoc(self):
+		"""Soát P4 (PoC 1d): nháp được thêm dòng hàng KHÁC giữa bước chuẩn bị và lúc khoá (sửa nháp song song) — câu đọc mặt hàng sau khoá phiếu là đọc
+		CÓ KHOÁ, nên khoá Bin bù của hàng mới đứng TRƯỚC câu đọc thường đầu tiên (đọc thường ở đó lập ảnh chụp cũ: tồn lô hàng mới đọc số cũ → lô âm)."""
+		from nppsale.rpc import kho_tay as KT
+
+		self._lo_p("L-A", 10, 8000, 200)
+		self._lo_p("L-G", 5, 20000, 200, sp="@G")
+		ten = self._pk("X1", "export", "sale", [("@P", "Lon", 1, 1)])
+		hang = KT._hang_cua(KT.nguon_phieu(ten))  # bước chuẩn bị đọc {P}
+		ket = self._cong("TK", {"bang": "stock_entry_lines", "hanh_dong": "insert", "select": "id", "gia_tri": [{"entry_id": ten,
+			"product_id": self.ma["G"], "unit_name": "Kg", "quantity": 1, "qty_in_base_uom": 1, "qty_in_transaction_uom": 1, "transaction_uom": "Kg",
+			"conversion_factor_snapshot": 1, "unit_cost": 0, "notes": None}]})
+		self.assertNotIn("error", ket, ket)
+		cau = []
+		goc_sql = frappe.db.sql
+
+		def ghi_sql(q, *a, **kw):
+			cau.append(" ".join(str(q).split()))
+			return goc_sql(q, *a, **kw)
+
+		frappe.set_user(self.ma["u:TK"])
+		frappe.local._npp_ngu_canh = None
+		try:
+			KT.hien_tai()
+			frappe.local._npp_pk = (ten, hang)
+			with patch.object(frappe.db, "sql", ghi_sql):
+				self.assertEqual(KT.post_stock_issue(p_entry_id=ten), ten)
+		finally:
+			frappe.set_user("Administrator")
+			frappe.local._npp_ngu_canh = None
+		khoa_bin = [k for k, q in enumerate(cau) if "`tabBin`" in q and "FOR UPDATE" in q]
+		self.assertGreaterEqual(len(khoa_bin), 2, cau[:5])  # khoá câu đầu {P} + khoá bù {G}
+		doc = [q for q in cau[khoa_bin[0]:khoa_bin[1]] if q.startswith("SELECT") and "`tab" in q]
+		self.assertTrue(doc and all("FOR UPDATE" in q or "LOCK IN SHARE MODE" in q for q in doc), doc)
+		self.assertEqual(self._ton_lo("L-G", self.cd.kho_ban), 4)

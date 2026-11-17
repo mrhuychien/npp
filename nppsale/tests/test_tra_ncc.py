@@ -169,12 +169,14 @@ class TestTraNcc(IntegrationTestCase):
 		self._loi(self._cong("TK", {"bang": "supplier_return_lines", "hanh_dong": "update", "gia_tri": {"quantity": 99},
 			"loc": [{"op": "eq", "cot": "return_id", "gt": ten}]}), "P0001", USE_RPC)
 		self._loi(self._ghi_dong("TK", ten, [("M", "hộp", 1, 1000, 0)]), "P0001", USE_RPC)
-		# nháp huỷ (dấu huỷ) vẫn xoá được — số cấp lại khi là số cuối (lõi lùi dãy, như mig 240)
+		# nháp huỷ (dấu huỷ) vẫn xoá được — số cuối KHÔNG cấp lại (soát P4: xoá không lùi dãy — tên Frappe là id, màn còn giữ id cũ sẽ ghi đè phiếu
+		# của người khác; ⚠K: nppsale `_danh_so_tra_ncc` MAX + 1 cấp lại MÃ nhưng id uuid mới — Q9)
 		nhap = self._phieu()
 		self.assertEqual(self._rpc("TK", "cancel_supplier_return", {"p_return_id": nhap, "p_reason": "x"})["data"], nhap)
 		self.assertEqual(self._cong("TK", {"bang": "supplier_returns", "hanh_dong": "delete", "select": "id",
 			"loc": [{"op": "eq", "cot": "id", "gt": nhap}]})["data"], [{"id": nhap}])
-		self.assertEqual(self._phieu(), nhap)
+		self.assertFalse(frappe.db.exists("Purchase Invoice", nhap))
+		self.assertNotEqual(self._phieu(), nhap)
 
 	def test_doc_cong_sau_gui(self):
 		ten = self._phieu(dong=[("M", "hộp", 6, 1000, 600)], discount=400, vat_override=540, reason="damaged", notes="ghi")
@@ -216,8 +218,8 @@ class TestTraNcc(IntegrationTestCase):
 			f"INSUFFICIENT_STOCK | Kẹo ({self._dv('N')}): cần 2, kho hàng date còn 0, kho hàng bán còn 0")
 
 	def test_gui_khoa_bin_cau_dau(self):
-		"""Câu ĐẦU của thân hàm (sau bước chuẩn bị) là khoá Bin, câu kế là khoá PI `FOR UPDATE` — lượt song song xếp hàng ở khoá rồi thấy
-		docstatus 1 (idempotent, không xuất kho hai lần)."""
+		"""Câu ĐẦU của thân hàm (sau bước chuẩn bị) là khoá Bin, rồi khoá NCC (soát P4: thứ tự Bin → Supplier → PI của mọi method đổi nợ NCC), rồi khoá
+		PI `FOR UPDATE` — lượt song song xếp hàng ở khoá rồi thấy docstatus 1 (idempotent, không xuất kho hai lần)."""
 		ten = self._phieu(dong=[("M", "hộp", 2, 1000, 0)])
 		cau, moc = [], []
 		goc_sql, goc_sp = frappe.db.sql, frappe.db.savepoint
@@ -237,8 +239,10 @@ class TestTraNcc(IntegrationTestCase):
 		than = cau[moc[0]:]
 		self.assertIn("`tabBin`", than[0])
 		self.assertIn("FOR UPDATE", than[0])
-		self.assertIn("`tabPurchase Invoice`", than[1])
+		self.assertIn("`tabSupplier`", than[1])
 		self.assertIn("FOR UPDATE", than[1])
+		self.assertIn("`tabPurchase Invoice`", than[2])
+		self.assertIn("FOR UPDATE", than[2])
 		self.assertEqual(self._rpc("TK", "complete_supplier_return", {"p_return_id": ten})["data"], ten)
 		self.assertEqual((self._ton("L-B2"), frappe.db.count("NPP Cong No NCC", {"chung_tu": ten})), (3, 1))
 
@@ -302,8 +306,8 @@ class TestTraNcc(IntegrationTestCase):
 		self._rpc("TK", "cancel_supplier_return", {"p_return_id": ten, "p_reason": "x"})
 		self.assertEqual(self._rpc("TK", "khoi_phuc_phieu_tra_ncc", {"p_return_id": ten})["data"]["id"], f"{ten}-1")
 		R._chuan_bi_tra(ten)
-		self.assertEqual(frappe.local._npp_ptn, (ten, f"{ten}-1", {self.ma["M"]}))
-		self.assertEqual(R._da_chuan_bi(ten), (f"{ten}-1", {self.ma["M"]}))
+		self.assertEqual(frappe.local._npp_ptn, (ten, f"{ten}-1", {self.ma["M"]}, {self.ma["S1"]}))  # + NCC: khoá ngay sau Bin (soát P4)
+		self.assertEqual(R._da_chuan_bi(ten), (f"{ten}-1", {self.ma["M"]}, {self.ma["S1"]}))
 		self.assertIsNone(frappe.local._npp_ptn)  # dùng một lần
 		khoa = []
 		with patch.object(XH, "_khoa_bin", lambda hang, cd: khoa.append(set(hang))):

@@ -421,8 +421,31 @@ def _ghi_so(ten: str) -> None:
 	frappe.local.message_log = []
 
 
+def chuan_bi_ghi(hanh_dong: str, gia_tri, ids: list, nc) -> None:
+	"""Bước ĐỌC (trước COMMIT) của lời ghi cổng `payables` theo khuôn ghi kho (soát P4): cài đặt + NPP của site (bộ đệm request) + NCC mà lời ghi chạm
+	tới (chèn: `supplier_id` gửi lên; sửa / xoá: NCC của các dòng khớp) → frappe.local — thân ghi khoá các NCC ấy làm câu ĐẦU (`_khoa_ncc_ghi`)."""
+	cai_dat_kho()
+	_org()
+	if hanh_dong == "insert":
+		ds = gia_tri if isinstance(gia_tri, list) else [gia_tri]
+		ncc = {str(g.get("supplier_id")) for g in ds if isinstance(g, dict) and g.get("supplier_id") is not None}
+	else:
+		ncc = {x for x in (frappe.db.get_value(N.DT, ten, "nha_cung_cap") for ten in ids or []) if x}
+	frappe.local._npp_no_ncc = ncc
+
+
+def _khoa_ncc_ghi() -> None:
+	"""Câu ĐẦU của thân ghi cổng `payables`: khoá các NCC bước chuẩn bị đọc (thứ tự tên — `khoa_ncc_truoc`); ảnh chụp lập SAU khoá (PoC 1d). Gọi thẳng
+	(không qua cổng) thì không có gì để khoá trước — các bước sau vẫn khoá NCC trước khi ghi như cũ."""
+	x = getattr(frappe.local, "_npp_no_ncc", None)
+	frappe.local._npp_no_ncc = None
+	if x:
+		N.khoa_ncc_truoc(x)
+
+
 def them_no(ds: list[dict], nc) -> list[str]:
 	"""INSERT nhiều dòng = một câu Postgres: hỏng một dòng là hỏng cả lệnh (cổng lui savepoint)."""
+	_khoa_ncc_ghi()
 	cd = cai_dat_kho()
 	ra = []
 	for g in ds:
@@ -498,6 +521,7 @@ def _ep_kieu(gt: dict) -> None:
 
 
 def sua_no(gt: dict, ids: list[str], nc) -> list[str]:
+	_khoa_ncc_ghi()
 	_cot_la(gt)
 	_ep_kieu(gt)
 	if not nc.bo_qua_rls and nc.vai not in K.VAI_TIEN_NCC:
@@ -574,6 +598,7 @@ def _co_dong_tien(ten: str) -> bool:
 
 
 def xoa_no(ids: list[str], nc) -> list[str]:
+	_khoa_ncc_ghi()
 	if not nc.bo_qua_rls and nc.vai not in K.VAI_TIEN_NCC:
 		return []  # RLS DELETE: 0 dòng, không lỗi
 	ra = []

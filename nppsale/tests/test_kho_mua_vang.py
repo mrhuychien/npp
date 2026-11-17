@@ -678,8 +678,8 @@ LECH: dict[str, tuple] = {
 	"V22": (_v22, "CFD-01: tờ amend nháp không trỏ phiếu kho cũ"),
 	"V25": (_v25, "§3.8 / §7.3 điểm 2: sửa phiếu trả đã xuất = RPC sua_phieu_tra_ncc một giao dịch; cổng cấm ghi thẳng status (USE_RPC)"),
 	"V26": (_v26, "BP §7.2 điểm 3 tiền làm tròn đồng; BP §4.3.0 nợ 0 đ đã trả đủ; §7.3 điểm 23 dòng SL ≤ 0 / tiền âm bị cổng chặn lúc lưu"),
-	"V27": (_v27, "⚠K: cổng bỏ qua return_code / return_seq (tờ Frappe không đổi tên) — không có lỗi trùng seq; số của nháp cuối bị xoá vẫn cấp "
-		"lại như nppsale (lõi lùi dãy số)"),
+	"V27": (_v27, "⚠K: cổng bỏ qua return_code / return_seq (tờ Frappe không đổi tên) — không có lỗi trùng seq; số của nháp cuối bị xoá KHÔNG "
+		"cấp lại (soát P4: tên Frappe là id — nppsale cấp lại MÃ nhưng id uuid mới; so theo nhãn)"),
 	"V28": (_v28, "BP §6.1: cổng chặn sửa dòng / về nháp / xoá phiếu trả đã xuất (USE_RPC) — nppsale RLS cho ghi thẳng (K25)"),
 	"V36": (_v36, "§7.3 điểm 10: Bù trừ = bút toán CTN- trong phạm vi khoản giảm còn mở của phiếu trả NCC (vượt → BU_TRU_KHONG_CON); hình thức "
 		"'' / NULL → tiền mặt"),
@@ -2105,8 +2105,9 @@ class TestKhoMuaVang(IntegrationTestCase):
 	# ------------------------------------------------------------------------------------------------ kịch bản [Frappe] (`nguon: dac_ta`)
 	def _v02c(self, t: dict) -> list[str]:
 		"""Hai tiến trình cùng Hoàn thành một phiếu nháp: không chạy hai tiến trình thật được trong một giao dịch bài (nháp chưa commit, tiến trình kia
-		không thấy) — kiểm điều kiện đủ của luật: (a) câu ĐẦU của thân hàm (sau bước chuẩn bị) là khoá Bin, câu kế là khoá PI `FOR UPDATE`, mọi câu
-		đọc PI / dòng sau đó — lượt thứ hai xếp hàng ở khoá PI rồi thấy docstatus 1; (b) gọi lần hai trả đúng tên, không nhập kho / lô / nợ lần hai."""
+		không thấy) — kiểm điều kiện đủ của luật: (a) câu ĐẦU của thân hàm (sau bước chuẩn bị) là khoá Bin, rồi khoá NCC (soát P4: thứ tự Bin →
+		Supplier → PI của mọi method đổi nợ NCC), rồi khoá PI `FOR UPDATE`, mọi câu đọc PI / dòng sau đó — lượt thứ hai xếp hàng ở khoá rồi thấy
+		docstatus 1; (b) gọi lần hai trả đúng tên, không nhập kho / lô / nợ lần hai."""
 		sai = []
 		st = {"ma": t["ma"], "nhan": {}}
 		ket, _ = self._buoc(t["buoc"][0], st)
@@ -2132,10 +2133,12 @@ class TestKhoMuaVang(IntegrationTestCase):
 		if "error" in k1 or "error" in k2 or k1["data"] != ten or k2["data"] != ten:
 			sai.append(f"V02c: hai lượt trả {k1} / {k2}, mong {ten} cả hai")
 		than = [" ".join(q.split()) for q in cau[moc[0]:]] if moc else []
-		if len(than) < 2 or not ("`tabBin`" in than[0] and "FOR UPDATE" in than[0]):
+		if len(than) < 3 or not ("`tabBin`" in than[0] and "FOR UPDATE" in than[0]):
 			sai.append(f"V02c: câu đầu thân hàm phải là khoá Bin — {than[:1]}")
-		elif not ("`tabPurchase Invoice`" in than[1] and "FOR UPDATE" in than[1]):
-			sai.append(f"V02c: câu thứ hai phải là khoá PI FOR UPDATE — {than[1][:200]}")
+		elif not ("`tabSupplier`" in than[1] and "FOR UPDATE" in than[1]):
+			sai.append(f"V02c: câu thứ hai phải là khoá NCC FOR UPDATE — {than[1][:200]}")
+		elif not ("`tabPurchase Invoice`" in than[2] and "FOR UPDATE" in than[2]):
+			sai.append(f"V02c: câu thứ ba phải là khoá PI FOR UPDATE — {than[2][:200]}")
 		so = (frappe.db.count("Batch", {"reference_name": ten}), frappe.db.count("NPP Cong No NCC", {"chung_tu": ten}),
 			frappe.db.count("Stock Ledger Entry", {"voucher_no": ten, "is_cancelled": 0}))
 		if so != (1, 1, 1):

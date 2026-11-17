@@ -168,7 +168,8 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self._loi(self._sua("P", [("A", "hộp", 10, 10000)]), "PHIEU_CHUA_HOAN_THANH: Chỉ sửa tại chỗ phiếu nhập đã hoàn thành (phiếu tạm lưu như thường).")
 
 	def test_khoa_bin_truoc_pi(self):
-		"""§2.1 / CFD-05: câu ĐẦU của thân hàm (sau bước chuẩn bị) là khoá Bin, câu kế khoá PI `FOR UPDATE` — Bin gồm mặt hàng CŨ ∪ mặt hàng GỬI LÊN."""
+		"""§2.1 / CFD-05: câu ĐẦU của thân hàm (sau bước chuẩn bị) là khoá Bin, rồi khoá NCC (cũ ∪ gửi lên — soát P4: thứ tự Bin → Supplier → PI của mọi
+		method đổi nợ NCC), rồi khoá PI `FOR UPDATE` — Bin gồm mặt hàng CŨ ∪ mặt hàng GỬI LÊN."""
 		ten = self._pn("P", [("A", "hộp", 10, 10000)])
 		cau, moc = [], []
 		goc_sql, goc_sp = frappe.db.sql, frappe.db.savepoint
@@ -190,7 +191,9 @@ class TestSuaPhieuNhap(IntegrationTestCase):
 		self.assertIn("`tabBin`", than[0][0])
 		self.assertIn("FOR UPDATE", than[0][0])
 		self.assertEqual(set(than[0][1][0]["h"]), {self.ma["A"], self.ma["B"]})  # mặt hàng cũ ∪ mặt hàng gửi lên
-		self.assertTrue("`tabPurchase Invoice`" in than[1][0] and "FOR UPDATE" in than[1][0], than[1][0][:200])
+		self.assertTrue("`tabSupplier`" in than[1][0] and "FOR UPDATE" in than[1][0], than[1][0][:200])
+		self.assertEqual(set(than[1][1][0][0]), {self.ma["S1"]})
+		self.assertTrue("`tabPurchase Invoice`" in than[2][0] and "FOR UPDATE" in than[2][0], than[2][0][:200])
 		self.assertEqual(ket[1]["id"], "pn:P")
 		self.assertTrue(frappe.db.get_value(DT, {"amended_from": ten}, "name"))
 

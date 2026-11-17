@@ -111,7 +111,7 @@ def _ghi_kho(yc: dict, hd: str) -> dict:
 				frappe.db.commit()
 			frappe.db.savepoint(diem)
 			ket = ap_mot(_ghi(yc, nc, truoc), yc.get("mot"))
-			ket["status"] = 200
+			ket["status"] = 201 if hd in ("insert", "upsert") else 200
 			return ket
 		except THU_LAI_LOI as e:
 			frappe.db.rollback()

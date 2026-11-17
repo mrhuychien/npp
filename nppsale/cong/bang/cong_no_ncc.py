@@ -76,7 +76,16 @@ def _rls_no(nc: NguCanh):
 
 
 class GhiCongNoNcc:
-	"""payables: nợ đầu kỳ / nợ lập tay / sửa / xoá — nppsale.rpc.cong_no_ncc."""
+	"""payables: nợ đầu kỳ / nợ lập tay / sửa / xoá — nppsale.rpc.cong_no_ncc. Mọi lời ghi theo khuôn ghi kho (soát P4): bước chuẩn bị đọc NCC chạm
+	tới → COMMIT → thân ghi khoá NCC làm câu ĐẦU (thứ tự NCC → dòng → PI như Ghi trả / phiếu chi; hook chiếu không chạy trên ảnh chụp cũ — trước: ảnh
+	chụp lập từ đầu request, xoá mất dòng trả trước lượt song song vừa lập); khoá chết → lui hẳn + thử lại."""
+
+	hanh_dong_kho = ("insert", "update", "delete")
+
+	def chuan_bi(self, hanh_dong, gia_tri, ids, nc):
+		from nppsale.rpc.cong_no_ncc import chuan_bi_ghi
+
+		chuan_bi_ghi(hanh_dong, gia_tri, ids, nc)
 
 	def them(self, ds, nc):
 		from nppsale.rpc.cong_no_ncc import them_no

@@ -452,6 +452,59 @@ class TestLoKho(V.TestKhoMuaVang):
 		self.assertEqual(frappe.db.get_value("Batch", lo, "disabled"), 1)
 		self.assertIn(1, self.repost)
 
+	def test_khoi_phuc_phieu_nhap_sau_ra_soat_ve_kho_date(self):
+		"""Soát P4: phiếu nhập có lô D đã bị rà sang kho cận date rồi bị huỷ (huỷ đưa hàng về kho bán rồi mới đảo) → khôi phục nhập lô lại vào KHO CẬN
+		DATE theo luật kho date hôm nay (một luật với hoàn thành / sửa nhánh A — V70): nppsale giữ cờ vùng `date` của lô qua huỷ / khôi phục (§2.7, mig
+		138 "hàng trong kho cận date không được bán") — chép kho dòng của tờ huỷ là hàng cận date nằm ở kho bán, bán được tới lượt rà đêm."""
+		pn = self._pn("P", [("@D", "lon", 12, 5000)])
+		lo = pn + "-001"
+		self._ok(buoc="nguong", nguoi="MAY_CHU", ngay=200)
+		self._ok(buoc="ra_soat", nguoi="TK")
+		self.assertEqual(self._ton(lo), {self.cd.kho_can_date: 12})
+		self.assertEqual(self._ok(buoc="pn_huy", nguoi="TK", nhan="P", ly_do="nhầm"), "pn:P")
+		self.assertEqual(self._ton(lo), {})
+		self.assertEqual(self._ok(buoc="pn_khoi_phuc", nguoi="TK", nhan="P")["trang_thai"], "completed")
+		self.assertEqual(self._ton(lo), {self.cd.kho_can_date: 12})
+		r = self._cong("TK", {"bang": "batches", "select": "id, qty_on_hand", "loc": [{"op": "eq", "cot": "batch_code", "gt": lo},
+			{"op": "gt", "cot": "qty_on_hand", "gt": 0}]})["data"]
+		self.assertEqual(r, [{"id": f"{lo}::date", "qty_on_hand": 12}])
+
+	def test_ra_soat_hang_moi_thu_lai(self):
+		"""Soát P4 (PoC 1d): mặt hàng cần rà lọt vào giữa bước chuẩn bị và lúc khoá → lui `QueryDeadlockError` (cổng thử lại từ bước chuẩn bị — Bin của
+		hàng mới khoá câu đầu) thay vì khoá bù SAU câu đọc lô (tồn của hàng mới đọc theo ảnh chụp cũ); qua RPC vẫn một phiếu."""
+		from nppsale.rpc import lo_kho as LK
+
+		self._lo_ban_thang("A1", 10, 20)
+		with self.assertRaises(frappe.QueryDeadlockError):
+			LK.ra_soat(self.cd, set())
+		self.assertGreaterEqual(self._ok(buoc="ra_soat", nguoi="TK"), 1)
+		self.assertEqual(self._ton("A1"), {self.cd.kho_can_date: 10})
+
+	def test_chuan_bi_khoa_hang_phieu_tu_dong(self):
+		"""Soát P4 (PoC 1d): bước chuẩn bị của huỷ / sửa / khôi phục phiếu nhập và huỷ phiếu nhập kho tay đọc thêm mặt hàng của MỌI phiếu rà soát tự
+		động chạm lô của chứng từ (`hang_phieu_tu_dong`): `hoan_chuyen_date` có thể huỷ phiếu ấy rồi lập lại phần lô KHÁC (rà soát gộp mọi lô một phiếu) —
+		Bin của mặt hàng lô khác khoá ngay câu đầu, không khoá bù sau câu đọc thường."""
+		from nppsale.rpc import kho_tay as KT
+		from nppsale.rpc import phieu_nhap as P
+		from nppsale.rpc import sua_phieu_nhap as SP
+
+		pn = self._pn("P", [("@D", "lon", 12, 5000)])
+		self._lo_p("L9", 4, 150, sp="@G", gia=20000)
+		self._ok(buoc="nhap_kho", nguoi="TK", nhan="IN1", p={"entry_code": "IN-T-1", "warehouse_zone": "sale", "lines": [{"product_id": "@P",
+			"unit_name": "Lon", "qty_tx": 10, "conv": 1, "base_qty": 10, "base_cost": 8000, "batch_code": "L1", "expires_at": "@hom_nay+90"}]})
+		self._ok(buoc="nguong", nguoi="MAY_CHU", ngay=200)
+		self._ok(buoc="ra_soat", nguoi="TK")
+		can = {self.ma["D"], self.ma["G"], self.ma["P"]}
+		P._chuan_bi_pn(pn)
+		self.assertTrue(can <= frappe.local._npp_pn[2], frappe.local._npp_pn)
+		frappe.local._npp_pn = None
+		SP._chuan_bi_sua(pn, {}, [])
+		self.assertTrue(can <= frappe.local._npp_sua_pn[2], frappe.local._npp_sua_pn)
+		frappe.local._npp_sua_pn = None
+		KT._chuan_bi(self.st["nhan"]["pk:IN1"])
+		self.assertTrue(can <= frappe.local._npp_pk[1], frappe.local._npp_pk)
+		frappe.local._npp_pk = None
+
 	def test_huy_phieu_nhap_ra_soat_cho_lo_khac(self):
 		"""Phiếu rà soát chở cả lô KHÁC (lô dựng sẵn L9) → huỷ phiếu rà soát rồi lập lại phần L9 bằng phiếu tự động mới CÙNG giờ ghi sổ (L9 vẫn ở date,
 		sổ không đổi vùng hồi tố); L9 đã động sau phiếu rà soát (xuất lẻ từ kho date) → không lập lại được → huỷ phiếu nhập vẫn chặn HANG_DA_XUAT, không

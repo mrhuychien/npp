@@ -35,19 +35,22 @@ def _doc_truoc_khi_xoa(bang: D.Bang, yc: dict, ids: list, nc: D.NguCanh) -> list
 
 
 def la_ghi_kho(yc: dict) -> bool:
-	"""Lời sửa / xoá trên bảng mà bộ ghi khai `chuan_bi` (ghi kho — lô: sửa hạn / vùng lập phiếu `CKL-`, xoá kiểm tồn): cổng chạy theo khuôn ghi kho
-	(CFD-05, đặc tả kho_mua §2.1, BP §4.4.0) — nppsale.cong.api._ghi_kho."""
+	"""Lời ghi trên bảng mà bộ ghi khai `chuan_bi` (ghi kho — lô: sửa hạn / vùng lập phiếu `CKL-`, xoá kiểm tồn; công nợ NCC `payables`: khoá NCC —
+	soát P4) với hành động bộ ghi khai ở `hanh_dong_kho` (mặc định sửa / xoá): cổng chạy theo khuôn ghi kho (CFD-05, đặc tả kho_mua §2.1, BP §4.4.0)
+	— nppsale.cong.api._ghi_kho."""
 	bang = D.lay(yc.get("bang") or "")
-	return bool(bang and bang.ghi is not None and hasattr(bang.ghi, "chuan_bi") and yc.get("hanh_dong") in ("update", "delete"))
+	if not (bang and bang.ghi is not None and hasattr(bang.ghi, "chuan_bi")):
+		return False
+	return yc.get("hanh_dong") in getattr(bang.ghi, "hanh_dong_kho", ("update", "delete"))
 
 
 def chuan_bi_kho(yc: dict, nc: D.NguCanh) -> dict:
-	"""Bước ĐỌC của khuôn ghi kho — chạy TRƯỚC khi cổng commit: id dòng khớp bộ lọc + RLS, dòng trả về của DELETE … RETURNING, rồi bộ ghi ghi nhớ
-	mặt hàng cần khoá. Sau commit, bộ ghi khoá Bin làm câu ĐẦU (ảnh chụp REPEATABLE READ lập ở câu đọc thường SAU khoá — PoC 1d); `ghi(…, truoc=…)`
-	dùng lại kết quả này, không đọc lại trước khoá."""
+	"""Bước ĐỌC của khuôn ghi kho — chạy TRƯỚC khi cổng commit: id dòng khớp bộ lọc + RLS, dòng trả về của DELETE … RETURNING (chèn: không có), rồi
+	bộ ghi ghi nhớ thứ cần khoá (mặt hàng / NCC). Sau commit, bộ ghi khoá làm câu ĐẦU (ảnh chụp REPEATABLE READ lập ở câu đọc thường SAU khoá — PoC
+	1d); `ghi(…, truoc=…)` dùng lại kết quả này, không đọc lại trước khoá."""
 	bang = D.lay(yc.get("bang") or "")
 	hd = yc.get("hanh_dong")
-	ids = _ids_khop(bang, yc, nc)
+	ids = _ids_khop(bang, yc, nc) if hd in ("update", "delete") else []
 	dong = _doc_truoc_khi_xoa(bang, yc, ids, nc) if hd == "delete" and yc.get("select") is not None and ids else []
 	bang.ghi.chuan_bi(hd, yc.get("gia_tri"), ids, nc)
 	return {"ids": ids, "dong": dong}
