@@ -20,7 +20,7 @@
 7. Vai + trạng thái (§1.3, §1.4): cửa vai của từng RPC P4 với ĐÚNG câu `FORBIDDEN` / `KHONG_DU_QUYEN…` và SQLSTATE của hàm nppsale (§7.2 #21 — bốn câu
    `FORBIDDEN` khác nhau; cửa `npp.via_rpc` chỉ ở các hàm có nó); trạng thái nppsale của Purchase Invoice / Stock Entry (§7.3 điểm 1).
 8. Phiếu nhập (M1 — §3.1, §3.2, §3.5, §2.9): câu lỗi dòng của phiếu (`SO_LUONG_KHONG_HOP_LE` / `GIA_KHONG_HOP_LE` — cổng ghi nháp chặn trước,
-   §7.3 điểm 23), câu `HANG_DA_XUAT` (§3.2 bước 8 + câu riêng cho hàng theo lô khi cờ bán vượt tồn đã bật — §7.3 điểm 12), mã lô `<PN>-NNN`,
+   §7.3 điểm 23; tiền dòng âm — câu riêng, lõi không ghi sổ được dòng giá âm), câu `HANG_DA_XUAT` (§3.2 bước 8 + câu riêng cho hàng theo lô khi cờ bán vượt tồn đã bật — §7.3 điểm 12), mã lô `<PN>-NNN`,
    bảng giá nhập: đọc một dòng `p_dong` của `luu_gia_nhap` (`d->>'k'` của jsonb, `text::numeric`, `round()` nửa ra xa 0) và chọn dòng ghi giá từ
    phiếu (`_ghi_gia_nhap_tu_phieu`: dòng DƯỚI cùng mỗi (mặt hàng, đơn vị), giá > 0, không đè giá ngày mới hơn).
 """
@@ -421,14 +421,25 @@ def loi_dong_gia(stt: int) -> NppLoi:
 	return NppLoi(f"GIA_KHONG_HOP_LE: Dòng {stt} có giá / giảm giá âm.")
 
 
+def loi_dong_tien_am(stt: int) -> NppLoi:
+	"""Tiền dòng ÂM (giảm dòng lớn hơn SL × đơn giá). nppsale máy chủ không kiểm (`sua_phieu_nhap` bước 10 "không kiểm giảm dòng > tiền hàng" —
+	lô ra giá vốn âm), màn máy tính chỉ kẹp số HIỆN ra (`lineNetOf` — "KHÔNG ĐỂ ÂM") mà vẫn gửi nguyên số giảm; lõi ERPNext từ chối lúc ghi sổ dòng
+	`rate` âm bằng câu tiếng Anh ("rate must be a positive number" — `status_updater.py:300–326`, Buying Settings `allow_negative_rates_for_items`
+	tắt). Mã của `sua_phieu_nhap`, câu mới — quyết định tạm Q9."""
+	return NppLoi(f"GIA_KHONG_HOP_LE: Dòng {stt} có giảm giá lớn hơn tiền hàng.")
+
+
 def kiem_dong_phieu(dong: Iterable) -> None:
 	"""Cổng ghi nháp (§7.3 điểm 23 — đề xuất): từng dòng theo thứ tự trên phiếu, SL ≤ 0 hoặc hệ số ≤ 0 → `SO_LUONG_KHONG_HOP_LE`, rồi giá / giảm
-	âm → `GIA_KHONG_HOP_LE` (thứ tự kiểm một dòng như `sua_phieu_nhap` bước 10), dừng ở lỗi đầu. `dong`: (SL, hệ số, đơn giá, giảm dòng)."""
+	âm → `GIA_KHONG_HOP_LE` (thứ tự kiểm một dòng như `sua_phieu_nhap` bước 10), rồi tiền dòng âm → `GIA_KHONG_HOP_LE` câu riêng
+	(`loi_dong_tien_am`), dừng ở lỗi đầu. `dong`: (SL, hệ số, đơn giá, giảm dòng)."""
 	for stt, (sl, hs, gia, giam) in enumerate(dong, 1):
 		if so(sl) <= 0 or so(hs if hs is not None else 1) <= 0:
 			raise loi_dong_so_luong(stt)
 		if so(gia) < 0 or so(giam) < 0:
 			raise loi_dong_gia(stt)
+		if tien_dong(sl, gia, giam) < 0:
+			raise loi_dong_tien_am(stt)
 
 
 def ma_lo_phieu_nhap(ma_pn: str, stt: int) -> str:

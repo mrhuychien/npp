@@ -161,6 +161,9 @@ class TestPhieuNhap(IntegrationTestCase):
 		self._loi(self._dong("TK", ten, [("A", "hộp", 10, -1, 0, 1)]), "P0001", "GIA_KHONG_HOP_LE: Dòng 1 có giá / giảm giá âm.")
 		self._loi(self._dong("TK", ten, [("A", "thùng", 1, 1, 0, 0)]), "P0001", "SO_LUONG_KHONG_HOP_LE: Dòng 1 có số lượng không lớn hơn 0.")
 		self._loi(self._dong("TK", ten, [("A", "hộp", 1, 10, -2, 1)]), "P0001", "GIA_KHONG_HOP_LE: Dòng 1 có giá / giảm giá âm.")
+		# giảm dòng (tiền) lớn hơn tiền hàng — màn máy tính gửi nguyên số giảm gõ (chỉ kẹp số hiện); lõi không ghi sổ được dòng giá âm (Q9)
+		self._loi(self._dong("TK", ten, [("A", "hộp", 10, 10000, 0, 1), ("B", "gói", 1, 10, 20, 1)]), "P0001",
+			"GIA_KHONG_HOP_LE: Dòng 2 có giảm giá lớn hơn tiền hàng.")
 		self.assertEqual(frappe.db.count("Purchase Invoice Item", {"parent": ten}), 0)  # lời ghi hỏng lui cả lượt
 		# dòng giữ thứ tự sort_order; tiền dòng = SL × giá − giảm (giảm là TIỀN cả dòng)
 		self._dong("TK", ten, [("D", "thùng", 2, 216000, 12000, 24), ("K", "kg", 2.5, 30000, 0, 1)])
@@ -320,8 +323,16 @@ class TestPhieuNhap(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value("Purchase Invoice", ten, "docstatus"), 1)
 
 	def test_huy_tat_lo_xep_repost_khoi_phuc_mo_lai(self):
-		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1), ("C", "chai", 2, 15000, 0, 1)])
+		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1), ("C", "chai", 2, 15000, 0, 1)], notes="ghi chú phiếu", invoice_number="HD-77",
+			invoice_date=add_days(nowdate(), -3), discount=5000, vat_override=8000)
 		self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten})
+		cot = ("supplier_id, invoice_number, invoice_date, warehouse_zone, subtotal, vat, vat_override, discount, total, notes, created_by, "
+			"created_at, completed_at, lines:purchase_invoice_lines(sort_order, product_id, unit_name, quantity, unit_price, line_discount, vat_rate, "
+			"conversion_factor, line_total)")
+		doc_dau = lambda x: self._cong("KT", {"bang": "purchase_invoices", "mot": "maybe", "select": cot,  # noqa: E731
+			"loc": [{"op": "eq", "cot": "id", "gt": x}]})["data"]
+		truoc = doc_dau(ten)
+		self.assertEqual((truoc["notes"], truoc["total"], len(truoc["lines"])), ("ghi chú phiếu", 133000, 2))
 		lo = [f"{ten}-001", f"{ten}-002"]
 		self.assertEqual([frappe.db.get_value("Batch", x, ["npp_kho_tao", "npp_gia_von_lo_rong"]) for x in lo],
 			[(self.cd.kho_ban, 10000), (self.cd.kho_can_date, 15000)])  # lô hạn ngắn vào kho cận date; giá vốn lô rỗng (§7.3 điểm 35)
@@ -340,6 +351,11 @@ class TestPhieuNhap(IntegrationTestCase):
 		# tờ khôi phục ghi sổ đúng NGÀY + GIỜ gốc (thẻ kho giữ chỗ cũ — nppsale đặt lại phiếu kho `posted` giữ `posted_at`), mốc hoàn thành gốc
 		goc, moi = (frappe.db.get_value("Purchase Invoice", x, ["posting_date", "posting_time", "npp_hoan_thanh_luc"]) for x in (ten, f"{ten}-1"))
 		self.assertEqual([str(x) for x in moi], [str(x) for x in goc])
+		# đầu phiếu + dòng giữ nguyên như nppsale (khôi phục không tính lại tiền) — kể cả ghi chú phiếu (`npp_ghi_chu` no_copy) và ngày HĐ NCC
+		sau = doc_dau(f"{ten}-1")
+		sau["lines"].sort(key=lambda x: x["sort_order"])
+		truoc["lines"].sort(key=lambda x: x["sort_order"])
+		self.assertEqual(sau, truoc)
 
 	def test_khoa_theo_chuoi_amend(self):
 		"""Tên BẤT KỲ tờ nào của chuỗi amend → làm trên tờ CUỐI: bước chuẩn bị (đọc thường — khoá Bin đúng mặt hàng của tờ cuối) VÀ lúc khoá (đi
@@ -395,12 +411,19 @@ class TestPhieuNhap(IntegrationTestCase):
 
 	def test_hoan_thanh_dong_sl_0_ghi_thang_so(self):
 		"""Dòng SL 0 lọt vào nháp bằng đường ngoài cổng (dữ liệu chuyển sang / Desk) → Hoàn thành báo đúng câu nppsale với THỨ TỰ dòng (1-based), không
-		lô / nợ / sổ kho."""
+		lô / nợ / sổ kho; tiền dòng âm lọt như thế → câu của cổng (Q9), sau mọi lỗi SL."""
 		ten = self._phieu(dong=[("A", "hộp", 10, 10000, 0, 1), ("B", "gói", 5, 5000, 0, 1)])
 		frappe.db.set_value("Purchase Invoice Item", {"parent": ten, "idx": 2}, "qty", 0)
+		# dòng 1 tiền âm (giảm > tiền hàng) cũng lọt: lỗi SL của dòng 2 vẫn ra TRƯỚC (nppsale chỉ có lỗi SL)
+		frappe.db.set_value("Purchase Invoice Item", {"parent": ten, "idx": 1}, "npp_giam_dong", 100001)
 		self._loi(self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten}), "P0001",
 			"SO_LUONG_KHONG_HOP_LE: Dòng 2 có số lượng không lớn hơn 0.")
 		self.assertEqual((frappe.db.count("Batch", {"reference_name": ten}), frappe.db.count("NPP Cong No NCC", {"chung_tu": ten})), (0, 0))
+		# hết lỗi SL → tiền dòng âm báo câu của cổng (lõi sẽ từ chối dòng `rate` âm bằng câu tiếng Anh lúc ghi sổ)
+		frappe.db.set_value("Purchase Invoice Item", {"parent": ten, "idx": 2}, "qty", 5)
+		self._loi(self._rpc("TK", "complete_purchase_invoice", {"p_invoice_id": ten}), "P0001",
+			"GIA_KHONG_HOP_LE: Dòng 1 có giảm giá lớn hơn tiền hàng.")
+		self.assertEqual(frappe.db.get_value("Purchase Invoice", ten, "docstatus"), 0)
 
 	def _phieu_chi(self, tien) -> str:
 		"""Phiếu chi trả NCC `PCNCC-` (S1, tiền mặt) lập thẳng — `chi_tra_ncc` dựng ở M3."""

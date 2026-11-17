@@ -20,6 +20,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+import re
 
 import frappe
 from frappe.tests import IntegrationTestCase
@@ -33,6 +34,21 @@ from nppsale.tests.test_tao_don import doi_khoa, dung_nen
 from nppsale.thiet_lap.ban_hang import cai_dat_ban
 
 VANG = os.path.join(os.path.dirname(__file__), "du_lieu", "phieu_tra_mau.json")
+
+# Câu lỗi mà NGÀY trong câu tính từ ngày chạy (bước nhập kho "@hom_nay±n" — complete_return): tệp vàng ghi "<@hom_nay±n>" (tools/vang_phieu_tra.py
+# `chuan_loi_ngay` — cùng luật), câu bên Frappe đổi ngày dd/mm/yyyy theo hôm nay trước khi so — không thì bài đỏ mọi ngày khác ngày sinh vàng.
+LOI_NGAY_TUONG_DOI = ("NGAY_NHAP_TRUOC_HOA_DON:", "NGAY_NHAP_TUONG_LAI:")
+
+
+def chuan_loi_ngay(loi, hom_nay):
+	if not isinstance(loi, str) or not loi.startswith(LOI_NGAY_TUONG_DOI):
+		return loi
+
+	def doi(m):
+		n = (datetime.date(int(m[3]), int(m[2]), int(m[1])) - hom_nay).days
+		return "<@hom_nay>" if n == 0 else f"<@hom_nay{n:+d}>"
+
+	return re.sub(r"\b(\d{2})/(\d{2})/(\d{4})\b", doi, loi)
 
 # tình huống → (bước lệch (1-based), mã lỗi Frappe, đầu câu lỗi, lý do) — Frappe báo lỗi ở bước ấy thay vì làm như nppsale
 _SL_AM = ("23514", 'new row for relation "return_lines" violates check constraint "return_lines_quantity_khong_am"',
@@ -406,7 +422,7 @@ class TestPhieuTraVang(IntegrationTestCase):
 			else:
 				if "error" not in ket:
 					return [*sai, f"{nhan}: nppsale báo {m['ma_loi']} {m['loi'][:200]} — bản Frappe lại ghi được"]
-				if (ket["error"]["code"], ket["error"]["message"]) != (m["ma_loi"], m["loi"]):
+				if (ket["error"]["code"], chuan_loi_ngay(ket["error"]["message"], XH.hom_nay())) != (m["ma_loi"], m["loi"]):
 					sai.append(f"{nhan}: lỗi {ket['error']['code']} {ket['error']['message'][:300]} ≠ nppsale {m['ma_loi']} {m['loi'][:300]}")
 				break
 		ct = self._ct(tra_ve)

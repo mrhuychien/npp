@@ -20325,7 +20325,7 @@
      },
      {
       "ok": false,
-      "loi": "NGAY_NHAP_TRUOC_HOA_DON: ngày nhập kho 15/11/2026 trước ngày hóa đơn 16/11/2026",
+      "loi": "NGAY_NHAP_TRUOC_HOA_DON: ngày nhập kho <@hom_nay-1> trước ngày hóa đơn <@hom_nay>",
       "ma_loi": "P0001"
      }
     ],
@@ -20578,7 +20578,7 @@
      },
      {
       "ok": false,
-      "loi": "NGAY_NHAP_TUONG_LAI: ngày nhập kho 17/11/2026 sau hôm nay",
+      "loi": "NGAY_NHAP_TUONG_LAI: ngày nhập kho <@hom_nay+1> sau hôm nay",
       "ma_loi": "P0001"
      }
     ],
@@ -21086,7 +21086,7 @@
      },
      {
       "ok": false,
-      "loi": "NGAY_NHAP_TRUOC_HOA_DON: ngày nhập kho 13/11/2026 trước ngày hóa đơn 14/11/2026",
+      "loi": "NGAY_NHAP_TRUOC_HOA_DON: ngày nhập kho <@hom_nay-3> trước ngày hóa đơn <@hom_nay-2>",
       "ma_loi": "P0001"
      }
     ],
@@ -21630,7 +21630,7 @@
      },
      {
       "ok": false,
-      "loi": "NGAY_NHAP_TUONG_LAI: ngày nhập kho 17/11/2026 sau hôm nay",
+      "loi": "NGAY_NHAP_TUONG_LAI: ngày nhập kho <@hom_nay+1> sau hôm nay",
       "ma_loi": "P0001"
      }
     ],

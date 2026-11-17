@@ -238,6 +238,21 @@ class TestPhieuNhap(unittest.TestCase):
 	def test_cau_loi_dong(self):
 		self.assertEqual(K.loi_dong_so_luong(2).ma, "SO_LUONG_KHONG_HOP_LE: Dòng 2 có số lượng không lớn hơn 0.")
 		self.assertEqual(K.loi_dong_gia(1).ma, "GIA_KHONG_HOP_LE: Dòng 1 có giá / giảm giá âm.")
+		self.assertEqual(K.loi_dong_tien_am(3).ma, "GIA_KHONG_HOP_LE: Dòng 3 có giảm giá lớn hơn tiền hàng.")
+
+	def test_tien_dong_am(self):
+		"""Giảm dòng (TIỀN cả dòng) lớn hơn SL × đơn giá → tiền dòng âm: lõi không ghi sổ được dòng `rate` âm (câu tiếng Anh) → câu riêng; giảm
+		BẰNG tiền hàng (dòng 0 đ) vẫn được; kiểm SAU SL và giá / giảm âm của cùng dòng."""
+		K.kiem_dong_phieu([(2, 1, 10, 20), (1, 24, 240000, 240000)])  # tiền dòng 0 — được
+		for dong, mong in (
+				([(1, 1, 10, 20)], "GIA_KHONG_HOP_LE: Dòng 1 có giảm giá lớn hơn tiền hàng."),
+				([(2.5, 1, 10, "25.01")], "GIA_KHONG_HOP_LE: Dòng 1 có giảm giá lớn hơn tiền hàng."),
+				([(1, 1, 10, 0), (3, 6, 1000, 3001)], "GIA_KHONG_HOP_LE: Dòng 2 có giảm giá lớn hơn tiền hàng."),
+				([(0, 1, 10, 20)], "SO_LUONG_KHONG_HOP_LE: Dòng 1 có số lượng không lớn hơn 0."),
+				([(1, 1, -10, 0)], "GIA_KHONG_HOP_LE: Dòng 1 có giá / giảm giá âm.")):
+			with self.assertRaises(NppLoi) as e:
+				K.kiem_dong_phieu(dong)
+			self.assertEqual(e.exception.ma, mong, dong)
 
 	def test_kiem_dong_tung_dong_du_bon_kiem(self):
 		"""Thứ tự `sua_phieu_nhap` bước 10: đủ kiểm của MỘT dòng rồi mới sang dòng sau; SL ≤ 0 / hệ số ≤ 0 trước giá âm."""

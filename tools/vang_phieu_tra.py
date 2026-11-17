@@ -19,6 +19,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -815,9 +816,29 @@ def tinh_huong() -> list[dict]:
 	return T
 
 
+# Câu lỗi mà NGÀY trong câu tính từ ngày chạy (bước nhập kho "@hom_nay±n" — `complete_return`): ngày dd/mm/yyyy → "<@hom_nay±n>" để tệp vàng
+# không hỏng vào hôm sau (bài nppsale/tests/test_phieu_tra_vang.py chuẩn hoá câu bên Frappe CÙNG luật — `chuan_loi_ngay`). Câu khác giữ nguyên:
+# ngày người gõ tuyệt đối ("date/time field value out of range: \"31/12/2026\"") không được dời.
+LOI_NGAY_TUONG_DOI = ("NGAY_NHAP_TRUOC_HOA_DON:", "NGAY_NHAP_TUONG_LAI:")
+
+
+def chuan_loi_ngay(loi, hom_nay):
+	if not isinstance(loi, str) or not loi.startswith(LOI_NGAY_TUONG_DOI):
+		return loi
+
+	def doi(m):
+		n = (datetime.date(int(m[3]), int(m[2]), int(m[1])) - hom_nay).days
+		return "<@hom_nay>" if n == 0 else f"<@hom_nay{n:+d}>"
+
+	return re.sub(r"\b(\d{2})/(\d{2})/(\d{4})\b", doi, loi)
+
+
 def _chuan(k: dict) -> dict:
-	"""Ngày thật → "@hom_nay±n"; bỏ UUID ngẫu nhiên trong câu trả về."""
+	"""Ngày thật → "@hom_nay±n" (cả trong câu lỗi NGAY_NHAP_* — `chuan_loi_ngay`); bỏ UUID ngẫu nhiên trong câu trả về."""
 	hn = _hom_nay()
+	for x in k.get("buoc") or []:
+		if isinstance(x, dict) and x.get("loi"):
+			x["loi"] = chuan_loi_ngay(x["loi"], hn)
 
 	def ngay(v):
 		if not isinstance(v, str) or len(v) != 10:

@@ -19,7 +19,8 @@ trả về — §7.3 điểm 2).
 Ghi thẳng phiếu TẠM qua cổng (`purchase_invoices` / `purchase_invoice_lines` — `nppsale.cong.bang.mua_hang`; nppsale: RLS `FOR ALL` bốn vai, mọi cột kể cả
 `status`, không trigger — ⚠K siết theo BP §6.1): thêm / sửa / xoá đầu phiếu nháp, thêm / sửa / xoá dòng của phiếu nháp; đổi `status`, ghi cột của RPC,
 đụng phiếu đã hoàn thành (trừ `notes`) / đã huỷ → `USE_RPC`; dòng SL ≤ 0 / giá âm → câu lỗi của `sua_phieu_nhap` ngay lúc lưu (§7.3 điểm 23 — lõi không
-nhận PI nháp dòng SL 0, đo M0). Mỗi lần lưu nháp dựng lại bảng thuế, nên tiền phiếu tạm là số lõi tính (nppsale: số trình duyệt gửi, chỉ để xem).
+nhận PI nháp dòng SL 0, đo M0); tiền dòng âm (giảm dòng > SL × giá — lõi không ghi sổ được dòng giá âm) → `GIA_KHONG_HOP_LE` câu riêng, ở cổng lẫn lúc
+Hoàn thành (Q9). Mỗi lần lưu nháp dựng lại bảng thuế, nên tiền phiếu tạm là số lõi tính (nppsale: số trình duyệt gửi, chỉ để xem).
 """
 from __future__ import annotations
 
@@ -483,6 +484,11 @@ def hoan_thanh(r, nc, cd) -> str:
 	for stt, d in enumerate(dong, 1):
 		if flt(d.qty) * flt(d.conversion_factor if d.conversion_factor is not None else 1) <= 0:
 			raise K.loi_dong_so_luong(stt)
+	for stt, d in enumerate(dong, 1):
+		# tiền dòng âm (nháp lọt ngoài cổng — Desk / dữ liệu chuyển sang): nppsale nhận (lô giá vốn âm), lõi từ chối dòng `rate` âm lúc ghi sổ bằng câu
+		# tiếng Anh → câu của cổng ghi nháp; lượt riêng SAU kiểm SL để lỗi SL của mọi dòng vẫn ra trước như nppsale (nppsale không có lỗi này)
+		if K.tien_dong(d.qty, d.price_list_rate, d.get("npp_giam_dong")) < 0:
+			raise K.loi_dong_tien_am(stt)
 	from nppsale.rpc.goi_lo import gan_goi_lo, kho_nhan_lo, lap_goi_lo, vung_cua_kho
 
 	luc = now_datetime()
