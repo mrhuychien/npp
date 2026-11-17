@@ -69,6 +69,12 @@ def _truong_pi() -> list[str]:
 	return [f for f in _TRUONG_PI if f in ("name", "docstatus", "creation") or meta.has_field(f)]
 
 
+def ten_ncc(ncc: str | None, ten_tren_to: str | None) -> str | None:
+	"""Tên NCC của dòng = tên HIỆN TẠI của Supplier (nppsale nối `suppliers` khi đọc — gộp NCC (M8) đổi Link của tờ cũ sang NCC giữ lại mà
+	`supplier_name` / `party_name` trên tờ vẫn là tên NCC bị gộp); NCC không còn → tên trên tờ."""
+	return (frappe.db.get_value("Supplier", ncc, "supplier_name") if ncc else None) or ten_tren_to
+
+
 def _chenh_dcn(pi: str) -> float:
 	"""Σ chênh nợ của bút toán sửa giá phiếu đã bán `DCN-` (§3.3 nhánh B — `sua_phieu_nhap` nppsale sửa thẳng `payables.amount`): Có − Nợ của vế
 	Supplier tham chiếu phiếu."""
@@ -94,7 +100,7 @@ def gia_tri_pi(ten: str) -> dict | None:
 	so_hd = pi.bill_no or (pi.name if loai == "tra_ncc" else None)
 	ghi_chu = pi.get("npp_ghi_chu_no")
 	return {
-		"loai": loai, "nha_cung_cap": pi.supplier, "ten_ncc": pi.supplier_name, "chung_tu": pi.name, "phieu_chi": None,
+		"loai": loai, "nha_cung_cap": pi.supplier, "ten_ncc": ten_ncc(pi.supplier, pi.supplier_name), "chung_tu": pi.name, "phieu_chi": None,
 		"khoa_cho": f"dau_ky:{pi.supplier}" if pi.get("npp_loai") == "dau_ky" else None,
 		"so_hd_ncc": so_hd, "tim_kd": khoa_tim_ds(so_hd or ""),
 		"phieu_kho": pi.name if loai in ("phieu_nhap", "tra_ncc") else (pi.get("npp_phieu_kho") or None),
@@ -117,7 +123,7 @@ def gia_tri_tra_truoc(pe: str | None) -> dict | None:
 	if abs(con_no) < 0.005:
 		return None
 	return {
-		"loai": "tra_truoc", "nha_cung_cap": x.party, "ten_ncc": x.party_name, "chung_tu": None, "phieu_chi": pe, "khoa_cho": None,
+		"loai": "tra_truoc", "nha_cung_cap": x.party, "ten_ncc": ten_ncc(x.party, x.party_name), "chung_tu": None, "phieu_chi": pe, "khoa_cho": None,
 		"so_hd_ncc": pe, "tim_kd": khoa_tim_ds(pe), "phieu_kho": None, "so_tien": 0.0, "da_tra": -con_no, "con_no": con_no,
 		"han_thanh_toan": None, "trang_thai": trang_thai(0.0, -con_no, False), "qua_han_tay": 0,
 		"ghi_chu": ghi_chu_he_thong("tra_truoc", pe), "tao_luc": luc_chi(x.posting_date, get_datetime(x.creation)),

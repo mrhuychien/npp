@@ -30,6 +30,10 @@ Chuẩn hoá trước khi so (khác có chủ đích — không phải lệch; q
   (danh mục, ngày, tiền, diễn giải / tham chiếu / phiếu nguồn theo nhãn, chưa trả, người lập); `expense_id` → "cp:<nhãn phiếu kiểm kê>".
 - §7.2 #26: lô mà mọi gói lô đã huỷ (huỷ phiếu nhập) → cổng `batches` ra dòng "lô chưa phát sinh" `qty_initial 0` (nppsale giữ số nhập cũ, `status
   cancelled`); trạng thái tắt = `cancelled` như nppsale (Batch `disabled` — §7.3 điểm 35).
+- M8 — nhà cung cấp: ảnh chụp thêm `ncc` (NCC của bộ dữ liệu + NCC lập trong kịch bản — chỗ giữ "@S5" gắn với tên `NCC-####` Frappe cấp, id gửi lên bị
+  bỏ), `hang` (trạng thái + NCC chính của mặt hàng nền — trừ X chỉ Frappe), `phan_cong` (NV ↔ NCC); tệp vàng chỉ ghi ba mục ấy khi khác nền (`nen.ct_nen`)
+  — vắng mặt = như nền; NCC chính của nền = `Item Default.default_supplier` (B / N → S3, M → S1, R → S4); ngày trong ghi chú gộp ("<@hom_nay>") → ngày VN
+  thật; số phiên danh mục so MỨC TĂNG (V84 — nppsale tăng theo từng lệnh trên products, kể cả 0 dòng).
 - tiền: Frappe làm tròn đồng (BP §7.2 điểm 3); giá vốn lô so 2 chữ số lẻ (§7.1 #5).
 LECH: kịch bản bản Frappe khác hẳn (⚠K / ❓) → hàm sửa phần MONG (bước + ảnh chụp) thành kết quả Frappe, kèm lý do — 00_quyet_dinh_trien_khai.md Q9.
 """
@@ -61,9 +65,10 @@ NS = uuid.UUID("6f1c2a77-1d0e-4b8f-9a3c-2b4d5e6f7081")
 # mốc dựng → số kịch bản (đặc tả §8; V81–V87 gắn mốc theo §9.3)
 MOC = {"M1": range(1, 17), "M2": (*range(17, 29), 87), "M3": (*range(29, 41), 86), "M4": (*range(41, 56), 81, 85), "M5": (*range(56, 60), 82),
 	"M6": range(60, 65), "M7": (*range(65, 72), 83), "M8": (72, 73, 84), "M9": range(74, 81)}
-DA_DUNG = ("M1", "M2", "M3", "M4", "M5", "M6", "M7")
+DA_DUNG = ("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8")
 # mục ảnh chụp đã so theo mốc (mục của mốc sau — tra_no, phieu_chi, chi_phi… — thêm khi dựng)
-MUC_SO = ("pn", "ptn", "lo", "no", "tra_no", "phieu_chi", "gia_nhap", "phieu_kho", "hd", "tra_khach", "chi_phi", "nhan")
+MUC_SO = ("pn", "ptn", "lo", "no", "tra_no", "phieu_chi", "gia_nhap", "phieu_kho", "hd", "tra_khach", "chi_phi", "ncc", "hang", "phan_cong", "nhan")
+NEN_TINH = ("ncc", "hang", "phan_cong")  # mục ảnh chụp tệp vàng chỉ ghi khi khác bộ dữ liệu nền (`nen.ct_nen`) — vắng mặt = như nền (M8)
 BUOC_PK = ("nhap_kho", "pk", "xuat_le", "chuyen", "huy_pk")  # bước phiếu kho tay (M4)
 LOAI_CT = ("pn", "ptn")  # nhãn chứng từ PI (phiếu nhập / phiếu trả NCC): cả chuỗi amend là MỘT nhãn (CFD-01)
 LA = str(uuid.uuid5(NS, "p4:la"))  # "@la" — id không có dòng nào (uuid hợp lệ như bộ sinh)
@@ -198,11 +203,6 @@ def _bo_buoc(t, mong, *chi_so):
 		del mong["buoc"][i]
 
 
-def _v32(t, mong):
-	"""`so_chung_tu_ncc` (bước 16) thuộc mốc M8 (đặc tả §8) — so ở M8."""
-	_bo_buoc(t, mong, 15)
-
-
 BU_TRU_HET = {"ok": False, "ma_loi": "P0001", "loi": "BU_TRU_KHONG_CON: NCC không còn khoản giảm để bù trừ."}
 
 
@@ -254,10 +254,6 @@ def _v39(t, mong):
 	t["buoc"][10]["tiep"] = True
 	dk = next(x for x in mong["ct"]["no"] if x["khoa"] == "DK:@S1")
 	dk["so_tien"] = 350000
-
-
-def _v40(t, mong):
-	_bo_buoc(t, mong, 15)  # so_chung_tu_ncc — M8
 
 
 def _v86(t, mong):
@@ -616,6 +612,18 @@ def _v71(t, mong):
 	_trang_thai_tra_du(mong)
 
 
+# ------------------------------------------------------------------------------------------------ M8 — nhà cung cấp
+def _v84(t, mong):
+	"""Số phiên danh mục (`danh_muc_ban_phien.phien` ↔ `NPP Phien Danh Muc`) so MỨC TĂNG, không số tuyệt đối (tệp vàng `khac_frappe`): nppsale +2 / +4
+	(trigger mức câu lệnh `trg_phien_danh_muc_ban` chạy cho MỖI lệnh UPDATE / DELETE products kể cả 0 dòng — vòng khoá ngoại, hành động ON DELETE SET
+	NULL), bản Frappe tăng ở mỗi lần đổi Item (`thay_doi_hang`) + MỘT lần cuối RPC (`gop_nha_cung_cap` / `xoa_nha_cung_cap` — S11 / S12)."""
+	dau = True
+	for b, m in zip(t["buoc"], mong["buoc"], strict=False):
+		if b["buoc"] == "doc_phien":
+			m["tra"] = {"phien": "dau" if dau else "tang"}
+			dau = False
+
+
 # kịch bản [Frappe] (`nguon: dac_ta` — mong là chữ của đặc tả) → hàm kiểm riêng của lớp bài
 KIEM_DAC_TA = {"V02c": "_v02c", "V12b": "_v12b", "V19b": "_v19b", "V43c": "_v43c", "V44c": "_v44c", "V57b": "_v57b"}
 
@@ -632,12 +640,10 @@ LECH: dict[str, tuple] = {
 	"V27": (_v27, "⚠K: cổng bỏ qua return_code / return_seq (tờ Frappe không đổi tên) — không có lỗi trùng seq; số của nháp cuối bị xoá vẫn cấp "
 		"lại như nppsale (lõi lùi dãy số)"),
 	"V28": (_v28, "BP §6.1: cổng chặn sửa dòng / về nháp / xoá phiếu trả đã xuất (USE_RPC) — nppsale RLS cho ghi thẳng (K25)"),
-	"V32": (_v32, "so_chung_tu_ncc thuộc mốc M8 (đặc tả §8) — bước cuối so ở M8"),
 	"V36": (_v36, "§7.3 điểm 10: Bù trừ = bút toán CTN- trong phạm vi khoản giảm còn mở của phiếu trả NCC (vượt → BU_TRU_KHONG_CON); hình thức "
 		"'' / NULL → tiền mặt"),
 	"V38": (_v38, "§4.4: số HĐ khoản nợ PN = bill_no của tờ; DA_CAN_TRU dựng bằng bút toán CTN- thay bước máy chủ đặt paid trên dòng âm"),
 	"V39": (_v39, "⚠K sửa số nợ đầu kỳ đã trả bị chặn (tờ amend không mang được tiền đã trả)"),
-	"V40": (_v40, "so_chung_tu_ncc thuộc mốc M8 — bỏ bước ấy, phần khám sổ giữ nguyên"),
 	"V86": (_v86, "⚠K CFD-13: IN- có NCC + tiền là phiếu nhập — xoá nợ của nó 23503, huỷ phiếu kho → ENTRY_HAS_SOURCE (hoá đơn nhập mua)"),
 	# M4 — phiếu kho tay
 	"V41": (_v41, "⚠K CFD-13: nhập kho có NCC + tiền = phiếu nhập PN- (nợ PN:); §7.3 điểm 6: gọi lại cùng mã → LO_TRUNG_MA (nppsale lô trùng mã)"),
@@ -675,6 +681,9 @@ LECH: dict[str, tuple] = {
 	"V69b": (_v69b, "BP §4.3.0 / §7.3 điểm 13: khoản trả dư (đã trả 100.000 > nợ 80.000) là open — nppsale partial"),
 	"V70": (_v70, "⚠K §3.3 nhánh A: amend nhập lại theo luật kho nhận — C hạn trong ngưỡng vẫn vào kho cận date khi đầu phiếu về kho bán"),
 	"V71": (_v71, "BP §4.3.0 / §7.3 điểm 13: khoản trả dư sau sửa (đã trả 1.200.000 > nợ 800.000) là open — nppsale partial"),
+	# M8 — nhà cung cấp
+	"V84a": (_v84, "số phiên danh mục so mức tăng (nppsale +2: trigger mức câu lệnh cho từng lệnh trên products, kể cả 0 dòng)"),
+	"V84b": (_v84, "số phiên danh mục so mức tăng (nppsale +4)"),
 }
 
 
@@ -812,7 +821,8 @@ def dung_nen_kho(nen: dict) -> dict:
 			frappe.db.set_value("Supplier", ma[k], "npp_email", them["email"], update_modified=False)
 	nhom_hang = frappe.db.get_value("Item Group", {"is_group": 0}, "name")
 	hang = {k: (*v, {}) for k, v in nen["hang"].items()} | nen.get("hang_frappe", {})
-	for k, (sku, ten, dv, han, dvs, _ncc, them) in hang.items():
+	cong_ty = frappe.db.get_single_value("NPP Cai Dat", "cong_ty")
+	for k, (sku, ten, dv, han, dvs, ncc_chinh, them) in hang.items():
 		for u in [dv, *dvs]:
 			_dam_bao_uom(u)
 		co_lo = them.get("has_batch_no", 1)
@@ -822,6 +832,11 @@ def dung_nen_kho(nen: dict) -> dict:
 				"allow_negative_stock": them.get("allow_negative_stock", 0), "npp_thue_suat": 0,
 				"uoms": [{"uom": u, "conversion_factor": h} for u, h in dvs.items()]}).insert(ignore_permissions=True)
 		ma[k] = sku
+		if ncc_chinh and ncc_chinh in ma:  # NCC chính (`products.primary_supplier_id` — §6.0) = `Item Default.default_supplier` của công ty (M8)
+			it = frappe.get_doc("Item", sku)
+			dong = next((d for d in it.get("item_defaults") or [] if d.company == cong_ty), None) or it.append("item_defaults", {"company": cong_ty})
+			dong.default_supplier = ma[ncc_chinh]
+			it.save(ignore_permissions=True)
 	nhom_khach = "VTD Khong Nhom"
 	if not frappe.db.exists("Customer Group", nhom_khach):
 		frappe.get_doc({"doctype": "Customer Group", "customer_group_name": nhom_khach, "parent_customer_group": "All Customer Groups",
@@ -894,7 +909,7 @@ class TestKhoMuaVang(IntegrationTestCase):
 			self.addCleanup(p.stop)
 		frappe.local._npp_cai_dat_ban = None
 		self.cd = cai_dat_kho()
-		self.co_san = {dt: set(frappe.get_all(dt, pluck="name")) for dt in ("Purchase Invoice", "Batch", "NPP Cong No NCC", "Sales Invoice",
+		self.co_san = {dt: set(frappe.get_all(dt, pluck="name")) for dt in ("Purchase Invoice", "Batch", "NPP Cong No NCC", "Sales Invoice", "Supplier",
 			"Item Price", "Payment Entry", "Stock Entry", "Stock Ledger Entry", "NPP Phieu Chi", "NPP Kiem Ke")}
 		self.ma = dung_nen_kho(self.vang["nen"])
 		self.khoa_cua = {v: "@" + k for k, v in self.ma.items()}  # tên Frappe → khoá nền (@A, @S1, @u:TK)
@@ -1151,6 +1166,13 @@ class TestKhoMuaVang(IntegrationTestCase):
 			if b["hanh_dong"] != "delete":
 				yc["gia_tri"] = self._thay(b.get("gia_tri"), st)
 			ket = self._cong(b["nguoi"], yc)
+			if "error" not in ket and b["bang"] == "suppliers" and b["hanh_dong"] == "insert":
+				# NCC lập trong kịch bản mang chỗ giữ của bộ sinh ("id": "@S5") — Frappe đặt tên `NCC-####` (id gửi lên bị bỏ): ghi nhận khoá cho các bước sau
+				gt = b.get("gia_tri")
+				for g, r in zip(gt if isinstance(gt, list) else [gt], ket.get("data") or [], strict=False):
+					if str(g.get("id") or "").startswith("@"):
+						self.ma[g["id"][1:]] = r["id"]
+						self.khoa_cua[r["id"]] = g["id"]
 			return ket, None if "error" in ket else {"so_dong": len(ket.get("data") or [])}
 		if k == "co_am":
 			frappe.db.set_single_value("NPP Cai Dat", "cho_ban_vuot_ton", 1 if b.get("bat", True) else 0)
@@ -1300,6 +1322,28 @@ class TestKhoMuaVang(IntegrationTestCase):
 			if r.get("expense_id"):  # phiếu chi hao hụt → "cp:<nhãn phiếu kiểm kê>" (bộ sinh: "cp:" + tham chiếu)
 				r["expense_id"] = "cp:" + str(self._ma_pn(st, frappe.db.get_value("NPP Phieu Chi", r["expense_id"], "so_tham_chieu")))
 			return ket, r
+		# ------------------------------------------------------------------ M8 — nhà cung cấp
+		if k == "gop":
+			ket = self._goi(b["nguoi"], "gop_nha_cung_cap", {"p_tu": self._thay(b["tu"], st), "p_vao": self._thay(b["vao"], st)})
+			if "error" in ket:
+				return ket, None
+			return ket, {**ket["data"], "vao": self.khoa_cua.get(ket["data"]["vao"], ket["data"]["vao"])}
+		if k == "xoa_ncc":  # không có khoá `xoa_hang` = không truyền tham số (mặc định false)
+			ts = {"p_id": self._thay(b["ncc"], st)}
+			if "xoa_hang" in b:
+				ts["p_xoa_hang"] = b["xoa_hang"]
+			ket = self._goi(b["nguoi"], "xoa_nha_cung_cap", ts)
+			return ket, None if "error" in ket else ket["data"]
+		if k == "doc" and b.get("ten") == "so_chung_tu_ncc":
+			ket = self._goi(b["nguoi"], "so_chung_tu_ncc", self._thay(b.get("ts") or {}, st))
+			return ket, None if "error" in ket else ket["data"]
+		if k == "doc_phien":
+			# ⚠K (tệp vàng `khac_frappe` V84): so MỨC TĂNG của số phiên danh mục (`NPP Phien Danh Muc`), không số tuyệt đối
+			from nppsale.npp_he_thong.doctype.npp_phien_danh_muc.npp_phien_danh_muc import doc_phien
+
+			p, truoc = cint(doc_phien()["phien"]), st.get("phien")
+			st["phien"] = p
+			return {"data": None}, {"phien": "dau" if truoc is None else ("tang" if p > truoc else "khong_tang")}
 		raise ValueError(f"bước chưa dựng ở bài so: {k}")
 
 	def _ckl_tu_dong(self) -> set:
@@ -1603,10 +1647,27 @@ class TestKhoMuaVang(IntegrationTestCase):
 				for r in doc_cong({"bang": "returns", "select": "status, credit_note_amount", "loc": [{"op": "eq", "cot": "id", "gt": ten}]},
 						ADMIN)["data"]:
 					tra_khach.append({"nhan": nhan[3:], "ma": f"<{nhan[3:]}>", "status": r["status"], "tien": r["credit_note_amount"]})
+		# M8 — NCC (cột `_vp4_anh` của bộ sinh: khoá, tên, mã, SĐT, email, MST, ghi chú, đang hợp tác, người lập), phân công NV ↔ NCC, mặt hàng (trạng
+		# thái + NCC chính) của bộ dữ liệu — NCC / NV có sẵn trên site (dữ liệu dựng thử cũ) bỏ; hàng `hang_frappe` (X — chỉ Frappe) bỏ
+		ncc_ds = []
+		for r in doc_cong({"bang": "suppliers", "select": "id, name, code, phone, email, tax_code, notes, is_active, created_by"}, ADMIN)["data"]:
+			if r["id"] in self.co_san["Supplier"]:
+				continue
+			ncc_ds.append(_bo_null({"khoa": k(r["id"]) or r["id"], "ten": r["name"], "ma": r["code"], "phone": r["phone"], "email": r["email"],
+				"tax_code": r["tax_code"], "ghi_chu": r["notes"], "dang_lam": r["is_active"], "lap_boi": k(r["created_by"])}))
+		nv = {v for kk, v in self.ma.items() if kk.startswith("u:")}
+		phan_cong = [[k(u) or u, k(n) or n] for u, n in frappe.db.sql("SELECT `parent`, `nha_cung_cap` FROM `tabNPP Nhan Vien Cong Ty`")
+			if u in nv and n not in self.co_san["Supplier"]]
+		hang_ds = []
+		for kk in self.vang["nen"]["hang"]:
+			for r in doc_cong({"bang": "products", "select": "id, status, primary_supplier_id", "loc": [{"op": "eq", "cot": "id", "gt": self.ma[kk]}]},
+					ADMIN)["data"]:
+				hang_ds.append(_bo_null({"khoa": "@" + kk, "status": r["status"], "ncc": k(r["primary_supplier_id"]) or r["primary_supplier_id"]}))
 		return {"pn": _xep(_so(pn)) or None, "ptn": _xep(_so(ptn)) or None, "lo": _xep(_so(lo)) or None, "no": _xep(_so(no)) or None,
 			"tra_no": _xep(_so(_gop_tra_truoc(tra_no))) or None, "phieu_chi": _xep(_so(phieu_chi)) or None, "gia_nhap": _xep(_so(gia_nhap)) or None,
 			"phieu_kho": _xep(_so(phieu_kho)) or None, "hd": _xep(_so(hd)) or None, "tra_khach": _xep(_so(tra_khach)) or None,
-			"chi_phi": _xep(_so(chi_phi)) or None, "nhan": sorted(st["nhan"])}
+			"chi_phi": _xep(_so(chi_phi)) or None, "ncc": _xep(ncc_ds) or None, "hang": _xep(hang_ds) or None, "phan_cong": _xep(phan_cong) or None,
+			"nhan": sorted(st["nhan"])}
 
 	def _phieu_kho_pk(self, nhan: str, ten: str, st: dict) -> dict | None:
 		"""Phiếu kho có nhãn `pk:` (nhập kho tay / xuất lẻ / chuyển kho — kể cả PI `PN-` của nhập kho có NCC + nợ, CFD-13) đọc QUA CỔNG `stock_entries`
@@ -1723,7 +1784,7 @@ class TestKhoMuaVang(IntegrationTestCase):
 			if x.get("so_hd"):
 				x["so_hd"] = nhan(x["so_hd"])  # phiếu trả: số HĐ = mã phiếu (mig 228 / 240)
 			if x.get("ghi_chu"):
-				x["ghi_chu"] = chu(x["ghi_chu"])
+				x["ghi_chu"] = _ngay_trong_loi(chu(x["ghi_chu"]))  # ngày trong ghi chú ("gộp ngày <@hom_nay>" — V72) → ngày VN thật
 		for x in ct.get("gia_nhap") or []:
 			if x.get("nguon"):
 				x["nguon"] = nhan(x["nguon"])
@@ -1796,6 +1857,12 @@ class TestKhoMuaVang(IntegrationTestCase):
 			x.pop("phieu_kho", None)
 		for x in ct.get("tra_khach") or []:
 			x["ma"] = f"<{x['nhan']}>"  # dãy `PT-.####` của site: so theo nhãn
+		for m in NEN_TINH:  # M8: mục chỉ ghi khi khác nền — vắng mặt = như nền
+			if m not in ct:
+				ct[m] = copy.deepcopy(self.vang["nen"]["ct_nen"].get(m))
+		for x in ct.get("ncc") or []:
+			if x.get("ghi_chu"):
+				x["ghi_chu"] = _ngay_trong_loi(x["ghi_chu"])  # "Gộp từ NCC … ngày <@hom_nay>." (V72) → ngày VN thật
 		return {m: (_xep(_so(ct.get(m))) if isinstance(ct.get(m), list) and m != "nhan" else ct.get(m)) or None for m in MUC_SO} | {
 			"nhan": sorted(ct.get("nhan") or [])}
 
@@ -2099,12 +2166,14 @@ class TestKhoMuaVang(IntegrationTestCase):
 				continue
 			frappe.db.savepoint("npp_th")
 			frappe.local._npp_cai_dat_ban = None
+			ma, khoa_cua = dict(self.ma), dict(self.khoa_cua)  # NCC lập trong kịch bản (@S5 — M8) chỉ sống trong kịch bản ấy
 			try:
 				sai += getattr(self, KIEM_DAC_TA[t["ma"]])(t) if t.get("nguon") == "dac_ta" else self._mot(t)
 				da_chay += 1
 			finally:
 				frappe.db.rollback(save_point="npp_th")
 				self._ve_admin()
+				self.ma, self.khoa_cua = ma, khoa_cua
 		print(f"\nkho_mua_vang: chạy {da_chay} kịch bản; " + "; ".join(f"{k} {len(v)}" for k, v in bo.items()))
 		self.assertFalse(sai, "\n".join(sai))
 		self.assertFalse(self.nhat_ky, f"Error Log ghi trong bài: {self.nhat_ky}")

@@ -1,7 +1,9 @@
 """Bảng `suppliers` của nppsale trên cổng (blueprint 02 phần Kho Mua §3.6, §5): Supplier lõi + trường npp_*.
 
-Đọc: mọi NV của NPP ("Authenticated can view suppliers", mig 092). Ghi: owner / manager / warehouse thêm / sửa (mig 163); XOÁ cấm
-thẳng — chỉ RPC xoa_nha_cung_cap (NCC_XOA_QUA_RPC, mig 233); gộp NCC qua RPC gop_nha_cung_cap.
+Đọc: mọi NV của NPP ("Authenticated can view suppliers", mig 092). Ghi: owner / manager / warehouse thêm / sửa (mig 163); `created_by` = người gọi
+lúc thêm, sửa không đổi được (trigger `_ncc_nguoi_tao` — cột chỉ đọc của cổng, giá trị gửi lên bị bỏ). XOÁ thẳng (RLS cùng ba vai — vai khác 0 dòng,
+không lỗi): trigger `_ncc_chan_xoa` chạy TRƯỚC (còn chứng từ → `NCC_CO_CHUNG_TU`, liệt kê CẢ mặt hàng) rồi `_ncc_xoa_qua_rpc` (`NCC_XOA_QUA_RPC`) — mig
+232 / 233, đặc tả kho_mua §3.14 🔧; xoá thật chỉ qua RPC `xoa_nha_cung_cap`, gộp qua `gop_nha_cung_cap` (nppsale/rpc/nha_cung_cap.py).
 """
 from __future__ import annotations
 
@@ -30,7 +32,19 @@ class GhiNcc(GhiDocType):
 		super()._gan(dich, g)
 
 	def xoa(self, ids, nc):
-		raise NppLoi("NCC_XOA_QUA_RPC: Xoá nhà cung cấp đi qua nút Xoá (kiểm chứng từ trước).", code="P0001")
+		if nc.vai not in self.vai_sua and not nc.bo_qua_rls:
+			return []  # RLS "Owner/Manager can manage suppliers" (FOR ALL): 0 dòng, không lỗi
+		import frappe
+
+		from nppsale.luat import nha_cung_cap as L
+		from nppsale.rpc.nha_cung_cap import dem_theo_bang
+
+		for ten in ids:  # trigger BEFORE DELETE theo tên: `trg_ncc_chan_xoa` trước `trg_ncc_xoa_qua_rpc`
+			mo_ta = L.mo_ta_chung_tu(L.dem_chung_tu(dem_theo_bang(ten))["chi_tiet"], bo_mat_hang=False)
+			if mo_ta:
+				raise L.loi_co_chung_tu(frappe.db.get_value("Supplier", ten, "supplier_name"), mo_ta)
+			raise NppLoi(L.NCC_XOA_QUA_RPC)
+		return []
 
 
 def _trung_ma(e):
