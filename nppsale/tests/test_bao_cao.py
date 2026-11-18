@@ -484,3 +484,336 @@ class TestBaoCaoSoBan(V.TestBaoCaoVang):
 		# kỳ thiếu một / hai đầu, kỳ ngược: rỗng đúng dạng (tinh_lai_gia_von 0) dù có việc chờ ≤ "cuối kỳ" — mỗi vế của điều kiện thoát sớm có ca riêng
 		for tu, den in ((None, None), (None, "2026-11-30"), ("2026-11-01", None), ("2026-12-31", "2026-12-01")):
 			self.assertEqual(self._sb("CHU", tu, den)["data"], self._rong(), (tu, den))
+
+
+NGUOI_S = ("CHU", "QL", "KT", "TK", "NV_AN", "NV_BINH")
+GIO_DOC = "2026-11-17T08:00:00+07:00"  # giờ đọc của Sổ BC (vn_today = 17/11)
+P11 = {"p_period_start": "2026-11-01"}  # đầu tháng 11 (`dauKy` của /dashboard)
+
+
+class _TrenSoBC(V.TestBaoCaoVang):
+	"""Sổ BC (S1) của bài vàng, đã tách khỏi dữ liệu khác của site dùng chung (`_chi_so_cua_bo` — hàm tổng hợp toàn sổ)."""
+
+	test_kich_ban_vang = None  # bài so vàng chạy ở test_bao_cao_vang
+
+	def setUp(self):
+		super().setUp()
+		sai = self._dung_s1()
+		self.assertFalse(sai, "\n".join(sai))
+		self.sd = self.bo["S1"]
+		self._chi_so_cua_bo(self.sd)
+
+	def _email_cua(self, nguoi: str) -> str:
+		return self.sd.ma["k:" + nguoi] if nguoi in NGUOI_S else nguoi
+
+	def _rpc(self, nguoi: str, ten: str, ts: dict | None = None, gio: str = GIO_DOC) -> dict:
+		return self._goi(self._email_cua(nguoi), ten, ts or {}, gio)
+
+	def _rest(self, nguoi: str, ten: str, ts: dict, phuong_thuc: str = "GET") -> tuple[int, dict]:
+		"""Lối `/rest/v1/rpc/<hàm>` của portal: GET `?q=<JSON>` (hàm chỉ đọc — `{get: true}`) hoặc POST thân JSON."""
+		from nppsale.portal.rest import xu_ly
+
+		class Yc:
+			method = phuong_thuc
+
+			def __init__(self):
+				self.args = {"q": json.dumps(ts)} if phuong_thuc == "GET" else {}
+
+			def get_data(self, as_text=False):
+				return json.dumps(ts) if phuong_thuc == "POST" else ""
+
+		V.DongHo.dat(GIO_DOC)
+		self._nguoi(self._email_cua(nguoi))
+		try:
+			return xu_ly(f"rpc/{ten}", Yc())
+		finally:
+			self._nguoi(None)
+
+	def _loi(self, ket: dict) -> tuple:
+		self.assertIn("error", ket, ket)
+		return ket["error"]["code"], ket["error"]["message"]
+
+	def _ngoai_npp(self) -> str:
+		email = "p6m2-ngoai@nppsale.local"
+		if not frappe.db.exists("User", email):
+			frappe.get_doc({"doctype": "User", "email": email, "first_name": "Ngoai", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		return email
+
+
+class TestBaoCaoTongQuan(_TrenSoBC):
+	"""`dashboard_summary` / `dashboard_channel_revenue` / `dashboard_top_customers` (§2.3-2.5), `my_sales_target` (§2.11), view cổng
+	`v_hoa_don_con_lai` dưới RLS phiếu trả của người gọi (security_invoker — mig 257). Số theo vai / mốc ở bài vàng (VB-B01…B06, E03, E10)."""
+
+	TQ = ("dashboard_summary", "dashboard_channel_revenue", "dashboard_top_customers")
+
+	def test_dang_bien_va_nguoi_ngoai(self):
+		"""L12: `dashboard_summary` đúng MỘT dòng 4 khoá (số int — không Decimal / chuỗi lọt ra); hai hàm kia list đã xếp. Biên: ngày kèm giờ đọc phần ngày;
+		NULL / thiếu tham số → không HĐ / phiếu nào (hai số công nợ vẫn đủ; kênh / top rỗng); '' / chữ → 22007, ngày không có thật → 22008 (ép kiểu
+		`date` TRƯỚC thân hàm). Người không phải NV đang hoạt động → rỗng đúng dạng; Guest → PGRST301. GET (`{get: true}`) và POST cùng kết quả."""
+		ds = self._rpc("CHU", "dashboard_summary", P11)["data"]
+		self.assertEqual(ds, [{"period_revenue": 790960, "period_orders": 3, "open_receivables": 830960, "overdue_count": 1}])
+		self.assertTrue(all(type(v) is int for v in ds[0].values()), ds)
+		self.assertEqual(self._rpc("CHU", "dashboard_summary", {"p_period_start": "2026-11-01T00:00:00+07:00"})["data"], ds)
+		khong = [{"period_revenue": 0, "period_orders": 0, "open_receivables": 830960, "overdue_count": 1}]
+		self.assertEqual(self._rpc("CHU", "dashboard_summary", {"p_period_start": None})["data"], khong)
+		self.assertEqual(self._rpc("CHU", "dashboard_summary", {})["data"], khong)
+		for ham in self.TQ[1:]:
+			self.assertEqual(self._rpc("CHU", ham, {"p_period_start": None})["data"], [], ham)
+			self.assertEqual(self._rpc("CHU", ham)["data"], [], ham)
+		for v, ma, cau in (("", "22007", 'invalid input syntax for type date: ""'), ("abc", "22007", 'invalid input syntax for type date: "abc"'),
+				("2026-02-30", "22008", 'date/time field value out of range: "2026-02-30"')):
+			for ham in self.TQ:
+				self.assertEqual(self._loi(self._rpc("CHU", ham, {"p_period_start": v})), (ma, cau), (ham, v))
+		kenh = self._rpc("CHU", "dashboard_channel_revenue", P11)["data"]
+		top = self._rpc("CHU", "dashboard_top_customers", P11)["data"]
+		self.assertEqual(kenh, [{"channel": "GT", "total": 504000}, {"channel": "MT", "total": 306960}, {"channel": "Khác", "total": -20000}])
+		self.assertEqual([(r["customer_id"], r["store_name"], r["total"], r["order_count"]) for r in top],
+			[(self.sd.ma["kh:0911000001"], "Tap hoa Hai", 504000, 1), (self.sd.ma["kh:0911000002"], "Sieu thi Ba", 306960, 1),
+				(self.sd.ma["kh:0911000003"], "Quan Tu", -20000, 1)])
+		json.dumps([ds, kenh, top])
+		for ham, mong in zip(self.TQ, (ds, kenh, top), strict=True):
+			for pt in ("GET", "POST"):
+				ma, than = self._rest("CHU", ham, P11, pt)
+				self.assertEqual((ma, json.loads(json.dumps(than["data"]))), (200, mong), (ham, pt))
+		# NV bị khoá / người ngoài NPP: rỗng đúng dạng, không lỗi; Guest: PGRST301 401
+		rong = {"dashboard_summary": [{"period_revenue": 0, "period_orders": 0, "open_receivables": 0, "overdue_count": 0}],
+			"dashboard_channel_revenue": [], "dashboard_top_customers": []}
+		frappe.db.set_value("NPP Nhan Vien", self.sd.ma["k:NV_BINH"], "dang_hoat_dong", 0, update_modified=False)
+		for ai in ("NV_BINH", self._ngoai_npp()):
+			for ham in self.TQ:
+				self.assertEqual(self._rpc(ai, ham, P11)["data"], rong[ham], (ai, ham))
+		self._nguoi("Guest")
+		try:
+			for ham in self.TQ:
+				ket = api.rpc(ten=ham, tham_so=P11)
+				self.assertEqual((ket["error"]["code"], ket["status"]), ("PGRST301", 401), ham)
+		finally:
+			self._nguoi(None)
+		# quá hạn 8 s của dashboard_* → 57014 (giao diện dịch QUA_HAN_VI, không hiện 0)
+		with patch("nppsale.luat.bao_cao.HET_GIO_NHANH", 0.000001):
+			for ham in self.TQ:
+				ma, than = self._rest("CHU", ham, P11)
+				self.assertEqual((ma, than["error"]["code"], than["error"]["message"]), (500, MA_QUA_HAN, CAU_QUA_HAN), ham)
+		self.assertNotIn("error", self._rpc("CHU", "dashboard_summary", P11))
+
+	def test_p_limit_nhu_postgres(self):
+		"""`LIMIT GREATEST(1, LEAST(p_limit, 100))` tính ở Python: thiếu → 5 (DEFAULT), null → 100 (LEAST bỏ NULL), ≤ 0 → 1, > 100 → 100; ép kiểu
+		`integer` như PostgREST (đo bản tham chiếu `json_to_record`): chuỗi số (bỏ khoảng trắng, có dấu) được; số thực (kể cả 5.0) / bool / chữ / '1e2' →
+		22P02 nguyên văn; ngoài int4 → 22003."""
+		g = BC.gioi_han_top
+		self.assertEqual([g(), g(None), g(0), g(-5), g(1), g(7), g(100), g(101), g(10 ** 6), g("3"), g(" 7 "), g("+2"), g("-1")],
+			[5, 100, 1, 1, 1, 7, 100, 100, 100, 3, 7, 2, 1])
+		for v, ma, cau in ((2.5, "22P02", 'invalid input syntax for type integer: "2.5"'), (5.0, "22P02", 'invalid input syntax for type integer: "5.0"'),
+				(True, "22P02", 'invalid input syntax for type integer: "true"'), ("abc", "22P02", 'invalid input syntax for type integer: "abc"'),
+				("1e2", "22P02", 'invalid input syntax for type integer: "1e2"'), ("", "22P02", 'invalid input syntax for type integer: ""'),
+				(99999999999, "22003", 'value "99999999999" is out of range for type integer'),
+				("-2147483649", "22003", 'value "-2147483649" is out of range for type integer')):
+			with self.assertRaises(LoiCong) as e:
+				g(v)
+			self.assertEqual((e.exception.ma, e.exception.thong_diep), (ma, cau), v)
+		self.assertEqual(g(2147483647), 100)
+		# qua RPC: số dòng theo giới hạn; lỗi ép kiểu trả về người gọi
+		for lim, n in ((1, 1), ("2", 2), (0, 1), (-5, 1), (None, 3), (5, 3)):
+			ket = self._rpc("CHU", "dashboard_top_customers", {**P11, "p_limit": lim})
+			self.assertEqual(len(ket["data"]), n, (lim, ket))
+		self.assertEqual(self._loi(self._rpc("CHU", "dashboard_top_customers", {**P11, "p_limit": "abc"})),
+			("22P02", 'invalid input syntax for type integer: "abc"'))
+
+	def test_kenh_top_va_so_don_nhu_postgres(self):
+		"""Kênh nhóm theo chuỗi ĐÚNG như Postgres (gộp ở Python — `GROUP BY` của MariaDB `utf8mb4_unicode_ci` gộp 'GT' với 'gt'); kênh chỉ có khoảng trắng
+		giữ nguyên (NULLIF(' ', '') của Postgres không ra NULL; MariaDB PAD SPACE coi ' ' = ''); bằng tiền → khoá phụ theo điểm mã. Số đơn không đếm HĐ
+		không đơn ('' của Frappe = NULL); top: bằng tiền → khoá phụ mã khách; khách chỉ có hàng trả không vào top."""
+		k1, k2, k3 = (self.sd.ma[f"kh:091100000{i}"] for i in (1, 2, 3))
+		frappe.db.set_value("Customer", k2, "npp_tuyen", "gt", update_modified=False)
+		frappe.db.set_value("Customer", k3, "npp_tuyen", " ", update_modified=False)
+		self.assertEqual(self._rpc("CHU", "dashboard_channel_revenue", P11)["data"],
+			[{"channel": "GT", "total": 504000}, {"channel": "gt", "total": 306960}, {"channel": " ", "total": -20000}])
+		frappe.db.set_value("Customer", k3, "npp_tuyen", "", update_modified=False)
+		# bằng tiền: đổi thẳng tiền HĐ1 cho K1 thuần 306.960 như K2 (336.960 - 30.000 của PT-0001)
+		hd1 = self.sd.nhan["HD-0001"]
+		frappe.db.set_value("Sales Invoice", hd1, "grand_total", 336960, update_modified=False)
+		frappe.db.set_value("Customer", k1, "npp_tuyen", "MT", update_modified=False)
+		frappe.db.set_value("Customer", k2, "npp_tuyen", "GT", update_modified=False)
+		self.assertEqual(self._rpc("CHU", "dashboard_channel_revenue", P11)["data"],
+			[{"channel": "GT", "total": 306960}, {"channel": "MT", "total": 306960}, {"channel": "Khác", "total": -20000}])
+		top = self._rpc("CHU", "dashboard_top_customers", {**P11, "p_limit": 2})["data"]
+		self.assertEqual([r["customer_id"] for r in top], sorted([k1, k2]))  # bằng tiền → mã khách tăng
+		# HĐ không đơn ('' của Frappe) không đếm vào số đơn (COUNT(DISTINCT order_id) bỏ NULL)
+		frappe.db.set_value("Sales Invoice", self.sd.nhan["HD-0002"], "npp_don_hang", "", update_modified=False)
+		self.assertEqual(self._rpc("CHU", "dashboard_summary", P11)["data"][0]["period_orders"], 2)
+		self.assertEqual({r["customer_id"]: r["order_count"] for r in self._rpc("CHU", "dashboard_top_customers", P11)["data"]},
+			{k1: 1, k2: 0, k3: 1})
+		# khách chỉ có hàng trả (từ 21/11: chỉ PT-0006 02/12 của K2) không vào top; kênh vẫn trừ
+		self.assertEqual(self._rpc("CHU", "dashboard_top_customers", {"p_period_start": "2026-11-21"})["data"], [])
+		self.assertEqual(self._rpc("CHU", "dashboard_channel_revenue", {"p_period_start": "2026-11-21"})["data"], [{"channel": "GT", "total": -10800}])
+
+	def test_my_sales_target(self):
+		"""§2.11: SỐ TRƠN; tới khi P7 có DocType `NPP Cau Hinh Luong` → 0 với mọi vai (giao diện ẩn cột Chỉ tiêu / mục tiêu); có DocType → Single
+		`muc_doanh_so_a` (chưa lưu → 0; KHÔNG xét `dang_dung`), int khi chẵn; NV bị khoá / người ngoài → 0. Đăng ký MỘT chỗ (P7 không khai lại), nhận
+		cả GET lẫn POST."""
+		from nppsale import rpc as R
+
+		R.nap()
+		self.assertIs(R.DANG_KY["my_sales_target"].ham, BC.my_sales_target)
+		self.assertFalse(R.DANG_KY["my_sales_target"].ghi)
+		self.assertFalse(frappe.db.exists("DocType", BC.DT_CAU_HINH_LUONG))  # P7 chưa dựng — đổi bài khi P7 tới
+		for v in NGUOI_S:
+			self.assertEqual(self._rpc(v, "my_sales_target"), {"data": 0, "status": 200}, v)
+		self.assertEqual(BC.muc_tieu_doanh_so(), Decimal(0))
+		goc_exists, goc_single = frappe.db.exists, frappe.db.get_single_value
+		gia_tri = {"v": 80000000.0}
+		doc_luc = []
+
+		def exists(dt, dn=None, *a, **k):
+			if (dt, dn) == ("DocType", BC.DT_CAU_HINH_LUONG):
+				return BC.DT_CAU_HINH_LUONG
+			return goc_exists(dt, dn, *a, **k)
+
+		def single(dt, f, cache=True):
+			if dt == BC.DT_CAU_HINH_LUONG:
+				doc_luc.append((f, cache))
+				return gia_tri["v"]
+			return goc_single(dt, f, cache=cache)
+
+		with patch.object(frappe.db, "exists", exists), patch.object(frappe.db, "get_single_value", single):
+			self.assertEqual(self._rpc("NV_AN", "my_sales_target")["data"], 80000000)
+			self.assertIs(type(self._rpc("CHU", "my_sales_target")["data"]), int)
+			self.assertEqual(doc_luc[0], ("muc_doanh_so_a", False))  # đọc thẳng sổ, không qua cache
+			gia_tri["v"] = 1234.5
+			self.assertEqual(self._rpc("KT", "my_sales_target")["data"], 1234.5)
+			gia_tri["v"] = None  # Single chưa lưu
+			self.assertEqual(self._rpc("NV_AN", "my_sales_target")["data"], 0)
+			gia_tri["v"] = 5000000.0
+			ma, than = self._rest("NV_AN", "my_sales_target", {}, "GET")
+			self.assertEqual((ma, than["data"]), (200, 5000000))
+			frappe.db.set_value("NPP Nhan Vien", self.sd.ma["k:NV_BINH"], "dang_hoat_dong", 0, update_modified=False)
+			self.assertEqual(self._rpc("NV_BINH", "my_sales_target")["data"], 0)
+			self.assertEqual(self._rpc(self._ngoai_npp(), "my_sales_target")["data"], 0)
+
+	def test_con_lai_theo_rls_phieu_tra(self):
+		"""`v_hoa_don_con_lai` (mig 257) là view `security_invoker`: câu con phiếu trả chạy dưới RLS `returns` của NGƯỜI GỌI. Bộ S3 (HĐ5 của đơn NV An gán
+		sang NV Bình) + NV Bình lập phiếu tự lập 10.000 gắn HĐ5 (không đơn), Chủ Hoàn thành: NV An vẫn thấy HĐ5 (đơn của mình) nhưng KHÔNG thấy phiếu ⇒
+		con_lai 220.000 (chỉ trừ PT-0007 tự sinh của đơn mình); NV Bình / Chủ / thủ kho 210.000 — số đo trên bản tham chiếu (vbc_s3, BEGIN … ROLLBACK).
+		Lọc / gộp trên `con_lai` (`gopMayChu` — `con_lai.sum()`) dùng cùng biểu thức của người gọi."""
+		sd = self.sd
+		sai = self._phat_lai("S3", sd)
+		self.assertFalse(sai, sai)
+		hd5, k3, sp1 = sd.nhan["HD-0005"], sd.ma["kh:0911000003"], sd.ma["sp:SP1"]
+		pt = self._rpc("NV_BINH", "create_return_with_lines", {"p_head": {"customer_id": k3, "invoice_id": hd5, "reason": "damaged", "status": "draft"},
+			"p_lines": [{"product_id": sp1, "unit_name": V.uom_site("lon"), "quantity": 1, "unit_price": 10000, "vat_rate": 0, "line_total": 10000,
+				"is_exchange": False}]}, "2026-11-16T21:05:00+07:00")
+		self.assertNotIn("error", pt, pt)
+		ten_pt = pt["data"] if isinstance(pt["data"], str) else pt["data"][0]["return_id"]
+		ket = self._rpc("CHU", "complete_return", {"p_return_id": ten_pt, "p_zone": "sale"}, "2026-11-16T21:05:01+07:00")
+		self.assertNotIn("error", ket, ket)
+		self.assertEqual(frappe.db.get_value("NPP Phieu Tra", ten_pt, ["trang_thai", "hoa_don", "don_hang", "nhan_vien"]),
+			("completed", hd5, None, sd.ma["k:NV_BINH"]))
+
+		def con_lai(nguoi, them_loc=()):
+			V.DongHo.dat(GIO_DOC)
+			nc = NguCanh(user=self._email_cua(nguoi), vai=frappe.db.get_value("NPP Nhan Vien", self._email_cua(nguoi), "vai"))
+			return {r["id"]: r["con_lai"] for r in doc({"bang": "v_hoa_don_con_lai", "select": "id, total, con_lai",
+				"loc": [{"op": "eq", "cot": "id", "gt": hd5}, *them_loc]}, nc)["data"]}
+
+		self.assertEqual(con_lai("NV_AN"), {hd5: 220000})
+		for v in ("NV_BINH", "CHU", "TK", "KT"):
+			self.assertEqual(con_lai(v), {hd5: 210000}, v)
+		# lọc trên con_lai theo biểu thức của người gọi
+		self.assertEqual(con_lai("NV_AN", ({"op": "gt", "cot": "con_lai", "gt": 215000},)), {hd5: 220000})
+		self.assertEqual(con_lai("CHU", ({"op": "gt", "cot": "con_lai", "gt": 215000},)), {})
+		# gộp trên máy chủ (`gopMayChu` — con_lai.sum()) của NV An gồm 220.000 của HĐ5
+		V.DongHo.dat(GIO_DOC)
+		nc = NguCanh(user=sd.ma["k:NV_AN"], vai="sales")
+		tong = doc({"bang": "v_hoa_don_con_lai", "select": "con_lai.sum()", "loc": [{"op": "eq", "cot": "id", "gt": hd5}]}, nc)["data"]
+		self.assertEqual(json.loads(json.dumps(tong, default=str)), [{"sum": 220000}])
+
+
+class TestHangKhachDaLay(_TrenSoBC):
+	"""`hang_khach_da_lay` (§2.9, mig 246) — SECURITY DEFINER, CHỈ số lượng theo đơn vị cơ sở. Số cụ thể theo vai ở bài vàng (VB-C01…C04); ở đây: lỗi /
+	quyền, ép kiểu tham số, lọc tuyến ĐÚNG chuỗi như Postgres, hệ số dòng trả theo danh mục HIỆN TẠI (❓Q7), thứ tự theo điểm mã (❓Q8), `nv_chinh`."""
+
+	def _hang(self, nguoi: str, ts: dict) -> dict:
+		ket = self._rpc(nguoi, "hang_khach_da_lay", ts)
+		self.assertNotIn("error", ket, ket)
+		return self._chuan_hang_da_lay(ket["data"], self.sd)
+
+	def test_loi_quyen_va_ep_kieu(self):
+		"""P0001 nguyên văn: NV bị khoá / người ngoài NPP → KHONG_DU_QUYEN; thủ kho → "KHONG_DU_QUYEN: vai này không xem hàng khách đã lấy"; chủ / QL / KT
+		gửi `p_nv` không phải NV của NPP → KHONG_TIM_THAY_NV (NV đã khoá vẫn là NV của NPP — chỉ kiểm thuộc NPP). Guest → PGRST301. Tham số mảng không
+		phải mảng → 22P02 malformed array literal; ngày sai → 22007 / 22008. POST (giao diện gọi) và GET cùng kết quả; quá hạn 8 s → 57014."""
+		k1 = self.sd.ma["kh:0911000001"]
+		self.assertEqual(self._loi(self._rpc("TK", "hang_khach_da_lay", {"p_khach": [k1]})),
+			("P0001", "KHONG_DU_QUYEN: vai này không xem hàng khách đã lấy"))
+		self.assertEqual(self._loi(self._rpc("CHU", "hang_khach_da_lay", {"p_nv": "khong-co@nppsale.local"})), ("P0001", "KHONG_TIM_THAY_NV"))
+		self.assertEqual(self._loi(self._rpc("CHU", "hang_khach_da_lay", {"p_nv": ""})), ("P0001", "KHONG_TIM_THAY_NV"))
+		frappe.db.set_value("NPP Nhan Vien", self.sd.ma["k:NV_BINH"], "dang_hoat_dong", 0, update_modified=False)
+		self.assertEqual(self._hang("QL", {"p_nv": self.sd.ma["k:NV_BINH"]})["nv"], self.sd.ma["k:NV_BINH"])  # NV đã khoá vẫn là NV của NPP
+		for ai in ("NV_BINH", self._ngoai_npp()):
+			self.assertEqual(self._loi(self._rpc(ai, "hang_khach_da_lay", {"p_khach": [k1]})), ("P0001", "KHONG_DU_QUYEN"), ai)
+		self._nguoi("Guest")
+		try:
+			ket = api.rpc(ten="hang_khach_da_lay", tham_so={"p_khach": [k1]})
+		finally:
+			self._nguoi(None)
+		self.assertEqual((ket["error"]["code"], ket["status"]), ("PGRST301", 401))
+		for ts in ({"p_khach": k1}, {"p_khach": {"a": 1}}, {"p_tuyen": "GT"}):
+			self.assertEqual(self._loi(self._rpc("CHU", "hang_khach_da_lay", ts))[0], "22P02", ts)
+		self.assertEqual(self._loi(self._rpc("CHU", "hang_khach_da_lay", {"p_khach": [k1], "p_tu": ""})),
+			("22007", 'invalid input syntax for type date: ""'))
+		self.assertEqual(self._loi(self._rpc("CHU", "hang_khach_da_lay", {"p_khach": [k1], "p_tu": "2026-02-30"}))[0], "22008")
+		mong = self._rpc("CHU", "hang_khach_da_lay", {"p_khach": [k1]})["data"]
+		for pt in ("POST", "GET"):
+			ma, than = self._rest("CHU", "hang_khach_da_lay", {"p_khach": [k1]}, pt)
+			self.assertEqual((ma, json.loads(json.dumps(than["data"]))), (200, json.loads(json.dumps(mong))), pt)
+		with patch("nppsale.luat.bao_cao.HET_GIO_NHANH", 0.000001):
+			self.assertEqual(self._loi(self._rpc("CHU", "hang_khach_da_lay", {"p_khach": [k1]})), (MA_QUA_HAN, CAU_QUA_HAN))
+
+	def test_loc_tuyen_va_mang_nhu_postgres(self):
+		"""`p_khach`: phần tử không phải chuỗi bỏ (không khớp); `[]` → không khách nào (khác NULL). `p_tuyen` so ĐÚNG chuỗi như `= ANY(text[])` của Postgres
+		(collation MariaDB không phân biệt hoa thường — 'gt' không khớp 'GT'); mã tuyến của khách trim khoảng trắng; rỗng / chỉ khoảng trắng / NULL →
+		'__chua_co_tuyen'; mảng có phần tử nhưng bị bỏ hết (không phải chuỗi) VẪN lọc (cardinality > 0) → không khách nào; mảng rỗng → không lọc."""
+		k1, k2, k3 = (self.sd.ma[f"kh:091100000{i}"] for i in (1, 2, 3))
+
+		def khach(ts):
+			return [x["id"] for x in self._hang("CHU", ts)["khach"]]
+
+		tat_ca = {"p_khach": [k1, k2, k3]}
+		self.assertEqual(khach({"p_khach": [123, None, k1, ["x"]]}), ["0911000001"])
+		self.assertEqual(self._hang("CHU", {"p_khach": []}), {"nv": None, "khach": [], "hang": [], "sp": [], "ncc": []})
+		self.assertEqual(khach({**tat_ca, "p_tuyen": ["gt"]}), [])
+		self.assertEqual(khach({**tat_ca, "p_tuyen": ["GT", "MT"]}), ["0911000002", "0911000001"])  # Sieu thi Ba < Tap hoa Hai
+		self.assertEqual(khach({**tat_ca, "p_tuyen": []}), ["0911000003", "0911000002", "0911000001"])
+		self.assertEqual(khach({**tat_ca, "p_tuyen": [1]}), [])
+		self.assertEqual(khach({**tat_ca, "p_tuyen": ["__chua_co_tuyen"]}), ["0911000003"])
+		frappe.db.set_value("Customer", k1, "npp_tuyen", "  GT ", update_modified=False)
+		frappe.db.set_value("Customer", k2, "npp_tuyen", "   ", update_modified=False)
+		frappe.db.set_value("Customer", k3, "npp_tuyen", None, update_modified=False)
+		self.assertEqual(khach({**tat_ca, "p_tuyen": ["GT"]}), ["0911000001"])
+		self.assertEqual(khach({**tat_ca, "p_tuyen": ["__chua_co_tuyen"]}), ["0911000003", "0911000002"])
+		kq = self._hang("CHU", {"p_khach": [k1, k2]})
+		self.assertEqual([x["channel"] for x in kq["khach"]], ["   ", "  GT "])  # kênh trả THÔ (không trim)
+
+	def test_he_so_danh_muc_va_thu_tu_diem_ma(self):
+		"""❓Q7: dòng TRẢ quy đổi theo danh mục HIỆN TẠI (dòng trả không chụp hệ số ở nppsale), dòng HĐ theo hệ số CHỤP trên dòng — đổi hệ số thùng của SP1
+		24 → 20 thì K3 trả 20 + 2 = 22 (PT-0003 1 thùng + PT-0007 2 lon), đi vẫn 24 (HĐ5 1 thùng chụp 24). ❓Q8: xếp theo ĐIỂM MÃ như C.UTF-8 (hoa trước
+		thường, chữ có dấu sau chữ không dấu) — MariaDB `ORDER BY` (unicode_ci) sẽ xếp khác. `nv_chinh` nối ', ' các NV CHÍNH đang làm theo tên."""
+		k1, k3 = self.sd.ma["kh:0911000001"], self.sd.ma["kh:0911000003"]
+		sp1, thung = self.sd.ma["sp:SP1"], V.uom_site("thung")
+		self.assertEqual([(h["k"], h["di"], h["tra"], h["sl"]) for h in self._hang("CHU", {"p_khach": [k3]})["hang"]], [("0911000003", 24, 26, -2)])
+		frappe.db.sql("UPDATE `tabUOM Conversion Detail` SET `conversion_factor` = 20 WHERE `parent` = %s AND `parenttype` = 'Item' AND `uom` = %s",
+			(sp1, thung))
+		self.assertEqual([(h["k"], h["p"], h["di"], h["tra"], h["sl"], h["lan"], h["cuoi"]) for h in self._hang("CHU", {"p_khach": [k3]})["hang"]],
+			[("0911000003", "SP1", 24, 22, 2, 1, "2026-11-20")])
+		# điểm mã: 'Tap hoa Hai' < 'quan Tu' ('T' 0x54 < 'q' 0x71) — unicode_ci xếp 'quan Tu' trước; 'Ánh' sau mọi chữ ASCII
+		frappe.db.set_value("Customer", k3, "customer_name", "quan Tu", update_modified=False)
+		self.assertEqual([x["store_name"] for x in self._hang("NV_AN", {})["khach"]], ["Tap hoa Hai", "quan Tu"])
+		frappe.db.set_value("Customer", k1, "customer_name", "Ánh Hai", update_modified=False)
+		self.assertEqual([x["store_name"] for x in self._hang("NV_AN", {})["khach"]], ["quan Tu", "Ánh Hai"])
+		# hai NV chính đang làm → nối theo tên (điểm mã); phân công đã thôi không tính
+		frappe.get_doc({"doctype": "NPP Phan Cong Khach", "khach": k1, "nhan_vien": self.sd.ma["k:NV_BINH"], "vai_tro": "primary",
+			"trang_thai": "active"}).insert(ignore_permissions=True)
+		frappe.db.set_value("NPP Nhan Vien", self.sd.ma["k:NV_BINH"], "ho_ten", "Ánh NV", update_modified=False)
+		kq = {x["id"]: x["nv_chinh"] for x in self._hang("CHU", {"p_khach": [k1, k3]})["khach"]}
+		self.assertEqual(kq, {"0911000001": "NV An, Ánh NV", "0911000003": "NV An"})  # unicode_ci sẽ xếp 'Ánh NV' trước
+		frappe.db.sql("UPDATE `tabNPP Phan Cong Khach` SET `trang_thai` = 'inactive' WHERE `khach` = %s", k3)
+		self.assertIsNone(next(x for x in self._hang("CHU", {"p_khach": [k3]})["khach"])["nv_chinh"])

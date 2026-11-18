@@ -62,6 +62,9 @@ class Bang:
 	# nguồn thay theo bộ lọc mức gốc của yêu cầu (danh sách điều kiện AND): trả biểu thức FROM khác (CÙNG dòng kết quả với bộ lọc ấy, rẻ hơn) hoặc None —
 	# vd `batches` lọc `qty_on_hand > 0` chỉ gộp gói lô của lô còn hàng (nppsale.cong.bang.kho.nguon_theo_loc — P6 M0)
 	nguon_theo_loc: Callable[[list], str | None] | None = None
+	# cột tính THEO NGƯỜI GỌI: hàm(ngữ cảnh) → {tên cột: CotDef} thay cột cùng tên — câu con trên bảng KHÁC phải mang vế RLS của bảng ấy cho người gọi
+	# (view `security_invoker` của nppsale — vd `v_hoa_don_con_lai.con_lai` chỉ trừ phiếu trả người gọi thấy được, mig 257). `nhin` thay vào.
+	cot_theo_nguoi: Callable[[NguCanh], dict] | None = None
 
 	def cot_def(self, ten: str) -> CotDef | None:
 		return self.cot.get(ten)
@@ -82,18 +85,21 @@ def lay(ten: str) -> Bang | None:
 
 
 def nhin(bang: Bang | None, nc: NguCanh) -> Bang | None:
-	"""Bảng như người gọi được thấy: cột trong `an_cot` mà người gọi không được xem → biểu thức NULL (giữ kiểu, không ghi thẳng).
-	Mọi chỗ dựng câu đọc lấy bảng qua đây (bảng gốc + bảng lồng) — lọc / sắp trên cột bị che thành lọc trên NULL, không lộ số."""
-	if bang is None or not bang.an_cot:
+	"""Bảng như người gọi được thấy: cột tính theo người gọi (`cot_theo_nguoi`) thay vào; cột trong `an_cot` mà người gọi không được xem → biểu thức NULL
+	(giữ kiểu, không ghi thẳng). Mọi chỗ dựng câu đọc lấy bảng qua đây (bảng gốc + bảng lồng) — lọc / sắp trên cột bị che thành lọc trên NULL, không lộ
+	số; lọc / sắp / gộp trên cột tính theo người gọi dùng đúng biểu thức của người ấy."""
+	if bang is None or (not bang.an_cot and bang.cot_theo_nguoi is None):
 		return bang  # không xét `bo_qua_rls`: dòng trả lại sau khi ghi bỏ vế RLS dòng nhưng cột vẫn che theo đúng người gọi
-	che = [ten for ten, duoc in bang.an_cot.items() if ten in bang.cot and not duoc(nc)]
-	if not che:
+	cot = dict(bang.cot)
+	if bang.cot_theo_nguoi is not None:
+		cot.update({ten: cd for ten, cd in bang.cot_theo_nguoi(nc).items() if ten in cot})
+	for ten, duoc in bang.an_cot.items():
+		if ten in cot and not duoc(nc):
+			cot[ten] = CotDef("NULL", cot[ten].kieu, None)
+	if cot == bang.cot:
 		return bang
 	from dataclasses import replace
 
-	cot = dict(bang.cot)
-	for ten in che:
-		cot[ten] = CotDef("NULL", cot[ten].kieu, None)
 	return replace(bang, cot=cot)
 
 

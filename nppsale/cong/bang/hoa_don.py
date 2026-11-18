@@ -3,7 +3,8 @@
 - sales_invoices / v_hoa_don_con_lai ← Sales Invoice (`is_return = 0`, `is_opening = 'No'`, docstatus 1 / 2 — không có HĐ nháp); `status` từ
   docstatus; `subtotal` = net_total − discount_amount (giảm cả đơn sau thuế); `stock_entry_id` = chính HĐ (chứng từ kho). Chỉ đọc — ghi qua
   RPC (post_invoice, reissue_invoice, cancel_invoice…). RLS `sales_invoices_select` (mig 124): vai owner / manager / accountant /
-  warehouse, hoặc người đứng tên HĐ = tôi, hoặc người đứng tên ĐƠN của HĐ = tôi.
+  warehouse, hoặc người đứng tên HĐ = tôi, hoặc người đứng tên ĐƠN của HĐ = tôi. `v_hoa_don_con_lai.con_lai` (mig 257, security_invoker) trừ phiếu
+  trả dưới vế RLS `returns` của người gọi (`con_lai_theo_nguoi` — P6 M2).
 - sales_invoice_lines ← Sales Invoice Item của HĐ trên; theo dòng cha.
 - receivables ← NPP Cong No (bản chiếu từ sổ — nppsale.su_kien.cong_no). RLS: owner / manager / accountant mọi dòng; sales dòng mình giữ nợ;
   thủ kho không dòng nào (không có chính sách). Ghi thẳng (nợ đầu kỳ, dấu quá hạn): nppsale.rpc.no_dau_ky. Dòng tiền thừa của phiếu thu
@@ -70,18 +71,47 @@ _QH_HD = [
 ]
 
 
+# v_hoa_don_con_lai.con_lai (mig 257): total - Σ max(0, tiền trả) của phiếu ĐÃ trừ vào HĐ — luật `creditCounted` (phiếu tự sinh Chờ xử lý / Hoàn thành,
+# phiếu tự lập Hoàn thành; kẹp TỪNG phiếu ≥ 0). `{ve}` = vế RLS `returns` của người gọi trên bí danh `pt` (view security_invoker — xem
+# `con_lai_theo_nguoi`); `{{t}}` = bí danh HĐ của cổng.
+CON_LAI = ("({{t}}.`grand_total` - IFNULL((SELECT SUM(GREATEST(0, pt.`tien_tra`)) FROM `tabNPP Phieu Tra` pt WHERE pt.`hoa_don` = {{t}}.`name` "
+	"AND ((pt.`tu_sinh` = 1 AND pt.`trang_thai` IN ('submitted', 'completed')) OR (pt.`tu_sinh` = 0 AND pt.`trang_thai` = 'completed')){ve}), 0))")
+
+
+def con_lai_theo_nguoi(nc: NguCanh) -> dict:
+	"""View `v_hoa_don_con_lai` của nppsale là `security_invoker`: RLS của NGƯỜI GỌI áp cả lên câu con `returns` ⇒ NVBH chỉ trừ phiếu MÌNH thấy được
+	(mig 198: mình lập / đứng tên / gắn HĐ mình đứng tên / thuộc đơn mình đứng tên). Ca lệch: HĐ của đơn NV A được gán sang NV B (`assign_doc_seller`),
+	NV B lập phiếu tự lập gắn HĐ (không đơn) — NV A vẫn thấy HĐ (đơn của mình) nhưng KHÔNG thấy phiếu ⇒ `con_lai` của A không trừ phiếu ấy (đo trên bản
+	tham chiếu vbc_s3 + phiếu 10.000 của NV Bình gắn HĐ5: An 220.000, Bình / Chủ 210.000). Văn phòng / thủ kho thấy mọi phiếu → không thêm vế. Vế dùng
+	tham số của RLS chèn thành chuỗi đã thoát (`frappe.db.escape` — cột không có bộ tham số riêng)."""
+	import frappe
+
+	from .phieu_tra import _ve_phieu
+
+	v = _ve_phieu(nc, "pt")
+	if v is None:
+		return {}
+	if v is False:
+		ve = " AND 1 = 0"
+	else:
+		sql, tham = v
+		for k, x in (tham or {}).items():
+			sql = sql.replace(f"%({k})s", frappe.db.escape(x))
+		ve = f" AND {sql}"
+	return {"con_lai": c(CON_LAI.format(ve=ve), "tien")}
+
+
 def nap():
 	if not co_cot("Sales Invoice", "npp_don_hang"):
 		return
 	cot = _cot_hd()
 	dang_ky(Bang(ten="sales_invoices", nguon=NGUON_HD, cot=cot, quan_he=_QH_HD, rls=ve_hoa_don))
 	# v_hoa_don_con_lai (mig 257): tiền CÒN LẠI sau hàng trả đã trừ vào HĐ (luật creditCounted) — phiếu trả nối vào khi có NPP Phieu Tra
-	con_lai = c("{t}.`grand_total`", "tien")
+	con_lai, theo_nguoi = c("{t}.`grand_total`", "tien"), None
 	if co_cot("NPP Phieu Tra", "tien_tra"):
-		con_lai = c("({t}.`grand_total` - IFNULL((SELECT SUM(GREATEST(0, pt.`tien_tra`)) FROM `tabNPP Phieu Tra` pt WHERE pt.`hoa_don` = {t}.`name` "
-			"AND ((pt.`tu_sinh` = 1 AND pt.`trang_thai` IN ('submitted', 'completed')) OR (pt.`tu_sinh` = 0 AND pt.`trang_thai` = 'completed'))), 0))",
-			"tien")
-	dang_ky(Bang(ten="v_hoa_don_con_lai", nguon=NGUON_HD, cot={**cot, "con_lai": con_lai}, quan_he=_QH_HD, rls=ve_hoa_don))
+		con_lai, theo_nguoi = c(CON_LAI.format(ve=""), "tien"), con_lai_theo_nguoi
+	dang_ky(Bang(ten="v_hoa_don_con_lai", nguon=NGUON_HD, cot={**cot, "con_lai": con_lai}, quan_he=_QH_HD, rls=ve_hoa_don,
+		cot_theo_nguoi=theo_nguoi))
 	dang_ky(Bang(
 		ten="sales_invoice_lines",
 		nguon="(SELECT * FROM `tabSales Invoice Item` WHERE `parenttype` = 'Sales Invoice')",

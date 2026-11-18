@@ -64,12 +64,19 @@ NAC_HAM = {"bao_cao_so_ban": "P6-2", "ts:ban_hang": "P6-2", "dashboard_summary":
 	"finance_balance_sheet": "P6-5", "ts:xnt": "P6-5"}
 # bộ nền dựng ở nấc sau (◇ của VB-E07 / E08 / E10 / E11; Nền N của nhóm D)
 NAC_BO = {"S8": "P6-5", "S8b": "P6-5", "S9": "P6-5", "S10": "P6-3", "S11": "P6-5", "N": "P6-5"}
+# hàm tổng hợp TOÀN SỔ chạy được trên Sổ BC / biến thể (dashboard_*, công nợ theo khách / tổng): kịch bản có lời gọi của chúng tách sổ của bộ khỏi dữ liệu
+# khác của site trước khi gọi (`_chi_so_cua_bo`)
+HAM_TOAN_SO = ("dashboard_summary", "dashboard_channel_revenue", "dashboard_top_customers", "receivables_by_customer", "receivables_summary")
 # kịch bản xếp nấc riêng (đặc tả §4.2) dù có lời gọi hàm đã có: VB-A16 (tài chính / tồn / công nợ trên Sổ BC) thuộc nấc 5 — hàm TỔNG HỢP toàn sổ
 # (receivables_summary, bao_cao_cong_no, stock_value_summary) cần mốc trừ phần sổ dùng chung của site, dựng cùng finance_*
 NAC_KB = {"VB-A16": "P6-5"}
-DA_DUNG = ("P6-2",)
+DA_DUNG = ("P6-2", "P6-3", "P6-4")
 # khách của bộ E2E (bo.E2E.frappe: "Khách Một Lượt (0912000001), Tạp hoá Cô Ba (0912000002), Đại lý Minh (0912000003)")
 TEN_KHACH_E2E = {"0912000001": "Khách Một Lượt", "0912000002": "Tạp hoá Cô Ba", "0912000003": "Đại lý Minh"}
+# mã HĐ cũ của tờ H3 dựng tay (VB-E10) — không trùng dãy HD- của site
+MA_HD_CU_H3 = "HD-H3-0001"
+# '@la' của tệp vàng = id không thuộc NPP (nppsale: uuid lạ) — Frappe: chuỗi không phải name NV / khách nào
+ID_LA = "00000000-0000-0000-0000-0000000000aa"
 _RE_NHAN = re.compile(r"^(@[a-z_]+:)?[A-Z][A-Z0-9]*(-[A-Z0-9]+)+$")
 _RE_LUC = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:?\d{2}|Z)?$")
 
@@ -270,8 +277,9 @@ def dung_nen_bc(ten_nen: str, nen: dict, i0: int) -> dict:
 		"is_group": 0})
 	for sdt, kh in nen["khach"].items():
 		kh = kh if isinstance(kh, dict) else {"ten": TEN_KHACH_E2E.get(sdt, kh), "han_muc": 100000000}
+		# mã tuyến giữ NGUYÊN như sổ nppsale ('' của khách tuyến rỗng — `hang_khach_da_lay.khach[].channel` trả thô)
 		ten = frappe.get_doc({"doctype": "Customer", "customer_name": kh["ten"], "customer_type": "Company", "customer_group": nhom_khach,
-			"npp_sdt": sdt, "npp_tuyen": kh.get("tuyen") or None, "npp_han_muc": kh.get("han_muc") or 0, "npp_chu_cua_hang": kh.get("chu"),
+			"npp_sdt": sdt, "npp_tuyen": kh.get("tuyen"), "npp_han_muc": kh.get("han_muc") or 0, "npp_chu_cua_hang": kh.get("chu"),
 			"npp_dia_chi": kh.get("dia_chi")}).insert(ignore_permissions=True).name
 		if kh.get("nguoi_tao"):
 			frappe.db.set_value("Customer", ten, "owner", kh["nguoi_tao"], update_modified=False)
@@ -311,6 +319,7 @@ class SoDoi:
 		self.ten: dict = {}  # tên Frappe → nhãn vàng
 		self.sdt = {v: k[3:] for k, v in ma.items() if k.startswith("kh:")}
 		self.sku = {v: k[3:] for k, v in ma.items() if k.startswith("sp:")}
+		self.ncc = {v: k[4:] for k, v in ma.items() if k.startswith("ncc:")}  # name NCC (NCC-xxxx) → tên
 
 	def gan(self, nhan: str, ten: str | None):
 		if ten:
@@ -403,6 +412,8 @@ class TestBaoCaoVang(IntegrationTestCase):
 			return v
 		if v == "@org":
 			return sd.ma["org"]
+		if v == "@la":
+			return ID_LA
 		loai, _, k = v[1:].partition(":")
 		if loai == "kh":
 			return sd.ma["kh:" + k]
@@ -465,6 +476,8 @@ class TestBaoCaoVang(IntegrationTestCase):
 			if not re.search(r"bỏ qua", b.get("frappe") or "", re.I):
 				raise AssertionError(f"bước máy chủ chưa có cách làm bên Frappe: {b.get('mo_ta')} — {b.get('frappe')}")
 			return {"data": None}
+		if b["loai"] == "ghi_cong" and re.match(r"tờ HĐ cũ H3", b.get("frappe") or ""):
+			return self._lap_hd_cu_h3(b, sd)
 		if b["loai"] == "ghi_cong":
 			yc = {"bang": b["bang"], "hanh_dong": b["hanh_dong"], "gia_tri": self._thay(b["gia_tri"], sd, b), "select": "id"}
 			if b.get("loc"):
@@ -494,6 +507,34 @@ class TestBaoCaoVang(IntegrationTestCase):
 			pt = frappe.get_all("NPP Phieu Tra", filters={"don_hang": ten}, pluck="name", order_by="creation asc, name asc", limit=1)
 			sd.gan(b["nhan_phu"], pt[0] if pt else None)
 		return ket
+
+	def _lap_hd_cu_h3(self, b: dict, sd: SoDoi) -> dict:
+		"""Tờ HĐ cũ H3 (bộ S10 #2 — VB-E10): Sales Invoice `is_opening = 'Yes'` giữ MÃ HĐ CŨ (`insert(set_name=…)` — BP §5.6 / PoC 10), một dòng không mã
+		hàng như tờ nợ đầu kỳ (Opening Invoice Creation Tool), đối ứng TK tạm đầu kỳ, ngày tờ = hạn = `due_date` của bước. Công cụ nhập `NPP LS *` của P8
+		chưa có (`can_frappe` của VB-E10: lập TAY trong bài). nppsale không có tờ này — bước vàng ghi một dòng nợ đầu kỳ không HĐ cùng số tiền; bản Frappe
+		là nợ THEO HĐ (`loai = hoa_don`, BP §6.1 dòng `receivables`) nên ảnh chụp sổ gắn nhãn 'dk:<SĐT>:<tiền>' cho tờ để so cùng khoá."""
+		from nppsale.rpc.no_dau_ky import _ghi_so
+		from nppsale.su_kien import cong_no as CN
+		from nppsale.thiet_lap.ban_hang import cai_dat_ban
+
+		DongHo.dat(b.get("gio_frappe") or b.get("gio"))
+		gt = self._thay(b["gia_tri"], sd, b)
+		cd = cai_dat_ban()
+		ngay = gt["due_date"]
+		si = frappe.new_doc("Sales Invoice")
+		si.update({"customer": gt["customer_id"], "company": cd.cong_ty, "is_opening": "Yes", "is_pos": 0, "set_posting_time": 1, "posting_date": ngay,
+			"due_date": ngay, "update_stock": 0, "disable_rounded_total": 1, "allocate_advances_automatically": 0, "taxes_and_charges": "",
+			"payment_terms_template": None, "npp_han_thanh_toan": ngay, "npp_ghi_chu": gt.get("note"),
+			"items": [{"item_name": "Nợ HĐ cũ", "description": "Nợ HĐ cũ", "qty": 1, "rate": float(gt["amount"]), "conversion_factor": 1,
+				"uom": frappe.db.get_single_value("Stock Settings", "stock_uom") or "Nos", "income_account": cd.tk_tam_dau_ky,
+				"cost_center": frappe.get_cached_value("Company", cd.cong_ty, "cost_center")}]})
+		si.set("taxes", [])
+		si.flags.ignore_permissions = True
+		si.insert(set_name=MA_HD_CU_H3)
+		_ghi_so(si.name)
+		CN.chieu_hoa_don(si.name)
+		sd.gan(f"dk:{sd.sdt[gt['customer_id']]}:{so(gt['amount'])}", si.name)
+		return {"data": [{"id": si.name}]}
 
 	def _phat_lai(self, ten_bo: str, sd: SoDoi) -> list[str]:
 		"""Các bước của `bo.<ten_bo>` — so thành / bại (và mã + câu lỗi của bước chờ lỗi) với tệp vàng."""
@@ -610,7 +651,9 @@ class TestBaoCaoVang(IntegrationTestCase):
 			for r in self._doc_cong("sales_orders", "id, sales_user_id, customer_id, total, status", [{"op": "in", "cot": "customer_id", "gt": kh}])]
 		no = self._doc_cong("receivables", "id, sales_user_id, due_date, paid, customer_id, amount, status, invoice_id, return_id",
 			[{"op": "in", "cot": "customer_id", "gt": kh}])
-		khoa_no = {r["id"]: sd.nhan_cua(r["invoice_id"] or r["return_id"]) for r in no}
+		khoa_no = {r["id"]: sd.nhan_cua(r["invoice_id"] or r["return_id"]) if (r["invoice_id"] or r["return_id"])
+			else f"dk:{sd.sdt[r['customer_id']]}:{so(r['amount'])}" for r in no}  # nợ đầu kỳ (không HĐ / phiếu) — khoá vàng 'no:dk:<SĐT>:<tiền>'
+
 		cong_no = [{"id": "no:" + khoa_no[r["id"]], "nv": r["sales_user_id"], "han": r["due_date"], "paid": so(r["paid"]), "khach": sd.sdt[r["customer_id"]],
 			"amount": so(r["amount"]), "status": r["status"]} for r in no]
 		thu = [{"id": f"thu:{khoa_no[r['receivable_id']]}:{so(r['amount'])}", "luc": luc(r["collected_at"]), "amount": so(r["amount"]),
@@ -799,7 +842,29 @@ class TestBaoCaoVang(IntegrationTestCase):
 			r = kq[0]
 			gt = None if r["inventory_value"] is None else so(float(r["inventory_value"]) - self.svs_nen[0])
 			return [{"batch_count": int(r["batch_count"]) - self.svs_nen[1], "inventory_value": gt}], None
+		if ham in ("dashboard_top_customers", "receivables_by_customer"):
+			return [{**r, "customer_id": sd.sdt.get(r["customer_id"], "?" + str(r["customer_id"]))} for r in kq], None
+		if ham == "hang_khach_da_lay":
+			return self._chuan_hang_da_lay(kq, sd), None
 		return kq, None
+
+	@staticmethod
+	def _chuan_hang_da_lay(kq: dict, sd: SoDoi) -> dict:
+		"""`hang_khach_da_lay` (id Frappe) → khoá vàng, GIỮ thứ tự của hàm (list có thứ tự — Q8): khách = SĐT, hàng = SKU, NCC = tên, NV = email; đơn vị cơ
+		sở → tên vàng của mặt hàng (khoá collation)."""
+		def kh(x):
+			return sd.sdt.get(x, "?" + str(x))
+
+		def sku(x):
+			return sd.sku.get(x, "?" + str(x)) if x else x
+
+		def ncc(x):
+			return sd.ncc.get(x, "?" + str(x)) if x else x
+
+		return {"nv": kq["nv"], "khach": [{**r, "id": kh(r["id"])} for r in kq["khach"]],
+			"hang": [{**r, "k": kh(r["k"]), "p": sku(r["p"])} for r in kq["hang"]],
+			"sp": [{**r, "id": sku(r["id"]), "ncc": ncc(r["ncc"]), "base_unit": sd.dv(sku(r["id"]), r["base_unit"])} for r in kq["sp"]],
+			"ncc": [{**r, "id": ncc(r["id"])} for r in kq["ncc"]]}
 
 	def _tung_bang(self, email: str, tu: str, den: str) -> dict:
 		"""VB-E02 (phần máy chủ) — "hai đường đọc phải ra Y HỆT": cùng sáu khối dựng từ các BẢNG CỔNG dưới cùng người như đường lùi `docTungBang` của
@@ -952,6 +1017,28 @@ class TestBaoCaoVang(IntegrationTestCase):
 		sai = self._phat_lai(ten_bo, sd)
 		return sd, sai + (self._so_anh_chup(ten_bo, sd) if not sai else [])
 
+	def _chi_so_cua_bo(self, sd: SoDoi) -> None:
+		"""Hàm tổng hợp TOÀN SỔ (`HAM_TOAN_SO` — không lọc theo khách được ở bài như `bao_cao_so_ban`, và top-N / tổng không trừ mốc được) đọc mọi chứng từ
+		của site DÙNG CHUNG: 95 HĐ PoC ngày 05-06/11/2026, bộ E2E dựng cùng bài (nợ HD-ML-A / B)… — sổ nppsale của bộ vàng là DB MỚI chỉ có chứng từ của
+		bộ. Trong điểm lưu của kịch bản (lui sau kịch bản), đẩy chứng từ của khách NGOÀI bộ ra khỏi tập các hàm ấy đọc: HĐ → `is_opening = 'Yes'` (không
+		phải doanh thu — L1), phiếu trả → không ngày trừ doanh số (L2), dòng nợ → `paid` (L8). Hàm không bị sửa; dữ liệu của bộ giữ nguyên."""
+		kh = {"kh": tuple(sd.sdt)}
+		frappe.db.sql("""UPDATE `tabSales Invoice` SET `is_opening` = 'Yes' WHERE `customer` NOT IN %(kh)s AND `docstatus` = 1 AND `is_return` = 0
+			AND IFNULL(`is_opening`, 'No') = 'No'""", kh)
+		frappe.db.sql("""UPDATE `tabNPP Phieu Tra` SET `ngay_tru_doanh_so` = NULL WHERE `khach_hang` NOT IN %(kh)s
+			AND `ngay_tru_doanh_so` IS NOT NULL""", kh)
+		frappe.db.sql("UPDATE `tabNPP Cong No` SET `trang_thai` = 'paid' WHERE `khach_hang` NOT IN %(kh)s AND `trang_thai` <> 'paid'", kh)
+
+	def _bo_con(self, ten_bo: str, ten_goc: str, sd_goc: SoDoi) -> tuple[SoDoi | None, list[str]]:
+		"""Lời gọi chạy trên bộ `ten_bo` KHÁC bộ của kịch bản (VB-B06 #2 / #3 → S2 / S4): được khi bộ ấy dựng tiếp từ chính bộ của kịch bản (`goc` = bộ
+		đang có trên sổ) — phát lại bước riêng trên bản sao bảng đổi rồi so ảnh chụp; người gọi bọc trong điểm lưu riêng và lui sau lời gọi."""
+		if self.vang["bo"][ten_bo].get("goc") != ten_goc:
+			return None, []
+		sd = SoDoi(sd_goc.ma)
+		sd.nhan, sd.ten = dict(sd_goc.nhan), dict(sd_goc.ten)
+		sai = self._phat_lai(ten_bo, sd)
+		return sd, sai + (self._so_anh_chup(ten_bo, sd) if not sai else [])
+
 	def _mot(self, t: dict) -> tuple[list[str], list[str]]:
 		"""→ (sai, bỏ qua)."""
 		sd, sai = self._bo_cua(t["bo"])
@@ -960,6 +1047,8 @@ class TestBaoCaoVang(IntegrationTestCase):
 		bo_qua, tho = [], {}
 		for fn in TRUOC_GOI.get(t["ma"], ()):
 			sai += fn(self, sd) or []
+		if any(c["ham"] in HAM_TOAN_SO and NAC_HAM.get(c["ham"], DA_DUNG[0]) in DA_DUNG and not c.get("bo") for c in t["goi"]):
+			self._chi_so_cua_bo(sd)
 		for i, c in enumerate(t["goi"]):
 			nac = NAC_HAM.get(c["ham"])
 			if c.get("chi_nppsale"):
@@ -968,8 +1057,30 @@ class TestBaoCaoVang(IntegrationTestCase):
 			if nac and nac not in DA_DUNG:
 				bo_qua.append(f"{t['ma']} #{i} {c['ham']}: chưa dựng ({nac})")
 				continue
-			if (c.get("bo") or t["bo"]) != t["bo"] or c.get("bien_the"):
-				bo_qua.append(f"{t['ma']} #{i} {c['ham']}: bộ / biến thể khác ({c.get('bo')}) chưa dựng")
+			if c.get("bien_the"):
+				bo_qua.append(f"{t['ma']} #{i} {c['ham']}: biến thể ({c.get('bien_the')}) chưa dựng")
+				continue
+			if (c.get("bo") or t["bo"]) != t["bo"]:
+				frappe.db.savepoint("npp_goi_bo")
+				try:
+					sd2, sai2 = self._bo_con(c["bo"], t["bo"], sd)
+					if sd2 is None:
+						bo_qua.append(f"{t['ma']} #{i} {c['ham']}: bộ {c['bo']} không dựng tiếp từ bộ {t['bo']}")
+						continue
+					if sai2:
+						sai += sai2
+						continue
+					if c["ham"] in HAM_TOAN_SO:
+						self._chi_so_cua_bo(sd2)
+					ra, ly_do = self._goi_kb(t, i, c, sd2, tho)
+					if ly_do:
+						bo_qua.append(f"{t['ma']} #{i} {c['ham']}: {ly_do}")
+						continue
+					sai += self._so_goi(t, i, c, ra, sd2)
+					self.da_so.append(f"{t['ma']}#{i}")
+				finally:
+					frappe.db.rollback(save_point="npp_goi_bo")
+					self._nguoi(None)
 				continue
 			ra, ly_do = self._goi_kb(t, i, c, sd, tho)
 			if ly_do:
