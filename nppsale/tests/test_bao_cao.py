@@ -27,7 +27,7 @@ from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
-from frappe.utils import add_days, getdate, nowdate
+from frappe.utils import getdate, nowdate
 
 from nppsale.cong import api
 from nppsale.cong import bang as B
@@ -481,8 +481,6 @@ class TestBaoCaoSoBan(V.TestBaoCaoVang):
 		self.assertEqual(self._sb("CHU", "2026-12-01", "2026-12-31")["data"]["tinh_lai_gia_von"], truoc + 3)
 		self.assertEqual(self._goi(self.sd.ma["k:CHU"], "bao_cao_ton_kho", {"p_tu": "2026-11-01", "p_den": "2026-11-30"})["data"]["tinh_lai_gia_von"],
 			truoc_tk + 3)
-		self.assertEqual(self._sb("CHU", None, None)["data"]["tinh_lai_gia_von"], 0)  # kỳ thiếu đầu: rỗng đúng dạng
-		self.assertEqual(self._sb("CHU", "2026-12-31", "2026-12-01")["data"], self._rong())  # kỳ ngược: rỗng đúng dạng dù có việc ≤ "cuối kỳ" 01/12
-
-
-_ = add_days
+		# kỳ thiếu một / hai đầu, kỳ ngược: rỗng đúng dạng (tinh_lai_gia_von 0) dù có việc chờ ≤ "cuối kỳ" — mỗi vế của điều kiện thoát sớm có ca riêng
+		for tu, den in ((None, None), (None, "2026-11-30"), ("2026-11-01", None), ("2026-12-31", "2026-12-01")):
+			self.assertEqual(self._sb("CHU", tu, den)["data"], self._rong(), (tu, den))
